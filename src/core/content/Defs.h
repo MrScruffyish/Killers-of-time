@@ -38,6 +38,20 @@ struct TraitDef {
     QString description;
 };
 
+// A hero class gives a hero its starting trait values and how traits grow.
+//   baseTraits:    trait id -> starting value (missing = 0)
+//   pickIncrement: trait id -> how much one level-up pick adds (missing = 1)
+//   autoGrowth:    trait id -> added automatically on every level-up
+//                  (e.g. spell_points_max)
+struct HeroClassDef {
+    QString id;
+    QString name;
+    QString race;
+    QMap<QString, int> baseTraits;
+    QMap<QString, int> pickIncrement;
+    QMap<QString, int> autoGrowth;
+};
+
 struct UnitDef {
     QString id;
     QString name;

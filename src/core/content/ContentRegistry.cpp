@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <cmath>
 
 #include "core/data/JsonReader.h"
 
@@ -79,6 +80,8 @@ void ContentRegistry::clear() {
     m_terrain.clear();
     m_traits.clear();
     m_units.clear();
+    m_heroClasses.clear();
+    m_xpThresholds.clear();
 }
 
 bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* errors) {
@@ -88,6 +91,8 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadTerrain(dataDir, problems);
     loadTraits(dataDir, problems);
     loadUnits(dataDir, problems);
+    loadHeroClasses(dataDir, problems);
+    loadProgression(dataDir, problems);
     if (problems.isEmpty()) validateReferences(problems);
     if (!problems.isEmpty()) {
         clear();
@@ -221,7 +226,70 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
     }
 }
 
+void ContentRegistry::loadHeroClasses(const QString& dir, QStringList& errors) {
+    forEachEntry(dir, QStringLiteral("hero_classes.json"), QStringLiteral("heroClasses"), errors,
+                 [&](const QJsonObject& o, const QString& ctx) {
+                     JsonReader r(o, ctx, &errors);
+                     HeroClassDef d;
+                     d.id = r.requireId(QStringLiteral("id"));
+                     d.name = r.requireString(QStringLiteral("name"));
+                     d.race = r.requireId(QStringLiteral("race"));
+                     d.baseTraits = r.optionalIntMap(QStringLiteral("baseTraits"), 0, 1000);
+                     d.pickIncrement = r.optionalIntMap(QStringLiteral("pickIncrement"), 1, 100);
+                     d.autoGrowth = r.optionalIntMap(QStringLiteral("autoGrowth"), 1, 1000);
+                     r.finish();
+                     if (!r.ok()) return;
+                     if (m_heroClasses.contains(d.id)) {
+                         errors << ctx + QStringLiteral(": duplicate hero class id '%1'").arg(d.id);
+                         return;
+                     }
+                     m_heroClasses.insert(d.id, d);
+                 });
+}
+
+void ContentRegistry::loadProgression(const QString& dir, QStringList& errors) {
+    const QString file = QStringLiteral("progression.json");
+    QJsonObject root;
+    if (!readObjectFile(QDir(dir).filePath(file), file, &root, errors)) return;
+    if (!root.value(QStringLiteral("xpThresholds")).isArray()) {
+        errors << file + QStringLiteral(": top-level field 'xpThresholds' must be a list");
+        return;
+    }
+    const QJsonArray arr = root.value(QStringLiteral("xpThresholds")).toArray();
+    int previous = 0;
+    for (qsizetype i = 0; i < arr.size(); ++i) {
+        const double d = arr[i].toDouble(-1);
+        if (!arr[i].isDouble() || d != std::floor(d) || d <= previous || d > 100000000) {
+            errors << file + QStringLiteral(": xpThresholds[%1] must be a whole number greater "
+                                            "than the previous one (%2)").arg(i).arg(previous);
+            m_xpThresholds.clear();
+            return;
+        }
+        previous = static_cast<int>(d);
+        m_xpThresholds.append(previous);
+    }
+    if (m_xpThresholds.isEmpty())
+        errors << file + QStringLiteral(": xpThresholds must not be empty");
+}
+
 void ContentRegistry::validateReferences(QStringList& errors) const {
+    for (const HeroClassDef& c : m_heroClasses) {
+        auto check = [&](const QMap<QString, int>& m, const char* what, bool needPickable) {
+            for (auto it = m.begin(); it != m.end(); ++it) {
+                const TraitDef* t = trait(it.key());
+                if (!t)
+                    errors << QStringLiteral("hero class '%1': %2 uses unknown trait '%3'")
+                                  .arg(c.id, QString::fromLatin1(what), it.key());
+                else if (needPickable && !t->pickable)
+                    errors << QStringLiteral("hero class '%1': %2 lists trait '%3' which is not "
+                                             "pickable").arg(c.id, QString::fromLatin1(what), it.key());
+            }
+        };
+        check(c.baseTraits, "baseTraits", false);
+        check(c.pickIncrement, "pickIncrement", true);
+        check(c.autoGrowth, "autoGrowth", false);
+    }
+
     int currencies = 0;
     for (const ResourceDef& r : m_resources) currencies += r.isCurrency ? 1 : 0;
     if (currencies != 1)
@@ -259,6 +327,10 @@ const TraitDef* ContentRegistry::trait(const QString& id) const {
 const UnitDef* ContentRegistry::unit(const QString& id) const {
     const auto it = m_units.constFind(id);
     return it == m_units.constEnd() ? nullptr : &it.value();
+}
+const HeroClassDef* ContentRegistry::heroClass(const QString& id) const {
+    const auto it = m_heroClasses.constFind(id);
+    return it == m_heroClasses.constEnd() ? nullptr : &it.value();
 }
 const ResourceDef* ContentRegistry::currency() const {
     for (const ResourceDef& r : m_resources) {

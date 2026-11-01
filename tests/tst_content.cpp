@@ -31,6 +31,10 @@ static void writeValidData(const QString& root) {
     writeFile(root, "terrain.json", kTerrain);
     writeFile(root, "traits.json", kTraits);
     writeFile(root, "units/militia.json", kMilitia);
+    writeFile(root, "hero_classes.json",
+              R"({"heroClasses":[{"id":"knight","name":"Knight","race":"humans",)"
+              R"("baseTraits":{"attack":2},"pickIncrement":{"attack":2}}]})");
+    writeFile(root, "progression.json", R"({"xpThresholds":[100,300]})");
 }
 
 class TstContent : public QObject {
@@ -79,6 +83,12 @@ private slots:
         QCOMPARE(reg.unit("armoured_eagle")->mapSpeed, 10);                          // explicit
         QCOMPARE(reg.unit("militia")->cost.value("gold"), 20);
         QVERIFY(reg.unit("nonexistent") == nullptr);
+
+        QVERIFY(reg.heroClass("knight"));
+        QVERIFY(reg.heroClass("wizard"));
+        QVERIFY(reg.heroClass("wizard")->baseTraits.value("magic") >
+                reg.heroClass("knight")->baseTraits.value("magic"));
+        QVERIFY(reg.maxLevel() >= 5);
     }
 
     void loadsMinimalData() {
@@ -192,6 +202,31 @@ private slots:
         const QString all = errors.join("\n");
         QVERIFY(all.contains("missing required field 'attack'"));
         QVERIFY(all.contains("unknown field 'atack'"));
+    }
+
+    void heroClassUnknownTrait() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "hero_classes.json",
+                  R"({"heroClasses":[{"id":"k","name":"K","race":"humans","baseTraits":{"nope":1}}]})");
+        expectError(tmp.path(), "baseTraits uses unknown trait 'nope'");
+    }
+
+    void heroClassPickIncrementNeedsPickableTrait() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "traits.json",
+                  R"({"traits":[{"id":"sp","name":"SP","group":"magic","pickable":false}]})");
+        writeFile(tmp.path(), "hero_classes.json",
+                  R"({"heroClasses":[{"id":"k","name":"K","race":"humans","pickIncrement":{"sp":1}}]})");
+        expectError(tmp.path(), "which is not pickable");
+    }
+
+    void progressionMustAscend() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "progression.json", R"({"xpThresholds":[100,100]})");
+        expectError(tmp.path(), "xpThresholds[1] must be a whole number greater");
     }
 
     void reportsAllErrorsAtOnce() {

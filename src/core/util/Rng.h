@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QString>
 #include <cstdint>
 #include <random>
 
@@ -17,6 +18,10 @@ public:
 
     void reseed(std::uint64_t seed);
     std::uint64_t seed() const { return m_seed; }
+
+    // Save/restore the generator state exactly (used by save games).
+    QString engineState() const;
+    bool restoreEngineState(const QString& state);
 
     std::uint32_t nextU32();
     // Uniform integer in [minInclusive, maxInclusive].

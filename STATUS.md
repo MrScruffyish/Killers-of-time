@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 7)
-**Current milestone:** M1 in progress (M0 done and verified on your machine)
-**Next session should do:** M1 slice C: core model (Map/Tile, Player/Team, Hero with traits and levels, Army, Town/Mine) and GameState save/load
+**Last updated:** 2026-11-01 (session 8)
+**Current milestone:** M1 done in code (M0 verified on your machine; M1 slices A and B verified in sandbox)
+**Next session should do:** M2 first slice: test-map generator + pathfinding (A*) with terrain costs and boat rules, hero movement points from the Movement Points trait
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -23,14 +23,15 @@
 > M0 verified: builds and runs on the user's Qt Creator (Ubuntu, Qt 6.4.2).
 
 ## M1: Data model and content loading
-- [~] JSON schemas/docs in `docs/` (done: `docs/data-format.md` for resources, terrain, traits, units; todo: buildings, spells, races, heroes)
+- [x] JSON schemas/docs in `docs/`: `docs/data-format.md` (resources, terrain, traits, units, hero classes, progression), `docs/save-format.md`. Buildings/spells/races docs come with M3/M7/M8.
 - [x] `ContentRegistry` loader with validation and helpful errors (`JsonReader`, strict, collects all errors)
-- [~] Trait system: trait definitions with `group` and `pickable` loaded (done); base/growth per hero class and trait value tables (todo, with Hero in slice C)
+- [x] Trait system: trait definitions (`group`, `pickable`), hero classes with base values, per-pick increments and auto-growth. Tiered bonus tables (battle speed, attack range, movement) come with M2/M6.
 - [x] Stack/HP model (`core/model/UnitStack`: pooled totalHp, count derived, damage elimination one by one, heal, add units, flat+percent hero HP bonus via `effectiveMaxHp`; see PROJECT.md 5.6.1) with unit tests (`tst_unitstack`)
-- [ ] Core model: `Map`, `Tile`, `Player`, `Team`, `Hero`, `Army`, `UnitStack`, `Town`, `Mine`
-- [~] Sample data: 9 resources, 12 terrain types, 13 traits, 5 units done; race + buildings todo
-- [ ] Save/load of `GameState` to JSON
-- [~] Unit tests for loading (done: `tst_jsonreader`, `tst_content`); (de)serialization todo
+- [x] Core model: `GameMap`, `Player`, team ids, `Hero`, `Army` (max 7 stacks), `UnitStack`, `Town`, `Mine`, `GameState` (ids unique across kinds, turn order, seeded RNG)
+- [x] Hero rules (`core/rules/HeroRules`): create hero, experience and levels (xp curve in `progression.json`), one pending trait pick per level, auto max-SP growth, daily spell point regeneration
+- [x] Sample data: 9 resources, 12 terrain types, 13 traits, 5 units, 2 hero classes (knight, wizard), 10 levels. Race and building data move to M3/M8.
+- [x] Save/load of `GameState` to JSON (validated against content, exact RNG state preserved, atomic file save)
+- [x] Unit tests: `tst_jsonreader`, `tst_content`, `tst_army`, `tst_herorules`, `tst_gamestate` (8 test programs in total)
 
 ## M2: Map and adventure rules (single machine, no network yet)
 - [ ] Map generation (simple random/noise-based) and/or hand-made test map
@@ -111,6 +112,7 @@
 | 2026-11-01 | Added Luck and Attack Range traits; Hit Points confirmed; traits grouped Battle / Magic / Explore (D16, D17) |
 | 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); upkeep later, affects morale (D9); survivors heal fully after battle for now (D18) |
 | 2026-11-01 | Terrain uses `walkable`/`sailable`/`moveCost` (100 = one tile) instead of `passable`/`requiresBoat`; data files are strict (unknown fields are errors, `_` keys are comments); unit id must equal file name; exactly one currency resource |
+| 2026-11-01 | Save format v1: JSON with terrain palette, ids unique across all object kinds, RNG state saved (seed as text); loading validates everything and leaves the target untouched on failure. Level-up: max SP grows but current SP is not refilled. Stacks in armies store base max HP; hero HP bonus applies when a battle starts |
 | 2026-11-01 | Qt 6 / C++20 / CMake; server-authoritative client-server; AI as server-side players; data-driven JSON content (see PROJECT.md) |
 
 ## Open questions for the user (answer when convenient)
@@ -121,6 +123,7 @@
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 8:** M1 slice C: core model, GameState, hero rules, hero classes + progression data, save/load JSON, JsonReader arrays/objects, Rng state, 8 test programs.
 - **Session 7:** M1 slice B: JsonReader, content defs, ContentRegistry, sample data, docs/data-format.md, tests. Delta zips now include COMMIT_MSG.txt.
 - **Session 6:** M0 confirmed working by user. Added UnitStack + HpBonus (M1 slice A) with 14 unit tests.
 - **Session 5:** Wrote and verified the M0 skeleton (CMake, kot_core/net/ai, kot_server, kot_client, tests tst_rng and tst_strongid). Recorded stack/HP model.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QMap>
 #include <QSet>
@@ -35,6 +36,9 @@ public:
     QStringList optionalStringList(const QString& key);
     // Object of name -> integer, e.g. a cost {"gold": 100, "wood": 2}.
     QMap<QString, int> optionalIntMap(const QString& key, int min, int max);
+
+    QJsonArray requireArray(const QString& key);
+    QJsonObject requireObject(const QString& key);
 
     bool has(const QString& key) const { return m_object.contains(key); }
     void addError(const QString& message);

@@ -34,6 +34,9 @@ public:
     // `count` units at full health, each with `maxHpPerUnit` HP (clamped to >= 1).
     UnitStack(QString unitTypeId, int count, int maxHpPerUnit);
 
+    // Rebuild a (possibly wounded) stack, e.g. when loading a save game.
+    static UnitStack fromTotalHp(QString unitTypeId, int totalHp, int maxHpPerUnit);
+
     const QString& unitTypeId() const { return m_unitTypeId; }
     int maxHp() const { return m_maxHp; }
     int totalHp() const { return m_totalHp; }

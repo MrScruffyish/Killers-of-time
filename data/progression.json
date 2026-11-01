@@ -1,0 +1,4 @@
+{
+  "_comment": "xpThresholds[i] = total experience needed to reach level i+2. Level 1 starts at 0.",
+  "xpThresholds": [1000, 2000, 3200, 4500, 6000, 7700, 9500, 11500, 13700]
+}

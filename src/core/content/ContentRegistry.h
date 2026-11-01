@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QMap>
 #include <QString>
 #include <QStringList>
@@ -9,7 +10,8 @@
 namespace kot::core {
 
 // All game content loaded from the data directory:
-//   resources.json, terrain.json, traits.json, units/<id>.json
+//   resources.json, terrain.json, traits.json, hero_classes.json,
+//   progression.json, units/<id>.json
 // See docs/data-format.md. Loading either fully succeeds or leaves the
 // registry empty and returns every problem found in `errors`.
 class ContentRegistry {
@@ -21,11 +23,16 @@ public:
     const QMap<QString, TerrainDef>& terrain() const { return m_terrain; }
     const QMap<QString, TraitDef>& traits() const { return m_traits; }
     const QMap<QString, UnitDef>& units() const { return m_units; }
+    const QMap<QString, HeroClassDef>& heroClasses() const { return m_heroClasses; }
+    // xpThresholds()[i] = total experience needed to reach level i + 2.
+    const QList<int>& xpThresholds() const { return m_xpThresholds; }
+    int maxLevel() const { return static_cast<int>(m_xpThresholds.size()) + 1; }
 
     const ResourceDef* resource(const QString& id) const;
     const TerrainDef* terrainType(const QString& id) const;
     const TraitDef* trait(const QString& id) const;
     const UnitDef* unit(const QString& id) const;
+    const HeroClassDef* heroClass(const QString& id) const;
     const ResourceDef* currency() const;
 
 private:
@@ -33,12 +40,16 @@ private:
     void loadTerrain(const QString& dir, QStringList& errors);
     void loadTraits(const QString& dir, QStringList& errors);
     void loadUnits(const QString& dir, QStringList& errors);
+    void loadHeroClasses(const QString& dir, QStringList& errors);
+    void loadProgression(const QString& dir, QStringList& errors);
     void validateReferences(QStringList& errors) const;
 
     QMap<QString, ResourceDef> m_resources;
     QMap<QString, TerrainDef> m_terrain;
     QMap<QString, TraitDef> m_traits;
     QMap<QString, UnitDef> m_units;
+    QMap<QString, HeroClassDef> m_heroClasses;
+    QList<int> m_xpThresholds;
 };
 
 }  // namespace kot::core

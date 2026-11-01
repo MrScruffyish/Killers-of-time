@@ -162,6 +162,32 @@ QMap<QString, int> JsonReader::optionalIntMap(const QString& key, int min, int m
     return result;
 }
 
+QJsonArray JsonReader::requireArray(const QString& key) {
+    if (!has(key)) {
+        addError(QStringLiteral("missing required field '%1'").arg(key));
+        return {};
+    }
+    m_used.insert(key);
+    if (!m_object.value(key).isArray()) {
+        addError(QStringLiteral("field '%1' must be a list").arg(key));
+        return {};
+    }
+    return m_object.value(key).toArray();
+}
+
+QJsonObject JsonReader::requireObject(const QString& key) {
+    if (!has(key)) {
+        addError(QStringLiteral("missing required field '%1'").arg(key));
+        return {};
+    }
+    m_used.insert(key);
+    if (!m_object.value(key).isObject()) {
+        addError(QStringLiteral("field '%1' must be an object").arg(key));
+        return {};
+    }
+    return m_object.value(key).toObject();
+}
+
 void JsonReader::finish() {
     const QStringList keys = m_object.keys();
     for (const QString& key : keys) {

@@ -59,3 +59,25 @@ Trait value tables and hero-class growth come in a later slice.
 | cost | object | {} | resource id -> amount; ids must exist |
 | abilities | string list | [] | e.g. `"flying"` (not yet validated) |
 | upgradesTo | id | none | must be another existing unit |
+
+## hero_classes.json
+```json
+{ "heroClasses": [ { "id": "knight", "name": "Knight", "race": "humans",
+    "baseTraits": { "attack": 3, "spell_points_max": 10 },
+    "pickIncrement": { "attack": 2 },
+    "autoGrowth": { "spell_points_max": 4 } } ] }
+```
+| Field | Notes |
+|---|---|
+| baseTraits | trait id -> starting value (0..1000); missing traits start at 0 |
+| pickIncrement | trait id -> added by one level-up pick (1..100); missing = 1; trait must be pickable |
+| autoGrowth | trait id -> added automatically on every level-up (e.g. `spell_points_max`) |
+
+All trait ids must exist in `traits.json`.
+
+## progression.json
+```json
+{ "xpThresholds": [1000, 2000, 3200] }
+```
+`xpThresholds[i]` is the total experience needed to reach level `i + 2` (level 1 starts at 0).
+Must be strictly ascending. Max level = number of thresholds + 1.

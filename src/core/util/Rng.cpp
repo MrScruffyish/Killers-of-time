@@ -1,6 +1,7 @@
 #include "core/util/Rng.h"
 
 #include <QtGlobal>
+#include <sstream>
 #include <utility>
 
 namespace kot::core {
@@ -10,6 +11,21 @@ Rng::Rng(std::uint64_t seed) : m_seed(seed), m_engine(seed) {}
 void Rng::reseed(std::uint64_t seed) {
     m_seed = seed;
     m_engine.seed(seed);
+}
+
+QString Rng::engineState() const {
+    std::ostringstream os;
+    os << m_engine;
+    return QString::fromStdString(os.str());
+}
+
+bool Rng::restoreEngineState(const QString& state) {
+    std::istringstream is(state.toStdString());
+    std::mt19937_64 engine;
+    is >> engine;
+    if (is.fail()) return false;
+    m_engine = engine;
+    return true;
 }
 
 std::uint32_t Rng::nextU32() {

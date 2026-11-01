@@ -16,6 +16,12 @@ UnitStack::UnitStack(QString unitTypeId, int count, int maxHpPerUnit)
       m_maxHp(std::max(1, maxHpPerUnit)),
       m_totalHp(std::max(0, count) * m_maxHp) {}
 
+UnitStack UnitStack::fromTotalHp(QString unitTypeId, int totalHp, int maxHpPerUnit) {
+    UnitStack s(std::move(unitTypeId), 0, maxHpPerUnit);
+    s.m_totalHp = std::max(0, totalHp);
+    return s;
+}
+
 int UnitStack::count() const {
     if (m_totalHp <= 0) return 0;
     return (m_totalHp + m_maxHp - 1) / m_maxHp;

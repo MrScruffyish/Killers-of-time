@@ -34,6 +34,16 @@ private slots:
         QCOMPARE(a.seed(), std::uint64_t(99));
     }
 
+    void saveAndRestoreEngineState() {
+        Rng a(2024);
+        for (int i = 0; i < 17; ++i) a.nextU32();
+        const QString state = a.engineState();
+        Rng b(1);  // different seed on purpose
+        QVERIFY(b.restoreEngineState(state));
+        for (int i = 0; i < 100; ++i) QCOMPARE(a.nextU32(), b.nextU32());
+        QVERIFY(!b.restoreEngineState("garbage"));
+    }
+
     void nextIntStaysInRange() {
         Rng r(7);
         for (int i = 0; i < 10000; ++i) {
