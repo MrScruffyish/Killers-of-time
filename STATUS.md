@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 5)
-**Current milestone:** M0 done in code (verify on your machine) -> M1 next
-**Next session should do:** start M1 (data model, content loading, stack/HP model)
+**Last updated:** 2026-11-01 (session 6)
+**Current milestone:** M1 in progress (M0 done and verified on your machine)
+**Next session should do:** M1 slice B: trait system + unit/resource/terrain definitions + JSON content loader
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -20,15 +20,13 @@
 - [x] Logging helper, strong-ID types, seeded RNG wrapper in `core/util`
 - [x] Client opens an empty window; server starts and listens (no logic yet)
 
-> M0 was built and tested in the sandbox (Qt 6.4.2, GCC, Ninja): 0 warnings, 2 test
-> executables pass, server greets a client, client window starts. **Still to confirm:
-> that it opens and builds in your Qt Creator.**
+> M0 verified: builds and runs on the user's Qt Creator (Ubuntu, Qt 6.4.2).
 
 ## M1: Data model and content loading
 - [ ] JSON schemas/docs in `docs/` for resources, terrain, units, buildings, spells, races
 - [ ] `ContentRegistry` loader with validation and helpful errors
 - [ ] Trait system: data-driven traits with `group` (Battle/Magic/Explore), base/growth per hero class, `pickable` flag
-- [ ] Stack/HP model (`UnitStack`: pooled totalHp, count derived, damage elimination one by one, flat+percent hero HP bonus; see PROJECT.md 5.6.1) with unit tests
+- [x] Stack/HP model (`core/model/UnitStack`: pooled totalHp, count derived, damage elimination one by one, heal, add units, flat+percent hero HP bonus via `effectiveMaxHp`; see PROJECT.md 5.6.1) with unit tests (`tst_unitstack`)
 - [ ] Core model: `Map`, `Tile`, `Player`, `Team`, `Hero`, `Army`, `UnitStack`, `Town`, `Mine`
 - [ ] Sample data: 9 resources, ~12 terrain types, 1 race with a few units/buildings
 - [ ] Save/load of `GameState` to JSON
@@ -122,6 +120,7 @@
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 6:** M0 confirmed working by user. Added UnitStack + HpBonus (M1 slice A) with 14 unit tests.
 - **Session 5:** Wrote and verified the M0 skeleton (CMake, kot_core/net/ai, kot_server, kot_client, tests tst_rng and tst_strongid). Recorded stack/HP model.
 - **Session 4:** Traits grouped (Battle/Magic/Explore); added Luck, Attack Range; Hit Points confirmed.
 - **Session 3:** Detailed traits (Spell Recovery, Magic, Hit Points), split speed into Movement Points / Battle Speed, level-up rules. Qt 6.4.2 confirmed (Ubuntu).

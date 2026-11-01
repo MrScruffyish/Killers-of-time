@@ -1,0 +1,61 @@
+#pragma once
+
+#include <QString>
+
+namespace kot::core {
+
+// Hero Hit Points trait bonus, applied to the max HP of every unit in the army.
+// `percent` is a fraction: 0.10 means +10%.
+struct HpBonus {
+    int flat = 0;
+    double percent = 0.0;
+};
+
+// Effective max HP of one unit = (baseMaxHp + flat) * (1 + percent), rounded
+// to nearest, never below 1.
+int effectiveMaxHp(int baseMaxHp, const HpBonus& bonus);
+
+// A group of identical units fighting as one (e.g. 12 armoured eagles).
+//
+// The stack keeps ONE pooled HP total. The unit count is derived from it:
+//     count = ceil(totalHp / maxHp)
+// so "units are eliminated one by one until the damage is covered" falls out
+// naturally, and the front unit may be left wounded.
+// Example: 10 units with 10 HP, 25 damage -> totalHp 75 -> count 8, front unit 5 HP.
+class UnitStack {
+public:
+    struct DamageResult {
+        int damageDealt = 0;   // damage actually absorbed (capped by remaining HP)
+        int unitsKilled = 0;   // whole units removed from the stack
+        bool eliminated = false;
+    };
+
+    UnitStack() = default;
+    // `count` units at full health, each with `maxHpPerUnit` HP (clamped to >= 1).
+    UnitStack(QString unitTypeId, int count, int maxHpPerUnit);
+
+    const QString& unitTypeId() const { return m_unitTypeId; }
+    int maxHp() const { return m_maxHp; }
+    int totalHp() const { return m_totalHp; }
+    int count() const;
+    // HP of the front (possibly wounded) unit, 1..maxHp; 0 if eliminated.
+    int frontUnitHp() const;
+    bool isEliminated() const { return m_totalHp <= 0; }
+
+    // Subtract damage from the pool. Negative damage counts as zero.
+    DamageResult applyDamage(int damage);
+    // Restore HP, never above count() * maxHp() (healing cannot revive dead
+    // units). Returns the HP actually restored.
+    int heal(int amount);
+    // Add `units` fresh full-HP units (resurrection, recruiting, merging).
+    void addUnits(int units);
+    // Everyone alive back to full HP.
+    void restoreFullHealth();
+
+private:
+    QString m_unitTypeId;
+    int m_maxHp = 1;
+    int m_totalHp = 0;
+};
+
+}  // namespace kot::core

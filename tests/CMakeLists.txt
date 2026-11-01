@@ -6,3 +6,4 @@ endfunction()
 
 kot_add_test(tst_rng)
 kot_add_test(tst_strongid)
+kot_add_test(tst_unitstack)

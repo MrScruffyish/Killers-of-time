@@ -7,6 +7,8 @@ add_library(kot_core STATIC
     util/Rng.cpp
     util/Log.h
     util/Log.cpp
+    model/UnitStack.h
+    model/UnitStack.cpp
 )
 target_include_directories(kot_core PUBLIC ${KOT_SRC_DIR})
 target_link_libraries(kot_core PUBLIC Qt6::Core PRIVATE kot_warnings)
