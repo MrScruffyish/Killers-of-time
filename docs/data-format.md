@@ -1,0 +1,61 @@
+# Data file format
+
+Game content lives in `data/` as JSON and is loaded by
+`kot::core::ContentRegistry` (`src/core/content/`). Loading is strict: every
+problem is reported with file name and field, and a failed load leaves the
+registry empty.
+
+General rules:
+- **Ids** are lowercase: start with a letter, then letters, digits, `_` (e.g. `battle_snail`).
+- **Unknown fields are errors** (catches typos like `atack`). Fields starting with `_`
+  are ignored, so use `"_comment": "..."` for notes.
+- Integers must be whole numbers within the documented range.
+
+## resources.json
+```json
+{ "resources": [ { "id": "gold", "name": "Gold", "currency": true }, ... ] }
+```
+Exactly one resource must have `"currency": true`.
+
+## terrain.json
+```json
+{ "terrain": [ { "id": "grass", "name": "Grass", "moveCost": 100, "color": "#5fa04e" }, ... ] }
+```
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id, name | string | required | |
+| color | `#RRGGBB` | required | placeholder art |
+| walkable | bool | true | enterable on foot |
+| sailable | bool | false | enterable by boat |
+| moveCost | int 1..10000 | 100 | 100 = one standard tile (road 70, forest 150) |
+| blocksVision | bool | false | |
+
+Mountains = `walkable: false, sailable: false`. Rivers/sea = `walkable: false, sailable: true`.
+
+## traits.json
+```json
+{ "traits": [ { "id": "luck", "name": "Luck", "group": "battle", "pickable": true } ] }
+```
+`group`: `battle`, `magic` or `explore`. `pickable`: can be chosen at level-up
+(`false` for traits that grow automatically). `description` is optional.
+Trait value tables and hero-class growth come in a later slice.
+
+## units/<id>.json (one file per unit; the id must equal the file name)
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| id, name | string | required | |
+| race | id | required | race files do not exist yet |
+| tier | int 1..7 | required | |
+| attack, defense | int 0..1000 | required | |
+| damageMin, damageMax | int | required | min <= max |
+| maxHp | int 1..100000 | required | |
+| battleSpeed | int 1..100 | required | hexes per move in battle |
+| mapSpeed | int 1..100 | = battleSpeed | adventure map speed class |
+| initiative | int 1..100 | = battleSpeed | turn order in battle |
+| range, shots | int | 0, 0 | ranged unit: range > 0 and shots >= 1 |
+| size | 1 or 2 | 1 | hexes occupied |
+| weeklyGrowth | int | 0 | |
+| spellPoints | int | 0 | unit's own spell point pool |
+| cost | object | {} | resource id -> amount; ids must exist |
+| abilities | string list | [] | e.g. `"flying"` (not yet validated) |
+| upgradesTo | id | none | must be another existing unit |

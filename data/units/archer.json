@@ -1,0 +1,19 @@
+{
+  "id": "archer",
+  "name": "Archer",
+  "race": "humans",
+  "tier": 2,
+  "attack": 6,
+  "defense": 3,
+  "damageMin": 2,
+  "damageMax": 3,
+  "maxHp": 10,
+  "battleSpeed": 4,
+  "range": 10,
+  "shots": 12,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 100,
+    "wood": 1
+  }
+}

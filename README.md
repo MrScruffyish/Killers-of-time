@@ -48,3 +48,16 @@ tests/      Qt Test unit tests
 data/       game content (JSON), later
 docs/       protocol and data format docs, later
 ```
+
+## Commit messages
+
+Each delivery from Claude includes `COMMIT_MSG.txt` (ignored by git). One-time setup,
+run in the repo root:
+
+```
+git config commit.template COMMIT_MSG.txt
+```
+
+After that a plain `git commit` opens the editor pre-filled with the message
+(save and close to commit). Or skip the editor with `git commit -F COMMIT_MSG.txt`.
+New files must be added first: `git add -A`.

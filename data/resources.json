@@ -1,0 +1,13 @@
+{
+  "resources": [
+    { "id": "gold",    "name": "Gold",    "currency": true },
+    { "id": "wood",    "name": "Wood" },
+    { "id": "stone",   "name": "Stone" },
+    { "id": "grain",   "name": "Grain" },
+    { "id": "gems",    "name": "Gems" },
+    { "id": "sulphur", "name": "Sulphur" },
+    { "id": "coal",    "name": "Coal" },
+    { "id": "mercury", "name": "Mercury" },
+    { "id": "papyrus", "name": "Papyrus" }
+  ]
+}

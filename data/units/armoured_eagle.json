@@ -1,0 +1,22 @@
+{
+  "id": "armoured_eagle",
+  "name": "Armoured Eagle",
+  "race": "neutral",
+  "tier": 4,
+  "attack": 10,
+  "defense": 8,
+  "damageMin": 5,
+  "damageMax": 9,
+  "maxHp": 45,
+  "battleSpeed": 12,
+  "mapSpeed": 10,
+  "initiative": 12,
+  "weeklyGrowth": 3,
+  "abilities": [
+    "flying"
+  ],
+  "cost": {
+    "gold": 350,
+    "gems": 1
+  }
+}
