@@ -44,6 +44,8 @@ add_library(kot_core STATIC
     rules/Tavern.cpp
     data/JsonReader.h
     data/JsonReader.cpp
+    data/DataDir.h
+    data/DataDir.cpp
     content/Defs.h
     content/ContentRegistry.h
     content/ContentRegistry.cpp

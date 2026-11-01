@@ -529,6 +529,15 @@ const HeroClassDef* ContentRegistry::heroClass(const QString& id) const {
     const auto it = m_heroClasses.constFind(id);
     return it == m_heroClasses.constEnd() ? nullptr : &it.value();
 }
+QStringList ContentRegistry::raceIds() const {
+    QStringList races;
+    for (const HeroClassDef& c : m_heroClasses) {
+        if (!races.contains(c.race)) races.append(c.race);
+    }
+    races.sort();
+    return races;
+}
+
 const HeroTemplateDef* ContentRegistry::heroTemplate(const QString& id) const {
     const auto it = m_heroTemplates.constFind(id);
     return it == m_heroTemplates.constEnd() ? nullptr : &it.value();

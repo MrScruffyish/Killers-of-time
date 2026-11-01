@@ -29,6 +29,8 @@ public:
     // xpThresholds()[i] = total experience needed to reach level i + 2.
     const QList<int>& xpThresholds() const { return m_xpThresholds; }
     const Balance& balance() const { return m_balance; }
+    // Playable races: the races that have a hero class.
+    QStringList raceIds() const;
     int maxLevel() const { return static_cast<int>(m_xpThresholds.size()) + 1; }
 
     const ResourceDef* resource(const QString& id) const;

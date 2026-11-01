@@ -30,7 +30,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 ctest --test-dir build --output-on-failure
 
-./build/bin/kot_server            # default port 45454, or: --port 5000
+./build/bin/kot_server            # default port 45454, or: --port 5000; finds data/ itself, or: --data <dir>
 ./build/bin/kot_client            # in another terminal; click Connect
 ```
 

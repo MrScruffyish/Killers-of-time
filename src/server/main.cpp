@@ -1,7 +1,11 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 
+#include "ai/PassiveAi.h"
 #include "core/Version.h"
+#include "core/content/ContentRegistry.h"
+#include "core/data/DataDir.h"
+#include "core/util/Log.h"
 #include "net/Protocol.h"
 #include "server/GameServer.h"
 
@@ -18,7 +22,11 @@ int main(int argc, char* argv[]) {
                                   QStringLiteral("TCP port to listen on."),
                                   QStringLiteral("port"),
                                   QString::number(kot::net::kDefaultPort));
+    QCommandLineOption dataOption(QStringList{QStringLiteral("d"), QStringLiteral("data")},
+                                  QStringLiteral("Game data directory (default: found automatically)."),
+                                  QStringLiteral("dir"));
     parser.addOption(portOption);
+    parser.addOption(dataOption);
     parser.process(app);
 
     bool ok = false;
@@ -28,9 +36,21 @@ int main(int argc, char* argv[]) {
         return 2;
     }
 
-    kot::server::GameServer server;
-    if (!server.start(static_cast<quint16>(port))) {
-        return 1;
+    const QString dataDir = kot::core::findDataDirectory(parser.value(dataOption));
+    if (dataDir.isEmpty()) {
+        qCritical("Cannot find the data directory. Use --data <dir> or set KOT_DATA_DIR.");
+        return 2;
     }
+    kot::core::ContentRegistry content;
+    QStringList errors;
+    if (!content.loadFromDirectory(dataDir, &errors)) {
+        qCritical("The game data in %s is invalid:\n%s", qPrintable(dataDir),
+                  qPrintable(errors.join(QLatin1Char('\n'))));
+        return 2;
+    }
+    qCInfo(lcKotServer) << "Loaded game data from" << dataDir;
+
+    kot::server::GameServer server(content.raceIds(), {kot::ai::PassiveAi().profileName()});
+    if (!server.start(static_cast<quint16>(port))) return 1;
     return app.exec();
 }

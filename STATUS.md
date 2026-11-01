@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 13)
-**Current milestone:** M3 done in code; M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** start M4: framed JSON protocol over TCP (message types, versioned handshake), server session and lobby (slots human/AI, race, team, colour), fog-filtered state sent to clients
+**Last updated:** 2026-11-01 (session 14)
+**Current milestone:** M4 in progress (slice A: protocol and lobby done); M0 verified on your machine, everything since verified in sandbox
+**Next session should do:** M4 slice B: start the game on the server (create GameState from the lobby: generate map from the settings, starting town + hero per player, AI players), game commands over the network (move_hero, build, recruit, trade, the one-click actions, end_turn), fog-filtered state sent to each player
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -57,12 +57,14 @@
 - [x] Tests: `tst_trade`, `tst_dwellings`, `tst_automation` (18 test programs in total); `tst_towns`, `tst_armyrules`, split/merge cases in `tst_unitstack`, building loading cases in `tst_content` (15 test programs in total)
 
 ## M4: Networking and lobby
-- [ ] Framed JSON protocol, versioned handshake (`docs/protocol.md`)
-- [ ] Server session: lobby, slots (human/AI, race, team, color), start game
-- [ ] Command validation -> state change -> fog-filtered `StateDelta` broadcast
-- [ ] Turn order and `EndTurn`
-- [ ] Client: connect screen, lobby screen
-- [ ] Disconnect/reconnect handling (basic)
+- [x] Framed JSON protocol, versioned handshake (`docs/protocol.md`; `net/Message`, `MessageFramer`, `Connection`)
+- [x] Server lobby (`server/Lobby`, pure logic): slots human/AI/open/closed, race, team, colour, ready, host, map settings, start rules; `GameServer` runs it over TCP (`kot_server_lib`, `kot_server` finds `data/` itself or `--data`)
+- [x] Client side: `net/LobbyClient` (used by the temporary client window, which logs the lobby)
+- [x] Tests: `tst_framer`, `tst_lobby`, `tst_datadir`, `tst_network` (real server and clients on localhost, protocol violations); 23 test programs in total
+- [ ] Start the game: GameState from the lobby (map from settings, start town + hero per player, AI hosts)
+- [ ] Commands -> validation -> state change -> fog-filtered updates broadcast; EndTurn and turn order over the network
+- [ ] Client: real connect and lobby screens (M5 has the map)
+- [ ] Disconnect/reconnect handling during a game
 
 ## M5: Playable adventure map client
 - [ ] Map view (QGraphicsView): terrain tiles, objects, fog rendering, scrolling/zoom
@@ -119,6 +121,7 @@
 | 2026-11-01 | Added Luck and Attack Range traits; Hit Points confirmed; traits grouped Battle / Magic / Explore (D16, D17) |
 | 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); upkeep later, affects morale (D9); survivors heal fully after battle for now (D18) |
 | 2026-11-01 | Terrain uses `walkable`/`sailable`/`moveCost` (100 = one tile) instead of `passable`/`requiresBoat`; data files are strict (unknown fields are errors, `_` keys are comments); unit id must equal file name; exactly one currency resource |
+| 2026-11-01 | Protocol v1: 4-byte big-endian length + UTF-8 JSON object with "type" and optional "seq"; lobby_state broadcast after every change; 64-bit seed sent as text; lobby needs 1 human, 2 occupied slots, 2 teams, all humans ready; Qt keyword `slots` cannot be a member name (C++ `slotList`, JSON `slots`) |
 | 2026-11-01 | Design principle: avoid micromanagement (trade, send units to town, buy all, auto-build, build then buy). Buy-all default strategy is quality first (highest tier), cheapest-first as option. A building is a "choice" if it would permanently exclude a rival building of the town's race; those are never auto-built, only flagged. Trade works anywhere for now (a Market building may improve rates later) |
 | 2026-11-01 | Buildings: JSON key `requires` is `requiredBuildings` in C++ (reserved word); dwelling stock is keyed by the root building of an upgrade chain; weekly growth on days 8, 15, ... for every town; stacks keep base max HP |
 | 2026-11-01 | Visiting: a hero arriving on a mine/town of a neutral or other-team owner captures it (defended towns refuse until M6); objects block walking through but can be the target; fog memory is per team and saved; income starts on day 2; vision balance (town 5, mine 2) and town gold (500) are in balance.json |
@@ -137,6 +140,7 @@
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.
 - **Session 13:** Hero tavern slice (hero templates, tavern building, offers, hiring), naming convention written down, tests updated for the new building.
 - **Session 12:** Design principle recorded; trade, map dwellings, send units to town, buy all units, auto-build, build then buy; saves extended (mapDwellings, importedUnits); 3 new test programs (18 in total).
 - **Session 11:** M3: building data and rules, dwellings, recruiting, weekly growth, upgrades, army transfers, building income, town fields in saves, 2 new test programs (15 in total).
