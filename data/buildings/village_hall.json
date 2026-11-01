@@ -1,0 +1,15 @@
+{
+  "id": "village_hall",
+  "name": "Village Hall",
+  "race": "humans",
+  "cost": {
+    "gold": 500
+  },
+  "effects": [
+    {
+      "type": "income",
+      "resource": "gold",
+      "amount": 250
+    }
+  ]
+}

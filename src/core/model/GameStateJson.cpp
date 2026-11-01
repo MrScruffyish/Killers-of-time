@@ -138,6 +138,8 @@ QJsonObject GameState::toJson() const {
         o.insert("y", t.pos.y);
         o.insert("buildings", QJsonArray::fromStringList(t.buildings));
         putOptionalId(o, "garrison", t.garrison.value());
+        o.insert("lastBuildDay", t.lastBuildDay);
+        o.insert("recruitPool", intMapToJson(t.recruitPool));
         towns.append(o);
     }
     root.insert("towns", towns);
@@ -367,7 +369,16 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         t.pos.y = r.requireInt("y", 0, 100000);
         t.buildings = r.optionalStringList("buildings");
         t.garrison = ArmyId(static_cast<quint32>(r.optionalInt("garrison", 0, 0, kMaxId)));
+        t.lastBuildDay = r.optionalInt("lastBuildDay", 0, 0, 10000000);
+        t.recruitPool = r.optionalIntMap("recruitPool", 0, 1000000);
         r.finish();
+        for (const QString& b : t.buildings) {
+            if (!content.building(b)) r.addError(QStringLiteral("unknown building '%1'").arg(b));
+        }
+        for (auto it = t.recruitPool.begin(); it != t.recruitPool.end(); ++it) {
+            if (!content.building(it.key()))
+                r.addError(QStringLiteral("recruitPool uses unknown building '%1'").arg(it.key()));
+        }
         checkPos(ctx, t.pos);
         if (r.ok() && claim(ctx, t.id.value())) gs.m_towns.insert(t.id, t);
     });

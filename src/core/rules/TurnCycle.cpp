@@ -3,6 +3,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Movement.h"
+#include "core/rules/TownRules.h"
 #include "core/rules/Vision.h"
 
 namespace kot::core {
@@ -12,8 +13,11 @@ ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& conte
     ResourceAmounts income;
     const QString currency = content.currency() ? content.currency()->id : QString();
     for (const Town& t : state.towns()) {
-        if (t.owner == player && !currency.isEmpty())
-            income[currency] += content.balance().economy.townDailyGold;
+        if (t.owner != player) continue;
+        if (!currency.isEmpty()) income[currency] += content.balance().economy.townDailyGold;
+        const ResourceAmounts fromBuildings = buildingIncome(t, content);
+        for (auto it = fromBuildings.begin(); it != fromBuildings.end(); ++it)
+            income[it.key()] += it.value();
     }
     for (const Mine& m : state.mines()) {
         if (m.owner == player) income[m.resourceId] += m.dailyAmount;
@@ -46,7 +50,10 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
     if (count == 0) return info;
     const int next = (state.currentIndex() + 1) % count;
     info.newDay = (next == 0);
-    if (info.newDay) state.setDay(state.day() + 1);
+    if (info.newDay) {
+        state.setDay(state.day() + 1);
+        if (isNewWeek(state.day())) applyWeeklyGrowth(state, content);
+    }
     state.setCurrentIndex(next);
     info.player = state.currentPlayer();
     info.day = state.day();

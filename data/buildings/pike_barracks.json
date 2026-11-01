@@ -1,0 +1,16 @@
+{
+  "id": "pike_barracks",
+  "name": "Pikeman Barracks",
+  "race": "humans",
+  "cost": {
+    "gold": 400,
+    "wood": 5
+  },
+  "upgradeOf": "barracks",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "pikeman"
+    }
+  ]
+}

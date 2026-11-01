@@ -30,6 +30,10 @@ add_library(kot_core STATIC
     rules/Vision.cpp
     rules/TurnCycle.h
     rules/TurnCycle.cpp
+    rules/ArmyRules.h
+    rules/ArmyRules.cpp
+    rules/TownRules.h
+    rules/TownRules.cpp
     data/JsonReader.h
     data/JsonReader.cpp
     content/Defs.h

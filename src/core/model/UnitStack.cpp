@@ -58,6 +58,20 @@ void UnitStack::addUnits(int units) {
     if (units > 0) m_totalHp += units * m_maxHp;
 }
 
+bool UnitStack::canMerge(const UnitStack& other) const {
+    return m_unitTypeId == other.m_unitTypeId && m_maxHp == other.m_maxHp;
+}
+
+UnitStack UnitStack::split(int count) {
+    if (count <= 0 || count >= this->count()) return UnitStack(m_unitTypeId, 0, m_maxHp);
+    m_totalHp -= count * m_maxHp;
+    return UnitStack(m_unitTypeId, count, m_maxHp);
+}
+
+void UnitStack::merge(const UnitStack& other) {
+    if (canMerge(other)) m_totalHp += other.m_totalHp;
+}
+
 void UnitStack::restoreFullHealth() {
     m_totalHp = count() * m_maxHp;
 }

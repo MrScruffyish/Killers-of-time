@@ -47,6 +47,9 @@ struct Town {
     Pos pos;
     QStringList buildings;  // built building ids (building data comes in M3)
     ArmyId garrison;        // invalid = none
+    int lastBuildDay = 0;   // day something was last built here (one building per day)
+    // Units waiting to be recruited: dwelling chain root building id -> count.
+    QMap<QString, int> recruitPool;
 };
 
 struct Mine {

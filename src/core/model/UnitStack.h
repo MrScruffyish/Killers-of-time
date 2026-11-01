@@ -52,6 +52,13 @@ public:
     int heal(int amount);
     // Add `units` fresh full-HP units (resurrection, recruiting, merging).
     void addUnits(int units);
+    // Splitting and merging stacks of the same unit type and max HP.
+    // split(): takes `count` fresh units out of the stack (0 < count < count()),
+    // the remaining units keep the wounds. merge(): pools the HP of `other` in.
+    bool canMerge(const UnitStack& other) const;
+    UnitStack split(int count);
+    void merge(const UnitStack& other);
+
     // Everyone alive back to full HP.
     void restoreFullHealth();
 

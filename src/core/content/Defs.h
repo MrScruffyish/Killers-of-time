@@ -78,6 +78,31 @@ struct Balance {
     EconomyBalance economy;
 };
 
+struct BuildingEffect {
+    enum class Type {
+        Dwelling,  // units can be recruited here (`unit`), growing weekly
+        Income     // daily `amount` of `resource` for the owner
+    };
+    Type type = Type::Income;
+    QString unit;
+    QString resource;
+    int amount = 0;
+};
+
+// A building a town of `race` can build. All `requires` must be built, none
+// of the `excludes` may be built (either way round), and `upgradeOf` (a dwelling
+// building) must be built: this building then replaces it with the upgraded unit.
+struct BuildingDef {
+    QString id;
+    QString name;
+    QString race;
+    ResourceAmounts cost;
+    QStringList requiredBuildings;
+    QStringList excludes;
+    QString upgradeOf;
+    QList<BuildingEffect> effects;
+};
+
 struct UnitDef {
     QString id;
     QString name;

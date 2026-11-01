@@ -81,6 +81,7 @@ void ContentRegistry::clear() {
     m_traits.clear();
     m_units.clear();
     m_heroClasses.clear();
+    m_buildings.clear();
     m_xpThresholds.clear();
     m_balance = Balance();
 }
@@ -92,6 +93,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadTerrain(dataDir, problems);
     loadTraits(dataDir, problems);
     loadUnits(dataDir, problems);
+    loadBuildings(dataDir, problems);
     loadHeroClasses(dataDir, problems);
     loadProgression(dataDir, problems);
     loadBalance(dataDir, problems);
@@ -228,6 +230,65 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
     }
 }
 
+void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
+    const QDir buildingsDir(QDir(dir).filePath(QStringLiteral("buildings")));
+    if (!buildingsDir.exists()) {
+        errors << QStringLiteral("buildings: directory not found");
+        return;
+    }
+    const QFileInfoList files =
+        buildingsDir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
+    for (const QFileInfo& info : files) {
+        const QString ctx = QStringLiteral("buildings/") + info.fileName();
+        QJsonObject o;
+        if (!readObjectFile(info.filePath(), ctx, &o, errors)) continue;
+
+        JsonReader r(o, ctx, &errors);
+        BuildingDef d;
+        d.id = r.requireId(QStringLiteral("id"));
+        d.name = r.requireString(QStringLiteral("name"));
+        d.race = r.requireId(QStringLiteral("race"));
+        d.cost = r.optionalIntMap(QStringLiteral("cost"), 1, 1000000);
+        d.requiredBuildings = r.optionalStringList(QStringLiteral("requires"));
+        d.excludes = r.optionalStringList(QStringLiteral("excludes"));
+        d.upgradeOf = r.optionalString(QStringLiteral("upgradeOf"));
+        const QJsonArray effects =
+            r.has(QStringLiteral("effects")) ? r.requireArray(QStringLiteral("effects")) : QJsonArray();
+        r.finish();
+        for (qsizetype i = 0; i < effects.size(); ++i) {
+            const QString ectx = QStringLiteral("%1: effects[%2]").arg(ctx).arg(i);
+            if (!effects[i].isObject()) {
+                errors << ectx + QStringLiteral(": entry must be an object");
+                continue;
+            }
+            JsonReader er(effects[i].toObject(), ectx, &errors);
+            BuildingEffect e;
+            const QString type = er.requireString(QStringLiteral("type"));
+            if (type == QLatin1String("dwelling")) {
+                e.type = BuildingEffect::Type::Dwelling;
+                e.unit = er.requireId(QStringLiteral("unit"));
+            } else if (type == QLatin1String("income")) {
+                e.type = BuildingEffect::Type::Income;
+                e.resource = er.requireId(QStringLiteral("resource"));
+                e.amount = er.requireInt(QStringLiteral("amount"), 1, 1000000);
+            } else if (!type.isEmpty()) {
+                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling or income)").arg(type));
+            }
+            er.finish();
+            if (er.ok()) d.effects.append(e);
+            else r.addError(QStringLiteral("has an invalid effect"));
+        }
+        if (d.id != info.completeBaseName())
+            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
+        if (!r.ok()) continue;
+        if (m_buildings.contains(d.id)) {
+            errors << ctx + QStringLiteral(": duplicate building id '%1'").arg(d.id);
+            continue;
+        }
+        m_buildings.insert(d.id, d);
+    }
+}
+
 void ContentRegistry::loadHeroClasses(const QString& dir, QStringList& errors) {
     forEachEntry(dir, QStringLiteral("hero_classes.json"), QStringLiteral("heroClasses"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
@@ -356,6 +417,47 @@ void ContentRegistry::validateReferences(QStringList& errors) const {
         errors << QStringLiteral("resources.json: exactly one resource must have "
                                  "\"currency\": true (found %1)").arg(currencies);
 
+    for (const BuildingDef& b : m_buildings) {
+        const QString what = QStringLiteral("building '%1'").arg(b.id);
+        for (auto it = b.cost.begin(); it != b.cost.end(); ++it) {
+            if (!m_resources.contains(it.key()))
+                errors << what + QStringLiteral(": cost uses unknown resource '%1'").arg(it.key());
+        }
+        for (const QString& other : b.requiredBuildings + b.excludes) {
+            if (other == b.id)
+                errors << what + QStringLiteral(": refers to itself in requires/excludes");
+            else if (!m_buildings.contains(other))
+                errors << what + QStringLiteral(": refers to unknown building '%1'").arg(other);
+        }
+        for (const QString& other : b.requiredBuildings) {
+            if (b.excludes.contains(other))
+                errors << what + QStringLiteral(": '%1' is both required and excluded").arg(other);
+        }
+        for (const BuildingEffect& e : b.effects) {
+            if (e.type == BuildingEffect::Type::Dwelling && !m_units.contains(e.unit))
+                errors << what + QStringLiteral(": dwelling of unknown unit '%1'").arg(e.unit);
+            if (e.type == BuildingEffect::Type::Income && !m_resources.contains(e.resource))
+                errors << what + QStringLiteral(": income of unknown resource '%1'").arg(e.resource);
+        }
+        if (!b.upgradeOf.isEmpty()) {
+            const auto base = m_buildings.constFind(b.upgradeOf);
+            if (base == m_buildings.constEnd()) {
+                errors << what + QStringLiteral(": upgradeOf unknown building '%1'").arg(b.upgradeOf);
+            } else {
+                // The upgraded dwelling must produce the upgrade of the base dwelling's unit.
+                QString baseUnit, newUnit;
+                for (const BuildingEffect& e : base->effects)
+                    if (e.type == BuildingEffect::Type::Dwelling) baseUnit = e.unit;
+                for (const BuildingEffect& e : b.effects)
+                    if (e.type == BuildingEffect::Type::Dwelling) newUnit = e.unit;
+                const auto bu = m_units.constFind(baseUnit);
+                if (baseUnit.isEmpty() || newUnit.isEmpty() || bu == m_units.constEnd() ||
+                    bu->upgradesTo != newUnit)
+                    errors << what + QStringLiteral(": upgradeOf '%1' needs dwellings where the "
+                                                    "unit of '%1' upgrades to this unit").arg(b.upgradeOf);
+            }
+        }
+    }
     for (const UnitDef& u : m_units) {
         for (auto it = u.cost.begin(); it != u.cost.end(); ++it) {
             if (!m_resources.contains(it.key()))
@@ -391,6 +493,10 @@ const UnitDef* ContentRegistry::unit(const QString& id) const {
 const HeroClassDef* ContentRegistry::heroClass(const QString& id) const {
     const auto it = m_heroClasses.constFind(id);
     return it == m_heroClasses.constEnd() ? nullptr : &it.value();
+}
+const BuildingDef* ContentRegistry::building(const QString& id) const {
+    const auto it = m_buildings.constFind(id);
+    return it == m_buildings.constEnd() ? nullptr : &it.value();
 }
 const ResourceDef* ContentRegistry::currency() const {
     for (const ResourceDef& r : m_resources) {

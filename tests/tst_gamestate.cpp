@@ -30,7 +30,9 @@ class TstGameState : public QObject {
         army->stacks[0].applyDamage(20);  // wounded stack must survive saving
         addExperience(*gs.hero(h), reg, 1500);
         const TownId town = gs.addTown("Capital", "humans", {1, 1}, a);
-        gs.town(town)->buildings << "hall" << "barracks";
+        gs.town(town)->buildings << "village_hall" << "barracks";
+        gs.town(town)->recruitPool["barracks"] = 7;
+        gs.town(town)->lastBuildDay = 3;
         gs.addMine("gold", 1000, {5, 2}, a);
         gs.addMine("wood", 2, {6, 2});  // neutral
         gs.rng().nextInt(1, 100);
@@ -103,7 +105,9 @@ private slots:
         const UnitStack& s = loaded.army(h.army)->stacks[0];
         QCOMPARE(s.totalHp(), 12 * 6 - 20);  // wounded stack preserved
         QCOMPARE(s.count(), 9);
-        QCOMPARE(loaded.towns().first().buildings, QStringList({"hall", "barracks"}));
+        QCOMPARE(loaded.towns().first().buildings, QStringList({"village_hall", "barracks"}));
+        QCOMPARE(loaded.towns().first().recruitPool.value("barracks"), 7);
+        QCOMPARE(loaded.towns().first().lastBuildDay, 3);
         QVERIFY(!loaded.mines().last().owner.isValid());
     }
 

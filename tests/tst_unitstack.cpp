@@ -116,6 +116,41 @@ private slots:
         QCOMPARE(effectiveMaxHp(1, {-5, 0.0}), 1);    // never below 1
     }
 
+    void splitTakesFreshUnitsAndKeepsWounds() {
+        UnitStack s("eagle", 10, 10);
+        s.applyDamage(25);  // 8 units, front wounded: 75 HP
+        const UnitStack part = s.split(3);
+        QCOMPARE(part.count(), 3);
+        QCOMPARE(part.totalHp(), 30);
+        QCOMPARE(s.totalHp(), 45);
+        QCOMPARE(s.count(), 5);
+        QCOMPARE(s.frontUnitHp(), 5);
+    }
+
+    void splitRejectsBadCounts() {
+        UnitStack s("eagle", 4, 10);
+        QCOMPARE(s.split(0).count(), 0);
+        QCOMPARE(s.split(4).count(), 0);  // whole stack: use move instead
+        QCOMPARE(s.split(9).count(), 0);
+        QCOMPARE(s.count(), 4);
+    }
+
+    void mergePoolsHp() {
+        UnitStack a("eagle", 3, 10);
+        UnitStack b("eagle", 2, 10);
+        b.applyDamage(5);
+        QVERIFY(a.canMerge(b));
+        a.merge(b);
+        QCOMPARE(a.totalHp(), 45);
+        QCOMPARE(a.count(), 5);
+        UnitStack other("snail", 2, 10);
+        QVERIFY(!a.canMerge(other));
+        UnitStack differentHp("eagle", 2, 12);
+        QVERIFY(!a.canMerge(differentHp));
+        a.merge(other);  // ignored
+        QCOMPARE(a.totalHp(), 45);
+    }
+
     void heroBonusStackExample() {
         // Hero gives +7 flat and +10%: base 10 HP -> 19 HP per unit.
         UnitStack s("eagle", 5, effectiveMaxHp(10, {7, 0.1}));

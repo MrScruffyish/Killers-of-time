@@ -31,6 +31,9 @@ static void writeValidData(const QString& root) {
     writeFile(root, "terrain.json", kTerrain);
     writeFile(root, "traits.json", kTraits);
     writeFile(root, "units/militia.json", kMilitia);
+    writeFile(root, "buildings/hall.json",
+              R"({"id":"hall","name":"Hall","race":"humans","cost":{"gold":100},)"
+              R"("effects":[{"type":"income","resource":"gold","amount":10}]})");
     writeFile(root, "hero_classes.json",
               R"({"heroClasses":[{"id":"knight","name":"Knight","race":"humans",)"
               R"("baseTraits":{"attack":2},"pickIncrement":{"attack":2}}]})");
@@ -255,6 +258,61 @@ private slots:
         writeValidData(tmp.path());
         writeFile(tmp.path(), "balance.json", "{}");
         expectError(tmp.path(), "missing required field 'movement'");
+    }
+
+    void buildingUnknownRequirement() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "buildings/hall.json",
+                  R"({"id":"hall","name":"Hall","race":"humans","requires":["castle"]})");
+        expectError(tmp.path(), "refers to unknown building 'castle'");
+    }
+
+    void buildingUnknownEffectType() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "buildings/hall.json",
+                  R"({"id":"hall","name":"Hall","race":"humans","effects":[{"type":"magic"}]})");
+        expectError(tmp.path(), "unknown effect type 'magic'");
+    }
+
+    void buildingDwellingOfUnknownUnit() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "buildings/hall.json",
+                  R"({"id":"hall","name":"Hall","race":"humans",)"
+                  R"("effects":[{"type":"dwelling","unit":"ghost"}]})");
+        expectError(tmp.path(), "dwelling of unknown unit 'ghost'");
+    }
+
+    void buildingRequiredAndExcluded() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "buildings/a.json",
+                  R"({"id":"a","name":"A","race":"humans","requires":["hall"],"excludes":["hall"]})");
+        expectError(tmp.path(), "both required and excluded");
+    }
+
+    void buildingUpgradeMustMatchUnitUpgrade() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "buildings/hall.json",
+                  R"({"id":"hall","name":"Hall","race":"humans",)"
+                  R"("effects":[{"type":"dwelling","unit":"militia"}]})");
+        writeFile(tmp.path(), "buildings/hall2.json",
+                  R"({"id":"hall2","name":"Hall2","race":"humans","upgradeOf":"hall",)"
+                  R"("effects":[{"type":"dwelling","unit":"militia"}]})");
+        expectError(tmp.path(), "upgrades to this unit");
+    }
+
+    void realBuildingsLoad() {
+        ContentRegistry reg;
+        QStringList errors;
+        QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        QVERIFY(reg.building("barracks"));
+        QCOMPARE(reg.building("pike_barracks")->upgradeOf, QString("barracks"));
+        QVERIFY(reg.building("eagle_roost")->excludes.contains("snail_pen"));
+        QVERIFY(reg.building("snail_pen")->excludes.contains("eagle_roost"));
     }
 
     void reportsAllErrorsAtOnce() {
