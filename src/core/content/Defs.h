@@ -65,8 +65,17 @@ struct MovementBalance {
     int minimum = 100;
     QList<SlowPenaltyStep> slowPenalties;  // ascending by mapSpeedAtMost
 };
+struct VisionBalance {
+    int townRadius = 5;  // tiles a town reveals to its owner's team
+    int mineRadius = 2;
+};
+struct EconomyBalance {
+    int townDailyGold = 500;  // base income of every owned town (buildings add more later)
+};
 struct Balance {
     MovementBalance movement;
+    VisionBalance vision;
+    EconomyBalance economy;
 };
 
 struct UnitDef {

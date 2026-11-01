@@ -81,3 +81,18 @@ All trait ids must exist in `traits.json`.
 ```
 `xpThresholds[i]` is the total experience needed to reach level `i + 2` (level 1 starts at 0).
 Must be strictly ascending. Max level = number of thresholds + 1.
+
+## balance.json
+Tunable numbers for the rules.
+```json
+{ "vision": { "townRadius": 5, "mineRadius": 2 }, "economy": { "townDailyGold": 500 },
+  "movement": { "base": 1000, "perTraitLevel": 100, "minimum": 300,
+    "slowPenalties": [ { "mapSpeedAtMost": 1, "penalty": 300 }, ... ] } }
+```
+Daily movement of an army = `base + perTraitLevel * (hero Movement Points trait)`, minus the
+penalty of the first `slowPenalties` step whose `mapSpeedAtMost` is >= the slowest unit's
+`mapSpeed` (steps must ascend), but never below `minimum`. All values are in hundredths of a
+movement point (100 = one grass tile).
+
+`vision.townRadius` / `mineRadius`: how many tiles an owned town / mine reveals to its team
+(heroes use their Scouting Radius trait). `economy.townDailyGold`: gold a town yields per day.

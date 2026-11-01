@@ -58,6 +58,12 @@ QJsonObject GameState::toJson() const {
         root.insert("map", map);
     }
 
+    QJsonObject explored;
+    for (auto it = m_explored.begin(); it != m_explored.end(); ++it)
+        explored.insert(QString::number(it.key().value()),
+                        QString::fromLatin1(it.value().toBase64()));
+    root.insert("explored", explored);
+
     QJsonObject rng;
     rng.insert("seed", QString::number(m_rng.seed()));  // string: 64-bit does not fit a JSON number
     rng.insert("state", m_rng.engineState());
@@ -191,6 +197,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
     const int currentIndex = top.optionalInt("currentIndex", 0, 0, kMaxId);
     const QJsonObject mapObj = top.requireObject("map");
     const QJsonObject rngObj = top.requireObject("rng");
+    const QJsonObject exploredObj = top.requireObject("explored");
     const QJsonArray turnOrderA = top.requireArray("turnOrder");
     const QJsonArray playersA = top.requireArray("players");
     const QJsonArray heroesA = top.requireArray("heroes");
@@ -380,6 +387,28 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         checkPos(ctx, m.pos);
         if (r.ok() && claim(ctx, m.id.value())) gs.m_mines.insert(m.id, m);
     });
+
+    // ---- fog of war memory
+    if (gs.m_map.width() > 0) {
+        QSet<quint32> teams;
+        for (const Player& p : gs.m_players) teams.insert(p.team.value());
+        const qsizetype expected = static_cast<qsizetype>(gs.m_map.width()) * gs.m_map.height();
+        for (auto it = exploredObj.begin(); it != exploredObj.end(); ++it) {
+            bool ok = false;
+            const quint32 teamId = it.key().toUInt(&ok);
+            if (!ok || !teams.contains(teamId)) {
+                errs << QStringLiteral("explored: '%1' is not a team in this game").arg(it.key());
+                continue;
+            }
+            const QByteArray data = QByteArray::fromBase64(it.value().toString().toLatin1());
+            if (!it.value().isString() || data.size() != expected) {
+                errs << QStringLiteral("explored: team %1 needs %2 tiles of data")
+                            .arg(teamId).arg(expected);
+                continue;
+            }
+            gs.m_explored.insert(TeamId(teamId), data);
+        }
+    }
 
     // ---- turn order
     for (qsizetype i = 0; i < turnOrderA.size(); ++i) {

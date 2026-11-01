@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 8)
-**Current milestone:** M1 done in code (M0 verified on your machine; M1 slices A and B verified in sandbox)
-**Next session should do:** M2 first slice: test-map generator + pathfinding (A*) with terrain costs and boat rules, hero movement points from the Movement Points trait
+**Last updated:** 2026-11-01 (session 10)
+**Current milestone:** M2 done in code (M0 verified on your machine, everything since verified in sandbox) -> M3 next
+**Next session should do:** M3 first slice: building definitions (cost, prerequisites, exclusive choices, effects) for the humans race, a town build rule (one building per town per day, resources spent), dwellings with weekly unit growth and recruiting into the garrison
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -34,13 +34,13 @@
 - [x] Unit tests: `tst_jsonreader`, `tst_content`, `tst_army`, `tst_herorules`, `tst_gamestate` (8 test programs in total)
 
 ## M2: Map and adventure rules (single machine, no network yet)
-- [ ] Map generation (simple random/noise-based) and/or hand-made test map
-- [ ] Pathfinding (A*) with terrain costs, impassable tiles, boat rules
-- [ ] Hero Movement Points trait -> daily movement points; small penalty from slowest unit; daily reset
-- [ ] Fog of war (unexplored / remembered / visible) per team
-- [ ] Mines and resource piles: capture, daily income
-- [ ] Day/turn cycle, resources stockpile
-- [ ] Tests for movement, vision, income
+- [x] Map generation (`core/rules/MapGenerator`): deterministic from a seed, land in the middle and sea all around, beaches, forests, swamps, deserts, hills, snow, mountains, rivers; highlands as shares of the map
+- [x] Pathfinding (`core/rules/Pathfinding`): A* and reachable-tiles search, 8 directions (diagonal x1.41), terrain costs, impassable terrain, Foot/Boat modes, blocked tiles (goal exempt), per-mode cost grid. Boarding/disembarking comes with shipyards (M3).
+- [x] Hero movement (`core/rules/Movement`): daily points from Movement Points trait + base, small capped penalty for the slowest unit (`balance.json`), `refreshHeroMovement`, `moveHero` (moves as far as points allow). Objects block the way and cannot be entered yet; visiting them is slice B.
+- [x] Fog of war (`core/rules/Vision`): per team, unexplored / explored (remembered) / visible; heroes see their Scouting Radius, owned towns and mines also give vision, teammates share; explored memory is saved. Terrain does not block vision yet.
+- [x] Mines: capture by visiting (neutral or other team), daily income. Towns: visiting captures empty ones, defended ones refuse until battles exist. Resource piles/treasures move to M8 together with monsters and guards.
+- [x] Day/turn cycle (`core/rules/TurnCycle`): `beginGame`, `endTurn`, `startTurn` (income from day 2: 500 gold per town + mine output, spell point regen, movement refresh, exploration update), sequential turns, new day after the last player
+- [x] Tests: `tst_pathfinding`, `tst_movement`, `tst_mapgen`, `tst_vision`, `tst_turncycle` (13 test programs in total)
 
 ## M3: Towns, buildings, recruiting
 - [ ] Building graph: prerequisites, exclusive choices, costs, one build per day
@@ -112,6 +112,8 @@
 | 2026-11-01 | Added Luck and Attack Range traits; Hit Points confirmed; traits grouped Battle / Magic / Explore (D16, D17) |
 | 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); upkeep later, affects morale (D9); survivors heal fully after battle for now (D18) |
 | 2026-11-01 | Terrain uses `walkable`/`sailable`/`moveCost` (100 = one tile) instead of `passable`/`requiresBoat`; data files are strict (unknown fields are errors, `_` keys are comments); unit id must equal file name; exactly one currency resource |
+| 2026-11-01 | Visiting: a hero arriving on a mine/town of a neutral or other-team owner captures it (defended towns refuse until M6); objects block walking through but can be the target; fog memory is per team and saved; income starts on day 2; vision balance (town 5, mine 2) and town gold (500) are in balance.json |
+| 2026-11-01 | Movement: 8 directions, diagonal costs 1.41x; a step needs its full cost in remaining points; daily points = base + perTraitLevel x Movement Points trait - small slowest-unit penalty, min clamp (`balance.json`). Heroes store `movementPoints`. Generated maps always have a sea border |
 | 2026-11-01 | Save format v1: JSON with terrain palette, ids unique across all object kinds, RNG state saved (seed as text); loading validates everything and leaves the target untouched on failure. Level-up: max SP grows but current SP is not refilled. Stacks in armies store base max HP; hero HP bonus applies when a battle starts |
 | 2026-11-01 | Qt 6 / C++20 / CMake; server-authoritative client-server; AI as server-side players; data-driven JSON content (see PROJECT.md) |
 
@@ -123,6 +125,8 @@
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 10:** M2 slice B: fog of war, mine/town visiting and capture, turn cycle with income, explored maps in saves, 2 new test programs (13 in total).
+- **Session 9:** M2 slice A: pathfinding, movement rules, balance.json, map generator, Hero.movementPoints in saves, 3 new test programs (11 in total).
 - **Session 8:** M1 slice C: core model, GameState, hero rules, hero classes + progression data, save/load JSON, JsonReader arrays/objects, Rng state, 8 test programs.
 - **Session 7:** M1 slice B: JsonReader, content defs, ContentRegistry, sample data, docs/data-format.md, tests. Delta zips now include COMMIT_MSG.txt.
 - **Session 6:** M0 confirmed working by user. Added UnitStack + HpBonus (M1 slice A) with 14 unit tests.

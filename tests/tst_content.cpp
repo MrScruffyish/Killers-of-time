@@ -36,7 +36,8 @@ static void writeValidData(const QString& root) {
               R"("baseTraits":{"attack":2},"pickIncrement":{"attack":2}}]})");
     writeFile(root, "progression.json", R"({"xpThresholds":[100,300]})");
     writeFile(root, "balance.json",
-              R"({"movement":{"base":1000,"perTraitLevel":100,"minimum":300,)"
+              R"({"vision":{"townRadius":5,"mineRadius":2},"economy":{"townDailyGold":500},)"
+              R"("movement":{"base":1000,"perTraitLevel":100,"minimum":300,)"
               R"("slowPenalties":[{"mapSpeedAtMost":2,"penalty":200}]}})");
 }
 
@@ -96,6 +97,8 @@ private slots:
         const MovementBalance& mb = reg.balance().movement;
         QVERIFY(mb.base > 0 && mb.minimum > 0);
         QVERIFY(!mb.slowPenalties.isEmpty());
+        QVERIFY(reg.balance().vision.townRadius > 0);
+        QVERIFY(reg.balance().economy.townDailyGold > 0);
     }
 
     void loadsMinimalData() {
@@ -240,7 +243,8 @@ private slots:
         QTemporaryDir tmp;
         writeValidData(tmp.path());
         writeFile(tmp.path(), "balance.json",
-                  R"({"movement":{"base":1000,"perTraitLevel":100,"minimum":300,)"
+                  R"({"vision":{"townRadius":5,"mineRadius":2},"economy":{"townDailyGold":1},)"
+                  R"("movement":{"base":1000,"perTraitLevel":100,"minimum":300,)"
                   R"("slowPenalties":[{"mapSpeedAtMost":3,"penalty":200},)"
                   R"({"mapSpeedAtMost":3,"penalty":100}]}})");
         expectError(tmp.path(), "mapSpeedAtMost must be greater than the previous");

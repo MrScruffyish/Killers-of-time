@@ -5,7 +5,7 @@
       "id": "knight", "name": "Knight", "race": "humans",
       "baseTraits": { "attack": 3, "defense": 3, "morale": 1, "spell_power": 1, "magic": 1,
                       "spell_points_max": 10, "spell_recovery": 1, "movement_points": 1,
-                      "scouting_radius": 3 },
+                      "scouting_radius": 5 },
       "pickIncrement": { "attack": 2, "defense": 2 },
       "autoGrowth": { "spell_points_max": 4 }
     },
@@ -13,7 +13,7 @@
       "id": "wizard", "name": "Wizard", "race": "humans",
       "baseTraits": { "attack": 1, "defense": 1, "spell_power": 3, "magic": 3,
                       "spell_points_max": 30, "spell_recovery": 2, "movement_points": 1,
-                      "scouting_radius": 3 },
+                      "scouting_radius": 5 },
       "pickIncrement": { "spell_power": 2 },
       "autoGrowth": { "spell_points_max": 8 }
     }

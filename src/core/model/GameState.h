@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QByteArray>
 #include <QJsonObject>
 #include <QList>
 #include <QMap>
@@ -67,6 +68,16 @@ public:
     const Town* town(TownId id) const;
     const Mine* mine(MineId id) const;
 
+    // The team a player belongs to (invalid id for unknown/neutral).
+    TeamId teamOf(PlayerId id) const;
+    // True if `owner` (possibly neutral = invalid id) is not on `me`'s team.
+    bool isHostile(PlayerId owner, PlayerId me) const;
+
+    // Fog of war memory: one byte per tile (row-major), 1 = explored by that team.
+    // The non-const version creates a zeroed map of the right size when needed.
+    QByteArray& exploredMap(TeamId team);
+    const QByteArray& exploredMap(TeamId team) const;
+
     // Turn order (sequential turns, decision D1).
     const QList<PlayerId>& turnOrder() const { return m_turnOrder; }
     void setTurnOrder(QList<PlayerId> order) { m_turnOrder = std::move(order); m_currentIndex = 0; }
@@ -93,6 +104,7 @@ private:
     QMap<ArmyId, Army> m_armies;
     QMap<TownId, Town> m_towns;
     QMap<MineId, Mine> m_mines;
+    QMap<TeamId, QByteArray> m_explored;
     QList<PlayerId> m_turnOrder;
     int m_currentIndex = 0;
 };

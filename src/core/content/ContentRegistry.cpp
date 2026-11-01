@@ -280,8 +280,26 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
     if (!readObjectFile(QDir(dir).filePath(file), file, &root, errors)) return;
     JsonReader top(root, file, &errors);
     const QJsonObject movement = top.requireObject(QStringLiteral("movement"));
+    const QJsonObject vision = top.requireObject(QStringLiteral("vision"));
+    const QJsonObject economy = top.requireObject(QStringLiteral("economy"));
     top.finish();
     if (!top.ok()) return;
+
+    {
+        JsonReader vr(vision, file + QStringLiteral("/vision"), &errors);
+        VisionBalance vb;
+        vb.townRadius = vr.requireInt(QStringLiteral("townRadius"), 1, 100);
+        vb.mineRadius = vr.requireInt(QStringLiteral("mineRadius"), 1, 100);
+        vr.finish();
+        JsonReader er(economy, file + QStringLiteral("/economy"), &errors);
+        EconomyBalance eb;
+        eb.townDailyGold = er.requireInt(QStringLiteral("townDailyGold"), 0, 1000000);
+        er.finish();
+        if (vr.ok() && er.ok()) {
+            m_balance.vision = vb;
+            m_balance.economy = eb;
+        }
+    }
 
     JsonReader r(movement, file + QStringLiteral("/movement"), &errors);
     MovementBalance mb;

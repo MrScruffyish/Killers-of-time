@@ -140,18 +140,95 @@ private slots:
         QCOMPARE(armyOf(h).pos, (Pos{15, 0}));
     }
 
-    void cannotEnterOrCrossObjects() {
+    void cannotWalkThroughObjects() {
         const HeroId h = makeHero(p1, {0, 0});
         gs.addMine("gold", 1000, {5, 0});
-        MoveResult r = moveHero(gs, reg, h, {5, 0});
-        QVERIFY(!r.ok);
-        QVERIFY(r.error.contains("occupied"));
-
-        // Walking past the mine: goes around it (4 straight + 2 diagonal = 682).
-        r = moveHero(gs, reg, h, {6, 0});
+        // Walking past the mine goes around it (4 straight + 2 diagonal = 682).
+        const MoveResult r = moveHero(gs, reg, h, {6, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
         QVERIFY(r.arrived);
         QCOMPARE(r.movementSpent, 682);
+        QVERIFY(!r.capturedMine.isValid());
+    }
+
+    void visitingNeutralMineCapturesIt() {
+        const HeroId h = makeHero(p1, {0, 0});
+        const MineId mine = gs.addMine("gold", 1000, {3, 0});
+        const MoveResult r = moveHero(gs, reg, h, {3, 0});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY(r.arrived);
+        QCOMPARE(r.capturedMine, mine);
+        QCOMPARE(gs.mine(mine)->owner, p1);
+        QCOMPARE(armyOf(h).pos, (Pos{3, 0}));
+    }
+
+    void enemyMineIsTakenOver() {
+        const HeroId h = makeHero(p1, {0, 0});
+        const MineId mine = gs.addMine("wood", 2, {2, 0}, p2);
+        QCOMPARE(moveHero(gs, reg, h, {2, 0}).capturedMine, mine);
+        QCOMPARE(gs.mine(mine)->owner, p1);
+    }
+
+    void ownAndTeammatesMinesAreJustVisited() {
+        const PlayerId ally = gs.addPlayer("C", gs.player(p1)->team, Player::Controller::Ai, "humans", "#00ff00");
+        const HeroId h = makeHero(p1, {0, 0});
+        const MineId own = gs.addMine("gold", 1000, {2, 0}, p1);
+        const MineId friendly = gs.addMine("gold", 1000, {2, 2}, ally);
+        QVERIFY(!moveHero(gs, reg, h, {2, 0}).capturedMine.isValid());
+        QVERIFY(!moveHero(gs, reg, h, {2, 2}).capturedMine.isValid());
+        QCOMPARE(gs.mine(own)->owner, p1);
+        QCOMPARE(gs.mine(friendly)->owner, ally);
+    }
+
+    void partialMoveDoesNotCapture() {
+        gs.setMap(GameMap(30, 3, "grass"));
+        const HeroId h = makeHero(p1, {0, 0});
+        const MineId mine = gs.addMine("gold", 1000, {20, 0});  // 2000 away, 1100 points
+        const MoveResult r = moveHero(gs, reg, h, {20, 0});
+        QVERIFY(r.ok);
+        QVERIFY(!r.arrived);
+        QVERIFY(!gs.mine(mine)->owner.isValid());
+    }
+
+    void emptyNeutralTownIsCaptured() {
+        const HeroId h = makeHero(p1, {0, 0});
+        const TownId town = gs.addTown("Hamlet", "humans", {2, 0});
+        const MoveResult r = moveHero(gs, reg, h, {2, 0});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QCOMPARE(r.capturedTown, town);
+        QCOMPARE(gs.town(town)->owner, p1);
+        QCOMPARE(gs.army(gs.town(town)->garrison)->owner, p1);
+    }
+
+    void defendedEnemyTownRefusesVisit() {
+        const HeroId h = makeHero(p1, {0, 0});
+        const TownId town = gs.addTown("Fort", "humans", {2, 0}, p2);
+        gs.army(gs.town(town)->garrison)->addUnits("pikeman", 5, 10);
+        const MoveResult r = moveHero(gs, reg, h, {2, 0});
+        QVERIFY(!r.ok);
+        QVERIFY(r.error.contains("defended"));
+        QCOMPARE(gs.town(town)->owner, p2);
+        QCOMPARE(armyOf(h).pos, (Pos{0, 0}));  // did not move
+    }
+
+    void ownTownWithGarrisonCanBeEntered() {
+        const HeroId h = makeHero(p1, {0, 0});
+        const TownId town = gs.addTown("Home", "humans", {2, 0}, p1);
+        gs.army(gs.town(town)->garrison)->addUnits("pikeman", 5, 10);
+        const MoveResult r = moveHero(gs, reg, h, {2, 0});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY(r.arrived);
+        QVERIFY(!r.capturedTown.isValid());
+    }
+
+    void movingRevealsMap() {
+        gs.setMap(GameMap(30, 10, "grass"));
+        const HeroId h = makeHero(p1, {2, 5});
+        const TeamId team = gs.player(p1)->team;
+        QVERIFY(gs.exploredMap(team).isEmpty() || gs.exploredMap(team)[0] == 0);
+        moveHero(gs, reg, h, {9, 5});
+        QVERIFY(gs.exploredMap(team)[5 * 30 + 14] == 1);   // 5 tiles ahead of the new position
+        QVERIFY(gs.exploredMap(team)[5 * 30 + 25] == 0);   // far away still unexplored
     }
 
     void otherArmiesBlock() {

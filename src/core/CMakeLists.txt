@@ -26,6 +26,10 @@ add_library(kot_core STATIC
     rules/Movement.cpp
     rules/MapGenerator.h
     rules/MapGenerator.cpp
+    rules/Vision.h
+    rules/Vision.cpp
+    rules/TurnCycle.h
+    rules/TurnCycle.cpp
     data/JsonReader.h
     data/JsonReader.cpp
     content/Defs.h

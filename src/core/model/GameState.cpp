@@ -67,6 +67,28 @@ const Army* GameState::army(ArmyId id) const { return findIn(m_armies, id); }
 const Town* GameState::town(TownId id) const { return findIn(m_towns, id); }
 const Mine* GameState::mine(MineId id) const { return findIn(m_mines, id); }
 
+TeamId GameState::teamOf(PlayerId id) const {
+    const Player* p = player(id);
+    return p ? p->team : TeamId();
+}
+
+bool GameState::isHostile(PlayerId owner, PlayerId me) const {
+    return !owner.isValid() || teamOf(owner) != teamOf(me);
+}
+
+QByteArray& GameState::exploredMap(TeamId team) {
+    QByteArray& data = m_explored[team];
+    const qsizetype size = static_cast<qsizetype>(m_map.width()) * m_map.height();
+    if (data.size() != size) data = QByteArray(size, 0);
+    return data;
+}
+
+const QByteArray& GameState::exploredMap(TeamId team) const {
+    static const QByteArray none;
+    const auto it = m_explored.constFind(team);
+    return it == m_explored.constEnd() ? none : it.value();
+}
+
 PlayerId GameState::currentPlayer() const {
     if (m_currentIndex < 0 || m_currentIndex >= m_turnOrder.size()) return PlayerId();
     return m_turnOrder[m_currentIndex];
