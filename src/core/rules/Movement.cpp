@@ -59,15 +59,20 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     }
     for (const Town& t : state.towns()) occupied.insert(t.pos);
     for (const Mine& m : state.mines()) occupied.insert(m.pos);
+    for (const MapDwelling& d : state.mapDwellings()) occupied.insert(d.pos);
 
     // What stands on the target tile?
     Town* targetTown = nullptr;
     Mine* targetMine = nullptr;
+    MapDwelling* targetDwelling = nullptr;
     for (Town& t : state.towns()) {
         if (t.pos == target) targetTown = &t;
     }
     for (Mine& m : state.mines()) {
         if (m.pos == target) targetMine = &m;
+    }
+    for (MapDwelling& d : state.mapDwellings()) {
+        if (d.pos == target) targetDwelling = &d;
     }
     for (const Army& a : state.armies()) {
         if (a.id == army->id || a.pos != target) continue;
@@ -111,6 +116,10 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
         if (targetMine && state.isHostile(targetMine->owner, hero->owner)) {
             targetMine->owner = hero->owner;
             result.capturedMine = targetMine->id;
+        }
+        if (targetDwelling && state.isHostile(targetDwelling->owner, hero->owner)) {
+            targetDwelling->owner = hero->owner;
+            result.capturedDwelling = targetDwelling->id;
         }
         if (targetTown && state.isHostile(targetTown->owner, hero->owner)) {
             targetTown->owner = hero->owner;

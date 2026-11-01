@@ -1,6 +1,7 @@
 #include "core/rules/TownRules.h"
 
 #include <QSet>
+#include <algorithm>
 
 #include "core/content/ContentRegistry.h"
 
@@ -59,7 +60,7 @@ QList<Dwelling> dwellings(const Town& town, const ContentRegistry& content) {
 }
 
 QString whyCannotBuild(const GameState& state, const ContentRegistry& content, TownId townId,
-                       const QString& buildingId, PlayerId player) {
+                       const QString& buildingId, PlayerId player, bool checkResources) {
     const Town* town = state.town(townId);
     if (!town) return QStringLiteral("unknown town");
     if (!player.isValid() || town->owner != player)
@@ -85,6 +86,7 @@ QString whyCannotBuild(const GameState& state, const ContentRegistry& content, T
         if (b->excludes.contains(other) || (ob && ob->excludes.contains(buildingId)))
             return QStringLiteral("excluded by %1").arg(ob ? ob->name : other);
     }
+    if (!checkResources) return {};
     const Player* p = state.player(player);
     const QString missing = p ? missingResource(p->resources, b->cost) : QString();
     if (!missing.isEmpty()) return QStringLiteral("not enough %1").arg(missing);
@@ -113,6 +115,60 @@ ActionResult buildBuilding(GameState& state, const ContentRegistry& content, Tow
     return ok;
 }
 
+BuildResult buildBuildingWithTrade(GameState& state, const ContentRegistry& content,
+                                   TownId townId, const QString& buildingId, PlayerId player) {
+    BuildResult result;
+    const QString why = whyCannotBuild(state, content, townId, buildingId, player, false);
+    if (!why.isEmpty()) {
+        result.error = why;
+        return result;
+    }
+    Player* p = state.player(player);
+    const BuildingDef* b = content.building(buildingId);
+    const auto plan = planTradeFor(content, p->resources, b->cost);
+    if (!plan) {
+        result.error = QStringLiteral("cannot be afforded, even by trading");
+        return result;
+    }
+    applyTradeSteps(p->resources, *plan);
+    const ActionResult built = buildBuilding(state, content, townId, buildingId, player);
+    result.ok = built.ok;
+    result.error = built.error;
+    result.trades = *plan;
+    return result;
+}
+
+QList<RecruitOption> recruitOptions(const Town& town, const ContentRegistry& content) {
+    QList<RecruitOption> options;
+    const auto add = [&](const QString& unit, int count) {
+        for (RecruitOption& o : options) {
+            if (o.unitId == unit) {
+                o.available += count;
+                return;
+            }
+        }
+        options.append({unit, count});
+    };
+    for (const Dwelling& d : dwellings(town, content)) add(d.unitId, town.recruitPool.value(d.poolKey));
+    for (auto it = town.importedUnits.begin(); it != town.importedUnits.end(); ++it) {
+        if (it.value() > 0) add(it.key(), it.value());
+    }
+    return options;
+}
+
+ActionResult payAndAddUnits(Player& player, const UnitDef& unit, int count, Army& army) {
+    const QString missing = missingResource(player.resources, unit.cost, count);
+    if (!missing.isEmpty()) return fail(QStringLiteral("not enough %1").arg(missing));
+    Army trial = army;  // check there is room before paying anything
+    if (!trial.addUnits(unit.id, count, unit.maxHp))
+        return fail(QStringLiteral("the army has no free slot"));
+    spend(player.resources, unit.cost, count);
+    army = trial;
+    ActionResult ok;
+    ok.ok = true;
+    return ok;
+}
+
 ActionResult recruit(GameState& state, const ContentRegistry& content, TownId townId,
                      PlayerId player, const QString& unitId, int count, ArmyId target) {
     Town* town = state.town(townId);
@@ -128,30 +184,30 @@ ActionResult recruit(GameState& state, const ContentRegistry& content, TownId to
     for (const Dwelling& d : all) {
         if (d.unitId == unitId) found = &d;
     }
-    if (!found) return fail(QStringLiteral("%1 cannot be recruited in this town").arg(unit->name));
-    const int available = town->recruitPool.value(found->poolKey);
+    const int imported = town->importedUnits.value(unitId);
+    if (!found && imported == 0)
+        return fail(QStringLiteral("%1 cannot be recruited in this town").arg(unit->name));
+    const int poolAvailable = found ? town->recruitPool.value(found->poolKey) : 0;
+    const int available = poolAvailable + imported;
     if (count > available)
         return fail(QStringLiteral("only %1 %2 available").arg(available).arg(unit->name));
-
-    Player* p = state.player(player);
-    const QString missing = missingResource(p->resources, unit->cost, count);
-    if (!missing.isEmpty()) return fail(QStringLiteral("not enough %1").arg(missing));
 
     Army* army = state.army(target.isValid() ? target : town->garrison);
     if (!army) return fail(QStringLiteral("no army to recruit into"));
     if (army->owner != player || army->pos != town->pos)
         return fail(QStringLiteral("the army is not in this town"));
-    Army trial = *army;  // check there is room before paying anything
-    if (!trial.addUnits(unitId, count, unit->maxHp))
-        return fail(QStringLiteral("the army has no free slot"));
 
-    spend(p->resources, unit->cost, count);
-    town->recruitPool[found->poolKey] = available - count;
-    *army = trial;
+    const ActionResult paid = payAndAddUnits(*state.player(player), *unit, count, *army);
+    if (!paid.ok) return paid;
 
-    ActionResult ok;
-    ok.ok = true;
-    return ok;
+    // Units sent from map dwellings are used first.
+    const int fromImported = std::min(count, imported);
+    if (fromImported > 0) {
+        town->importedUnits[unitId] -= fromImported;
+        if (town->importedUnits[unitId] == 0) town->importedUnits.remove(unitId);
+    }
+    if (count > fromImported) town->recruitPool[found->poolKey] = poolAvailable - (count - fromImported);
+    return paid;
 }
 
 void applyWeeklyGrowth(GameState& state, const ContentRegistry& content) {
@@ -160,6 +216,10 @@ void applyWeeklyGrowth(GameState& state, const ContentRegistry& content) {
             const UnitDef* unit = content.unit(d.unitId);
             if (unit) town.recruitPool[d.poolKey] += unit->weeklyGrowth;
         }
+    }
+    for (MapDwelling& d : state.mapDwellings()) {
+        const UnitDef* unit = content.unit(d.unitId);
+        if (unit) d.available += unit->weeklyGrowth;
     }
 }
 

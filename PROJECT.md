@@ -332,6 +332,31 @@ cast (limited: mana-less with charges per battle, or small spell list).
 - Last team standing (all towns and heroes lost). Others later (capture a
   specific town, accumulate resources, survive N days, etc.).
 
+### 5.14 Design principle: avoid micromanagement
+
+Repeating the same chore in every town every day is not fun, so the game offers
+one-click actions on top of the basic rules. They are part of the rules engine
+(`core/rules`), so the human UI and the AI use the same code.
+
+- **Trade:** resources can be exchanged at rates from data (each resource has a
+  gold value; a fee applies, `tradeEfficiencyPercent`). Anywhere a purchase fails
+  for lack of a resource there is a **"trade as needed, then buy"** option: the
+  missing resources are bought automatically with spare ones (other resources
+  first, gold last).
+- **Map dwellings** (outside towns) grow units too. A hero can visit and recruit
+  there, or the player can use **"send all units to the closest town"** (global),
+  or **"send all units to this town"** (in a town). Units sent to a town can be
+  recruited there for the normal price.
+- **Buy all units:** in one town, or in every town, buy as many units as possible.
+  Strategy: *best first* (highest tier first, the default) or *most units*
+  (cheapest first).
+- **Auto-build:** build in each town, as long as there is no real choice to make.
+  A building that would permanently exclude a rival building is a choice, so it
+  is **flagged** for the player instead of being built. Option: use trade to
+  afford buildings.
+- **Build, then buy units:** auto-build followed by buy all units.
+- The hero tavern, level-up picks and battles stay manual: those are the decisions.
+
 ## 6. Networking protocol (summary, details in docs/protocol.md)
 
 - Framed messages: length prefix + UTF-8 JSON `{ "type": "...", "seq": n, ... }`.

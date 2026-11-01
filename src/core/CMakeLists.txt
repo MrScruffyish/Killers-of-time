@@ -34,6 +34,12 @@ add_library(kot_core STATIC
     rules/ArmyRules.cpp
     rules/TownRules.h
     rules/TownRules.cpp
+    rules/Trade.h
+    rules/Trade.cpp
+    rules/Dwellings.h
+    rules/Dwellings.cpp
+    rules/Automation.h
+    rules/Automation.cpp
     data/JsonReader.h
     data/JsonReader.cpp
     content/Defs.h

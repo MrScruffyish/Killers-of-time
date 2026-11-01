@@ -115,6 +115,7 @@ void ContentRegistry::loadResources(const QString& dir, QStringList& errors) {
                      d.id = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
                      d.isCurrency = r.optionalBool(QStringLiteral("currency"), false);
+                     d.value = r.optionalInt(QStringLiteral("value"), d.isCurrency ? 1 : 100, 1, 1000000);
                      r.finish();
                      if (!r.ok()) return;
                      if (m_resources.contains(d.id)) {
@@ -355,6 +356,7 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         JsonReader er(economy, file + QStringLiteral("/economy"), &errors);
         EconomyBalance eb;
         eb.townDailyGold = er.requireInt(QStringLiteral("townDailyGold"), 0, 1000000);
+        eb.tradeEfficiencyPercent = er.optionalInt(QStringLiteral("tradeEfficiencyPercent"), 80, 1, 100);
         er.finish();
         if (vr.ok() && er.ok()) {
             m_balance.vision = vb;
@@ -413,6 +415,10 @@ void ContentRegistry::validateReferences(QStringList& errors) const {
 
     int currencies = 0;
     for (const ResourceDef& r : m_resources) currencies += r.isCurrency ? 1 : 0;
+    for (const ResourceDef& r : m_resources) {
+        if (r.isCurrency && r.value != 1)
+            errors << QStringLiteral("resource '%1': the currency must have value 1").arg(r.id);
+    }
     if (currencies != 1)
         errors << QStringLiteral("resources.json: exactly one resource must have "
                                  "\"currency\": true (found %1)").arg(currencies);

@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 10)
-**Current milestone:** M2 done in code (M0 verified on your machine, everything since verified in sandbox) -> M3 next
-**Next session should do:** M3 first slice: building definitions (cost, prerequisites, exclusive choices, effects) for the humans race, a town build rule (one building per town per day, resources spent), dwellings with weekly unit growth and recruiting into the garrison
+**Last updated:** 2026-11-01 (session 12)
+**Current milestone:** M3 nearly done in code (hero tavern left); M0 verified on your machine, everything since verified in sandbox
+**Next session should do:** finish M3 with the hero tavern (recruit new heroes: hero pool per race, cost, one hero per town), then start M4 (networking: framed JSON protocol, server session, lobby)
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -43,12 +43,18 @@
 - [x] Tests: `tst_pathfinding`, `tst_movement`, `tst_mapgen`, `tst_vision`, `tst_turncycle` (13 test programs in total)
 
 ## M3: Towns, buildings, recruiting
-- [ ] Building graph: prerequisites, exclusive choices, costs, one build per day
-- [ ] Dwellings, weekly unit growth, recruit into garrison
-- [ ] Unit upgrades (base -> upgraded)
+- [x] Building graph (`buildings/<id>.json`, `core/rules/TownRules`): costs, `requires`, `excludes` (either way round), one build per town per day, race check, owner check, `whyCannotBuild` for the UI; `income` building effects feed the daily income. Sample: 6 humans buildings, with a forced choice (Eagle Roost or Snail Pen, placeholder units).
+- [x] Dwellings and recruiting: a new dwelling starts with one week of units, growth every 8th/15th/... day, `recruit` into the garrison or a hero army standing in the town, cost paid, room checked first
+- [x] Unit upgrades: a building with `upgradeOf` replaces the base dwelling; the stock is kept and the upgraded unit is recruited (validated against `upgradesTo` in the unit data)
 - [ ] Hero tavern: recruit new heroes
-- [ ] Army management: split/merge/transfer between hero and garrison
-- [ ] Tests for build rules and dependency/exclusion logic
+- [x] Army management (`core/rules/ArmyRules::moveUnits`): move part or all of a stack between armies on the same tile; merge into existing stacks, max 7; wounds stay with the rest when splitting. `UnitStack::split/merge`.
+- [x] Convenience actions (design principle "avoid micromanagement", PROJECT.md 5.14):
+  - [x] Trade (`core/rules/Trade`): resource gold values in `resources.json`, fee `tradeEfficiencyPercent`; plain `trade`; `planTradeFor` sells spare resources (other resources first, most valuable spare stock first, gold last) and never what the cost itself needs; `buildBuildingWithTrade` ("buy, but first trade")
+  - [x] Map dwellings (`MapDwelling`): grow weekly, captured by visiting, `recruitAtDwelling` for a hero standing there; `sendDwellingUnitsToTown` ("send all units to this town") and `sendDwellingUnitsToClosestTown` (global); sent units are recruitable in the town (used before the dwelling stock)
+  - [x] `buyAllUnits` (one town or all; BestFirst = highest tier first (default) or MostUnits = cheapest first)
+  - [x] `autoBuild` (best affordable building without a choice; buildings that would shut out a rival are flagged in `needsChoice`; optional trade) and `buildThenBuyUnits`
+  - [ ] Later: a Market building could improve the trade efficiency; buy-all with trade; AI uses these actions too
+- [x] Tests: `tst_trade`, `tst_dwellings`, `tst_automation` (18 test programs in total); `tst_towns`, `tst_armyrules`, split/merge cases in `tst_unitstack`, building loading cases in `tst_content` (15 test programs in total)
 
 ## M4: Networking and lobby
 - [ ] Framed JSON protocol, versioned handshake (`docs/protocol.md`)
@@ -62,7 +68,8 @@
 - [ ] Map view (QGraphicsView): terrain tiles, objects, fog rendering, scrolling/zoom
 - [ ] Hero selection, path preview, move
 - [ ] Resource bar, day counter, end-turn button
-- [ ] Town screen (buildings, recruit)
+- [ ] Town screen (buildings, recruit) with the one-click actions: "Buy (trade first if needed)", "Send all units to this town", "Buy all units", "Auto-build"
+- [ ] Global toolbar buttons: "Send all units to closest town", "Buy all units", "Build, then buy units" (flags towns that need a building choice)
 - [ ] Minimap
 
 ## M6: Battle engine (core, then UI)
@@ -112,6 +119,8 @@
 | 2026-11-01 | Added Luck and Attack Range traits; Hit Points confirmed; traits grouped Battle / Magic / Explore (D16, D17) |
 | 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); upkeep later, affects morale (D9); survivors heal fully after battle for now (D18) |
 | 2026-11-01 | Terrain uses `walkable`/`sailable`/`moveCost` (100 = one tile) instead of `passable`/`requiresBoat`; data files are strict (unknown fields are errors, `_` keys are comments); unit id must equal file name; exactly one currency resource |
+| 2026-11-01 | Design principle: avoid micromanagement (trade, send units to town, buy all, auto-build, build then buy). Buy-all default strategy is quality first (highest tier), cheapest-first as option. A building is a "choice" if it would permanently exclude a rival building of the town's race; those are never auto-built, only flagged. Trade works anywhere for now (a Market building may improve rates later) |
+| 2026-11-01 | Buildings: JSON key `requires` is `requiredBuildings` in C++ (reserved word); dwelling stock is keyed by the root building of an upgrade chain; weekly growth on days 8, 15, ... for every town; stacks keep base max HP |
 | 2026-11-01 | Visiting: a hero arriving on a mine/town of a neutral or other-team owner captures it (defended towns refuse until M6); objects block walking through but can be the target; fog memory is per team and saved; income starts on day 2; vision balance (town 5, mine 2) and town gold (500) are in balance.json |
 | 2026-11-01 | Movement: 8 directions, diagonal costs 1.41x; a step needs its full cost in remaining points; daily points = base + perTraitLevel x Movement Points trait - small slowest-unit penalty, min clamp (`balance.json`). Heroes store `movementPoints`. Generated maps always have a sea border |
 | 2026-11-01 | Save format v1: JSON with terrain palette, ids unique across all object kinds, RNG state saved (seed as text); loading validates everything and leaves the target untouched on failure. Level-up: max SP grows but current SP is not refilled. Stacks in armies store base max HP; hero HP bonus applies when a battle starts |
@@ -125,6 +134,8 @@
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 12:** Design principle recorded; trade, map dwellings, send units to town, buy all units, auto-build, build then buy; saves extended (mapDwellings, importedUnits); 3 new test programs (18 in total).
+- **Session 11:** M3: building data and rules, dwellings, recruiting, weekly growth, upgrades, army transfers, building income, town fields in saves, 2 new test programs (15 in total).
 - **Session 10:** M2 slice B: fog of war, mine/town visiting and capture, turn cycle with income, explored maps in saves, 2 new test programs (13 in total).
 - **Session 9:** M2 slice A: pathfinding, movement rules, balance.json, map generator, Hero.movementPoints in saves, 3 new test programs (11 in total).
 - **Session 8:** M1 slice C: core model, GameState, hero rules, hero classes + progression data, save/load JSON, JsonReader arrays/objects, Rng state, 8 test programs.

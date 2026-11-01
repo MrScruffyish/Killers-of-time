@@ -14,6 +14,7 @@ struct ResourceDef {
     QString id;
     QString name;
     bool isCurrency = false;  // exactly one resource (gold) is the currency
+    int value = 100;          // worth in gold (the currency itself is 1); used for trading
 };
 
 // Movement cost is in hundredths of a movement point: 100 = one standard tile.
@@ -71,6 +72,7 @@ struct VisionBalance {
 };
 struct EconomyBalance {
     int townDailyGold = 500;  // base income of every owned town (buildings add more later)
+    int tradeEfficiencyPercent = 80;  // you get this share of the fair value when trading
 };
 struct Balance {
     MovementBalance movement;

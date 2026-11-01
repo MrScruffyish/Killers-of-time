@@ -15,7 +15,8 @@ General rules:
 ```json
 { "resources": [ { "id": "gold", "name": "Gold", "currency": true }, ... ] }
 ```
-Exactly one resource must have `"currency": true`.
+Exactly one resource must have `"currency": true` (its value is always 1).
+`value` (optional, default 100) is the worth in gold, used when trading resources.
 
 ## terrain.json
 ```json
@@ -96,3 +97,22 @@ movement point (100 = one grass tile).
 
 `vision.townRadius` / `mineRadius`: how many tiles an owned town / mine reveals to its team
 (heroes use their Scouting Radius trait). `economy.townDailyGold`: gold a town yields per day.
+`economy.tradeEfficiencyPercent` (optional, default 80): share of the fair value you get when
+trading resources (the rest is the trading fee).
+
+## buildings/<id>.json (one file per building; the id must equal the file name)
+```json
+{ "id": "archery_range", "name": "Archery Range", "race": "humans",
+  "cost": { "gold": 500, "wood": 5 }, "requires": ["barracks"], "excludes": [],
+  "effects": [ { "type": "dwelling", "unit": "archer" } ] }
+```
+| Field | Notes |
+|---|---|
+| race | only towns of this race can build it |
+| cost | resource id -> amount, paid when built |
+| requires | buildings that must already be built |
+| excludes | buildings that make this one unavailable (and vice versa): a forced choice |
+| upgradeOf | a dwelling building this one replaces; the old dwelling's unit must `upgradesTo` this one's unit. The base building must be built first. |
+| effects | `{"type":"dwelling","unit":id}`: units can be recruited, weekly growth from the unit's `weeklyGrowth`. `{"type":"income","resource":id,"amount":n}`: daily income for the owner. |
+
+A town can build one building per day.

@@ -10,6 +10,7 @@ struct HeroTag;
 struct TownTag;
 struct MineTag;
 struct ArmyTag;
+struct MapDwellingTag;
 struct UnitStackTag;
 
 using PlayerId = StrongId<PlayerTag>;
@@ -18,6 +19,7 @@ using HeroId = StrongId<HeroTag>;
 using TownId = StrongId<TownTag>;
 using MineId = StrongId<MineTag>;
 using ArmyId = StrongId<ArmyTag>;
+using MapDwellingId = StrongId<MapDwellingTag>;
 using UnitStackId = StrongId<UnitStackTag>;
 
 }  // namespace kot::core

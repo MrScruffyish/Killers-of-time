@@ -44,6 +44,7 @@ public:
                        const QString& race, const QString& color);
     ArmyId addArmy(PlayerId owner, Pos pos);
     TownId addTown(const QString& name, const QString& race, Pos pos, PlayerId owner = {});
+    MapDwellingId addMapDwelling(const QString& unitId, Pos pos, int available, PlayerId owner = {});
     MineId addMine(const QString& resourceId, int dailyAmount, Pos pos, PlayerId owner = {});
 
     const QMap<PlayerId, Player>& players() const { return m_players; }
@@ -54,6 +55,8 @@ public:
     QMap<ArmyId, Army>& armies() { return m_armies; }
     const QMap<TownId, Town>& towns() const { return m_towns; }
     QMap<TownId, Town>& towns() { return m_towns; }
+    const QMap<MapDwellingId, MapDwelling>& mapDwellings() const { return m_mapDwellings; }
+    QMap<MapDwellingId, MapDwelling>& mapDwellings() { return m_mapDwellings; }
     const QMap<MineId, Mine>& mines() const { return m_mines; }
     QMap<MineId, Mine>& mines() { return m_mines; }
 
@@ -62,6 +65,8 @@ public:
     Army* army(ArmyId id);
     Town* town(TownId id);
     Mine* mine(MineId id);
+    MapDwelling* mapDwelling(MapDwellingId id);
+    const MapDwelling* mapDwelling(MapDwellingId id) const;
     const Player* player(PlayerId id) const;
     const Hero* hero(HeroId id) const;
     const Army* army(ArmyId id) const;
@@ -104,6 +109,7 @@ private:
     QMap<ArmyId, Army> m_armies;
     QMap<TownId, Town> m_towns;
     QMap<MineId, Mine> m_mines;
+    QMap<MapDwellingId, MapDwelling> m_mapDwellings;
     QMap<TeamId, QByteArray> m_explored;
     QList<PlayerId> m_turnOrder;
     int m_currentIndex = 0;

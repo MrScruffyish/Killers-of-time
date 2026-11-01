@@ -6,7 +6,7 @@ whole file against the game content and reports every problem; on failure the
 target `GameState` is left unchanged.
 
 Top level fields: `formatVersion`, `day`, `nextId`, `currentIndex`, `map`, `rng`,
-`explored`, `turnOrder`, `players`, `heroes`, `armies`, `towns`, `mines`.
+`explored`, `turnOrder`, `players`, `heroes`, `armies`, `towns`, `mapDwellings`, `mines`.
 
 - **Ids** are unique across all object kinds (players, heroes, armies, towns, mines).
   Team ids come from the same counter but are shared by the players of a team.
@@ -20,7 +20,10 @@ Top level fields: `formatVersion`, `day`, `nextId`, `currentIndex`, `map`, `rng`
   pendingTraitPicks, movementPoints, army. Position lives in the hero's army.
 - **armies**: id, optional owner/hero (absent = neutral / none), x, y, stacks.
   A stack is `{unit, maxHp, totalHp}`; the unit count is derived from `totalHp`.
-- **towns**: id, name, race, optional owner, x, y, buildings, optional garrison army.
+- **towns**: id, name, race, optional owner, x, y, buildings, optional garrison army,
+  lastBuildDay, recruitPool (dwelling chain root building id -> units waiting),
+  importedUnits (unit id -> units sent here from map dwellings).
+- **mapDwellings**: id, unit, optional owner, x, y, available (units waiting).
 - **mines**: id, resource, dailyAmount, optional owner, x, y.
 
 Cross-checks on load: owners are players, positions are on the map, unit/trait/

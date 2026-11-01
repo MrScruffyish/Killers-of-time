@@ -140,9 +140,23 @@ QJsonObject GameState::toJson() const {
         putOptionalId(o, "garrison", t.garrison.value());
         o.insert("lastBuildDay", t.lastBuildDay);
         o.insert("recruitPool", intMapToJson(t.recruitPool));
+        o.insert("importedUnits", intMapToJson(t.importedUnits));
         towns.append(o);
     }
     root.insert("towns", towns);
+
+    QJsonArray dwellings;
+    for (const MapDwelling& d : m_mapDwellings) {
+        QJsonObject o;
+        o.insert("id", static_cast<int>(d.id.value()));
+        o.insert("unit", d.unitId);
+        putOptionalId(o, "owner", d.owner.value());
+        o.insert("x", d.pos.x);
+        o.insert("y", d.pos.y);
+        o.insert("available", d.available);
+        dwellings.append(o);
+    }
+    root.insert("mapDwellings", dwellings);
 
     QJsonArray mines;
     for (const Mine& m : m_mines) {
@@ -206,6 +220,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
     const QJsonArray armiesA = top.requireArray("armies");
     const QJsonArray townsA = top.requireArray("towns");
     const QJsonArray minesA = top.requireArray("mines");
+    const QJsonArray dwellingsA = top.requireArray("mapDwellings");
     top.finish();
     if (!top.ok()) {
         if (errors) *errors = errs;
@@ -371,6 +386,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         t.garrison = ArmyId(static_cast<quint32>(r.optionalInt("garrison", 0, 0, kMaxId)));
         t.lastBuildDay = r.optionalInt("lastBuildDay", 0, 0, 10000000);
         t.recruitPool = r.optionalIntMap("recruitPool", 0, 1000000);
+        t.importedUnits = r.optionalIntMap("importedUnits", 0, 1000000);
         r.finish();
         for (const QString& b : t.buildings) {
             if (!content.building(b)) r.addError(QStringLiteral("unknown building '%1'").arg(b));
@@ -381,6 +397,22 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         }
         checkPos(ctx, t.pos);
         if (r.ok() && claim(ctx, t.id.value())) gs.m_towns.insert(t.id, t);
+    });
+
+    // ---- map dwellings
+    each(dwellingsA, QStringLiteral("mapDwellings"), [&](JsonReader& r, const QString& ctx) {
+        MapDwelling d;
+        d.id = MapDwellingId(static_cast<quint32>(r.requireInt("id", 1, kMaxId)));
+        d.unitId = r.requireId("unit");
+        d.owner = PlayerId(static_cast<quint32>(r.optionalInt("owner", 0, 0, kMaxId)));
+        d.pos.x = r.requireInt("x", 0, 100000);
+        d.pos.y = r.requireInt("y", 0, 100000);
+        d.available = r.requireInt("available", 0, 1000000);
+        r.finish();
+        if (r.ok() && !content.unit(d.unitId))
+            r.addError(QStringLiteral("unknown unit '%1'").arg(d.unitId));
+        checkPos(ctx, d.pos);
+        if (r.ok() && claim(ctx, d.id.value())) gs.m_mapDwellings.insert(d.id, d);
     });
 
     // ---- mines
@@ -463,6 +495,8 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         if (t.garrison.isValid() && !gs.army(t.garrison))
             errs << what + QStringLiteral(": garrison army %1 does not exist").arg(t.garrison.value());
     }
+    for (const MapDwelling& d : gs.m_mapDwellings)
+        needPlayer(QStringLiteral("dwelling %1").arg(d.id.value()), d.owner.value(), true);
     for (const Mine& m : gs.m_mines)
         needPlayer(QStringLiteral("mine %1").arg(m.id.value()), m.owner.value(), true);
 

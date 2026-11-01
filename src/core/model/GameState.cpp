@@ -37,6 +37,18 @@ TownId GameState::addTown(const QString& name, const QString& race, Pos pos, Pla
     return t.id;
 }
 
+MapDwellingId GameState::addMapDwelling(const QString& unitId, Pos pos, int available,
+                                        PlayerId owner) {
+    MapDwelling d;
+    d.id = newId<MapDwellingId>();
+    d.unitId = unitId;
+    d.pos = pos;
+    d.available = available;
+    d.owner = owner;
+    m_mapDwellings.insert(d.id, d);
+    return d.id;
+}
+
 MineId GameState::addMine(const QString& resourceId, int dailyAmount, Pos pos, PlayerId owner) {
     Mine m;
     m.id = newId<MineId>();
@@ -66,6 +78,8 @@ const Hero* GameState::hero(HeroId id) const { return findIn(m_heroes, id); }
 const Army* GameState::army(ArmyId id) const { return findIn(m_armies, id); }
 const Town* GameState::town(TownId id) const { return findIn(m_towns, id); }
 const Mine* GameState::mine(MineId id) const { return findIn(m_mines, id); }
+MapDwelling* GameState::mapDwelling(MapDwellingId id) { return findIn(m_mapDwellings, id); }
+const MapDwelling* GameState::mapDwelling(MapDwellingId id) const { return findIn(m_mapDwellings, id); }
 
 TeamId GameState::teamOf(PlayerId id) const {
     const Player* p = player(id);

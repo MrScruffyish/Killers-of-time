@@ -25,11 +25,12 @@ struct MoveResult {
     int movementSpent = 0;
     MineId capturedMine;       // set when the hero arrived on a mine and took it
     TownId capturedTown;       // set when the hero arrived in a town and took it
+    MapDwellingId capturedDwelling;  // set when the hero arrived at a map dwelling and took it
 };
 
 // Moves a hero along the cheapest path toward `target`, as far as his
 // movement points allow. Tiles holding another army, a town or a mine cannot
-// be walked through. A mine or town can be the target: arriving there visits it,
+// be walked through. A mine, map dwelling or town can be the target: arriving there visits it,
 // and it is captured if it is neutral or belongs to another team. A town with
 // defenders cannot be taken yet (battles come in M6), and a tile with another
 // army cannot be entered. The team's explored map is updated after the move.

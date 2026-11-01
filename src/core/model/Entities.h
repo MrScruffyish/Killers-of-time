@@ -50,6 +50,18 @@ struct Town {
     int lastBuildDay = 0;   // day something was last built here (one building per day)
     // Units waiting to be recruited: dwelling chain root building id -> count.
     QMap<QString, int> recruitPool;
+    // Units sent here from map dwellings: unit id -> count, recruitable like the pool.
+    QMap<QString, int> importedUnits;
+};
+
+// A creature dwelling outside towns. Grows units every week; a hero captures it
+// by visiting and can recruit there, or its units can be sent to a town.
+struct MapDwelling {
+    MapDwellingId id;
+    QString unitId;
+    Pos pos;
+    PlayerId owner;  // invalid = neutral
+    int available = 0;
 };
 
 struct Mine {

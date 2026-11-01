@@ -1,7 +1,7 @@
 {
   "_comment": "Tunable numbers. Movement is in hundredths of a movement point (100 = one grass tile).",
   "vision": { "townRadius": 5, "mineRadius": 2 },
-  "economy": { "townDailyGold": 500 },
+  "economy": { "townDailyGold": 500, "tradeEfficiencyPercent": 80 },
   "movement": {
     "base": 1000,
     "perTraitLevel": 100,
