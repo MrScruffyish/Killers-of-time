@@ -94,6 +94,7 @@ QJsonObject GameState::toJson() const {
         o.insert("traits", intMapToJson(h.traits));
         o.insert("spellPoints", h.spellPoints);
         o.insert("pendingTraitPicks", h.pendingTraitPicks);
+        o.insert("movementPoints", h.movementPoints);
         o.insert("army", static_cast<int>(h.army.value()));
         heroes.append(o);
     }
@@ -305,6 +306,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         h.traits = r.optionalIntMap("traits", 0, 1000000);
         h.spellPoints = r.requireInt("spellPoints", 0, 1000000);
         h.pendingTraitPicks = r.requireInt("pendingTraitPicks", 0, 10000);
+        h.movementPoints = r.requireInt("movementPoints", 0, 10000000);
         h.army = ArmyId(static_cast<quint32>(r.requireInt("army", 1, kMaxId)));
         r.finish();
         if (r.ok() && !content.heroClass(h.classId))

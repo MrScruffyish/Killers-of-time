@@ -35,6 +35,9 @@ static void writeValidData(const QString& root) {
               R"({"heroClasses":[{"id":"knight","name":"Knight","race":"humans",)"
               R"("baseTraits":{"attack":2},"pickIncrement":{"attack":2}}]})");
     writeFile(root, "progression.json", R"({"xpThresholds":[100,300]})");
+    writeFile(root, "balance.json",
+              R"({"movement":{"base":1000,"perTraitLevel":100,"minimum":300,)"
+              R"("slowPenalties":[{"mapSpeedAtMost":2,"penalty":200}]}})");
 }
 
 class TstContent : public QObject {
@@ -89,6 +92,10 @@ private slots:
         QVERIFY(reg.heroClass("wizard")->baseTraits.value("magic") >
                 reg.heroClass("knight")->baseTraits.value("magic"));
         QVERIFY(reg.maxLevel() >= 5);
+
+        const MovementBalance& mb = reg.balance().movement;
+        QVERIFY(mb.base > 0 && mb.minimum > 0);
+        QVERIFY(!mb.slowPenalties.isEmpty());
     }
 
     void loadsMinimalData() {
@@ -227,6 +234,23 @@ private slots:
         writeValidData(tmp.path());
         writeFile(tmp.path(), "progression.json", R"({"xpThresholds":[100,100]})");
         expectError(tmp.path(), "xpThresholds[1] must be a whole number greater");
+    }
+
+    void balanceSlowPenaltiesMustAscend() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "balance.json",
+                  R"({"movement":{"base":1000,"perTraitLevel":100,"minimum":300,)"
+                  R"("slowPenalties":[{"mapSpeedAtMost":3,"penalty":200},)"
+                  R"({"mapSpeedAtMost":3,"penalty":100}]}})");
+        expectError(tmp.path(), "mapSpeedAtMost must be greater than the previous");
+    }
+
+    void balanceMissingMovement() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "balance.json", "{}");
+        expectError(tmp.path(), "missing required field 'movement'");
     }
 
     void reportsAllErrorsAtOnce() {

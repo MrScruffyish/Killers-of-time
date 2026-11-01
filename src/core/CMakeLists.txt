@@ -20,6 +20,12 @@ add_library(kot_core STATIC
     model/GameStateJson.cpp
     rules/HeroRules.h
     rules/HeroRules.cpp
+    rules/Pathfinding.h
+    rules/Pathfinding.cpp
+    rules/Movement.h
+    rules/Movement.cpp
+    rules/MapGenerator.h
+    rules/MapGenerator.cpp
     data/JsonReader.h
     data/JsonReader.cpp
     content/Defs.h

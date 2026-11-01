@@ -82,6 +82,7 @@ void ContentRegistry::clear() {
     m_units.clear();
     m_heroClasses.clear();
     m_xpThresholds.clear();
+    m_balance = Balance();
 }
 
 bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* errors) {
@@ -93,6 +94,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadUnits(dataDir, problems);
     loadHeroClasses(dataDir, problems);
     loadProgression(dataDir, problems);
+    loadBalance(dataDir, problems);
     if (problems.isEmpty()) validateReferences(problems);
     if (!problems.isEmpty()) {
         clear();
@@ -270,6 +272,46 @@ void ContentRegistry::loadProgression(const QString& dir, QStringList& errors) {
     }
     if (m_xpThresholds.isEmpty())
         errors << file + QStringLiteral(": xpThresholds must not be empty");
+}
+
+void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
+    const QString file = QStringLiteral("balance.json");
+    QJsonObject root;
+    if (!readObjectFile(QDir(dir).filePath(file), file, &root, errors)) return;
+    JsonReader top(root, file, &errors);
+    const QJsonObject movement = top.requireObject(QStringLiteral("movement"));
+    top.finish();
+    if (!top.ok()) return;
+
+    JsonReader r(movement, file + QStringLiteral("/movement"), &errors);
+    MovementBalance mb;
+    mb.base = r.requireInt(QStringLiteral("base"), 100, 1000000);
+    mb.perTraitLevel = r.requireInt(QStringLiteral("perTraitLevel"), 0, 100000);
+    mb.minimum = r.requireInt(QStringLiteral("minimum"), 1, 1000000);
+    const QJsonArray steps = r.requireArray(QStringLiteral("slowPenalties"));
+    r.finish();
+    int previous = 0;
+    for (qsizetype i = 0; i < steps.size(); ++i) {
+        const QString ctx = QStringLiteral("%1/movement/slowPenalties[%2]").arg(file).arg(i);
+        if (!steps[i].isObject()) {
+            errors << ctx + QStringLiteral(": entry must be an object");
+            continue;
+        }
+        JsonReader sr(steps[i].toObject(), ctx, &errors);
+        SlowPenaltyStep step;
+        step.mapSpeedAtMost = sr.requireInt(QStringLiteral("mapSpeedAtMost"), 1, 100);
+        step.penalty = sr.requireInt(QStringLiteral("penalty"), 0, 100000);
+        sr.finish();
+        if (!sr.ok()) continue;
+        if (step.mapSpeedAtMost <= previous) {
+            sr.addError(QStringLiteral("mapSpeedAtMost must be greater than the previous "
+                                       "entry (%1)").arg(previous));
+            continue;
+        }
+        previous = step.mapSpeedAtMost;
+        mb.slowPenalties.append(step);
+    }
+    if (r.ok()) m_balance.movement = mb;
 }
 
 void ContentRegistry::validateReferences(QStringList& errors) const {

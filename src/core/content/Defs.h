@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QMap>
 #include <QString>
 #include <QStringList>
@@ -50,6 +51,22 @@ struct HeroClassDef {
     QMap<QString, int> baseTraits;
     QMap<QString, int> pickIncrement;
     QMap<QString, int> autoGrowth;
+};
+
+// Daily movement of an army: base + perTraitLevel * hero Movement Points trait,
+// minus a small penalty for the slowest unit, but at least `minimum`.
+struct SlowPenaltyStep {
+    int mapSpeedAtMost = 0;
+    int penalty = 0;
+};
+struct MovementBalance {
+    int base = 1000;
+    int perTraitLevel = 100;
+    int minimum = 100;
+    QList<SlowPenaltyStep> slowPenalties;  // ascending by mapSpeedAtMost
+};
+struct Balance {
+    MovementBalance movement;
 };
 
 struct UnitDef {

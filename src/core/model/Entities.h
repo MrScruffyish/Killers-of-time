@@ -33,6 +33,7 @@ struct Hero {
     QMap<QString, int> traits;   // trait id -> value (see traits.json)
     int spellPoints = 0;         // current; the maximum is trait "spell_points_max"
     int pendingTraitPicks = 0;   // level-ups whose trait pick is not chosen yet
+    int movementPoints = 0;      // left this turn, in hundredths (100 = one grass tile)
     ArmyId army;                 // the army this hero leads (holds his position)
 
     int trait(const QString& traitId) const { return traits.value(traitId, 0); }

@@ -1,0 +1,15 @@
+{
+  "_comment": "Tunable numbers. Movement is in hundredths of a movement point (100 = one grass tile).",
+  "movement": {
+    "base": 1000,
+    "perTraitLevel": 100,
+    "minimum": 300,
+    "_comment2": "The slowest unit lowers the army's daily movement a little: first step whose mapSpeedAtMost >= slowest map speed applies.",
+    "slowPenalties": [
+      { "mapSpeedAtMost": 1, "penalty": 300 },
+      { "mapSpeedAtMost": 3, "penalty": 200 },
+      { "mapSpeedAtMost": 5, "penalty": 100 },
+      { "mapSpeedAtMost": 7, "penalty": 50 }
+    ]
+  }
+}

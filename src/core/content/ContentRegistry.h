@@ -11,7 +11,7 @@ namespace kot::core {
 
 // All game content loaded from the data directory:
 //   resources.json, terrain.json, traits.json, hero_classes.json,
-//   progression.json, units/<id>.json
+//   progression.json, balance.json, units/<id>.json
 // See docs/data-format.md. Loading either fully succeeds or leaves the
 // registry empty and returns every problem found in `errors`.
 class ContentRegistry {
@@ -26,6 +26,7 @@ public:
     const QMap<QString, HeroClassDef>& heroClasses() const { return m_heroClasses; }
     // xpThresholds()[i] = total experience needed to reach level i + 2.
     const QList<int>& xpThresholds() const { return m_xpThresholds; }
+    const Balance& balance() const { return m_balance; }
     int maxLevel() const { return static_cast<int>(m_xpThresholds.size()) + 1; }
 
     const ResourceDef* resource(const QString& id) const;
@@ -42,6 +43,7 @@ private:
     void loadUnits(const QString& dir, QStringList& errors);
     void loadHeroClasses(const QString& dir, QStringList& errors);
     void loadProgression(const QString& dir, QStringList& errors);
+    void loadBalance(const QString& dir, QStringList& errors);
     void validateReferences(QStringList& errors) const;
 
     QMap<QString, ResourceDef> m_resources;
@@ -50,6 +52,7 @@ private:
     QMap<QString, UnitDef> m_units;
     QMap<QString, HeroClassDef> m_heroClasses;
     QList<int> m_xpThresholds;
+    Balance m_balance;
 };
 
 }  // namespace kot::core

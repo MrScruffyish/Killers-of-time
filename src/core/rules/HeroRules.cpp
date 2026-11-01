@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/Movement.h"
 
 namespace kot::core {
 
@@ -36,6 +37,7 @@ HeroId createHero(GameState& state, const ContentRegistry& content, PlayerId own
     hero.spellPoints = maxSpellPoints(hero);
     hero.army = state.addArmy(owner, pos);
     state.army(hero.army)->hero = hero.id;
+    hero.movementPoints = armyMovementPoints(*state.army(hero.army), &hero, content);
     const HeroId id = hero.id;
     state.heroes().insert(id, hero);
     return id;
