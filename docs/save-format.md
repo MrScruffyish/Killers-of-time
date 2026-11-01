@@ -17,12 +17,12 @@ Top level fields: `formatVersion`, `day`, `nextId`, `currentIndex`, `map`, `rng`
   generator `state`, so a loaded game continues with the same random numbers.
 - **players**: id, name, team, controller (`human`/`ai`), optional aiProfile, race, color, resources.
 - **heroes**: id, name, class, owner, level, experience, traits, spellPoints,
-  pendingTraitPicks, movementPoints, army. Position lives in the hero's army.
+  pendingTraitPicks, movementPoints, army, optional template (tavern hero id). Position lives in the hero's army.
 - **armies**: id, optional owner/hero (absent = neutral / none), x, y, stacks.
   A stack is `{unit, maxHp, totalHp}`; the unit count is derived from `totalHp`.
 - **towns**: id, name, race, optional owner, x, y, buildings, optional garrison army,
   lastBuildDay, recruitPool (dwelling chain root building id -> units waiting),
-  importedUnits (unit id -> units sent here from map dwellings).
+  importedUnits (unit id -> units sent here from map dwellings), tavernOffers (hero ids).
 - **mapDwellings**: id, unit, optional owner, x, y, available (units waiting).
 - **mines**: id, resource, dailyAmount, optional owner, x, y.
 

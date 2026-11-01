@@ -11,7 +11,7 @@ namespace kot::core {
 
 // All game content loaded from the data directory:
 //   resources.json, terrain.json, traits.json, hero_classes.json,
-//   progression.json, balance.json, units/<id>.json, buildings/<id>.json
+//   progression.json, balance.json, units/<id>.json, buildings/<id>.json, heroes.json
 // See docs/data-format.md. Loading either fully succeeds or leaves the
 // registry empty and returns every problem found in `errors`.
 class ContentRegistry {
@@ -24,6 +24,7 @@ public:
     const QMap<QString, TraitDef>& traits() const { return m_traits; }
     const QMap<QString, UnitDef>& units() const { return m_units; }
     const QMap<QString, BuildingDef>& buildings() const { return m_buildings; }
+    const QMap<QString, HeroTemplateDef>& heroTemplates() const { return m_heroTemplates; }
     const QMap<QString, HeroClassDef>& heroClasses() const { return m_heroClasses; }
     // xpThresholds()[i] = total experience needed to reach level i + 2.
     const QList<int>& xpThresholds() const { return m_xpThresholds; }
@@ -36,6 +37,7 @@ public:
     const UnitDef* unit(const QString& id) const;
     const HeroClassDef* heroClass(const QString& id) const;
     const BuildingDef* building(const QString& id) const;
+    const HeroTemplateDef* heroTemplate(const QString& id) const;
     const ResourceDef* currency() const;
 
 private:
@@ -43,6 +45,7 @@ private:
     void loadTerrain(const QString& dir, QStringList& errors);
     void loadTraits(const QString& dir, QStringList& errors);
     void loadUnits(const QString& dir, QStringList& errors);
+    void loadHeroTemplates(const QString& dir, QStringList& errors);
     void loadBuildings(const QString& dir, QStringList& errors);
     void loadHeroClasses(const QString& dir, QStringList& errors);
     void loadProgression(const QString& dir, QStringList& errors);
@@ -55,6 +58,7 @@ private:
     QMap<QString, UnitDef> m_units;
     QMap<QString, HeroClassDef> m_heroClasses;
     QMap<QString, BuildingDef> m_buildings;
+    QMap<QString, HeroTemplateDef> m_heroTemplates;
     QList<int> m_xpThresholds;
     Balance m_balance;
 };

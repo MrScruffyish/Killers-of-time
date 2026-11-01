@@ -40,6 +40,8 @@ add_library(kot_core STATIC
     rules/Dwellings.cpp
     rules/Automation.h
     rules/Automation.cpp
+    rules/Tavern.h
+    rules/Tavern.cpp
     data/JsonReader.h
     data/JsonReader.cpp
     content/Defs.h

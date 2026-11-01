@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 12)
-**Current milestone:** M3 nearly done in code (hero tavern left); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** finish M3 with the hero tavern (recruit new heroes: hero pool per race, cost, one hero per town), then start M4 (networking: framed JSON protocol, server session, lobby)
+**Last updated:** 2026-11-01 (session 13)
+**Current milestone:** M3 done in code; M0 verified on your machine, everything since verified in sandbox
+**Next session should do:** start M4: framed JSON protocol over TCP (message types, versioned handshake), server session and lobby (slots human/AI, race, team, colour), fog-filtered state sent to clients
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -46,7 +46,7 @@
 - [x] Building graph (`buildings/<id>.json`, `core/rules/TownRules`): costs, `requires`, `excludes` (either way round), one build per town per day, race check, owner check, `whyCannotBuild` for the UI; `income` building effects feed the daily income. Sample: 6 humans buildings, with a forced choice (Eagle Roost or Snail Pen, placeholder units).
 - [x] Dwellings and recruiting: a new dwelling starts with one week of units, growth every 8th/15th/... day, `recruit` into the garrison or a hero army standing in the town, cost paid, room checked first
 - [x] Unit upgrades: a building with `upgradeOf` replaces the base dwelling; the stock is kept and the upgraded unit is recruited (validated against `upgradesTo` in the unit data)
-- [ ] Hero tavern: recruit new heroes
+- [x] Hero tavern (`core/rules/Tavern`, `heroes.json`, building effect `tavern`): offers 2 heroes per tavern town (drawn with the game RNG, redrawn weekly and when a tavern is built, never a hero already in the game, different between towns in one draw), `hireHero` costs 2500 gold (optionally trading spare resources), one hero in a town at a time, max 8 heroes per player, hired heroes remember their template so dead ones can return. Tests: `tst_tavern` (19 test programs in total).
 - [x] Army management (`core/rules/ArmyRules::moveUnits`): move part or all of a stack between armies on the same tile; merge into existing stacks, max 7; wounds stay with the rest when splitting. `UnitStack::split/merge`.
 - [x] Convenience actions (design principle "avoid micromanagement", PROJECT.md 5.14):
   - [x] Trade (`core/rules/Trade`): resource gold values in `resources.json`, fee `tradeEfficiencyPercent`; plain `trade`; `planTradeFor` sells spare resources (other resources first, most valuable spare stock first, gold last) and never what the cost itself needs; `buildBuildingWithTrade` ("buy, but first trade")
@@ -129,11 +129,15 @@
 ## Open questions for the user (answer when convenient)
 - (none right now)
 
+## Open question about code style
+- [?] Naming: the code currently uses Qt-style camelCase (functions/variables), PascalCase types, `m_` members. Do you want snake_case instead? A scripted conversion in one separate commit is possible (types stay PascalCase; Qt overrides such as `paintEvent` must keep their names). JSON field names (camelCase) could be converted too.
+
 ## Known issues / notes
 - (none yet)
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 13:** Hero tavern slice (hero templates, tavern building, offers, hiring), naming convention written down, tests updated for the new building.
 - **Session 12:** Design principle recorded; trade, map dwellings, send units to town, buy all units, auto-build, build then buy; saves extended (mapDwellings, importedUnits); 3 new test programs (18 in total).
 - **Session 11:** M3: building data and rules, dwellings, recruiting, weekly growth, upgrades, army transfers, building income, town fields in saves, 2 new test programs (15 in total).
 - **Session 10:** M2 slice B: fog of war, mine/town visiting and capture, turn cycle with income, explored maps in saves, 2 new test programs (13 in total).

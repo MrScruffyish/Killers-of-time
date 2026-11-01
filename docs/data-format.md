@@ -113,6 +113,15 @@ trading resources (the rest is the trading fee).
 | requires | buildings that must already be built |
 | excludes | buildings that make this one unavailable (and vice versa): a forced choice |
 | upgradeOf | a dwelling building this one replaces; the old dwelling's unit must `upgradesTo` this one's unit. The base building must be built first. |
-| effects | `{"type":"dwelling","unit":id}`: units can be recruited, weekly growth from the unit's `weeklyGrowth`. `{"type":"income","resource":id,"amount":n}`: daily income for the owner. |
+| effects | `{"type":"tavern"}`: heroes can be hired here. `{"type":"dwelling","unit":id}`: units can be recruited, weekly growth from the unit's `weeklyGrowth`. `{"type":"income","resource":id,"amount":n}`: daily income for the owner. |
 
 A town can build one building per day.
+
+## heroes.json
+Heroes that can be hired in a tavern. The class decides the race a hero belongs to.
+```json
+{ "heroes": [ { "id": "arthur", "name": "Arthur", "class": "knight" } ] }
+```
+`balance.json` economy: `heroCost` (gold, default 2500), `tavernOffers` (heroes offered at a time,
+default 2), `maxHeroesPerPlayer` (default 8).
+The building effect `{"type": "tavern"}` lets a town hire heroes.

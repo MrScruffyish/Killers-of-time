@@ -1,0 +1,35 @@
+{
+  "_comment": "Heroes that can be hired in a tavern. The class decides the race.",
+  "heroes": [
+    {
+      "id": "arthur",
+      "name": "Arthur",
+      "class": "knight"
+    },
+    {
+      "id": "gawain",
+      "name": "Gawain",
+      "class": "knight"
+    },
+    {
+      "id": "lancelot",
+      "name": "Lancelot",
+      "class": "knight"
+    },
+    {
+      "id": "merlin",
+      "name": "Merlin",
+      "class": "wizard"
+    },
+    {
+      "id": "morgana",
+      "name": "Morgana",
+      "class": "wizard"
+    },
+    {
+      "id": "elaine",
+      "name": "Elaine",
+      "class": "wizard"
+    }
+  ]
+}

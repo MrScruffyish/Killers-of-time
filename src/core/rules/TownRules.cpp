@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/Tavern.h"
 
 namespace kot::core {
 
@@ -110,6 +111,9 @@ ActionResult buildBuilding(GameState& state, const ContentRegistry& content, Tow
         const UnitDef* unit = content.unit(d.unitId);
         town->recruitPool[d.poolKey] = unit ? unit->weeklyGrowth : 0;
     }
+    // A new tavern offers its first heroes.
+    if (hasTavern(*town, content)) refreshTavernOffers(state, content, townId);
+
     ActionResult ok;
     ok.ok = true;
     return ok;

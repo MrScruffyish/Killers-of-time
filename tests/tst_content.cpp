@@ -34,6 +34,7 @@ static void writeValidData(const QString& root) {
     writeFile(root, "buildings/hall.json",
               R"({"id":"hall","name":"Hall","race":"humans","cost":{"gold":100},)"
               R"("effects":[{"type":"income","resource":"gold","amount":10}]})");
+    writeFile(root, "heroes.json", R"({"heroes":[{"id":"arthur","name":"Arthur","class":"knight"}]})");
     writeFile(root, "hero_classes.json",
               R"({"heroClasses":[{"id":"knight","name":"Knight","race":"humans",)"
               R"("baseTraits":{"attack":2},"pickIncrement":{"attack":2}}]})");
@@ -303,6 +304,23 @@ private slots:
                   R"({"id":"hall2","name":"Hall2","race":"humans","upgradeOf":"hall",)"
                   R"("effects":[{"type":"dwelling","unit":"militia"}]})");
         expectError(tmp.path(), "upgrades to this unit");
+    }
+
+    void heroTemplateWithUnknownClass() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "heroes.json", R"({"heroes":[{"id":"x","name":"X","class":"jester"}]})");
+        expectError(tmp.path(), "hero 'x': unknown class 'jester'");
+    }
+
+    void realHeroTemplatesLoad() {
+        ContentRegistry reg;
+        QStringList errors;
+        QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(reg.heroTemplates().size(), 6);
+        QCOMPARE(reg.heroTemplate("merlin")->classId, QString("wizard"));
+        QVERIFY(reg.building("tavern"));
+        QCOMPARE(reg.balance().economy.heroCost, 2500);
     }
 
     void realBuildingsLoad() {

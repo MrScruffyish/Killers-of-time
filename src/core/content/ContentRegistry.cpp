@@ -82,6 +82,7 @@ void ContentRegistry::clear() {
     m_units.clear();
     m_heroClasses.clear();
     m_buildings.clear();
+    m_heroTemplates.clear();
     m_xpThresholds.clear();
     m_balance = Balance();
 }
@@ -95,6 +96,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadUnits(dataDir, problems);
     loadBuildings(dataDir, problems);
     loadHeroClasses(dataDir, problems);
+    loadHeroTemplates(dataDir, problems);
     loadProgression(dataDir, problems);
     loadBalance(dataDir, problems);
     if (problems.isEmpty()) validateReferences(problems);
@@ -268,12 +270,14 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
             if (type == QLatin1String("dwelling")) {
                 e.type = BuildingEffect::Type::Dwelling;
                 e.unit = er.requireId(QStringLiteral("unit"));
+            } else if (type == QLatin1String("tavern")) {
+                e.type = BuildingEffect::Type::Tavern;
             } else if (type == QLatin1String("income")) {
                 e.type = BuildingEffect::Type::Income;
                 e.resource = er.requireId(QStringLiteral("resource"));
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 1000000);
             } else if (!type.isEmpty()) {
-                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling or income)").arg(type));
+                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income or tavern)").arg(type));
             }
             er.finish();
             if (er.ok()) d.effects.append(e);
@@ -288,6 +292,24 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
         }
         m_buildings.insert(d.id, d);
     }
+}
+
+void ContentRegistry::loadHeroTemplates(const QString& dir, QStringList& errors) {
+    forEachEntry(dir, QStringLiteral("heroes.json"), QStringLiteral("heroes"), errors,
+                 [&](const QJsonObject& o, const QString& ctx) {
+                     JsonReader r(o, ctx, &errors);
+                     HeroTemplateDef d;
+                     d.id = r.requireId(QStringLiteral("id"));
+                     d.name = r.requireString(QStringLiteral("name"));
+                     d.classId = r.requireId(QStringLiteral("class"));
+                     r.finish();
+                     if (!r.ok()) return;
+                     if (m_heroTemplates.contains(d.id)) {
+                         errors << ctx + QStringLiteral(": duplicate hero id '%1'").arg(d.id);
+                         return;
+                     }
+                     m_heroTemplates.insert(d.id, d);
+                 });
 }
 
 void ContentRegistry::loadHeroClasses(const QString& dir, QStringList& errors) {
@@ -357,6 +379,9 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         EconomyBalance eb;
         eb.townDailyGold = er.requireInt(QStringLiteral("townDailyGold"), 0, 1000000);
         eb.tradeEfficiencyPercent = er.optionalInt(QStringLiteral("tradeEfficiencyPercent"), 80, 1, 100);
+        eb.heroCost = er.optionalInt(QStringLiteral("heroCost"), 2500, 0, 10000000);
+        eb.tavernOffers = er.optionalInt(QStringLiteral("tavernOffers"), 2, 1, 10);
+        eb.maxHeroesPerPlayer = er.optionalInt(QStringLiteral("maxHeroesPerPlayer"), 8, 1, 100);
         er.finish();
         if (vr.ok() && er.ok()) {
             m_balance.vision = vb;
@@ -396,6 +421,10 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
 }
 
 void ContentRegistry::validateReferences(QStringList& errors) const {
+    for (const HeroTemplateDef& h : m_heroTemplates) {
+        if (!m_heroClasses.contains(h.classId))
+            errors << QStringLiteral("hero '%1': unknown class '%2'").arg(h.id, h.classId);
+    }
     for (const HeroClassDef& c : m_heroClasses) {
         auto check = [&](const QMap<QString, int>& m, const char* what, bool needPickable) {
             for (auto it = m.begin(); it != m.end(); ++it) {
@@ -499,6 +528,10 @@ const UnitDef* ContentRegistry::unit(const QString& id) const {
 const HeroClassDef* ContentRegistry::heroClass(const QString& id) const {
     const auto it = m_heroClasses.constFind(id);
     return it == m_heroClasses.constEnd() ? nullptr : &it.value();
+}
+const HeroTemplateDef* ContentRegistry::heroTemplate(const QString& id) const {
+    const auto it = m_heroTemplates.constFind(id);
+    return it == m_heroTemplates.constEnd() ? nullptr : &it.value();
 }
 const BuildingDef* ContentRegistry::building(const QString& id) const {
     const auto it = m_buildings.constFind(id);

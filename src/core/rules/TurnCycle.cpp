@@ -3,6 +3,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Movement.h"
+#include "core/rules/Tavern.h"
 #include "core/rules/TownRules.h"
 #include "core/rules/Vision.h"
 
@@ -52,7 +53,10 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
     info.newDay = (next == 0);
     if (info.newDay) {
         state.setDay(state.day() + 1);
-        if (isNewWeek(state.day())) applyWeeklyGrowth(state, content);
+        if (isNewWeek(state.day())) {
+            applyWeeklyGrowth(state, content);
+            refreshTavernOffers(state, content);
+        }
     }
     state.setCurrentIndex(next);
     info.player = state.currentPlayer();

@@ -34,6 +34,8 @@ class TstGameState : public QObject {
         gs.town(town)->recruitPool["barracks"] = 7;
         gs.town(town)->lastBuildDay = 3;
         gs.town(town)->importedUnits["pikeman"] = 4;
+        gs.town(town)->tavernOffers << "merlin" << "elaine";
+        gs.hero(h)->templateId = "arthur";
         const MapDwellingId dw = gs.addMapDwelling("archer", {2, 2}, 9, a);
         Q_UNUSED(dw);
         gs.addMine("gold", 1000, {5, 2}, a);
@@ -112,6 +114,8 @@ private slots:
         QCOMPARE(loaded.towns().first().recruitPool.value("barracks"), 7);
         QCOMPARE(loaded.towns().first().lastBuildDay, 3);
         QCOMPARE(loaded.towns().first().importedUnits.value("pikeman"), 4);
+        QCOMPARE(loaded.towns().first().tavernOffers, QStringList({"merlin", "elaine"}));
+        QCOMPARE(loaded.heroes().first().templateId, QString("arthur"));
         QCOMPARE(loaded.mapDwellings().size(), 1);
         QCOMPARE(loaded.mapDwellings().first().available, 9);
         QCOMPARE(loaded.mapDwellings().first().unitId, QString("archer"));

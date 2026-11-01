@@ -35,6 +35,7 @@ struct Hero {
     int pendingTraitPicks = 0;   // level-ups whose trait pick is not chosen yet
     int movementPoints = 0;      // left this turn, in hundredths (100 = one grass tile)
     ArmyId army;                 // the army this hero leads (holds his position)
+    QString templateId;          // the tavern hero this one was hired as (empty = none)
 
     int trait(const QString& traitId) const { return traits.value(traitId, 0); }
 };
@@ -52,6 +53,7 @@ struct Town {
     QMap<QString, int> recruitPool;
     // Units sent here from map dwellings: unit id -> count, recruitable like the pool.
     QMap<QString, int> importedUnits;
+    QStringList tavernOffers;  // hero template ids that can be hired here now
 };
 
 // A creature dwelling outside towns. Grows units every week; a hero captures it

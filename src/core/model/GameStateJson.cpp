@@ -102,6 +102,7 @@ QJsonObject GameState::toJson() const {
         o.insert("pendingTraitPicks", h.pendingTraitPicks);
         o.insert("movementPoints", h.movementPoints);
         o.insert("army", static_cast<int>(h.army.value()));
+        if (!h.templateId.isEmpty()) o.insert("template", h.templateId);
         heroes.append(o);
     }
     root.insert("heroes", heroes);
@@ -141,6 +142,7 @@ QJsonObject GameState::toJson() const {
         o.insert("lastBuildDay", t.lastBuildDay);
         o.insert("recruitPool", intMapToJson(t.recruitPool));
         o.insert("importedUnits", intMapToJson(t.importedUnits));
+        o.insert("tavernOffers", QJsonArray::fromStringList(t.tavernOffers));
         towns.append(o);
     }
     root.insert("towns", towns);
@@ -332,7 +334,10 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         h.pendingTraitPicks = r.requireInt("pendingTraitPicks", 0, 10000);
         h.movementPoints = r.requireInt("movementPoints", 0, 10000000);
         h.army = ArmyId(static_cast<quint32>(r.requireInt("army", 1, kMaxId)));
+        h.templateId = r.optionalString("template");
         r.finish();
+        if (r.ok() && !h.templateId.isEmpty() && !content.heroTemplate(h.templateId))
+            r.addError(QStringLiteral("unknown hero template '%1'").arg(h.templateId));
         if (r.ok() && !content.heroClass(h.classId))
             r.addError(QStringLiteral("unknown hero class '%1'").arg(h.classId));
         for (auto it = h.traits.begin(); it != h.traits.end(); ++it) {
@@ -387,6 +392,11 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         t.lastBuildDay = r.optionalInt("lastBuildDay", 0, 0, 10000000);
         t.recruitPool = r.optionalIntMap("recruitPool", 0, 1000000);
         t.importedUnits = r.optionalIntMap("importedUnits", 0, 1000000);
+        t.tavernOffers = r.optionalStringList("tavernOffers");
+        for (const QString& offer : t.tavernOffers) {
+            if (!content.heroTemplate(offer))
+                r.addError(QStringLiteral("unknown hero template '%1' in tavernOffers").arg(offer));
+        }
         r.finish();
         for (const QString& b : t.buildings) {
             if (!content.building(b)) r.addError(QStringLiteral("unknown building '%1'").arg(b));

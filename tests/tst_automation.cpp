@@ -71,7 +71,10 @@ private slots:
         gs.setDay(4);
         QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "village_hall"));
 
-        gs.setDay(5);  // only choices left
+        gs.setDay(5);
+        QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "tavern"));
+
+        gs.setDay(6);  // only choices left
         r = autoBuild(gs, reg, p1);
         QVERIFY(r.built.isEmpty());
         QCOMPARE(r.needsChoice.size(), 2);

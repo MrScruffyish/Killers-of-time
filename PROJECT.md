@@ -374,6 +374,11 @@ one-click actions on top of the basic rules. They are part of the rules engine
 
 - C++20, Qt 6, CMake. Format with `clang-format` (config in repo).
 - Namespace `kot` (root), sub-namespaces per module (`kot::core`, `kot::battle`...).
+- **Naming (current, Qt style):** types `PascalCase`, functions and variables `camelCase`,
+  members `m_camelCase`, constants `kPascalCase`, files named after their main type.
+  Data ids (units, buildings, traits, terrain) are `snake_case` strings; JSON field names
+  are `camelCase` (`maxHp`, `battleSpeed`). Open question: switch the code to snake_case?
+  (see STATUS.md)
 - `core` uses only Qt Core types (`QString`, `QList`, `QHash`, `QJsonObject`).
 - Strong ID types (`HeroId`, `TownId`, `PlayerId`, ...), not raw ints.
 - No game logic in UI classes. UI calls commands and renders state.

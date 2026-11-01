@@ -73,6 +73,9 @@ struct VisionBalance {
 struct EconomyBalance {
     int townDailyGold = 500;  // base income of every owned town (buildings add more later)
     int tradeEfficiencyPercent = 80;  // you get this share of the fair value when trading
+    int heroCost = 2500;              // gold to hire a hero in a tavern
+    int tavernOffers = 2;             // heroes a tavern offers at a time
+    int maxHeroesPerPlayer = 8;
 };
 struct Balance {
     MovementBalance movement;
@@ -83,7 +86,8 @@ struct Balance {
 struct BuildingEffect {
     enum class Type {
         Dwelling,  // units can be recruited here (`unit`), growing weekly
-        Income     // daily `amount` of `resource` for the owner
+        Income,    // daily `amount` of `resource` for the owner
+        Tavern     // heroes can be hired in this town
     };
     Type type = Type::Income;
     QString unit;
@@ -103,6 +107,13 @@ struct BuildingDef {
     QStringList excludes;
     QString upgradeOf;
     QList<BuildingEffect> effects;
+};
+
+// A hero that can be hired in a tavern. The class decides the race.
+struct HeroTemplateDef {
+    QString id;
+    QString name;
+    QString classId;
 };
 
 struct UnitDef {
