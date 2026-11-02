@@ -287,11 +287,14 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
                 e.type = BuildingEffect::Type::Income;
                 e.resource = er.requireId(QStringLiteral("resource"));
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 1000000);
+            } else if (type == QLatin1String("defense")) {
+                e.type = BuildingEffect::Type::Defense;
+                e.amount = er.requireInt(QStringLiteral("amount"), 1, 100);
             } else if (type == QLatin1String("mageGuild")) {
                 e.type = BuildingEffect::Type::MageGuild;
                 e.amount = er.requireInt(QStringLiteral("level"), 1, 10);
             } else if (!type.isEmpty()) {
-                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income, tavern or mageGuild)").arg(type));
+                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income, tavern, mageGuild or defense)").arg(type));
             }
             er.finish();
             if (er.ok()) d.effects.append(e);

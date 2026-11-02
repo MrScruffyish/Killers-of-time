@@ -189,6 +189,7 @@ void BattleView::updateInfo() {
         text += tr("The enemy is acting...");
     }
     if (battle.hasHero) text += tr(" &nbsp; <i>Hero: %1 spell points</i>").arg(battle.heroSpellPoints);
+    if (battle.townDefense > 0) text += tr(" &nbsp; <i>Town walls: defenders +%1 defense</i>").arg(battle.townDefense);
     m_info->setText(text);
     m_defend->setEnabled(mine);
     m_wait->setEnabled(mine && battle.canWait);

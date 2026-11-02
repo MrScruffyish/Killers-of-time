@@ -88,6 +88,7 @@ and react to; add depth afterwards.
 - [x] Path preview (white dots today, red later) and today's range tint, worked out on the client (`MovePlanner`, same pathfinding as the server)
 - [x] Minimap (click or drag to look there; frame shows the view)
 - [x] Towns that need a building choice are marked in the town list
+- [x] Town dialog Armies tab: move units (some or all) between the garrison and a visiting hero
 - [x] Tooltips (terrain, towns, mines, dwellings, treasures, artifacts, armies, steps today); keyboard: E end turn, N next hero, C centre, T town. Later: better layout, real art
 - [x] Object memory on the client: towns, mines, dwellings and treasures stay as last seen while out of sight. Later: keep it on the server (lost on reconnect now)
 
@@ -101,7 +102,8 @@ and react to; add depth afterwards.
 - [x] Battle UI in the client (`BattleView`: hexes, move by click, attack/shoot by clicking an enemy, Defend, Auto); interactive battles when a connected human takes part, human vs human live over the network, AI turns pause for a human defender; battle results to both sides (`lastBattle`). Tests: session cases, GUI smoke test
 - [x] Deterministic battle replay test (seed + actions)
 - [x] Unit abilities (flying, no_retaliation, double_attack, undead), rocks, wait, retreat (attacker)
-- [ ] Later: 2-hex units, town walls, surrender, defender retreat
+- [x] Town walls (building effect `defense`: Fort +3, Citadel +3 more)
+- [ ] Later: 2-hex units, surrender, defender retreat, siege
 
 ## M7: Magic
 - [x] Effect primitive system and spell data format (`spells/<id>.json`; damage, heal, modifyStat, movement, reveal; strength = amount + perPower x Spell Power); 8 sample spells

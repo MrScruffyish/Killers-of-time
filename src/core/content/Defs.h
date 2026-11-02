@@ -117,7 +117,8 @@ struct BuildingEffect {
         Dwelling,  // units can be recruited here (`unit`), growing weekly
         Income,    // daily `amount` of `resource` for the owner
         Tavern,    // heroes can be hired in this town
-        MageGuild  // heroes in this town learn all spells up to `amount` (the guild level)
+        MageGuild, // heroes in this town learn all spells up to `amount` (the guild level)
+        Defense    // the town's defenders get +`amount` defense in battle (walls)
     };
     Type type = Type::Income;
     QString unit;

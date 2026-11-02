@@ -283,6 +283,19 @@ private slots:
         QVERIFY(gs.army(mine())->stacks.isEmpty());
     }
 
+    void townWallsHelpTheDefender() {
+        add("militia", 5);
+        const TownId t = gs.addTown("Fort", "humans", {2, 2}, PlayerId());
+        Army& garrison = *gs.army(gs.town(t)->garrison);
+        garrison.addUnits("pikeman", 5, 10);
+        Battle open(gs, reg, mine(), gs.town(t)->garrison, 1);
+        QCOMPARE(open.townDefense(), 0);
+        gs.town(t)->buildings << "village_hall" << "fort" << "citadel";
+        Battle walled(gs, reg, mine(), gs.town(t)->garrison, 1);
+        QCOMPARE(walled.townDefense(), 6);
+        QCOMPARE(battleToJson(walled)["townDefense"].toInt(), 6);
+    }
+
     void jsonForTheClient() {
         add("archer", 3);
         Battle b(gs, reg, mine(), monsters("militia", 3), 1);

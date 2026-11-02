@@ -134,6 +134,7 @@ struct ViewBattle {
     bool canShoot = false;
     bool canWait = false;
     bool canRetreat = false;
+    int townDefense = 0;
     QList<core::Pos> obstacles;
     // Your hero in this battle (absent: no hero).
     struct Spell {

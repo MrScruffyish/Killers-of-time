@@ -74,14 +74,15 @@ private slots:
         gs.setDay(5);
         QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "tavern"));
 
-        // Then the mage buildings (no choice involved), never the rival dwellings.
+        // Then other buildings without a choice (mage guild, fort, ...), never the rival dwellings.
+        const qsizetype before = gs.town(t1)->buildings.size();
         for (int day = 6; day <= 9; ++day) {
             gs.setDay(day);
             r = autoBuild(gs, reg, p1);
             for (const AutoBuildReport::Built& b : r.built)
                 QVERIFY(b.building != "snail_pen" && b.building != "eagle_roost");
         }
-        QVERIFY(gs.town(t1)->buildings.contains("mage_guild"));
+        QVERIFY(gs.town(t1)->buildings.size() > before);
         QCOMPARE(r.needsChoice.size(), 2);
         QVERIFY(!gs.town(t1)->buildings.contains("snail_pen"));
         QVERIFY(!gs.town(t1)->buildings.contains("eagle_roost"));

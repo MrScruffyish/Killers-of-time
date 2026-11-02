@@ -51,6 +51,17 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             m_units.append(u);
         }
     }
+    // Town walls: a defender standing in a town gets its buildings' defense.
+    if (const Army* d = state.army(defender)) {
+        for (const Town& t : state.towns()) {
+            if (t.pos != d->pos) continue;
+            for (const QString& b : t.buildings)
+                if (const BuildingDef* def = content.building(b))
+                    for (const BuildingEffect& e : def->effects)
+                        if (e.type == BuildingEffect::Type::Defense) m_townDefense += e.amount;
+        }
+        m_defenseBonus[1] += m_townDefense;
+    }
     // Rocks in the middle columns.
     for (int i = 0, tries = 0; i < content.balance().battle.obstacles && tries < 100; ++tries) {
         const Pos p{m_rng.nextInt(3, hex::kWidth - 4), m_rng.nextInt(0, hex::kHeight - 1)};
@@ -449,6 +460,7 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
     QJsonArray rocks;
     for (const Pos p : b.obstacles()) rocks.append(QJsonArray{p.x, p.y});
     o.insert("obstacles", rocks);
+    if (b.townDefense() > 0) o.insert("townDefense", b.townDefense());
     if (active) {
         QJsonArray reach;
         const QHash<Pos, int> r = b.reachable(*active);

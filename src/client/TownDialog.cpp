@@ -202,6 +202,70 @@ void TownDialog::rebuild() {
         m_tabs->addTab(page, tr("Tavern"));
     }
 
+    // ---- Armies: the garrison and a hero visiting the town
+    {
+        auto* page = new QWidget();
+        page->setObjectName("armiesPage");
+        auto* layout = new QVBoxLayout(page);
+        const ViewArmy* garrison = m_view.army(town->garrison);
+        const ViewHero* visitor = nullptr;
+        for (const ViewHero* h : m_view.myHeroes())
+            if (h->pos == town->pos) visitor = h;
+        const ViewArmy* heroArmy = visitor ? m_view.army(visitor->army) : nullptr;
+        const auto section = [&](const QString& title, const ViewArmy* from, const ViewArmy* to, const QString& toName) {
+            layout->addWidget(new QLabel(QStringLiteral("<b>%1</b>").arg(title), page));
+            if (!from || from->stacks.isEmpty()) {
+                layout->addWidget(new QLabel(tr("(empty)"), page));
+                return;
+            }
+            for (int i = 0; i < from->stacks.size(); ++i) {
+                const ViewStack& s = from->stacks[i];
+                auto* row = new QHBoxLayout();
+                row->addWidget(new QLabel(QStringLiteral("%1 x %2").arg(s.count).arg(unitName(s.unit)), page), 1);
+                if (to) {
+                    auto* count = new QSpinBox(page);
+                    count->setRange(1, s.count);
+                    count->setValue(s.count);
+                    row->addWidget(count);
+                    auto* move = new QPushButton(tr("to %1").arg(toName), page);
+                    move->setObjectName(QStringLiteral("move_%1_%2").arg(from->id).arg(i));
+                    move->setEnabled(myTurn);
+                    const int fromId = from->id, toId = to->id, index = i;
+                    const QString unit = unitName(s.unit);
+                    connect(move, &QPushButton::clicked, this, [=, this]() {
+                        send("move_units", {{"from", fromId}, {"to", toId}, {"stack", index}, {"count", count->value()}},
+                             tr("Move %1 %2").arg(count->value()).arg(unit));
+                    });
+                    row->addWidget(move);
+                }
+                layout->addLayout(row);
+            }
+            if (to) {
+                auto* all = new QPushButton(tr("Move everything to %1").arg(toName), page);
+                all->setObjectName(QStringLiteral("moveAll_%1").arg(from->id));
+                all->setEnabled(myTurn);
+                const int fromId = from->id, toId = to->id;
+                const QList<ViewStack> stacks = from->stacks;
+                connect(all, &QPushButton::clicked, this, [=, this]() {
+                    // Always the first stack: the rest moves up as each one leaves.
+                    for (const ViewStack& s : stacks)
+                        send("move_units", {{"from", fromId}, {"to", toId}, {"stack", 0}, {"count", s.count}},
+                             tr("Move %1 %2").arg(s.count).arg(unitName(s.unit)));
+                });
+                layout->addWidget(all);
+            }
+        };
+        if (!visitor) {
+            section(tr("Garrison"), garrison, nullptr, {});
+            layout->addWidget(new QLabel(tr("A hero standing in the town can take units from the garrison or leave them here."), page));
+        } else {
+            section(tr("Garrison"), garrison, heroArmy, visitor->name);
+            section(tr("%1's army").arg(visitor->name), heroArmy, garrison, tr("the garrison"));
+        }
+        layout->addStretch(1);
+        m_tabs->addTab(page, tr("Armies"));
+    }
+
     m_tabs->setCurrentIndex(std::min(keep, m_tabs->count() - 1));
 }
 

@@ -80,6 +80,7 @@ struct BattleEvent {
 // falter and lose its turn; undead ignore morale), his Luck may double a strike's
 // damage, his Hit Points raise the max HP of his units. Unit abilities: flying,
 // no_retaliation, double_attack, undead (UnitDef). A few rocks block hexes.
+// Defenders in a town get the defense of its walls (building effect `defense`).
 // Besides, the hero of the active stack's side may cast one battle spell per round
 // (Cast; it does not use up the stack's turn): damage, heal or a stat change for a
 // few rounds. Spell points are spent from a copy and written back afterwards.
@@ -110,6 +111,7 @@ public:
     bool isOver() const { return m_outcome != Outcome::Running; }
     bool sideAlive(int side) const;
     bool retreated(int side) const { return m_retreated[side]; }
+    int townDefense() const { return m_townDefense; }  // walls: extra defense of the defender
     const QList<Pos>& obstacles() const { return m_obstacles; }
     bool blocked(Pos hex) const { return m_obstacles.contains(hex) || unitAt(hex); }
 
@@ -155,6 +157,7 @@ private:
     int m_luck[2] = {0, 0};
     bool m_retreated[2] = {false, false};
     QList<Pos> m_obstacles;
+    int m_townDefense = 0;
     bool m_heroCast[2] = {false, false};
     QList<BattleUnit> m_units;
     QList<int> m_order;  // unit ids, this round

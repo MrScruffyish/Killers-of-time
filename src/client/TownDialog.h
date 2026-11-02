@@ -12,7 +12,8 @@ namespace kot::core { class ContentRegistry; }
 namespace kot::client {
 
 // One town: buildings (with "build, trade first" when only resources are missing),
-// recruiting, and the tavern. Every action is sent as a command; the dialog redraws
+// recruiting, the tavern and the armies (move units between the garrison and a
+// visiting hero). Every action is sent as a command; the dialog redraws
 // itself when the next view arrives.
 class TownDialog : public QDialog {
     Q_OBJECT
