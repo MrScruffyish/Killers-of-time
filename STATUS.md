@@ -63,7 +63,7 @@
 - [x] Tests: `tst_framer`, `tst_lobby`, `tst_datadir`, `tst_network` (real server and clients on localhost, protocol violations); `tst_gamesetup`, `tst_playerview`, `tst_session` and a full game over sockets in `tst_network`; 26 test programs in total
 - [x] Start the game: `core/rules/GameSetup::createGame` (map from the lobby settings, spread-out start towns, a tavern hero with the class starting army, starting resources, neutral mines and map dwellings, everyone initialised). AI players are the passive AI (they just end their turn).
 - [x] Commands over the network (`server/GameSession`): 14 commands (see docs/protocol.md), only on your turn, own things only; `command_result` to the sender and a fresh filtered `game_state` to everyone; `core/model/PlayerView` filters by team (unexplored tiles masked, enemies only in sight and without secrets)
-- [ ] Client: real connect and lobby screens (M5 has the map)
+- [x] Client: real connect and lobby screens
 - [x] Disconnect during a game: the player becomes passive AI and the game goes on; reconnecting takes the player back (`join_game`)
 
 ## Order of work (breadth first, agreed in session 16)
@@ -85,11 +85,11 @@ and react to; add depth afterwards.
 - [x] Town dialog (right-click a town on the map, or double-click in the list): buildings with the reason when unavailable and "Build (trade first)" when only resources are missing, recruit with count, buy all here, tavern with hire (trade first if needed)
 - [x] Toolbar one-click actions: "Build, then buy units" (with trade), "Buy all units", "Send dwelling units to closest town"; level-up trait choice
 - [x] Tests: `tst_viewmodel`, `tst_clientsmoke` (the real windows against a real server, offscreen, clicks included; set `KOT_SCREENSHOT_DIR` to save screenshots); 28 test programs in total. Screenshots in `docs/screenshots/`.
-- [ ] Path preview and movement range overlay
-- [ ] Minimap
-- [ ] Flag towns that need a building choice (the server already reports them in `auto_build`)
-- [ ] Hover info (tile, object tooltips), keyboard shortcuts, better layout, real art later
-- [ ] Enemy object memory (objects out of sight disappear from the map for now)
+- [x] Path preview (white dots today, red later) and today's range tint, worked out on the client (`MovePlanner`, same pathfinding as the server)
+- [x] Minimap (click or drag to look there; frame shows the view)
+- [x] Towns that need a building choice are marked in the town list
+- [x] Tooltips (terrain, towns, mines, dwellings, treasures, artifacts, armies, steps today); keyboard: E end turn, N next hero, C centre, T town. Later: better layout, real art
+- [x] Object memory on the client: towns, mines, dwellings and treasures stay as last seen while out of sight. Later: keep it on the server (lost on reconnect now)
 
 ## M6: Battle engine (core, then UI)
 - [x] Decision D2: hex grid

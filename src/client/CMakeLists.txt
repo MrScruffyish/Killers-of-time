@@ -4,6 +4,10 @@ add_library(kot_client_lib STATIC
     ViewModel.cpp
     MapView.h
     MapView.cpp
+    MovePlanner.h
+    MovePlanner.cpp
+    MiniMap.h
+    MiniMap.cpp
     BattleView.h
     BattleView.cpp
     ConnectPage.h

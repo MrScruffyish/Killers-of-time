@@ -1,0 +1,61 @@
+#include "client/MovePlanner.h"
+
+#include "core/content/ContentRegistry.h"
+#include "core/rules/Pathfinding.h"
+
+namespace kot::client {
+
+void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& content, int heroId) {
+    m_content = &content;
+    m_heroId = 0;
+    m_today.clear();
+    m_blocked.clear();
+    m_unexplored.clear();
+    const ViewHero* hero = view.hero(heroId);
+    if (!hero || view.width <= 0 || view.terrainPalette.isEmpty()) return;
+    m_heroId = heroId;
+    m_from = hero->pos;
+    m_movement = hero->movementPoints;
+    const core::HeroClassDef* cls = content.heroClass(hero->classId);
+    m_terrainPercent = cls ? content.race(cls->race).terrainCostPercent : QMap<QString, int>();
+
+    m_map = core::GameMap(view.width, view.height, view.terrainPalette.first());
+    for (int y = 0; y < view.height; ++y)
+        for (int x = 0; x < view.width; ++x) {
+            const int index = view.tiles.value(y * view.width + x, -1);
+            if (index < 0) {  // never explored
+                m_blocked.insert({x, y});
+                m_unexplored.insert({x, y});
+            }
+            else m_map.setTerrain({x, y}, view.terrainPalette.value(index));
+        }
+    for (const ViewTown& t : view.towns) m_blocked.insert(t.pos);
+    for (const ViewMine& m : view.mines) m_blocked.insert(m.pos);
+    for (const ViewDwelling& d : view.dwellings) m_blocked.insert(d.pos);
+    for (const ViewObject& o : view.objects) m_blocked.insert(o.pos);
+    for (const ViewArmy& a : view.armies)
+        if (a.id != hero->army) m_blocked.insert(a.pos);
+    m_blocked.remove(m_from);
+
+    const core::MoveCostGrid grid(m_map, content, core::MoveMode::Foot, m_terrainPercent);
+    const QHash<core::Pos, int> reach =
+        core::reachableTiles(grid, m_from, m_movement, [&](core::Pos p) { return m_blocked.contains(p); });
+    for (auto it = reach.cbegin(); it != reach.cend(); ++it)
+        if (it.key() != m_from) m_today.insert(it.key());
+}
+
+MovePlan MovePlanner::plan(core::Pos target) const {
+    MovePlan plan;
+    if (!m_heroId || !m_map.inBounds(target) || target == m_from || m_unexplored.contains(target)) return plan;
+    const core::MoveCostGrid grid(m_map, *m_content, core::MoveMode::Foot, m_terrainPercent);
+    const core::PathResult path =
+        core::findPath(grid, m_from, target, [&](core::Pos p) { return m_blocked.contains(p); });
+    if (!path.found || path.steps.isEmpty()) return plan;
+    plan.found = true;
+    plan.steps = path.steps;
+    plan.affordable = core::affordableSteps(path, m_movement);
+    plan.totalCost = path.cumulativeCost.last();
+    return plan;
+}
+
+}  // namespace kot::client

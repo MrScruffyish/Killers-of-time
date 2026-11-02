@@ -1,10 +1,12 @@
 #include <QJsonArray>
 #include <QtTest>
 
+#include "client/MovePlanner.h"
 #include "client/ViewModel.h"
 #include "core/content/ContentRegistry.h"
 #include "core/model/PlayerView.h"
 #include "core/rules/GameSetup.h"
+#include "core/rules/Movement.h"
 
 using namespace kot;
 using namespace kot::client;
@@ -85,6 +87,38 @@ private slots:
         QVERIFY(!v.known({-1, 0}));
         const core::Pos enemy = gs.towns().last().pos;
         QVERIFY(!v.known(enemy));
+    }
+
+    void plannerAgreesWithTheServer() {
+        GameView v;
+        QVERIFY(parseGameView(core::buildPlayerView(gs, reg, ids[0]), &v));
+        const ViewHero* h = v.myHeroes().first();
+        MovePlanner planner;
+        planner.prepare(v, reg, h->id);
+        QVERIFY(planner.ready());
+        QVERIFY(!planner.reachableToday().isEmpty());
+        // Every tile reachable today is walked to in full by the server too.
+        int checked = 0;
+        for (const core::Pos t : planner.reachableToday()) {
+            if (checked++ > 12) break;
+            core::GameState copy = gs;
+            const MovePlan plan = planner.plan(t);
+            QVERIFY(plan.found);
+            QCOMPARE(plan.affordable, plan.steps.size());
+            const core::MoveResult r = core::moveHero(copy, reg, core::HeroId(quint32(h->id)), t);
+            QVERIFY2(r.ok && r.arrived, qPrintable(r.error));
+            QCOMPARE(r.stepsTaken, plan.steps.size());
+        }
+        // Unexplored land is not planned through.
+        core::Pos dark{-1, -1};
+        for (int i = 0; i < v.tiles.size() && dark.x < 0; ++i)
+            if (v.tiles[i] < 0) dark = {i % v.width, i / v.width};
+        QVERIFY(dark.x >= 0);
+        QVERIFY(!planner.plan(dark).found);
+        // Not even right at the edge of the known world.
+        for (const core::Pos t : planner.reachableToday())
+            for (const core::Pos n : {core::Pos{t.x + 1, t.y}, core::Pos{t.x - 1, t.y}, core::Pos{t.x, t.y + 1}})
+                if (v.inBounds(n) && v.tiles[n.y * v.width + n.x] < 0) QVERIFY(!planner.plan(n).found);
     }
 
     void rejectsInconsistentData() {

@@ -21,6 +21,7 @@ namespace kot::core { class ContentRegistry; }
 namespace kot::client {
 
 class BattleView;
+class MiniMap;
 
 class MapView;
 class TownDialog;
@@ -57,6 +58,8 @@ private:
     void selectHero(int id);
     QString unitName(const QString& id) const;
     void announceEnd();
+    void rememberObjects(GameView* view);
+    void selectNextHero();
     void castAdventureSpell();  // victory / defeat messages, once each
     QString describeBattle(const QJsonObject& battle) const;
     QString describeBattleEvents(const QJsonArray& events) const;
@@ -77,6 +80,12 @@ private:
     QLabel* m_status;
     QStackedWidget* m_centre;
     MapView* m_map;
+    MiniMap* m_miniMap;
+    QList<ViewTown> m_memTowns;
+    QList<ViewMine> m_memMines;
+    QList<ViewDwelling> m_memDwellings;
+    QList<ViewObject> m_memObjects;
+    int m_memoryOwner = -1;
     QPushButton* m_castSpell;
     BattleView* m_battleView;
     int m_seenBattleId = 0;

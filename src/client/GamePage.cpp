@@ -12,11 +12,13 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QShortcut>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
 #include "client/BattleView.h"
 #include "client/MapView.h"
+#include "client/MiniMap.h"
 #include "client/TownDialog.h"
 #include "core/content/ContentRegistry.h"
 #include "net/Protocol.h"
@@ -43,6 +45,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
             [this](const QJsonObject& body) { send(net::msg::battleAction, body, tr("Battle")); });
 
     auto* side = new QVBoxLayout();
+    m_miniMap = new MiniMap(content, this);
+    m_miniMap->setObjectName("miniMap");
+    side->addWidget(m_miniMap);
     m_heroCombo = new QComboBox(this);
     m_heroCombo->setObjectName("heroCombo");
     side->addWidget(m_heroCombo);
@@ -103,6 +108,29 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_townDialog = new TownDialog(content, this);
 
     connect(m_map, &MapView::tileClicked, this, &GamePage::onTileClicked);
+    connect(m_map, &MapView::scrolled, this, [this]() { m_miniMap->setVisibleTiles(m_map->visibleTiles()); });
+    connect(m_miniMap, &MiniMap::centerRequested, this, [this](core::Pos t) {
+        m_map->centerOn(t);
+        m_miniMap->setVisibleTiles(m_map->visibleTiles());
+    });
+    // Keyboard: E end turn, N next hero, C centre on the hero, T open the town.
+    const auto shortcut = [this](const char* keys, auto fn) {
+        auto* s = new QShortcut(QKeySequence(QString::fromLatin1(keys)), this);
+        s->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(s, &QShortcut::activated, this, fn);
+    };
+    shortcut("E", [this]() { if (m_endTurn->isEnabled()) m_endTurn->click(); });
+    shortcut("N", [this]() { selectNextHero(); });
+    shortcut("C", [this]() {
+        if (const ViewHero* h = m_view.hero(m_selectedHero)) m_map->centerOn(h->pos);
+    });
+    shortcut("T", [this]() {
+        const ViewHero* h = m_view.hero(m_selectedHero);
+        const ViewTown* t = h ? m_view.townAt(h->pos) : nullptr;
+        if (!t && !m_view.myTowns().isEmpty()) t = m_view.myTowns().first();
+        if (t && t->mine) m_townDialog->showTown(m_view, t->id);
+    });
+    m_endTurn->setToolTip(tr("End your turn (E)"));
     connect(m_map, &MapView::tileRightClicked, this, &GamePage::onTileRightClicked);
     connect(m_heroCombo, &QComboBox::activated, this, [this](int i) { selectHero(m_heroCombo->itemData(i).toInt()); });
     connect(m_levelUp, &QPushButton::clicked, this, &GamePage::chooseTrait);
@@ -162,6 +190,7 @@ void GamePage::onViewChanged() {
     }
     const bool wasMyTurn = m_view.isMyTurn() && m_view.you == view.you;
     const bool first = (m_view.you == 0);
+    rememberObjects(&view);
     m_view = view;
     if (!m_view.myHeroes().isEmpty()) {
         bool stillThere = false;
@@ -172,6 +201,8 @@ void GamePage::onViewChanged() {
     }
     m_map->setView(m_view);
     m_map->setSelectedHero(m_selectedHero);
+    m_miniMap->setView(m_view);
+    m_miniMap->setVisibleTiles(m_map->visibleTiles());
     if (!m_centered && m_selectedHero) {
         const ViewHero* h = m_view.hero(m_selectedHero);
         if (h) m_map->centerOn(h->pos);
@@ -238,6 +269,42 @@ void GamePage::announceEnd() {
     box->show();
 }
 
+// Objects you saw stay on the map, as last seen, while their tile is out of sight.
+// What is in sight is always the truth: something gone from there is forgotten.
+void GamePage::rememberObjects(GameView* view) {
+    const auto keep = [view](auto& memory, auto& now) {
+        auto merged = now;
+        for (const auto& old : memory) {
+            bool present = false;
+            for (const auto& n : now) present = present || n.id == old.id;
+            if (!present && view->known(old.pos) && !view->inSight(old.pos)) merged.append(old);
+        }
+        now = merged;
+        memory = merged;
+    };
+    if (view->you != m_memoryOwner) {
+        m_memTowns.clear();
+        m_memMines.clear();
+        m_memDwellings.clear();
+        m_memObjects.clear();
+        m_memoryOwner = view->you;
+    }
+    keep(m_memTowns, view->towns);
+    keep(m_memMines, view->mines);
+    keep(m_memDwellings, view->dwellings);
+    keep(m_memObjects, view->objects);
+}
+
+void GamePage::selectNextHero() {
+    const QList<const ViewHero*> heroes = m_view.myHeroes();
+    if (heroes.isEmpty()) return;
+    int index = 0;
+    for (int i = 0; i < heroes.size(); ++i)
+        if (heroes[i]->id == m_selectedHero) index = (i + 1) % heroes.size();
+    selectHero(heroes[index]->id);
+    m_map->centerOn(heroes[index]->pos);
+}
+
 void GamePage::updateStatus() {
     QStringList res;
     for (const core::ResourceDef& r : m_content->resources()) {
@@ -257,8 +324,20 @@ void GamePage::updateStatus() {
 
     m_townList->clear();
     for (const ViewTown* t : m_view.myTowns()) {
-        auto* item = new QListWidgetItem(QStringLiteral("%1 (%2, %3)").arg(t->name).arg(t->pos.x).arg(t->pos.y), m_townList);
+        // A building you could build now that shuts out a rival: the town needs your choice.
+        bool choice = false;
+        for (const BuildOption& b : t->buildOptions) {
+            const core::BuildingDef* def = m_content->building(b.id);
+            if (!def || !b.why.isEmpty()) continue;
+            bool rival = !def->excludes.isEmpty();
+            for (const core::BuildingDef& other : m_content->buildings()) rival = rival || other.excludes.contains(def->id);
+            choice = choice || rival;
+        }
+        const QString text = QStringLiteral("%1 (%2, %3)%4").arg(t->name).arg(t->pos.x).arg(t->pos.y)
+                                 .arg(choice ? tr("  \u2605 choose a building") : QString());
+        auto* item = new QListWidgetItem(text, m_townList);
         item->setData(Qt::UserRole, t->id);
+        if (choice) item->setToolTip(tr("Auto-build leaves choices to you: open the town and pick one"));
     }
 }
 
