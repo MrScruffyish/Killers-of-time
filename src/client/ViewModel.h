@@ -30,6 +30,7 @@ struct ViewStack {
     int count = 0;
     int totalHp = -1;  // -1 = not shown (not your team's army)
     int maxHp = -1;
+    int stars = 0;  // veterancy
 };
 
 struct ViewArmy {
@@ -117,6 +118,7 @@ struct ViewBattleUnit {
     core::Pos hex;
     int shots = 0;
     bool retaliated = false;
+    int stars = 0;
 };
 
 // A battle you take part in (server: battleToJson).

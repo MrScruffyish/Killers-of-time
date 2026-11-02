@@ -103,6 +103,7 @@ and react to; add depth afterwards.
 - [x] Deterministic battle replay test (seed + actions)
 - [x] Unit abilities (flying, no_retaliation, double_attack, undead), rocks, wait, retreat (attacker)
 - [x] Town walls (building effect `defense`: Fort +3, Citadel +3 more)
+- [x] Unit veterancy: stacks gain experience in battle, 0-5 stars with small bonuses (morale, initiative, battle speed, attack, defense; data), averaged when merging; shown as stars. Tests: `tst_veterancy` (38 test programs)
 - [ ] Later: 2-hex units, surrender, defender retreat, siege
 
 ## M7: Magic
@@ -151,6 +152,7 @@ and react to; add depth afterwards.
 | 2026-11-01 | Visiting: a hero arriving on a mine/town of a neutral or other-team owner captures it (defended towns refuse until M6); objects block walking through but can be the target; fog memory is per team and saved; income starts on day 2; vision balance (town 5, mine 2) and town gold (500) are in balance.json |
 | 2026-11-01 | Movement: 8 directions, diagonal costs 1.41x; a step needs its full cost in remaining points; daily points = base + perTraitLevel x Movement Points trait - small slowest-unit penalty, min clamp (`balance.json`). Heroes store `movementPoints`. Generated maps always have a sea border |
 | 2026-11-01 | Save format v1: JSON with terrain palette, ids unique across all object kinds, RNG state saved (seed as text); loading validates everything and leaves the target untouched on failure. Level-up: max SP grows but current SP is not refilled. Stacks in armies store base max HP; hero HP bonus applies when a battle starts |
+| 2026-11-02 | Unit veterancy (user idea): 0-5 stars from experience per unit, small cumulative bonuses, averaged on merge. Resource trade values count in balancing (kot_balance). |
 | 2026-11-01 | Qt 6 / C++20 / CMake; server-authoritative client-server; AI as server-side players; data-driven JSON content (see PROJECT.md) |
 
 ## Open questions for the user (answer when convenient)

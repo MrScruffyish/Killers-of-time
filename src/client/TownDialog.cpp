@@ -221,7 +221,8 @@ void TownDialog::rebuild() {
             for (int i = 0; i < from->stacks.size(); ++i) {
                 const ViewStack& s = from->stacks[i];
                 auto* row = new QHBoxLayout();
-                row->addWidget(new QLabel(QStringLiteral("%1 x %2").arg(s.count).arg(unitName(s.unit)), page), 1);
+                row->addWidget(new QLabel(QStringLiteral("%1 x %2%3").arg(s.count).arg(unitName(s.unit))
+                                              .arg(s.stars > 0 ? QStringLiteral(" ") + QString(s.stars, QChar(0x2605)) : QString()), page), 1);
                 if (to) {
                     auto* count = new QSpinBox(page);
                     count->setRange(1, s.count);

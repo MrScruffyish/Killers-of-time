@@ -52,6 +52,8 @@ add_library(kot_core STATIC
     battle/BattleAi.cpp
     battle/AutoBattle.h
     battle/AutoBattle.cpp
+    rules/Veterancy.h
+    rules/Veterancy.cpp
     rules/Victory.h
     rules/Victory.cpp
     rules/GameSetup.h

@@ -172,6 +172,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             s.count = so.value("count").toInt();
             s.totalHp = so.value("totalHp").toInt(-1);
             s.maxHp = so.value("maxHp").toInt(-1);
+            s.stars = so.value("stars").toInt();
             a.stacks.append(s);
         }
         v.armies.append(a);
@@ -244,6 +245,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             bu.hex = {u.value("x").toInt(), u.value("y").toInt()};
             bu.shots = u.value("shots").toInt();
             bu.retaliated = u.value("retaliated").toBool();
+            bu.stars = u.value("stars").toInt();
             vb.units.append(bu);
         }
         for (const QJsonValue& h : b.value("reachable").toArray())

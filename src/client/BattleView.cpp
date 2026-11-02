@@ -96,7 +96,8 @@ protected:
                 p.setFont(f);
                 p.setPen(Qt::white);
                 const QRectF box(c.x() - r, c.y() - r * 0.6, 2 * r, r * 1.2);
-                p.drawText(box, Qt::AlignCenter, QStringLiteral("%1\n%2").arg(name.left(8)).arg(u.count));
+                p.drawText(box, Qt::AlignCenter, QStringLiteral("%1\n%2%3").arg(name.left(8)).arg(u.count)
+                                                     .arg(u.stars > 0 ? QStringLiteral(" ") + QString(u.stars, QChar(0x2605)) : QString()));
             }
         }
     }

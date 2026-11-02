@@ -78,3 +78,5 @@ target_compile_definitions(tst_mapobjects PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_D
 # The content tools on the real data.
 add_test(NAME kot_graph_check COMMAND kot_graph check --data ${CMAKE_SOURCE_DIR}/data)
 add_test(NAME kot_graph_dot COMMAND kot_graph buildings --data ${CMAKE_SOURCE_DIR}/data -o ${CMAKE_BINARY_DIR}/buildings.dot)
+kot_add_test(tst_veterancy)
+target_compile_definitions(tst_veterancy PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")

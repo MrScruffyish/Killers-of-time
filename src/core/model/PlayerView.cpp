@@ -1,5 +1,6 @@
 #include "core/model/PlayerView.h"
 
+#include "core/rules/Veterancy.h"
 #include "core/rules/Victory.h"
 
 #include <QHash>
@@ -138,6 +139,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             QJsonObject so;
             so.insert("unit", s.unitTypeId());
             so.insert("count", s.count());
+            if (const int stars = veteranStars(s.experience(), content)) so.insert("stars", stars);
             if (own) {
                 so.insert("totalHp", s.totalHp());
                 so.insert("maxHp", s.maxHp());

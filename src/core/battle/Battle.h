@@ -35,9 +35,11 @@ struct BattleUnit {
     bool moraleUsed = false;  // got its extra action this round
     int baseMaxHp = 1;        // max HP per unit in the army (before the hero's Hit Points bonus)
     QList<StatModifier> modifiers;
+    int stars = 0;                 // veterancy (core/rules/Veterancy.h)
+    QMap<QString, int> veteran;    // the stars' bonuses
 
     bool alive() const { return !stack.isEliminated(); }
-    int modifier(const QString& stat) const;
+    int modifier(const QString& stat) const;  // spells and veterancy together
 };
 
 struct BattleAction {
@@ -142,6 +144,7 @@ private:
     void advance(QList<BattleEvent>* events);
     void settle(QList<BattleEvent>* events);  // the next stack that can act
     bool ignoresMorale(const BattleUnit& u) const;
+    int moraleOf(const BattleUnit& u) const;  // hero morale + veterancy
     void checkOver();
     BattleUnit* mutableUnit(int id);
 

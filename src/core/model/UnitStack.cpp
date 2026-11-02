@@ -54,8 +54,17 @@ int UnitStack::heal(int amount) {
     return healed;
 }
 
+namespace {
+int average(int a, int countA, int b, int countB) {
+    const long long n = std::max(1, countA + countB);
+    return static_cast<int>((static_cast<long long>(a) * countA + static_cast<long long>(b) * countB) / n);
+}
+}  // namespace
+
 void UnitStack::addUnits(int units) {
-    if (units > 0) m_totalHp += units * m_maxHp;
+    if (units <= 0) return;
+    m_experience = average(m_experience, count(), 0, units);  // fresh units have none
+    m_totalHp += units * m_maxHp;
 }
 
 bool UnitStack::canMerge(const UnitStack& other) const {
@@ -65,11 +74,15 @@ bool UnitStack::canMerge(const UnitStack& other) const {
 UnitStack UnitStack::split(int count) {
     if (count <= 0 || count >= this->count()) return UnitStack(m_unitTypeId, 0, m_maxHp);
     m_totalHp -= count * m_maxHp;
-    return UnitStack(m_unitTypeId, count, m_maxHp);
+    UnitStack part(m_unitTypeId, count, m_maxHp);
+    part.m_experience = m_experience;
+    return part;
 }
 
 void UnitStack::merge(const UnitStack& other) {
-    if (canMerge(other)) m_totalHp += other.m_totalHp;
+    if (!canMerge(other)) return;
+    m_experience = average(m_experience, count(), other.m_experience, other.count());
+    m_totalHp += other.m_totalHp;
 }
 
 void UnitStack::restoreFullHealth() {

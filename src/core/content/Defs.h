@@ -102,11 +102,20 @@ struct DifficultyLevel {
     int aiIncomePercent = 0;      // +/- percent income for AI players
     int aiGrowthPercent = 0;      // +/- percent dwelling growth in AI towns
 };
+// Unit veterancy: experience per unit -> 0..5 stars, each star adds its bonus
+// (cumulative). Stats: attack, defense, initiative, battleSpeed, morale.
+struct VeterancyBalance {
+    int xpPercent = 50;                        // per unit: killed enemy HP x percent / surviving units
+    QList<int> thresholds{20, 60, 150, 350, 800};  // experience for stars 1..5
+    QList<QMap<QString, int>> starBonuses{{{"morale", 1}}, {{"initiative", 1}}, {{"battleSpeed", 1}},
+                                          {{"attack", 1}}, {{"defense", 1}}};
+};
 struct Balance {
     MovementBalance movement;
     VisionBalance vision;
     EconomyBalance economy;
     BattleBalance battle;
+    VeterancyBalance veterancy;
     QMap<QString, DifficultyLevel> difficulty;  // easy, normal, hard, expert
     QMap<QString, DifficultyLevel> aiSlot;      // easy, normal, hard: added for that AI
     const DifficultyLevel level(const QString& name) const { return difficulty.value(name); }

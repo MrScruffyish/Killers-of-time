@@ -17,6 +17,9 @@
     "normal": { },
     "hard":   { "aiIncomePercent": 15,  "aiGrowthPercent": 10 }
   },
+  "_veterancy": "Units gain experience in battle (per unit: killed enemy HP x xpPercent / surviving units). Stars 1..5 at the thresholds; each star adds its bonus.",
+  "veterancy": { "xpPercent": 50, "thresholds": [20, 60, 150, 350, 800],
+                 "starBonuses": [ { "morale": 1 }, { "initiative": 1 }, { "battleSpeed": 1 }, { "attack": 1 }, { "defense": 1 } ] },
   "battle": { "maxRounds": 30, "experiencePerHp": 2,
               "attackPercentPerPoint": 5, "maxAttackPercent": 300,
               "defensePercentPerPoint": 3, "maxDefensePercent": 70,

@@ -194,3 +194,11 @@ walks onto one keeps it and its trait bonuses are added to his traits.
 `humanStartPercent` (starting resources of humans), `monsterPercent` (neutral monster group size),
 `aiIncomePercent` and `aiGrowthPercent` (+/- percent for AI players). `aiSlotDifficulty`: per AI
 slot level (`easy`, `normal`, `hard`), its `aiIncomePercent` / `aiGrowthPercent` are added.
+
+## balance.json "veterancy"
+Units gain experience in battle: each surviving unit of a side gets
+`killed enemy HP x xpPercent / 100 / surviving units of the side`. A stack keeps the
+average per unit; recruits come in with 0 and merging averages by count.
+`thresholds` (ascending, one per star, up to 5) give the stars; `starBonuses` (one per
+star, cumulative) add to `attack`, `defense`, `initiative`, `battleSpeed` or `morale` in
+battle.

@@ -126,6 +126,7 @@ QJsonObject GameState::toJson() const {
             so.insert("unit", s.unitTypeId());
             so.insert("maxHp", s.maxHp());
             so.insert("totalHp", s.totalHp());
+            if (s.experience() > 0) so.insert("experience", s.experience());
             stacks.append(so);
         }
         o.insert("stacks", stacks);
@@ -395,10 +396,15 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
             const QString unit = sr.requireId("unit");
             const int maxHp = sr.requireInt("maxHp", 1, 100000000);
             const int totalHp = sr.requireInt("totalHp", 1, 2000000000);
+            const int experience = sr.optionalInt("experience", 0, 0, 100000000);
             sr.finish();
             if (sr.ok() && !content.unit(unit))
                 sr.addError(QStringLiteral("unknown unit '%1'").arg(unit));
-            if (sr.ok()) a.stacks.append(UnitStack::fromTotalHp(unit, totalHp, maxHp));
+            if (sr.ok()) {
+                UnitStack st = UnitStack::fromTotalHp(unit, totalHp, maxHp);
+                st.setExperience(experience);
+                a.stacks.append(st);
+            }
         }
         if (a.stacks.size() > kMaxArmyStacks)
             r.addError(QStringLiteral("more than %1 stacks").arg(kMaxArmyStacks));

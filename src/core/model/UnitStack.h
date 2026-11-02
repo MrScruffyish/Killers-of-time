@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <algorithm>
 
 namespace kot::core {
 
@@ -62,10 +63,17 @@ public:
     // Everyone alive back to full HP.
     void restoreFullHealth();
 
+    // Battle experience, the average per unit (veterancy stars come from it,
+    // core/rules/Veterancy.h). Fresh units have 0; adding or merging units averages
+    // by count, splitting keeps it.
+    int experience() const { return m_experience; }
+    void setExperience(int perUnit) { m_experience = std::max(0, perUnit); }
+
 private:
     QString m_unitTypeId;
     int m_maxHp = 1;
     int m_totalHp = 0;
+    int m_experience = 0;
 };
 
 }  // namespace kot::core

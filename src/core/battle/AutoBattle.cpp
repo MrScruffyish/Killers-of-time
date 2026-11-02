@@ -20,6 +20,17 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
     report.rounds = battle.round();
     BattleSide* sides[2] = {&report.attacker, &report.defender};
     int killedHp[2] = {0, 0};  // HP side s lost
+    // Veterancy: survivors gain experience from the enemy HP their side destroyed.
+    int lostHp[2] = {0, 0}, survivors[2] = {0, 0};
+    for (const BattleUnit& u : battle.units()) {
+        const Army* army = state.army(battle.army(u.side));
+        const int before = (army && u.armyIndex < army->stacks.size()) ? army->stacks[u.armyIndex].count() : 0;
+        lostHp[u.side] += std::max(0, before - u.stack.count()) * u.baseMaxHp;
+        survivors[u.side] += u.stack.count();
+    }
+    int gain[2];
+    for (int s = 0; s < 2; ++s)
+        gain[s] = survivors[s] > 0 ? lostHp[1 - s] * content.balance().veterancy.xpPercent / 100 / survivors[s] : 0;
     for (int s = 0; s < 2; ++s) {
         sides[s]->owner = battle.owner(s);
         sides[s]->hero = battle.hero(s);
@@ -36,6 +47,7 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
             // Back to the army's own max HP (the hero's bonus only counts in battle).
             stack = u.alive() ? UnitStack(stack.unitTypeId(), u.stack.count(), u.baseMaxHp)
                               : UnitStack::fromTotalHp(stack.unitTypeId(), 0, u.baseMaxHp);
+            stack.setExperience(u.stack.experience() + gain[s]);
         }
         army->removeEmptyStacks();
         for (UnitStack& st : army->stacks) st.restoreFullHealth();

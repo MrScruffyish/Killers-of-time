@@ -158,3 +158,4 @@ Saving is refused while a battle runs. A human who disconnects during a battle i
 battle AI.
 
 Lobby settings also have `difficulty` (`easy`/`normal`/`hard`/`expert`, host only); the game view has `difficulty`.
+Stacks in views and battle units may have `stars` (0..5, veterancy).

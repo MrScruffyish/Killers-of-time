@@ -368,6 +368,7 @@ void GamePage::updateHeroPanel() {
     if (army) {
         for (const ViewStack& s : army->stacks) {
             QString line = QStringLiteral("%1 x %2").arg(s.count).arg(unitName(s.unit));
+            if (s.stars > 0) line += QStringLiteral(" ") + QString(s.stars, QChar(0x2605));
             if (s.totalHp >= 0 && s.totalHp < s.count * s.maxHp) line += tr(" (wounded)");
             lines << line;
         }

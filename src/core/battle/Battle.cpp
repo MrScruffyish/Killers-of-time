@@ -8,6 +8,7 @@
 
 #include "core/content/ContentRegistry.h"
 #include "core/magic/Spells.h"
+#include "core/rules/Veterancy.h"
 
 namespace kot::core {
 
@@ -46,6 +47,10 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             // The hero's Hit Points: more HP per unit, same number of units.
             const int maxHp = effectiveMaxHp(s.maxHp(), HpBonus{0, hpPercent / 100.0});
             u.stack = UnitStack::fromTotalHp(s.unitTypeId(), s.totalHp() * maxHp / std::max(1, s.maxHp()), maxHp);
+            u.stack.setExperience(s.experience());
+            u.stars = veteranStars(s.experience(), content);
+            for (const char* stat : {"attack", "defense", "initiative", "battleSpeed", "morale"})
+                if (const int b = veteranBonus(u.stars, QString::fromLatin1(stat), content)) u.veteran.insert(QString::fromLatin1(stat), b);
             u.pos = Pos{side == 0 ? 0 : hex::kWidth - 1, rows[placed++ % 7]};
             u.shotsLeft = def->shots;
             m_units.append(u);
@@ -81,7 +86,7 @@ bool Battle::chance(int percent) {
 }
 
 int BattleUnit::modifier(const QString& stat) const {
-    int total = 0;
+    int total = veteran.value(stat);
     for (const StatModifier& m : modifiers)
         if (m.stat == stat) total += m.amount;
     return total;
@@ -267,13 +272,17 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
     if (isOver()) return {};
     // Good morale: sometimes the same stack acts once more.
     if (action.type != BattleAction::Type::Defend && me->alive() && !me->moraleUsed && !ignoresMorale(*me)
-        && m_morale[me->side] > 0 && chance(m_morale[me->side] * m_content.balance().battle.moralePercentPerPoint)) {
+        && moraleOf(*me) > 0 && chance(moraleOf(*me) * m_content.balance().battle.moralePercentPerPoint)) {
         me->moraleUsed = true;
         if (events) events->append({BattleEvent::Type::Morale, me->id, 0, me->pos, me->pos, 0, 0, {}});
         return {};
     }
     advance(events);
     return {};
+}
+
+int Battle::moraleOf(const BattleUnit& u) const {
+    return m_morale[u.side] + u.modifier(QStringLiteral("morale"));
 }
 
 bool Battle::ignoresMorale(const BattleUnit& u) const {
@@ -358,7 +367,9 @@ void Battle::startRound(QList<BattleEvent>* events) {
         if (u.alive()) alive.append(&u);
     }
     std::stable_sort(alive.begin(), alive.end(), [](const BattleUnit* a, const BattleUnit* b) {
-        if (a->def->initiative != b->def->initiative) return a->def->initiative > b->def->initiative;
+        const int ia = a->def->initiative + a->modifier(QStringLiteral("initiative"));
+        const int ib = b->def->initiative + b->modifier(QStringLiteral("initiative"));
+        if (ia != ib) return ia > ib;
         if (a->def->battleSpeed != b->def->battleSpeed) return a->def->battleSpeed > b->def->battleSpeed;
         if (a->side != b->side) return a->side < b->side;
         return a->id < b->id;
@@ -384,8 +395,8 @@ void Battle::settle(QList<BattleEvent>* events) {
             continue;
         }
         // Bad morale: the stack falters and loses its turn.
-        if (m_morale[u->side] < 0 && !ignoresMorale(*u)
-            && chance(-m_morale[u->side] * m_content.balance().battle.moralePercentPerPoint)) {
+        if (moraleOf(*u) < 0 && !ignoresMorale(*u)
+            && chance(-moraleOf(*u) * m_content.balance().battle.moralePercentPerPoint)) {
             if (events) events->append({BattleEvent::Type::Falter, u->id, 0, u->pos, u->pos, 0, 0, {}});
             ++m_orderPos;
             continue;
@@ -450,6 +461,7 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
         j.insert("y", u.pos.y);
         j.insert("shots", u.shotsLeft);
         j.insert("retaliated", u.retaliated);
+        if (u.stars > 0) j.insert("stars", u.stars);
         QJsonArray mods;
         for (const StatModifier& m : u.modifiers)
             mods.append(QJsonObject{{"stat", m.stat}, {"amount", m.amount}, {"rounds", m.roundsLeft}});

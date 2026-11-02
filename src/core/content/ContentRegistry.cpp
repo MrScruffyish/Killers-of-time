@@ -509,6 +509,8 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         ? top.requireObject(QStringLiteral("battle")) : QJsonObject();
     const QJsonObject difficulty = root.contains(QStringLiteral("difficulty"))
         ? top.requireObject(QStringLiteral("difficulty")) : QJsonObject();
+    const QJsonObject veterancy = root.contains(QStringLiteral("veterancy"))
+        ? top.requireObject(QStringLiteral("veterancy")) : QJsonObject();
     const QJsonObject aiSlot = root.contains(QStringLiteral("aiSlotDifficulty"))
         ? top.requireObject(QStringLiteral("aiSlotDifficulty")) : QJsonObject();
     top.finish();
@@ -533,6 +535,42 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         }
     };
     readLevels(difficulty, QStringLiteral("difficulty"), &m_balance.difficulty);
+    if (!veterancy.isEmpty()) {
+        JsonReader vr(veterancy, file + QStringLiteral("/veterancy"), &errors);
+        VeterancyBalance vb;
+        vb.xpPercent = vr.optionalInt(QStringLiteral("xpPercent"), vb.xpPercent, 0, 10000);
+        const QJsonArray th = vr.has(QStringLiteral("thresholds")) ? vr.requireArray(QStringLiteral("thresholds")) : QJsonArray();
+        const QJsonArray bonuses = vr.has(QStringLiteral("starBonuses")) ? vr.requireArray(QStringLiteral("starBonuses")) : QJsonArray();
+        vr.finish();
+        if (!th.isEmpty()) {
+            vb.thresholds.clear();
+            int previous = 0;
+            for (const QJsonValue& v : th) {
+                if (!v.isDouble() || v.toInt() <= previous) {
+                    vr.addError(QStringLiteral("thresholds must be ascending positive numbers"));
+                    break;
+                }
+                previous = v.toInt();
+                vb.thresholds << previous;
+            }
+        }
+        if (!bonuses.isEmpty()) {
+            vb.starBonuses.clear();
+            static const QStringList stats = {"attack", "defense", "initiative", "battleSpeed", "morale"};
+            for (const QJsonValue& v : bonuses) {
+                QMap<QString, int> m;
+                const QJsonObject o = v.toObject();
+                for (auto it = o.begin(); it != o.end(); ++it) {
+                    if (!stats.contains(it.key())) vr.addError(QStringLiteral("starBonuses: unknown stat '%1' (%2)").arg(it.key(), stats.join(", ")));
+                    m.insert(it.key(), it.value().toInt());
+                }
+                vb.starBonuses << m;
+            }
+        }
+        if (vb.starBonuses.size() < vb.thresholds.size())
+            vr.addError(QStringLiteral("starBonuses needs one entry per threshold"));
+        if (vr.ok()) m_balance.veterancy = vb;
+    }
     readLevels(aiSlot, QStringLiteral("aiSlotDifficulty"), &m_balance.aiSlot);
 
     {
