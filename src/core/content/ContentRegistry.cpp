@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <cmath>
 
+#include "core/content/ContentChecks.h"
 #include "core/data/JsonReader.h"
 
 namespace kot::core {
@@ -106,6 +107,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadProgression(dataDir, problems);
     loadBalance(dataDir, problems);
     if (problems.isEmpty()) validateReferences(problems);
+    if (problems.isEmpty()) problems << checkContentGraphs(*this);  // loops, unbuildable buildings
     if (!problems.isEmpty()) {
         clear();
         if (errors) *errors = problems;

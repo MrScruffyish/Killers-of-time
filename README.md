@@ -56,6 +56,11 @@ data/       game content (JSON), later
 docs/       protocol and data format docs, later
 ```
 
+## Content tools
+
+`kot_graph` draws building/unit/spell graphs (Graphviz, PDF) and checks the data for loops;
+see `docs/tools.md`.
+
 ## Commit messages
 
 Each delivery from Claude includes `COMMIT_MSG.txt` (ignored by git). One-time setup,

@@ -65,6 +65,8 @@ add_library(kot_core STATIC
     content/Defs.h
     content/ContentRegistry.h
     content/ContentRegistry.cpp
+    content/ContentChecks.h
+    content/ContentChecks.cpp
 )
 target_include_directories(kot_core PUBLIC ${KOT_SRC_DIR})
 target_link_libraries(kot_core PUBLIC Qt6::Core PRIVATE kot_warnings)

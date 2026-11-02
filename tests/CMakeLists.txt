@@ -75,3 +75,6 @@ target_compile_definitions(tst_races PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/d
 kot_add_test(tst_mapobjects)
 target_link_libraries(tst_mapobjects PRIVATE kot_core)
 target_compile_definitions(tst_mapobjects PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+# The content tools on the real data.
+add_test(NAME kot_graph_check COMMAND kot_graph check --data ${CMAKE_SOURCE_DIR}/data)
+add_test(NAME kot_graph_dot COMMAND kot_graph buildings --data ${CMAKE_SOURCE_DIR}/data -o ${CMAKE_BINARY_DIR}/buildings.dot)

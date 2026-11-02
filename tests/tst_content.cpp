@@ -294,6 +294,24 @@ private slots:
         expectError(tmp.path(), "both required and excluded");
     }
 
+    void buildingRequirementLoopsAreFound() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "buildings/a.json", R"({"id":"a","name":"A","race":"humans","requires":["b"]})");
+        writeFile(tmp.path(), "buildings/b.json", R"({"id":"b","name":"B","race":"humans","requires":["c"]})");
+        writeFile(tmp.path(), "buildings/c.json", R"({"id":"c","name":"C","race":"humans","requires":["a"]})");
+        expectError(tmp.path(), "requirement loop");
+    }
+
+    void unbuildableBuildingsAreFound() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "buildings/left.json", R"({"id":"left","name":"L","race":"humans","excludes":["right"]})");
+        writeFile(tmp.path(), "buildings/right.json", R"({"id":"right","name":"R","race":"humans"})");
+        writeFile(tmp.path(), "buildings/top.json", R"({"id":"top","name":"T","race":"humans","requires":["left","right"]})");
+        expectError(tmp.path(), "can never be built");
+    }
+
     void buildingUpgradeMustMatchUnitUpgrade() {
         QTemporaryDir tmp;
         writeValidData(tmp.path());
