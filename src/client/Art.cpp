@@ -1,5 +1,7 @@
 #include "client/Art.h"
 
+#include <QDir>
+#include <QFile>
 #include <QHash>
 #include <QPainter>
 #include <QPainterPath>
@@ -360,8 +362,30 @@ void drawUnitToken(QPainter& p, const QPointF& c, double rad, const QColor& side
     p.restore();
 }
 
+// Small arrow images for the style sheet (it cannot draw them itself).
+QString arrowFile(bool up) {
+    const QString dir = QDir::temp().filePath(QStringLiteral("kot_art"));
+    QDir().mkpath(dir);
+    const QString path = QDir(dir).filePath(up ? QStringLiteral("up.png") : QStringLiteral("down.png"));
+    if (!QFile::exists(path)) {
+        QPixmap pm(20, 20);
+        pm.fill(Qt::transparent);
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#e0c070"));
+        QPolygonF tri;
+        if (up) tri << QPointF(2, 15) << QPointF(18, 15) << QPointF(10, 5);
+        else tri << QPointF(2, 5) << QPointF(18, 5) << QPointF(10, 15);
+        p.drawPolygon(tri);
+        p.end();
+        pm.save(path);
+    }
+    return path;
+}
+
 QString styleSheet() {
-    return QStringLiteral(R"(
+    QString css = QStringLiteral(R"(
 QWidget { background-color: #2b2118; color: #eadfc8; font-size: 10pt; }
 QLabel { background: transparent; }
 QPushButton {
@@ -383,9 +407,23 @@ QHeaderView::section { background-color: #3a2c1e; color: #f0d898; border: 1px so
 QScrollBar:vertical, QScrollBar:horizontal { background: #1d1610; }
 QScrollBar::handle { background: #6b4a2b; border-radius: 4px; }
 QToolTip { background-color: #f1e4c0; color: #20180c; border: 1px solid #7a6235; }
-QCheckBox::indicator { width: 14px; height: 14px; }
+QComboBox { min-width: 7em; padding: 2px 22px 2px 6px; }
+QComboBox::drop-down { width: 18px; border-left: 1px solid #7a6235; }
+QComboBox::down-arrow { image: url(%DOWN%); width: 10px; height: 10px; }
+QSpinBox { padding-right: 18px; min-width: 3em; }
+QSpinBox::up-button, QSpinBox::down-button { width: 16px; background: #4a3119; border-left: 1px solid #7a6235; }
+QSpinBox::up-arrow { image: url(%UP%); width: 8px; height: 8px; }
+QSpinBox::down-arrow { image: url(%DOWN%); width: 8px; height: 8px; }
+QCheckBox { spacing: 6px; }
+QCheckBox::indicator { width: 15px; height: 15px; border: 1px solid #c9a24a; border-radius: 3px; background: #1d1610; }
+QCheckBox::indicator:checked { background: qradialgradient(cx:0.5, cy:0.5, radius:0.6, fx:0.5, fy:0.5,
+                               stop:0 #ffe07a, stop:0.55 #c9a24a, stop:0.6 #1d1610); }
+QCheckBox::indicator:disabled { border-color: #5e5030; }
 QDialog, QMessageBox { background-color: #2b2118; }
 )");
+    css.replace(QStringLiteral("%UP%"), arrowFile(true));
+    css.replace(QStringLiteral("%DOWN%"), arrowFile(false));
+    return css;
 }
 
 }  // namespace kot::client::art
