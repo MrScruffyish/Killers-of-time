@@ -87,7 +87,9 @@ void LobbyClient::onMessage(const Message& message) {
         m_aiProfiles.clear();
         for (const QJsonValue& v : message.body.value("aiProfiles").toArray()) m_aiProfiles << v.toString();
         m_welcomed = true;
+        m_freePlayers = message.body.value("freePlayers").toArray();
         emit connected();
+        if (message.body.contains("freePlayers")) emit playerChoiceOffered();
     } else if (message.type == msg::lobbyState) {
         LobbyState state;
         QStringList errors;
@@ -112,6 +114,9 @@ void LobbyClient::onMessage(const Message& message) {
         emit gameStateChanged();
     } else if (message.type == msg::commandResult) {
         emit commandResult(message.body.value("replyTo").toInt(0), message.body.value("info").toObject());
+    } else if (message.type == msg::gameLoaded) {
+        m_freePlayers = message.body.value("freePlayers").toArray();
+        emit playerChoiceOffered();
     } else if (message.type == msg::gameStarting) {
         LobbyState state;
         if (LobbyState::fromJson(message.body, &state, nullptr)) m_lobby = state;

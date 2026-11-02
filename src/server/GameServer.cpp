@@ -1,6 +1,8 @@
 #include "server/GameServer.h"
 
+#include <QDir>
 #include <QJsonArray>
+#include <QRegularExpression>
 
 #include "core/Version.h"
 #include "core/util/Log.h"
@@ -121,6 +123,7 @@ void GameServer::handleHello(Client& client, const Message& message) {
     welcome.body.insert("clientId", client.id);
     welcome.body.insert("races", QJsonArray::fromStringList(m_races));
     welcome.body.insert("aiProfiles", QJsonArray::fromStringList(m_aiProfiles));
+    if (m_session && m_session->active()) welcome.body.insert("freePlayers", freePlayersJson());
     client.connection->send(welcome);
     broadcastLobby();
     emit clientCountChanged(clientCount());
@@ -149,8 +152,13 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
         result = m_lobby.setReady(id, message.body.value("ready").toBool(false));
     } else if (message.type == net::msg::setSettings) {
         result = m_lobby.setSettings(id, message.body);
+    } else if (handleSaveOrJoin(client, message)) {
+        return;
     } else if (message.type == net::msg::startGame) {
-        result = m_lobby.start(id);
+        if (m_session && m_session->active())
+            result = LobbyResult::failure("game_running", "a game is already running");
+        else
+            result = m_lobby.start(id);
         startRequested = result.ok;
     } else if (m_session && m_session->active()) {
         const CommandResult command = m_session->handle(id, message);
@@ -202,13 +210,7 @@ void GameServer::startGame() {
     }
     if (m_session) {
         for (Client& c : m_clients) {
-            const core::PlayerId p = m_session->playerOfClient(c.id);
-            if (!c.greeted || !p.isValid()) continue;
-            Message started;
-            started.type = net::msg::gameStarted;
-            started.body.insert("you", m_session->youInfo(p));
-            started.body.insert("view", m_session->viewFor(p));
-            c.connection->send(started);
+            if (c.greeted && m_session->playerOfClient(c.id).isValid()) sendGameStarted(c);
         }
     }
     emit gameStartRequested(m_lobby.state());
@@ -224,6 +226,123 @@ void GameServer::sendGameStates() {
         state.body = m_session->viewFor(p);
         c.connection->send(state);
     }
+}
+
+void GameServer::sendGameStarted(Client& c) {
+    const core::PlayerId p = m_session->playerOfClient(c.id);
+    Message started;
+    started.type = net::msg::gameStarted;
+    started.body.insert("you", m_session->youInfo(p));
+    started.body.insert("view", m_session->viewFor(p));
+    c.connection->send(started);
+}
+
+void GameServer::reply(Client& client, const Message& request, const QJsonObject& info) {
+    Message m;
+    m.type = net::msg::commandResult;
+    m.body.insert("replyTo", request.seq);
+    m.body.insert("info", info);
+    client.connection->send(m);
+}
+
+QJsonArray GameServer::freePlayersJson() const {
+    QJsonArray list;
+    if (!m_session) return list;
+    for (const core::PlayerId p : m_session->freePlayers()) {
+        const core::Player* player = m_session->state().player(p);
+        list.append(QJsonObject{{"id", static_cast<int>(p.value())}, {"name", player ? player->name : QString()}});
+    }
+    return list;
+}
+
+QString GameServer::savePath(const QString& name, QString* error) const {
+    static const QRegularExpression valid(QStringLiteral("^[A-Za-z0-9_-]{1,40}$"));
+    if (!valid.match(name).hasMatch()) {
+        *error = QStringLiteral("a save name has 1-40 letters, digits, '_' or '-'");
+        return {};
+    }
+    if (m_saveDir.isEmpty() || !QDir().mkpath(m_saveDir)) {
+        *error = QStringLiteral("the server has no folder for saved games");
+        return {};
+    }
+    return QDir(m_saveDir).filePath(name + QStringLiteral(".json"));
+}
+
+bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
+    const bool running = m_session && m_session->active();
+    QString error;
+    if (message.type == net::msg::saveGame) {
+        if (!running || !m_session->playerOfClient(client.id).isValid()) {
+            sendError(client, "no_game", "you are not playing a game", message.seq);
+            return true;
+        }
+        const QString name = message.body.value("name").toString();
+        const QString path = savePath(name, &error);
+        if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) {
+            sendError(client, "failed", error, message.seq);
+            return true;
+        }
+        qCInfo(lcKotServer) << "Saved the game to" << path;
+        reply(client, message, {{"name", name}});
+        return true;
+    }
+    if (message.type == net::msg::listSaves) {
+        QStringList names;
+        if (!m_saveDir.isEmpty()) {
+            for (const QFileInfo& f : QDir(m_saveDir).entryInfoList({"*.json"}, QDir::Files, QDir::Time))
+                names << f.completeBaseName();
+        }
+        reply(client, message, {{"saves", QJsonArray::fromStringList(names)}});
+        return true;
+    }
+    if (message.type == net::msg::loadGame) {
+        if (running) {
+            sendError(client, "game_running", "a game is already running", message.seq);
+            return true;
+        }
+        if (m_lobby.hostId() != client.id) {
+            sendError(client, "not_host", "only the host can load a game", message.seq);
+            return true;
+        }
+        if (!m_content) {
+            sendError(client, "failed", "this server cannot run games", message.seq);
+            return true;
+        }
+        const QString path = savePath(message.body.value("name").toString(), &error);
+        core::GameState state;
+        QStringList errors;
+        if (path.isEmpty() || !core::GameState::loadFromFile(path, *m_content, &state, &errors)) {
+            sendError(client, "failed", path.isEmpty() ? error : errors.join("; "), message.seq);
+            return true;
+        }
+        m_session = std::make_unique<GameSession>(*m_content);
+        m_session->startFromState(std::move(state));
+        qCInfo(lcKotServer) << "Loaded the game" << path;
+        reply(client, message, {{"name", message.body.value("name").toString()}});
+        Message loaded;
+        loaded.type = net::msg::gameLoaded;
+        loaded.body.insert("freePlayers", freePlayersJson());
+        for (Client& c : m_clients) {
+            if (c.greeted) c.connection->send(loaded);
+        }
+        return true;
+    }
+    if (message.type == net::msg::joinGame) {
+        if (!running) {
+            sendError(client, "no_game", "no game is running", message.seq);
+            return true;
+        }
+        const core::PlayerId player(static_cast<quint32>(message.body.value("player").toInt()));
+        if (!m_session->joinPlayer(client.id, player, &error)) {
+            sendError(client, "failed", error, message.seq);
+            return true;
+        }
+        reply(client, message, {{"player", static_cast<int>(player.value())}});
+        sendGameStarted(client);
+        sendGameStates();
+        return true;
+    }
+    return false;
 }
 
 }  // namespace kot::server

@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-02 (session 17, first Claude Code session)
 **Current milestone:** thin playable slice done (connect -> lobby -> map -> move -> town -> end turn, all with placeholder graphics). Now: close the game loop breadth-first (see "Order of work"); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** save and load a running game on the server, reconnect (step 5); then start on depth
+**Next session should do:** the thin game loop is complete. Start on depth (step 6): user picks the order; suggestion: hex battles (M6) or a playtest round first
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -64,7 +64,7 @@
 - [x] Start the game: `core/rules/GameSetup::createGame` (map from the lobby settings, spread-out start towns, a tavern hero with the class starting army, starting resources, neutral mines and map dwellings, everyone initialised). AI players are the passive AI (they just end their turn).
 - [x] Commands over the network (`server/GameSession`): 14 commands (see docs/protocol.md), only on your turn, own things only; `command_result` to the sender and a fresh filtered `game_state` to everyone; `core/model/PlayerView` filters by team (unexplored tiles masked, enemies only in sight and without secrets)
 - [ ] Client: real connect and lobby screens (M5 has the map)
-- [~] Disconnect during a game: the player becomes passive AI and the game goes on (done); reconnecting to take the player back (todo)
+- [x] Disconnect during a game: the player becomes passive AI and the game goes on; reconnecting takes the player back (`join_game`)
 
 ## Order of work (breadth first, agreed in session 16)
 Get every part of the game working in a thin, simple form first, so there is something to try
@@ -73,7 +73,7 @@ and react to; add depth afterwards.
 2. [x] Basic battles (`core/battle/AutoBattle`): attack enemy heroes, defended towns and neutral monsters by moving onto them; auto-resolved rounds (initiative order, most dangerous target, ranged shots, one retaliation per round, attack-defense damage formula, hero Attack/Defense), survivors heal (D18), loser army and hero removed, garrison only emptied, XP to the winner; neutral monster armies placed at game start; result in the log and a battle box in the client. Tests: `tst_battle` (29 test programs). Later: hero HP/morale/luck traits, defender notification, monster guards next to mines
 3. [x] Simple AI player (`ai/SimpleAi`, profile "simple", the lobby default): plays through the same commands as humans (`IAiPlayer::nextCommand`, run by `GameSession::playAiTurn`, max 200 commands per turn); level-up picks, build then buy, hire heroes, heroes take the garrison along, go for visible mines/dwellings/towns/weaker armies, else explore; own seeded RNG, partly random. Only uses what its team sees (`AiView`). Tests: `tst_ai` (30 test programs). Later: spend its gold, defend towns, difficulty bonuses
 4. [x] Game end (`core/rules/Victory`): a player with no towns and no heroes is out (derived, not stored) and skipped in the turn order; last team standing wins; the view has `eliminated` per player and `gameOver`/`winnerTeam`; the server refuses commands with `game_over`; the client announces defeat/victory. Tests: `tst_victory` (31 test programs). Later: other victory conditions, a lost player watching on
-5. [ ] Save and load a running game on the server; reconnect to a running game
+5. [x] Save and load a running game on the server (`save_game`/`list_saves`/`load_game`, `--saves <dir>`), take over a free human player (`join_game`; reconnect after leaving, or after a load). Client: Save game button, Load game in the lobby (host), player choice when joining a running game. Tests: two cases in `tst_network`. Later: passwords/tokens, AI RNG state in saves, autosave
 6. [ ] Then depth: hex tactical battles with UI (M6), spells (M7), more races and balance (M8), better AI (M9), polish and art (M10)
 
 ## M5: Playable adventure map client
@@ -159,7 +159,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
-- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing).
+- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.

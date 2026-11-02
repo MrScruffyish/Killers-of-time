@@ -1,4 +1,5 @@
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QtEndian>
 #include <QtTest>
 #include <memory>
@@ -60,6 +61,19 @@ class TstNetwork : public QObject {
         auto c = std::make_unique<LobbyClient>();
         c->connectToServer("127.0.0.1", server->port(), name);
         return c;
+    }
+
+    // Ann and Bob start a game; returns their player ids.
+    QPair<int, int> startTwoPlayerGame(LobbyClient& a, LobbyClient& b) {
+        [&]() {
+            QTRY_COMPARE_WITH_TIMEOUT(b.lobby().members.size(), 2, 3000);
+            a.setReady(true);
+            b.setReady(true);
+            QTRY_VERIFY_WITH_TIMEOUT(a.lobby().slotList[1].ready && a.lobby().slotList[0].ready, 3000);
+            a.startGame();
+            QTRY_VERIFY_WITH_TIMEOUT(!a.view().isEmpty() && !b.view().isEmpty(), 3000);
+        }();
+        return {a.you()["playerId"].toInt(), b.you()["playerId"].toInt()};
     }
 
 private slots:
@@ -296,6 +310,85 @@ private slots:
         a->sendCommand(msg::endTurn);  // Bob is now automatic, so it is Ann's turn again on day 2
         QTRY_COMPARE_WITH_TIMEOUT(a->view()["day"].toInt(), 2, 3000);
         QCOMPARE(a->view()["currentPlayer"].toInt(), idA);
+    }
+
+    void aPlayerWhoLeftCanComeBack() {
+        server->setContent(&content);
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        const auto [idA, idB] = startTwoPlayerGame(*a, *b);
+        QVERIFY(idA > 0 && idB > 0);
+        b->disconnectFromServer();
+        QTRY_COMPARE_WITH_TIMEOUT(server->clientCount(), 1, 3000);
+
+        auto b2 = connectClient("Bob again");
+        QSignalSpy offered(b2.get(), &LobbyClient::playerChoiceOffered);
+        QTRY_COMPARE_WITH_TIMEOUT(offered.count(), 1, 3000);
+        QCOMPARE(b2->freePlayers().size(), 1);
+        QCOMPARE(b2->freePlayers()[0].toObject()["id"].toInt(), idB);
+        b2->joinGame(idB);
+        QTRY_COMPARE_WITH_TIMEOUT(b2->you()["playerId"].toInt(), idB, 3000);
+        QCOMPARE(b2->view()["you"].toInt(), idB);
+
+        // Bob plays again: after Ann's turn it is his.
+        a->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(b2->view()["currentPlayer"].toInt(), idB, 3000);
+
+        // Nobody can take a player who is already played.
+        auto c = connectClient("Cid");
+        QString code;
+        connect(c.get(), &LobbyClient::errorReceived, this, [&](const QString& cd, const QString&, int) { code = cd; });
+        QTRY_VERIFY_WITH_TIMEOUT(c->isConnected(), 3000);
+        QVERIFY(c->freePlayers().isEmpty());
+        c->joinGame(idA);
+        QTRY_COMPARE_WITH_TIMEOUT(code, QString("failed"), 3000);
+    }
+
+    void saveAndLoadARunningGame() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        const auto [idA, idB] = startTwoPlayerGame(*a, *b);
+        a->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(b->view()["currentPlayer"].toInt(), idB, 3000);
+
+        QJsonObject info;
+        connect(b.get(), &LobbyClient::commandResult, this, [&](int, const QJsonObject& i) { info = i; });
+        QString code;
+        connect(b.get(), &LobbyClient::errorReceived, this, [&](const QString& c, const QString&, int) { code = c; });
+        b->saveGame("../evil");
+        QTRY_COMPARE_WITH_TIMEOUT(code, QString("failed"), 3000);
+        b->saveGame("my-game_1");
+        QTRY_COMPARE_WITH_TIMEOUT(info["name"].toString(), QString("my-game_1"), 3000);
+        const QJsonObject savedView = b->view();
+        b->listSaves();
+        QTRY_COMPARE_WITH_TIMEOUT(info["saves"].toArray().size(), 1, 3000);
+
+        // A fresh server loads it; both players take their places again.
+        a.reset();
+        b.reset();
+        server.reset(new GameServer({"humans"}, {"simple", "passive"}));
+        QVERIFY(server->start(0));
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a2 = connectClient("Ann");
+        auto b2 = connectClient("Bob");
+        QTRY_COMPARE_WITH_TIMEOUT(b2->lobby().members.size(), 2, 3000);
+        QSignalSpy offeredB(b2.get(), &LobbyClient::playerChoiceOffered);
+        a2->loadGame("my-game_1");
+        QTRY_COMPARE_WITH_TIMEOUT(offeredB.count(), 1, 3000);
+        QCOMPARE(b2->freePlayers().size(), 2);
+        b2->joinGame(idB);
+        a2->joinGame(idA);
+        QTRY_COMPARE_WITH_TIMEOUT(b2->you()["playerId"].toInt(), idB, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(a2->you()["playerId"].toInt(), idA, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(b2->view()["currentPlayer"].toInt(), idB, 3000);
+        QCOMPARE(b2->view()["day"].toInt(), savedView["day"].toInt());
+        QCOMPARE(b2->view()["heroes"], savedView["heroes"]);
+        b2->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(a2->view()["day"].toInt(), 2, 3000);
     }
 
     void connectingToNothingReportsAFailure() {

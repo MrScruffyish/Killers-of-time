@@ -7,6 +7,7 @@
 #include <QInputDialog>
 #include <QJsonArray>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPlainTextEdit>
@@ -58,6 +59,15 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_buyAll->setObjectName("buyAllButton");
     m_sendUnits = new QPushButton(tr("Send dwelling units to closest town"), this);
     m_sendUnits->setObjectName("sendUnitsButton");
+    auto* save = new QPushButton(tr("Save game..."), this);
+    save->setObjectName("saveButton");
+    side->addWidget(save);
+    connect(save, &QPushButton::clicked, this, [this]() {
+        bool ok = false;
+        const QString name = QInputDialog::getText(this, tr("Save game"), tr("Name (letters, digits, _ and -):"),
+                                                   QLineEdit::Normal, tr("day%1").arg(m_view.day), &ok);
+        if (ok && !name.isEmpty()) send(net::msg::saveGame, {{"name", name}}, tr("Save"));
+    });
     m_endTurn = new QPushButton(tr("End turn"), this);
     m_endTurn->setObjectName("endTurnButton");
     side->addWidget(m_buildAndBuy);
@@ -321,6 +331,7 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
         return text;
     }
     if (type == net::msg::endTurn) return tr("day %1").arg(info["day"].toInt());
+    if (type == net::msg::saveGame) return tr("saved as \"%1\" on the server").arg(info["name"].toString());
     if (type == net::msg::buyAllUnits) {
         return tr("bought %1 units").arg(info["unitsBought"].toInt());
     }

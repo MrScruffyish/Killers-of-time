@@ -130,6 +130,44 @@ void GameSession::playAiTurn(PlayerId player, ai::IAiPlayer& ai) {
     qCWarning(lcKotServer) << "AI" << ai.profileName() << "used up its command budget";
 }
 
+void GameSession::startFromState(GameState state) {
+    m_state = std::move(state);
+    m_clientPlayers.clear();
+    m_autoPlayers.clear();
+    int i = 0;
+    for (const Player& p : m_state.players()) {
+        ++i;
+        if (p.controller == Player::Controller::Ai)
+            m_autoPlayers.insert(p.id, ai::createAi(p.aiProfile, m_state.rng().seed() ^ (0x9e3779b97f4a7c15ULL * i)));
+        // Humans are free: the game waits for them (they are not skipped like players who left).
+    }
+    m_active = true;
+    // No automatic turns yet: they start when the first human joins.
+}
+
+QList<PlayerId> GameSession::freePlayers() const {
+    QList<PlayerId> free;
+    for (const Player& p : m_state.players()) {
+        if (p.controller == Player::Controller::Human && !m_clientPlayers.values().contains(p.id)) free.append(p.id);
+    }
+    return free;
+}
+
+bool GameSession::joinPlayer(int clientId, PlayerId player, QString* error) {
+    if (m_clientPlayers.contains(clientId)) {
+        if (error) *error = QStringLiteral("you already play in this game");
+        return false;
+    }
+    if (!freePlayers().contains(player)) {
+        if (error) *error = QStringLiteral("that player is not free");
+        return false;
+    }
+    m_autoPlayers.remove(player);
+    m_clientPlayers.insert(clientId, player);
+    playAutoTurns();
+    return true;
+}
+
 void GameSession::clientLeft(int clientId) {
     const PlayerId p = m_clientPlayers.take(clientId);
     if (!p.isValid()) return;

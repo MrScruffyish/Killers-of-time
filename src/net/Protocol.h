@@ -35,6 +35,11 @@ inline const QString buyAllUnits = QStringLiteral("buy_all_units");
 inline const QString autoBuild = QStringLiteral("auto_build");
 inline const QString buildThenBuy = QStringLiteral("build_then_buy");
 inline const QString sendDwellingUnits = QStringLiteral("send_dwelling_units");
+// client -> server: saved games and taking over players (any time after hello)
+inline const QString saveGame = QStringLiteral("save_game");      // a player in the running game
+inline const QString listSaves = QStringLiteral("list_saves");
+inline const QString loadGame = QStringLiteral("load_game");      // the host, in the lobby
+inline const QString joinGame = QStringLiteral("join_game");      // take over a free human player
 // server -> client
 inline const QString welcome = QStringLiteral("welcome");
 inline const QString lobbyState = QStringLiteral("lobby_state");
@@ -42,6 +47,7 @@ inline const QString gameStarting = QStringLiteral("game_starting");
 inline const QString error = QStringLiteral("error");
 inline const QString pong = QStringLiteral("pong");
 inline const QString gameStarted = QStringLiteral("game_started");   // you + your view
+inline const QString gameLoaded = QStringLiteral("game_loaded");     // freePlayers to choose from
 inline const QString gameState = QStringLiteral("game_state");       // your view, after every change
 inline const QString commandResult = QStringLiteral("command_result");  // replyTo + info
 }  // namespace msg

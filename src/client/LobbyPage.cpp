@@ -9,6 +9,9 @@
 #include <QLineEdit>
 #include <QPixmap>
 #include <QPushButton>
+#include <QMessageBox>
+#include <QJsonArray>
+#include <QInputDialog>
 #include <QSpinBox>
 #include <QVBoxLayout>
 
@@ -60,6 +63,9 @@ LobbyPage::LobbyPage(net::LobbyClient* client, QWidget* parent) : QWidget(parent
     auto* buttons = new QHBoxLayout();
     auto* leave = new QPushButton(tr("Leave"), this);
     leave->setObjectName("leaveButton");
+    m_load = new QPushButton(tr("Load game..."), this);
+    m_load->setObjectName("loadButton");
+    buttons->addWidget(m_load);
     m_start = new QPushButton(tr("Start game"), this);
     m_start->setObjectName("startButton");
     buttons->addWidget(leave);
@@ -69,6 +75,20 @@ LobbyPage::LobbyPage(net::LobbyClient* client, QWidget* parent) : QWidget(parent
 
     connect(leave, &QPushButton::clicked, this, &LobbyPage::leaveRequested);
     connect(m_start, &QPushButton::clicked, this, [this]() { m_client->startGame(); });
+    connect(m_load, &QPushButton::clicked, this, [this]() { m_listSavesSeq = m_client->listSaves(); });
+    connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
+        if (replyTo == 0 || replyTo != m_listSavesSeq) return;
+        m_listSavesSeq = 0;
+        QStringList saves;
+        for (const QJsonValue& v : info["saves"].toArray()) saves << v.toString();
+        if (saves.isEmpty()) {
+            QMessageBox::information(this, tr("Load game"), tr("There are no saved games on the server."));
+            return;
+        }
+        bool ok = false;
+        const QString name = QInputDialog::getItem(this, tr("Load game"), tr("Saved game:"), saves, 0, false, &ok);
+        if (ok) m_client->loadGame(name);
+    });
     // Only send what the user really changed (editingFinished also fires when focus just moves away).
     connect(m_width, &QSpinBox::editingFinished, this, [this]() {
         if (m_width->value() != m_client->lobby().settings.mapWidth) m_client->setSettings({{"mapWidth", m_width->value()}});
@@ -106,6 +126,7 @@ void LobbyPage::rebuild() {
     for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed)})
         w->setEnabled(host);
     m_start->setEnabled(host);
+    m_load->setEnabled(host);
     m_start->setToolTip(host ? QString() : tr("Only the host can start the game"));
 
     // Slot table: rebuilt from scratch every time.

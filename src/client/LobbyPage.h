@@ -17,6 +17,7 @@ class LobbyPage : public QWidget {
     Q_OBJECT
 public:
     explicit LobbyPage(net::LobbyClient* client, QWidget* parent = nullptr);
+    void showError(const QString& text);
 
 signals:
     void leaveRequested();
@@ -25,7 +26,6 @@ private slots:
     void rebuild();
 
 private:
-    void showError(const QString& text);
 
     net::LobbyClient* m_client;
     QWidget* m_slotHolder;
@@ -34,6 +34,8 @@ private:
     QSpinBox* m_height;
     QLineEdit* m_seed;
     QPushButton* m_start;
+    QPushButton* m_load;
+    int m_listSavesSeq = 0;
     QLabel* m_status;
 };
 

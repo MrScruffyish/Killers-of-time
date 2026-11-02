@@ -2,6 +2,9 @@
 
 #include <QCoreApplication>
 #include <QFileInfo>
+#include <QInputDialog>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QStackedWidget>
 #include <QTimer>
 
@@ -52,6 +55,21 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         m_game = new GamePage(&m_client, &m_content, this);
         m_pages->addWidget(m_game);
         m_pages->setCurrentWidget(m_game);
+    });
+    connect(&m_client, &net::LobbyClient::playerChoiceOffered, this, [this]() {
+        QStringList names;
+        QList<int> ids;
+        for (const QJsonValue& v : m_client.freePlayers()) {
+            names << v.toObject()["name"].toString();
+            ids << v.toObject()["id"].toInt();
+        }
+        if (names.isEmpty()) {
+            m_lobby->showError(tr("A game is running and every player is taken."));
+            return;
+        }
+        bool ok = false;
+        const QString chosen = QInputDialog::getItem(this, tr("Join the game"), tr("A game is running. Play as:"), names, 0, false, &ok);
+        if (ok) m_client.joinGame(ids[names.indexOf(chosen)]);
     });
     connect(&m_client, &net::LobbyClient::connectionFailed, this,
             [this](const QString& why) { showConnect(tr("Connection problem: %1").arg(why), true); });

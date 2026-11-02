@@ -33,6 +33,10 @@ public:
 
     // Creates the game from the finished lobby. On failure `error` says why.
     bool start(const net::LobbyState& lobby, QString* error);
+    // Continues a saved game. AI players get their AI profile again; every human
+    // player starts free and the game waits on his turn until someone takes him
+    // over (joinPlayer). Players who leave later are skipped as before.
+    void startFromState(core::GameState state);
     bool active() const { return m_active; }
 
     core::GameState& state() { return m_state; }
@@ -43,6 +47,10 @@ public:
     CommandResult handle(int clientId, const net::Message& command);
     // A human left: his player is now played by the passive AI (the game goes on).
     void clientLeft(int clientId);
+    // Human players nobody plays right now (left, or not taken yet after loading).
+    QList<core::PlayerId> freePlayers() const;
+    // A client takes over a free human player. Fills `error` when that is not possible.
+    bool joinPlayer(int clientId, core::PlayerId player, QString* error);
 
     QJsonObject viewFor(core::PlayerId player) const;
     QJsonObject youInfo(core::PlayerId player) const;

@@ -106,12 +106,23 @@ When the game is over every command is refused with code `game_over`.
 
 `town` omitted means all of the player's towns for the one-click actions.
 
-### Leaving
+### Leaving, coming back, saved games
 A player who disconnects during the game is played by the passive AI from then on (the game
-continues). Reconnecting comes later.
+continues; his turns are skipped).
+
+| Type | Fields | Reply (`command_result` info) / notes |
+|---|---|---|
+| `join_game` | `player` | `player`; then `game_started` to you and new views to all. Only a free human player (nobody plays him now). |
+| `save_game` | `name` (1-40 of `A-Za-z0-9_-`) | `name`. Any player of the running game, any time. Saved on the server (`--saves <dir>`, default the app data folder). |
+| `list_saves` | | `saves` (names, newest first) |
+| `load_game` | `name` | `name`. Host only, no game running. Then everyone gets `game_loaded` {`freePlayers`}. |
+
+`welcome` has `freePlayers` (`[{id, name}]`) when a game is running: a client joining late (or
+coming back) picks one with `join_game`. After loading, all humans are free and the game waits on
+a free human's turn until someone takes him over. No passwords yet: anyone can take a free player.
 
 ## Coming next
-Battles and attacking, spells, reconnecting, saving a running game on the server.
+Hex battles with a UI, spells.
 
 ### Battles (auto-resolved, first version)
 Moving onto a tile with hostile armies (enemy heroes, neutral monsters, a defended town)

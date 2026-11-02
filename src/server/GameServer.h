@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include <QJsonArray>
 #include <QObject>
 #include <QStringList>
 #include <QTcpServer>
@@ -31,6 +32,9 @@ public:
     // Without it (some tests) the server only runs the lobby.
     void setContent(const core::ContentRegistry* content) { m_content = content; }
     const GameSession* session() const { return m_session.get(); }
+    // Folder for saved games (created when needed).
+    void setSaveDir(const QString& dir) { m_saveDir = dir; }
+    const QString& saveDir() const { return m_saveDir; }
 
 signals:
     void clientCountChanged(int count);
@@ -55,6 +59,12 @@ private:
     void broadcastLobby();
     void startGame();
     void sendGameStates();
+    // Saved games, joining a running game. Return true if the message was one of these.
+    bool handleSaveOrJoin(Client& client, const net::Message& message);
+    void reply(Client& client, const net::Message& request, const QJsonObject& info);
+    QJsonArray freePlayersJson() const;
+    QString savePath(const QString& name, QString* error) const;
+    void sendGameStarted(Client& client);
 
     QTcpServer m_server;
     QStringList m_races;
@@ -64,6 +74,7 @@ private:
     const core::ContentRegistry* m_content = nullptr;
     std::unique_ptr<GameSession> m_session;
     int m_nextClientId = 1;
+    QString m_saveDir;
 };
 
 }  // namespace kot::server

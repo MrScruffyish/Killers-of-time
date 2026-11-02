@@ -1,5 +1,6 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
+#include <QStandardPaths>
 
 #include "ai/AiFactory.h"
 #include "core/Version.h"
@@ -25,8 +26,12 @@ int main(int argc, char* argv[]) {
     QCommandLineOption dataOption(QStringList{QStringLiteral("d"), QStringLiteral("data")},
                                   QStringLiteral("Game data directory (default: found automatically)."),
                                   QStringLiteral("dir"));
+    QCommandLineOption savesOption(QStringList{QStringLiteral("s"), QStringLiteral("saves")},
+                                   QStringLiteral("Folder for saved games (default: the user's app data folder)."),
+                                   QStringLiteral("dir"));
     parser.addOption(portOption);
     parser.addOption(dataOption);
+    parser.addOption(savesOption);
     parser.process(app);
 
     bool ok = false;
@@ -52,6 +57,11 @@ int main(int argc, char* argv[]) {
 
     kot::server::GameServer server(content.raceIds(), kot::ai::aiProfileNames());
     server.setContent(&content);
+    const QString saves = parser.isSet(savesOption)
+        ? parser.value(savesOption)
+        : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/saves");
+    server.setSaveDir(saves);
+    qCInfo(lcKotServer) << "Saved games go to" << saves;
     if (!server.start(static_cast<quint16>(port))) return 1;
     return app.exec();
 }

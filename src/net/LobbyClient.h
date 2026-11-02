@@ -1,10 +1,12 @@
 #pragma once
 
+#include <QJsonArray>
 #include <QObject>
 #include <QStringList>
 
 #include "net/Connection.h"
 #include "net/LobbyTypes.h"
+#include "net/Protocol.h"
 
 namespace kot::net {
 
@@ -35,6 +37,13 @@ public:
     int ping();
     // Any game command, e.g. sendCommand(msg::moveHero, {{"hero", 5}, {"x", 3}, {"y", 4}}).
     int sendCommand(const QString& type, const QJsonObject& body = {});
+    // Saved games and taking over a player of a running game (results: commandResult / errorReceived).
+    int saveGame(const QString& name) { return send(msg::saveGame, {{"name", name}}); }
+    int listSaves() { return send(msg::listSaves); }
+    int loadGame(const QString& name) { return send(msg::loadGame, {{"name", name}}); }
+    int joinGame(int playerId) { return send(msg::joinGame, {{"player", playerId}}); }
+    // Players of a running game nobody plays now: [{id, name}] (from welcome or game_loaded).
+    const QJsonArray& freePlayers() const { return m_freePlayers; }
     // The latest view the server sent (empty before the game starts) and who we are.
     const QJsonObject& view() const { return m_view; }
     const QJsonObject& you() const { return m_you; }
@@ -47,6 +56,8 @@ signals:
     void gameStarted();                                  // first view received
     void gameStateChanged();                             // a new view received
     void commandResult(int replyTo, const QJsonObject& info);
+    // A game is running (we joined late) or was loaded: pick one of freePlayers() with joinGame().
+    void playerChoiceOffered();
     void connectionFailed(const QString& reason);  // could not connect or lost the server
     void disconnected();
 
@@ -64,6 +75,7 @@ private:
     QStringList m_aiProfiles;
     QJsonObject m_view;
     QJsonObject m_you;
+    QJsonArray m_freePlayers;
 };
 
 }  // namespace kot::net
