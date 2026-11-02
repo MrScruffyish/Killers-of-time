@@ -4,14 +4,13 @@
   "race": "neutral",
   "tier": 1,
   "attack": 3,
-  "defense": 8,
+  "defense": 9,
   "damageMin": 1,
   "damageMax": 3,
   "maxHp": 30,
   "battleSpeed": 1,
   "weeklyGrowth": 6,
   "cost": {
-    "gold": 60,
-    "stone": 1
+    "gold": 60
   }
 }

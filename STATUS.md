@@ -130,7 +130,8 @@ and react to; add depth afterwards.
 - [ ] Save/load game over server, reconnect
 - [ ] Map editor
 - [ ] Better art, sound, 2.5D projection decision
-- [ ] Balance pass, playtesting, packaging/installers
+- [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
+- [ ] Playtesting, packaging/installers
 
 ---
 

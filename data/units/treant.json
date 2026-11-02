@@ -7,8 +7,8 @@
   "defense": 12,
   "damageMin": 5,
   "damageMax": 8,
-  "maxHp": 50,
-  "battleSpeed": 2,
+  "maxHp": 60,
+  "battleSpeed": 3,
   "weeklyGrowth": 3,
   "cost": {
     "gold": 400,

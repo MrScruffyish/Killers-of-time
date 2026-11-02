@@ -5,13 +5,13 @@
   "tier": 4,
   "attack": 15,
   "defense": 12,
-  "damageMin": 15,
-  "damageMax": 25,
-  "maxHp": 120,
+  "damageMin": 12,
+  "damageMax": 20,
+  "maxHp": 110,
   "battleSpeed": 9,
   "weeklyGrowth": 1,
   "cost": {
-    "gold": 1800,
+    "gold": 1500,
     "mercury": 1
   },
   "initiative": 10,

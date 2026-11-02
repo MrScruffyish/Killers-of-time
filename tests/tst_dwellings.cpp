@@ -52,7 +52,7 @@ private slots:
         QVERIFY2(r.ok, qPrintable(r.error));
         QCOMPARE(gs.army(army)->totalUnits(), 3);
         QCOMPARE(gs.mapDwelling(d)->available, 7);
-        QCOMPARE(me().resources.value("gold"), 10000 - 90);
+        QCOMPARE(me().resources.value("gold"), 10000 - 3 * reg.unit("pikeman")->cost.value("gold"));
     }
 
     void recruitAtDwellingRejections() {

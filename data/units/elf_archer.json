@@ -11,8 +11,7 @@
   "battleSpeed": 6,
   "weeklyGrowth": 7,
   "cost": {
-    "gold": 120,
-    "wood": 1
+    "gold": 110
   },
   "range": 10,
   "shots": 16,

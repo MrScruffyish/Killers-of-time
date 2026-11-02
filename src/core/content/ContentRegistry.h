@@ -41,6 +41,9 @@ public:
     const BuildingDef* building(const QString& id) const;
     const HeroTemplateDef* heroTemplate(const QString& id) const;
     const SpellDef* spell(const QString& id) const;
+    // Tools only (kot_balance_gui): change a loaded unit's numbers in memory.
+    void replaceUnit(const UnitDef& unit) { if (m_units.contains(unit.id)) m_units[unit.id] = unit; }
+    void replaceResource(const ResourceDef& r) { if (m_resources.contains(r.id)) m_resources[r.id] = r; }
     const ArtifactDef* artifact(const QString& id) const;
     const QMap<QString, ArtifactDef>& artifacts() const { return m_artifacts; }
     // The race's data, or defaults (no bonuses) for a race without a file.

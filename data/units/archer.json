@@ -6,14 +6,13 @@
   "attack": 6,
   "defense": 3,
   "damageMin": 2,
-  "damageMax": 3,
+  "damageMax": 4,
   "maxHp": 10,
   "battleSpeed": 4,
   "range": 10,
   "shots": 12,
   "weeklyGrowth": 8,
   "cost": {
-    "gold": 100,
-    "wood": 1
+    "gold": 100
   }
 }

@@ -25,3 +25,30 @@ kot_graph check
   never be built (they need things of another race, or two things that exclude each
   other). Exit code 1 when it finds something. The same checks run whenever the game
   loads its data, so broken data never reaches a game.
+
+## kot_balance: balance numbers
+
+```
+kot_balance units [--race id] [--csv]          power and cost of every unit, outliers marked
+kot_balance races [--csv]                      a week of each race's dwellings: power and cost
+kot_balance duel <unitA> <unitB> [--gold n] [--runs n]
+kot_balance duels [--tier n] [--gold n] [--runs n] [--csv]
+```
+- Power is a rough fighting value: HP x average damage x (1 + 5% per attack + defense
+  point), weighted up for ranged, flying, double attack and no retaliation.
+- Costs count other resources at their trade `value` from `resources.json`, so those
+  values are part of balancing too.
+- `units` marks units whose power per gold is more than 1.5x away from the median of
+  their tier.
+- Duels: two armies of equal cost (the budget grows so each side has at least 6 units)
+  fight with the real battle rules and the battle AI, without heroes, half of the battles
+  with each side attacking. Pairs where one side wins more than 75% are marked.
+
+## kot_balance_gui: tweaking
+
+`kot_balance_gui [--data dir]`: a table of all units where the numbers (tier, attack,
+defense, damage, HP, speed, initiative, growth, gold cost) can be edited; power, cost and
+the race summary update at once, the Resources tab edits the trade values, and "Run
+duels" plays the equal-cost duels for a tier. "Save" writes the changed numbers into
+`data/units/<id>.json` and `resources.json` (other fields are kept) and reloads, so the
+game's own data checks run again.
