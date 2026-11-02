@@ -5,6 +5,7 @@
 #include <climits>
 
 #include "core/content/ContentRegistry.h"
+#include "core/battle/AutoBattle.h"
 #include "core/rules/Vision.h"
 
 namespace kot::core {
@@ -74,18 +75,24 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     for (MapDwelling& d : state.mapDwellings()) {
         if (d.pos == target) targetDwelling = &d;
     }
+    // Hostile armies on the target are attacked: visiting heroes first, then a town's garrison.
+    QList<ArmyId> defenders;
     for (const Army& a : state.armies()) {
         if (a.id == army->id || a.pos != target) continue;
         if (targetTown && a.id == targetTown->garrison) continue;  // checked below
-        result.error = QStringLiteral("target tile is occupied");
-        return result;
+        if (!state.isHostile(a.owner, hero->owner)) {
+            result.error = QStringLiteral("target tile is occupied");
+            return result;
+        }
+        defenders.append(a.id);
     }
     if (targetTown && state.isHostile(targetTown->owner, hero->owner)) {
         const Army* garrison = state.army(targetTown->garrison);
-        if (garrison && garrison->totalUnits() > 0) {
-            result.error = QStringLiteral("the town is defended (battles are not implemented yet)");
-            return result;
-        }
+        if (garrison && garrison->totalUnits() > 0) defenders.append(garrison->id);
+    }
+    if (!defenders.isEmpty() && army->totalUnits() == 0) {
+        result.error = QStringLiteral("the hero has no units to fight with");
+        return result;
     }
 
     const MoveCostGrid grid(state.map(), content, mode);
@@ -108,11 +115,37 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     result.ok = true;
     result.stepsTaken = steps;
     result.movementSpent = path.cumulativeCost[steps - 1];
-    result.arrived = (steps == path.steps.size());
-    army->pos = path.steps[steps - 1];
+    const bool reached = (steps == path.steps.size());
     hero->movementPoints -= result.movementSpent;
+    const PlayerId owner = hero->owner;
+    const HeroId heroIdCopy = hero->id;
+    const ArmyId armyId = army->id;
 
-    if (result.arrived) {
+    bool won = true;
+    if (reached && !defenders.isEmpty()) {
+        // Attacking costs the last step; the attacker fights from the tile before.
+        if (steps >= 2) army->pos = path.steps[steps - 2];
+        result.attacked = true;
+        for (const ArmyId d : defenders) {
+            const BattleReport b = resolveBattle(state, content, armyId, d);
+            result.battles.append(b);
+            if (!b.attackerWon()) {
+                won = false;
+                break;
+            }
+        }
+        hero = state.hero(heroIdCopy);
+        army = state.army(armyId);
+        result.heroKilled = (hero == nullptr);
+        // A field army stays where it fought from; a won town is entered below.
+        if (won && army && targetTown) army->pos = target;
+        result.arrived = won && army && army->pos == target;
+    } else {
+        army->pos = path.steps[steps - 1];
+        result.arrived = reached;
+    }
+
+    if (result.arrived && hero) {
         if (targetMine && state.isHostile(targetMine->owner, hero->owner)) {
             targetMine->owner = hero->owner;
             result.capturedMine = targetMine->id;
@@ -127,7 +160,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
             result.capturedTown = targetTown->id;
         }
     }
-    updateExplored(state, content, state.teamOf(hero->owner));
+    updateExplored(state, content, state.teamOf(owner));
     return result;
 }
 

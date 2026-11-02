@@ -80,10 +80,21 @@ struct EconomyBalance {
     int maxHeroesPerPlayer = 8;
     ResourceAmounts startingResources{{"gold", 10000}};
 };
+// Auto-resolved battles (core/battle/AutoBattle.h). Percentages per point of
+// attack minus defense, with caps.
+struct BattleBalance {
+    int maxRounds = 30;              // then the battle is a draw
+    int experiencePerHp = 1;         // winner's hero XP per HP of killed enemy units
+    int attackPercentPerPoint = 5;
+    int maxAttackPercent = 300;
+    int defensePercentPerPoint = 3;
+    int maxDefensePercent = 70;
+};
 struct Balance {
     MovementBalance movement;
     VisionBalance vision;
     EconomyBalance economy;
+    BattleBalance battle;
 };
 
 struct BuildingEffect {

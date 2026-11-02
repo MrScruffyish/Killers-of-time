@@ -367,8 +367,23 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
     const QJsonObject movement = top.requireObject(QStringLiteral("movement"));
     const QJsonObject vision = top.requireObject(QStringLiteral("vision"));
     const QJsonObject economy = top.requireObject(QStringLiteral("economy"));
+    const QJsonObject battle = root.contains(QStringLiteral("battle"))
+        ? top.requireObject(QStringLiteral("battle")) : QJsonObject();
     top.finish();
     if (!top.ok()) return;
+
+    {
+        JsonReader br(battle, file + QStringLiteral("/battle"), &errors);
+        BattleBalance bb;
+        bb.maxRounds = br.optionalInt(QStringLiteral("maxRounds"), bb.maxRounds, 1, 1000);
+        bb.experiencePerHp = br.optionalInt(QStringLiteral("experiencePerHp"), bb.experiencePerHp, 0, 1000);
+        bb.attackPercentPerPoint = br.optionalInt(QStringLiteral("attackPercentPerPoint"), bb.attackPercentPerPoint, 0, 100);
+        bb.maxAttackPercent = br.optionalInt(QStringLiteral("maxAttackPercent"), bb.maxAttackPercent, 0, 10000);
+        bb.defensePercentPerPoint = br.optionalInt(QStringLiteral("defensePercentPerPoint"), bb.defensePercentPerPoint, 0, 100);
+        bb.maxDefensePercent = br.optionalInt(QStringLiteral("maxDefensePercent"), bb.maxDefensePercent, 0, 99);
+        br.finish();
+        if (br.ok()) m_balance.battle = bb;
+    }
 
     {
         JsonReader vr(vision, file + QStringLiteral("/vision"), &errors);

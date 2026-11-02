@@ -89,7 +89,7 @@ The server only sends what the player may know: `day`, `currentPlayer`, `you`, o
 | Type | Fields | `info` on success |
 |---|---|---|
 | `end_turn` | | `day`, `newDay`. AI players and players who left are skipped automatically. |
-| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling` |
+| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled` |
 | `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
 | `recruit` | `town`, `unit`, `count`, `army`? | |
 | `recruit_at_dwelling` | `dwelling`, `count`, `army` | |
@@ -110,3 +110,15 @@ continues). Reconnecting comes later.
 
 ## Coming next
 Battles and attacking, spells, reconnecting, saving a running game on the server.
+
+### Battles (auto-resolved, first version)
+Moving onto a tile with hostile armies (enemy heroes, neutral monsters, a defended town)
+attacks them when the hero can pay the whole path. Each entry of `battles`:
+```json
+{ "outcome": "attacker" | "defender" | "draw", "rounds": 4, "experience": 60, "levelsGained": 0,
+  "loserHeroKilled": false,
+  "attacker": { "owner": 3, "hero": 7, "losses": { "pikeman": 2 } },
+  "defender": { "owner": 0, "hero": 0, "losses": { "militia": 5 } } }
+```
+Owner/hero 0 = neutral / none. Only the attacker gets the report for now; the defender sees the
+result in the next `game_state`. Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.

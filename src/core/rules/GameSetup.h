@@ -27,7 +27,7 @@ struct GameSetupParams {
 
 // Creates a new game: generates the map, gives every player a start town of his
 // race, a hero from the tavern list with the class's starting army, the starting
-// resources, scatters neutral mines and map dwellings, and starts day 1 for the
+// resources, scatters neutral mines, map dwellings and monster armies, and starts day 1 for the
 // first player. Deterministic for the same params. `playerIds` gets the id of each
 // player in the order of `params.players`.
 bool createGame(const ContentRegistry& content, const GameSetupParams& params, GameState* out,

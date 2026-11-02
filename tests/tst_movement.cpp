@@ -200,13 +200,13 @@ private slots:
         QCOMPARE(gs.army(gs.town(town)->garrison)->owner, p1);
     }
 
-    void defendedEnemyTownRefusesVisit() {
-        const HeroId h = makeHero(p1, {0, 0});
+    void defendedEnemyTownNeedsUnitsToAttack() {
+        const HeroId h = makeHero(p1, {0, 0});  // no units
         const TownId town = gs.addTown("Fort", "humans", {2, 0}, p2);
         gs.army(gs.town(town)->garrison)->addUnits("pikeman", 5, 10);
         const MoveResult r = moveHero(gs, reg, h, {2, 0});
         QVERIFY(!r.ok);
-        QVERIFY(r.error.contains("defended"));
+        QVERIFY(r.error.contains("no units"));
         QCOMPARE(gs.town(town)->owner, p2);
         QCOMPARE(armyOf(h).pos, (Pos{0, 0}));  // did not move
     }
@@ -231,13 +231,13 @@ private slots:
         QVERIFY(gs.exploredMap(team)[5 * 30 + 25] == 0);   // far away still unexplored
     }
 
-    void otherArmiesBlock() {
+    void friendlyArmiesBlock() {
         const HeroId h = makeHero(p1, {0, 0});
-        const HeroId enemy = makeHero(p2, {4, 0});
+        const HeroId friendHero = makeHero(p1, {4, 0});
         MoveResult r = moveHero(gs, reg, h, {4, 0});
         QVERIFY(!r.ok);
         QVERIFY(r.error.contains("occupied"));
-        Q_UNUSED(enemy);
+        Q_UNUSED(friendHero);
     }
 
     void noPathAcrossWaterOnFoot() {

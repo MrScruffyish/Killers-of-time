@@ -101,6 +101,11 @@ movement point (100 = one grass tile).
 `economy.tradeEfficiencyPercent` (optional, default 80): share of the fair value you get when
 trading resources (the rest is the trading fee).
 
+`battle` (optional, every field optional): `maxRounds` (30, then a draw), `experiencePerHp`
+(winner's hero XP per HP of killed enemies), `attackPercentPerPoint` / `maxAttackPercent`
+(damage bonus per point of attack above the target's defense, capped), `defensePercentPerPoint` /
+`maxDefensePercent` (damage reduction per point below). Hero Attack/Defense traits add to the units.
+
 ## buildings/<id>.json (one file per building; the id must equal the file name)
 ```json
 { "id": "archery_range", "name": "Archery Range", "race": "humans",

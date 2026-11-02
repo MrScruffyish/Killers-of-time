@@ -1,11 +1,14 @@
 #include "client/GamePage.h"
 
+#include <QMessageBox>
+
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QJsonArray>
 #include <QLabel>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -98,7 +101,14 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     connect(m_client, &net::LobbyClient::gameStateChanged, this, &GamePage::onViewChanged);
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
         const Pending p = m_pending.take(replyTo);
-        log(QStringLiteral("%1: %2").arg(p.what.isEmpty() ? tr("Done") : p.what, describeResult(p.type, info)));
+        const QString text = describeResult(p.type, info);
+        log(QStringLiteral("%1: %2").arg(p.what.isEmpty() ? tr("Done") : p.what, text));
+        if (info.contains("battles")) {
+            auto* box = new QMessageBox(QMessageBox::Information, tr("Battle"), text, QMessageBox::Ok, this);
+            box->setAttribute(Qt::WA_DeleteOnClose);
+            box->setModal(false);
+            box->show();
+        }
     });
     connect(m_client, &net::LobbyClient::errorReceived, this, [this](const QString&, const QString& text, int replyTo) {
         const Pending p = m_pending.take(replyTo);
@@ -256,12 +266,31 @@ void GamePage::chooseTrait() {
     if (ok) send(net::msg::pickTrait, {{"hero", h->id}, {"trait", idOf.value(chosen)}}, tr("Level up"));
 }
 
+QString GamePage::describeBattle(const QJsonObject& b) const {
+    const auto losses = [this](const QJsonObject& side) {
+        QStringList parts;
+        const QJsonObject l = side["losses"].toObject();
+        for (auto it = l.begin(); it != l.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value().toInt()).arg(unitName(it.key()));
+        return parts.isEmpty() ? tr("nothing") : parts.join(", ");
+    };
+    const QString outcome = b["outcome"].toString();
+    QString text = outcome == "attacker" ? tr("battle won") : outcome == "defender" ? tr("battle lost") : tr("battle undecided");
+    text += tr(" after %1 rounds (you lost %2; the enemy lost %3)")
+                .arg(b["rounds"].toInt())
+                .arg(losses(b["attacker"].toObject()), losses(b["defender"].toObject()));
+    if (b["experience"].toInt() > 0 && outcome == "attacker") text += tr(", %1 experience").arg(b["experience"].toInt());
+    if (b["levelsGained"].toInt() > 0 && outcome == "attacker") text += tr(", level up!");
+    if (b["loserHeroKilled"].toBool()) text += outcome == "attacker" ? tr(", the enemy hero fell") : tr(", your hero fell");
+    return text;
+}
+
 QString GamePage::describeResult(const QString& type, const QJsonObject& info) const {
     if (type == net::msg::moveHero) {
         QString text = info["arrived"].toBool() ? tr("arrived") : tr("moved %1 steps, out of movement").arg(info["stepsTaken"].toInt());
         if (info.contains("capturedMine")) text += tr(", captured a mine");
         if (info.contains("capturedTown")) text += tr(", captured a town");
         if (info.contains("capturedDwelling")) text += tr(", captured a dwelling");
+        for (const QJsonValue& v : info["battles"].toArray()) text += QStringLiteral("; ") + describeBattle(v.toObject());
         return text;
     }
     if (type == net::msg::endTurn) return tr("day %1").arg(info["day"].toInt());

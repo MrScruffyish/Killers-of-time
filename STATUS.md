@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 16)
+**Last updated:** 2026-11-02 (session 17, first Claude Code session)
 **Current milestone:** thin playable slice done (connect -> lobby -> map -> move -> town -> end turn, all with placeholder graphics). Now: close the game loop breadth-first (see "Order of work"); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** basic battles (attacking armies/guards/defended towns resolved by the rules, simple result screen), then a simple AI so single-player works. First: feedback from the user on the client screens (see docs/screenshots)
+**Next session should do:** simple AI player (step 3 of "Order of work") so single-player works, then game end. User: try a battle on screen (attack a dark red "M" monster)
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -70,7 +70,7 @@
 Get every part of the game working in a thin, simple form first, so there is something to try
 and react to; add depth afterwards.
 1. [x] Playable client slice (this section, M5)
-2. [ ] Basic battles: attack enemy heroes, defended towns, monster guards; resolved by the rules with the damage formula (simple, no hex UI yet), result shown in the client; experience to the hero
+2. [x] Basic battles (`core/battle/AutoBattle`): attack enemy heroes, defended towns and neutral monsters by moving onto them; auto-resolved rounds (initiative order, most dangerous target, ranged shots, one retaliation per round, attack-defense damage formula, hero Attack/Defense), survivors heal (D18), loser army and hero removed, garrison only emptied, XP to the winner; neutral monster armies placed at game start; result in the log and a battle box in the client. Tests: `tst_battle` (29 test programs). Later: hero HP/morale/luck traits, defender notification, monster guards next to mines
 3. [ ] Simple AI player (explore, capture mines, build, recruit, attack weak targets) so single-player works
 4. [ ] Game end: victory / defeat when a team has no towns and heroes left
 5. [ ] Save and load a running game on the server; reconnect to a running game
@@ -151,14 +151,15 @@ and react to; add depth afterwards.
 ## Open questions for the user (answer when convenient)
 - (none right now)
 
-## Open question about code style
-- [?] Naming: the code currently uses Qt-style camelCase (functions/variables), PascalCase types, `m_` members. Do you want snake_case instead? A scripted conversion in one separate commit is possible (types stay PascalCase; Qt overrides such as `paintEvent` must keep their names). JSON field names (camelCase) could be converted too.
+## Code style
+- [x] Naming stays camelCase for now (user, session 17). Was: the code currently uses Qt-style camelCase (functions/variables), PascalCase types, `m_` members. Do you want snake_case instead? A scripted conversion in one separate commit is possible (types stay PascalCase; Qt overrides such as `paintEvent` must keep their names). JSON field names (camelCase) could be converted too.
 
 ## Known issues / notes
 - (none yet)
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.

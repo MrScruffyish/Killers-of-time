@@ -50,6 +50,7 @@ private:
     void updateHeroPanel();
     void selectHero(int id);
     QString unitName(const QString& id) const;
+    QString describeBattle(const QJsonObject& battle) const;
     QString describeResult(const QString& type, const QJsonObject& info) const;
     void chooseTrait();
 

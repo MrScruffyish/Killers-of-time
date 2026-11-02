@@ -139,6 +139,21 @@ void MapView::paintEvent(QPaintEvent*) {
             p.drawText(r, Qt::AlignCenter, "T");
         }
     }
+    // Hero-less armies outside towns: neutral monsters (dark red, "M") or other garrison-less groups.
+    for (const ViewArmy& a : m_view.armies) {
+        if (a.hero || !shown(a.pos)) continue;
+        bool inTown = false;
+        for (const ViewTown& t : m_view.towns) inTown = inTown || t.pos == a.pos;
+        if (inTown) continue;
+        const QRect r = tileRect(a.pos).adjusted(m, m, -m, -m);
+        p.setPen(QPen(Qt::black, 2));
+        p.setBrush(a.owner ? ownerColor(a.owner) : QColor("#8b1a1a"));
+        p.drawRoundedRect(r, m, m);
+        if (m_tile >= 14) {
+            p.setPen(Qt::white);
+            p.drawText(r, Qt::AlignCenter, "M");
+        }
+    }
     for (const ViewHero& h : m_view.heroes) {
         if (!shown(h.pos)) continue;
         const QRect r = tileRect(h.pos).adjusted(m, m, -m, -m);

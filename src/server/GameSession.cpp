@@ -174,6 +174,12 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         if (m.capturedMine.isValid()) info.insert("capturedMine", toInt(m.capturedMine.value()));
         if (m.capturedTown.isValid()) info.insert("capturedTown", toInt(m.capturedTown.value()));
         if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
+        if (m.attacked) {
+            QJsonArray battles;
+            for (const BattleReport& b : m.battles) battles.append(battleReportToJson(b));
+            info.insert("battles", battles);
+            info.insert("heroKilled", m.heroKilled);
+        }
         return success(info);
     }
     if (cmd.type == net::msg::build) {

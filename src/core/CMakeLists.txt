@@ -42,6 +42,8 @@ add_library(kot_core STATIC
     rules/Automation.cpp
     rules/Tavern.h
     rules/Tavern.cpp
+    battle/AutoBattle.h
+    battle/AutoBattle.cpp
     rules/GameSetup.h
     rules/GameSetup.cpp
     model/PlayerView.h

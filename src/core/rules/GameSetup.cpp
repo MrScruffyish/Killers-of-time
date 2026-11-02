@@ -182,6 +182,18 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         gs.addMapDwelling(unit->id, where, unit->weeklyGrowth);
     }
 
+    // Neutral monsters wandering the land; stronger units come in smaller groups.
+    QStringList monsterUnits;
+    for (const UnitDef& u : content.units()) monsterUnits.append(u.id);
+    for (int i = 0, n = std::max(3, area / 300); i < n && !monsterUnits.isEmpty(); ++i) {
+        Pos where;
+        if (!place(&where)) break;
+        const UnitDef* unit = content.unit(monsterUnits[gs.rng().nextInt(0, static_cast<int>(monsterUnits.size()) - 1)]);
+        const int count = std::max(1, gs.rng().nextInt(8, 20) / std::max(1, unit->tier));
+        Army* monsters = gs.army(gs.addArmy(PlayerId(), where));
+        monsters->addUnits(unit->id, count, unit->maxHp);
+    }
+
     // Everybody starts with full movement (armies now exist) and a look around.
     for (const PlayerId id : ids) {
         refreshHeroMovement(gs, content, id);
