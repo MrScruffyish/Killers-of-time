@@ -32,6 +32,7 @@ public:
     // Without it (some tests) the server only runs the lobby.
     void setContent(const core::ContentRegistry* content) { m_content = content; }
     const GameSession* session() const { return m_session.get(); }
+    GameSession* session() { return m_session.get(); }  // tests set up situations
     // Folder for saved games (created when needed).
     void setSaveDir(const QString& dir) { m_saveDir = dir; }
     const QString& saveDir() const { return m_saveDir; }

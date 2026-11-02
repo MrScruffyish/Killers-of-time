@@ -1,0 +1,123 @@
+#pragma once
+
+#include <QHash>
+#include <QJsonObject>
+#include <QList>
+#include <QString>
+
+#include "core/battle/HexGrid.h"
+#include "core/model/GameState.h"
+#include "core/util/Rng.h"
+
+namespace kot::core {
+
+class ContentRegistry;
+struct UnitDef;
+
+// One stack on the battle field (a copy of an army stack while the battle runs).
+struct BattleUnit {
+    int id = 0;          // 1.. within this battle
+    int side = 0;        // 0 attacker, 1 defender
+    int armyIndex = 0;   // index of the stack in its army
+    const UnitDef* def = nullptr;
+    UnitStack stack;
+    Pos pos;             // hex
+    int shotsLeft = 0;
+    bool retaliated = false;  // this round
+
+    bool alive() const { return !stack.isEliminated(); }
+};
+
+struct BattleAction {
+    enum class Type { Move, Attack, Shoot, Defend };
+    Type type = Type::Defend;
+    Pos hex;               // Move: where to. Attack: hex to strike from (optional)
+    bool hasHex = false;
+    int target = 0;        // Attack / Shoot: enemy unit id
+};
+
+// What happened, for the battle log and the client.
+struct BattleEvent {
+    enum class Type { Move, Attack, Shoot, Retaliate, Defend, NewRound };
+    Type type = Type::Move;
+    int unit = 0;
+    int target = 0;
+    Pos from, to;
+    int damage = 0;
+    int killed = 0;
+};
+
+// A tactical battle on a hex grid (PROJECT.md 5.10, kept simple for now).
+//
+// The attacker's stacks start in the left column, the defender's in the right one.
+// Each round every living stack acts once, by initiative, then battle speed, the
+// attacker first on ties. The active stack can:
+//   - Move: to a free hex within its battle speed (steps around other stacks),
+//   - Attack: an enemy it can reach (moves next to it first); the target strikes
+//     back once per round,
+//   - Shoot: ranged units with shots left, when no enemy stands next to them;
+//     no retaliation,
+//   - Defend: do nothing this round.
+// Damage = count * roll(damageMin..damageMax) * attack/defense factor (balance.json
+// "battle"), hero Attack/Defense traits added. The battle ends when one side has no
+// stacks left, or as a draw after maxRounds.
+//
+// The battle works on copies; applyBattleResult (AutoBattle.h) writes the outcome
+// back into the game state. Randomness comes from its own Rng (seeded by the caller
+// from the game's Rng), so a battle can be replayed from seed + actions.
+class Battle {
+public:
+    enum class Outcome { Running, AttackerWon, DefenderWon, Draw };
+
+    Battle(const GameState& state, const ContentRegistry& content, ArmyId attacker, ArmyId defender,
+           std::uint64_t seed);
+
+    ArmyId army(int side) const { return m_army[side]; }
+    PlayerId owner(int side) const { return m_owner[side]; }
+    HeroId hero(int side) const { return m_hero[side]; }
+    const QList<BattleUnit>& units() const { return m_units; }
+    const BattleUnit* unit(int id) const;
+    const BattleUnit* unitAt(Pos hex) const;
+    const BattleUnit* activeUnit() const;  // null when over
+    int round() const { return m_round; }
+    Outcome outcome() const { return m_outcome; }
+    bool isOver() const { return m_outcome != Outcome::Running; }
+    bool sideAlive(int side) const;
+
+    // Hexes the unit can move to, with the number of steps.
+    QHash<Pos, int> reachable(const BattleUnit& unit) const;
+    bool canShoot(const BattleUnit& unit) const;
+    // The hex the active unit would attack `target` from (its own hex if already
+    // next to it); false if it cannot reach it.
+    bool attackHex(const BattleUnit& attacker, const BattleUnit& target, Pos* from) const;
+
+    // Performs an action for the active unit. Returns an error text (nothing happens)
+    // or an empty string. `events` (optional) gets what happened.
+    QString act(const BattleAction& action, QList<BattleEvent>* events = nullptr);
+
+private:
+    void strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QList<BattleEvent>* events);
+    void startRound(QList<BattleEvent>* events);
+    void advance(QList<BattleEvent>* events);
+    void checkOver();
+    BattleUnit* mutableUnit(int id);
+
+    const ContentRegistry& m_content;
+    Rng m_rng;
+    ArmyId m_army[2];
+    PlayerId m_owner[2];
+    HeroId m_hero[2];
+    int m_attackBonus[2] = {0, 0};
+    int m_defenseBonus[2] = {0, 0};
+    QList<BattleUnit> m_units;
+    QList<int> m_order;  // unit ids, this round
+    int m_orderPos = 0;
+    int m_round = 0;
+    Outcome m_outcome = Outcome::Running;
+};
+
+// The battle as the client sees it (both sides see everything on the field).
+QJsonObject battleToJson(const Battle& battle);
+QJsonObject battleEventToJson(const BattleEvent& event);
+
+}  // namespace kot::core

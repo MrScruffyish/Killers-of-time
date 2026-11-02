@@ -124,14 +124,34 @@ a free human's turn until someone takes him over. No passwords yet: anyone can t
 ## Coming next
 Hex battles with a UI, spells.
 
-### Battles (auto-resolved, first version)
+### Battles
 Moving onto a tile with hostile armies (enemy heroes, neutral monsters, a defended town)
-attacks them when the hero can pay the whole path. Each entry of `battles`:
+attacks them when the hero can pay the whole path; the hero fights from the tile before.
+Each defender is fought in turn (a visiting hero first, then the garrison).
+
+If a connected human owns one of the two sides, the battle is **interactive**: `move_hero` answers
+with `battleStarted: true`, the participants' views get `battle`, everyone else's view gets
+`battleInProgress: true`, and until it ends only `battle_action` is accepted (from the owner of the
+active stack, whoever's turn it is on the map). Otherwise (AI vs AI or monsters) it is played out at
+once by the battle AI and `move_hero` returns the reports.
+
+`battle` in the view: `width`, `height`, `round`, `active` (unit id), `yourSide` (0 attacker,
+1 defender), `sides` (`owner`, `hero`), `units` (`id`, `side`, `unit`, `count`, `frontHp`, `maxHp`,
+`x`, `y` (hex, odd-r offset), `shots`, `retaliated`), and for the active stack `reachable`
+(`[[x, y], ...]`), `attackable` (enemy ids it can reach) and `canShoot`.
+
+| Type | Fields | `info` on success |
+|---|---|---|
+| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `auto` (the battle AI plays your side to the end) | `events` (list: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
+
+Battle reports (`battles` entries, and `lastBattle.report` in the view of both participants,
+`lastBattle.id` grows with every battle):
 ```json
 { "outcome": "attacker" | "defender" | "draw", "rounds": 4, "experience": 60, "levelsGained": 0,
   "loserHeroKilled": false,
   "attacker": { "owner": 3, "hero": 7, "losses": { "pikeman": 2 } },
   "defender": { "owner": 0, "hero": 0, "losses": { "militia": 5 } } }
 ```
-Owner/hero 0 = neutral / none. Only the attacker gets the report for now; the defender sees the
-result in the next `game_state`. Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.
+Owner/hero 0 = neutral / none. Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.
+Saving is refused while a battle runs. A human who disconnects during a battle is replaced by the
+battle AI.

@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-02 (session 17, first Claude Code session)
 **Current milestone:** thin playable slice done (connect -> lobby -> map -> move -> town -> end turn, all with placeholder graphics). Now: close the game loop breadth-first (see "Order of work"); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** the thin game loop is complete. Start on depth (step 6): user picks the order; suggestion: hex battles (M6) or a playtest round first
+**Next session should do:** depth, user picks: spells (M7), more races (M8), better AI (M9) or more battle depth (hero HP/morale/luck traits, flying, 2-hex units, town walls). User: try a hex battle on screen
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -93,13 +93,14 @@ and react to; add depth afterwards.
 
 ## M6: Battle engine (core, then UI)
 - [x] Decision D2: hex grid
-- [ ] Battle state, initiative order, move/melee/ranged, retaliation, damage formula
+- [x] Battle state (`core/battle/Battle`, 15x11 hex field, odd-r), initiative order, move/melee/ranged, one retaliation per round, damage formula, round limit draw; `BattleAi` (shoot, attack the most dangerous reachable enemy, else close in); the auto-resolve is the battle AI on both sides; `applyBattleResult` writes back. Tests: `tst_hexbattle`
 - [ ] Hero trait bonuses (attack, defense, hit points, morale, luck, attack range, battle speed tier tables) applied to army
 - [ ] Unit data: `battleSpeed` (hexes), `mapSpeed`, `range` (for ranged units)
 - [ ] Neutral monster guards trigger battles
 - [ ] Experience after victory -> hero levels (auto max-SP growth + choose one pickable trait per level gained)
-- [ ] Battle UI in the client; human-vs-human live battle over network
-- [ ] Deterministic battle replay test (seed + actions)
+- [x] Battle UI in the client (`BattleView`: hexes, move by click, attack/shoot by clicking an enemy, Defend, Auto); interactive battles when a connected human takes part, human vs human live over the network, AI turns pause for a human defender; battle results to both sides (`lastBattle`). Tests: session cases, GUI smoke test
+- [x] Deterministic battle replay test (seed + actions)
+- [ ] Later: flying, 2-hex units, obstacles, wait action, town walls, retreat/surrender, hero casting
 
 ## M7: Magic
 - [ ] Effect primitive system and spell data format
@@ -159,7 +160,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
-- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect.
+- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.

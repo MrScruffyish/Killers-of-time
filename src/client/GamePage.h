@@ -9,6 +9,8 @@
 #include "net/LobbyClient.h"
 
 class QComboBox;
+class QJsonArray;
+class QStackedWidget;
 class QLabel;
 class QListWidget;
 class QPlainTextEdit;
@@ -17,6 +19,8 @@ class QPushButton;
 namespace kot::core { class ContentRegistry; }
 
 namespace kot::client {
+
+class BattleView;
 
 class MapView;
 class TownDialog;
@@ -31,6 +35,7 @@ public:
     const GameView& view() const { return m_view; }
     int selectedHero() const { return m_selectedHero; }
     MapView* mapView() const { return m_map; }
+    BattleView* battleView() const { return m_battleView; }
     TownDialog* townDialog() const { return m_townDialog; }
     QString logText() const;
 
@@ -53,6 +58,8 @@ private:
     QString unitName(const QString& id) const;
     void announceEnd();  // victory / defeat messages, once each
     QString describeBattle(const QJsonObject& battle) const;
+    QString describeBattleEvents(const QJsonArray& events) const;
+    void showBattle(bool firstView);
     QString describeResult(const QString& type, const QJsonObject& info) const;
     void chooseTrait();
 
@@ -67,7 +74,10 @@ private:
     QHash<int, Pending> m_pending;
 
     QLabel* m_status;
+    QStackedWidget* m_centre;
     MapView* m_map;
+    BattleView* m_battleView;
+    int m_seenBattleId = 0;
     QComboBox* m_heroCombo;
     QLabel* m_heroInfo;
     QPushButton* m_levelUp;

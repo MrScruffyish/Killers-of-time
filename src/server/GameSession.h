@@ -7,6 +7,8 @@
 #include <memory>
 
 #include "ai/IAiPlayer.h"
+#include "core/battle/Battle.h"
+#include "core/rules/Movement.h"
 
 #include "core/model/GameState.h"
 #include "net/LobbyTypes.h"
@@ -52,11 +54,31 @@ public:
     // A client takes over a free human player. Fills `error` when that is not possible.
     bool joinPlayer(int clientId, core::PlayerId player, QString* error);
 
+    // True while a battle waits for a human; only battle_action is accepted then.
+    bool battleRunning() const { return m_battle != nullptr; }
+
     QJsonObject viewFor(core::PlayerId player) const;
     QJsonObject youInfo(core::PlayerId player) const;
 
 private:
+    // An attack whose battles are being fought, one defender after the other.
+    struct ActiveBattle {
+        core::PendingAttack attack;
+        int defenderIndex = 0;
+        std::unique_ptr<core::Battle> battle;  // the current one
+        bool autoSide[2] = {false, false};     // a human pressed "auto"
+        core::MoveResult result;               // the move, plus the reports so far
+    };
+
     CommandResult dispatch(core::PlayerId player, const net::Message& command);
+    CommandResult battleAction(core::PlayerId player, const net::Message& command);
+    // Plays the AI sides and starts the next battle until a human has to act or
+    // the attack is over (then m_battle is reset and m_finishedMove is set).
+    void runBattles();
+    bool humanControls(int side) const;
+    QJsonObject moveInfo(const core::MoveResult& move) const;
+    void recordBattle(const core::BattleReport& report);
+    void afterCommand();
     // Plays the turns of AI players (and players who left) until a human is next.
     void playAutoTurns();
     void playAiTurn(core::PlayerId player, ai::IAiPlayer& ai);
@@ -67,6 +89,10 @@ private:
     bool m_active = false;
     QHash<int, core::PlayerId> m_clientPlayers;  // connected humans
     QHash<core::PlayerId, std::shared_ptr<ai::IAiPlayer>> m_autoPlayers;  // AI and abandoned players
+    std::unique_ptr<ActiveBattle> m_battle;
+    core::MoveResult m_finishedMove;  // the last attack that ended
+    int m_battleCounter = 0;
+    QHash<core::PlayerId, QJsonObject> m_lastBattle;  // per participant: {id, report}
 };
 
 }  // namespace kot::server

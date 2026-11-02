@@ -22,6 +22,23 @@ QStringList strings(const QJsonValue& v) {
 
 }  // namespace
 
+const ViewBattleUnit* ViewBattle::unit(int id) const {
+    for (const ViewBattleUnit& u : units)
+        if (u.id == id) return &u;
+    return nullptr;
+}
+
+const ViewBattleUnit* ViewBattle::unitAt(core::Pos h) const {
+    for (const ViewBattleUnit& u : units)
+        if (u.hex == h) return &u;
+    return nullptr;
+}
+
+bool ViewBattle::myMove() const {
+    const ViewBattleUnit* u = unit(active);
+    return u && u->side == yourSide;
+}
+
 const ViewPlayer* GameView::player(int id) const {
     for (const ViewPlayer& p : players) if (p.id == id) return &p;
     return nullptr;
@@ -189,6 +206,42 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         d.pos = posOf(o);
         d.available = o.value("available").toInt(-1);
         v.dwellings.append(d);
+    }
+    if (json.value("battle").isObject()) {
+        const QJsonObject b = json.value("battle").toObject();
+        ViewBattle& vb = v.battle;
+        vb.present = true;
+        vb.width = b.value("width").toInt();
+        vb.height = b.value("height").toInt();
+        vb.round = b.value("round").toInt();
+        vb.active = b.value("active").toInt();
+        vb.yourSide = b.value("yourSide").toInt();
+        const QJsonArray sides = b.value("sides").toArray();
+        for (int s = 0; s < 2 && s < sides.size(); ++s) vb.sideOwner[s] = sides[s].toObject().value("owner").toInt();
+        for (const QJsonValue& uv : b.value("units").toArray()) {
+            const QJsonObject u = uv.toObject();
+            ViewBattleUnit bu;
+            bu.id = u.value("id").toInt();
+            bu.side = u.value("side").toInt();
+            bu.unit = u.value("unit").toString();
+            bu.count = u.value("count").toInt();
+            bu.frontHp = u.value("frontHp").toInt();
+            bu.maxHp = u.value("maxHp").toInt();
+            bu.hex = {u.value("x").toInt(), u.value("y").toInt()};
+            bu.shots = u.value("shots").toInt();
+            bu.retaliated = u.value("retaliated").toBool();
+            vb.units.append(bu);
+        }
+        for (const QJsonValue& h : b.value("reachable").toArray())
+            vb.reachable.append({h.toArray().at(0).toInt(), h.toArray().at(1).toInt()});
+        for (const QJsonValue& a : b.value("attackable").toArray()) vb.attackable.append(a.toInt());
+        vb.canShoot = b.value("canShoot").toBool();
+        if (vb.width <= 0 || vb.height <= 0) return fail("the battle has no field");
+    }
+    v.battleInProgress = json.value("battleInProgress").toBool();
+    if (json.value("lastBattle").isObject()) {
+        v.lastBattleId = json.value("lastBattle").toObject().value("id").toInt();
+        v.lastBattleReport = json.value("lastBattle").toObject().value("report").toObject();
     }
     *out = v;
     return true;

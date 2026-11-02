@@ -4,6 +4,7 @@
 #include <QTabWidget>
 #include <QtTest>
 
+#include "client/BattleView.h"
 #include "client/GamePage.h"
 #include "client/MainWindow.h"
 #include "client/LobbyPage.h"
@@ -131,6 +132,53 @@ private slots:
         auto* buy = game->findChild<QPushButton*>("buyAllButton");
         QTest::mouseClick(buy, Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(game->logText().contains("Buy all units: bought"), 5000);
+
+        // A battle: monsters appear next to Ann's hero, she clicks them.
+        core::GameState& gs = server.session()->state();
+        const core::Hero* annHero = gs.hero(core::HeroId(quint32(hero.id)));
+        QVERIFY(annHero);
+        const core::Pos at = gs.army(annHero->army)->pos;
+        core::Pos spot{-1, -1};
+        for (int dy = -1; dy <= 1 && spot.x < 0; ++dy)
+            for (int dx = -1; dx <= 1 && spot.x < 0; ++dx) {
+                const core::Pos p{at.x + dx, at.y + dy};
+                bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable;
+                for (const core::Army& a : gs.armies()) free = free && a.pos != p;
+                for (const core::Town& t : gs.towns()) free = free && t.pos != p;
+                for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
+                for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
+                if (free) spot = p;
+            }
+        QVERIFY(spot.x >= 0);
+        gs.army(gs.addArmy(core::PlayerId(), spot))->addUnits("militia", 4, 6);
+        game->mapView()->centerOn(spot);
+        QTest::mouseClick(game->mapView()->viewport(), Qt::LeftButton, {}, game->mapView()->tileRect(spot).center());
+        QTRY_VERIFY_WITH_TIMEOUT(game->view().battle.present, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(game->battleView()->isVisible(), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(game->view().battle.myMove(), 5000);
+        QApplication::processEvents();
+        shot(&w, "7_battle");
+
+        // Click a hex the active stack can reach: it moves there.
+        const ViewBattle& vb = game->view().battle;
+        const int activeId = vb.active;
+        QVERIFY(!vb.reachable.isEmpty());
+        const core::Pos dest = vb.reachable.last();
+        QTest::mouseClick(game->battleView()->field(), Qt::LeftButton, {}, game->battleView()->hexCentre(dest));
+        QTRY_VERIFY_WITH_TIMEOUT(!game->view().battle.present || game->view().battle.unit(activeId) == nullptr
+                                     || game->view().battle.unit(activeId)->hex == dest, 5000);
+
+        // Let the computer finish it.
+        if (game->view().battle.present) {
+            QTRY_VERIFY_WITH_TIMEOUT(game->view().battle.myMove(), 5000);
+            auto* autoButton = game->battleView()->findChild<QPushButton*>("autoBattleButton");
+            QTest::mouseClick(autoButton, Qt::LeftButton);
+        }
+        QTRY_VERIFY_WITH_TIMEOUT(!game->view().battle.present, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(game->mapView()->isVisible(), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(game->findChild<QWidget*>("battleResultBox") != nullptr, 5000);
+        QApplication::processEvents();
+        shot(&w, "8_after_battle");
     }
 };
 

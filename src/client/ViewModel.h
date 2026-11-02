@@ -97,6 +97,37 @@ struct ViewDwelling {
     int available = -1;  // -1 = unknown
 };
 
+struct ViewBattleUnit {
+    int id = 0;
+    int side = 0;
+    QString unit;
+    int count = 0;
+    int frontHp = 0;
+    int maxHp = 0;
+    core::Pos hex;
+    int shots = 0;
+    bool retaliated = false;
+};
+
+// A battle you take part in (server: battleToJson).
+struct ViewBattle {
+    bool present = false;
+    int width = 0;
+    int height = 0;
+    int round = 0;
+    int active = 0;       // unit id whose turn it is
+    int yourSide = 0;
+    int sideOwner[2] = {0, 0};
+    QList<ViewBattleUnit> units;
+    QList<core::Pos> reachable;  // for the active unit
+    QList<int> attackable;
+    bool canShoot = false;
+
+    const ViewBattleUnit* unit(int id) const;
+    const ViewBattleUnit* unitAt(core::Pos hex) const;
+    bool myMove() const;  // the active unit is on your side
+};
+
 struct GameView {
     int day = 1;
     int currentPlayer = 0;
@@ -117,6 +148,10 @@ struct GameView {
     QList<ViewTown> towns;
     QList<ViewMine> mines;
     QList<ViewDwelling> dwellings;
+    ViewBattle battle;
+    bool battleInProgress = false;  // someone else is fighting
+    int lastBattleId = 0;           // newest battle you took part in
+    QJsonObject lastBattleReport;
 
     bool isMyTurn() const { return currentPlayer == you; }
     const ViewPlayer* player(int id) const;

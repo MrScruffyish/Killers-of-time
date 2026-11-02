@@ -12,8 +12,10 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QStackedWidget>
 #include <QVBoxLayout>
 
+#include "client/BattleView.h"
 #include "client/MapView.h"
 #include "client/TownDialog.h"
 #include "core/content/ContentRegistry.h"
@@ -29,9 +31,16 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     outer->addWidget(m_status);
 
     auto* middle = new QHBoxLayout();
+    m_centre = new QStackedWidget(this);
     m_map = new MapView(content, this);
     m_map->setObjectName("mapView");
-    middle->addWidget(m_map, 1);
+    m_battleView = new BattleView(content, this);
+    m_battleView->setObjectName("battleView");
+    m_centre->addWidget(m_map);
+    m_centre->addWidget(m_battleView);
+    middle->addWidget(m_centre, 1);
+    connect(m_battleView, &BattleView::actionRequested, this,
+            [this](const QJsonObject& body) { send(net::msg::battleAction, body, tr("Battle")); });
 
     auto* side = new QVBoxLayout();
     m_heroCombo = new QComboBox(this);
@@ -113,12 +122,6 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
         const Pending p = m_pending.take(replyTo);
         const QString text = describeResult(p.type, info);
         log(QStringLiteral("%1: %2").arg(p.what.isEmpty() ? tr("Done") : p.what, text));
-        if (info.contains("battles")) {
-            auto* box = new QMessageBox(QMessageBox::Information, tr("Battle"), text, QMessageBox::Ok, this);
-            box->setAttribute(Qt::WA_DeleteOnClose);
-            box->setModal(false);
-            box->show();
-        }
     });
     connect(m_client, &net::LobbyClient::errorReceived, this, [this](const QString&, const QString& text, int replyTo) {
         const Pending p = m_pending.take(replyTo);
@@ -154,6 +157,7 @@ void GamePage::onViewChanged() {
         return;
     }
     const bool wasMyTurn = m_view.isMyTurn() && m_view.you == view.you;
+    const bool first = (m_view.you == 0);
     m_view = view;
     if (!m_view.myHeroes().isEmpty()) {
         bool stillThere = false;
@@ -173,7 +177,35 @@ void GamePage::onViewChanged() {
     updateHeroPanel();
     m_townDialog->refresh(m_view);
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
+    showBattle(first);
     announceEnd();
+}
+
+void GamePage::showBattle(bool firstView) {
+    const auto colourOf = [this](int owner) {
+        const ViewPlayer* p = m_view.player(owner);
+        return p ? QColor(p->color) : QColor("#8b1a1a");  // neutral monsters
+    };
+    if (m_view.battle.present) {
+        m_battleView->setBattle(m_view.battle, colourOf(m_view.battle.sideOwner[0]), colourOf(m_view.battle.sideOwner[1]));
+        m_centre->setCurrentWidget(m_battleView);
+    } else {
+        m_centre->setCurrentWidget(m_map);
+    }
+    // The result of your newest battle (attacker or defender), once.
+    if (m_view.lastBattleId > m_seenBattleId) {
+        const bool fresh = !firstView;
+        m_seenBattleId = m_view.lastBattleId;
+        if (fresh) {
+            const QString text = describeBattle(m_view.lastBattleReport);
+            log(tr("Battle result: %1").arg(text));
+            auto* box = new QMessageBox(QMessageBox::Information, tr("Battle"), text, QMessageBox::Ok, this);
+            box->setObjectName("battleResultBox");
+            box->setAttribute(Qt::WA_DeleteOnClose);
+            box->setModal(false);
+            box->show();
+        }
+    }
 }
 
 void GamePage::announceEnd() {
@@ -214,7 +246,8 @@ void GamePage::updateStatus() {
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
                           .arg(res.join(", ")));
     const bool myTurn = m_view.isMyTurn();
-    for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits}) b->setEnabled(myTurn && !m_view.gameOver);
+    const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
+    for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits}) b->setEnabled(free);
 
     m_townList->clear();
     for (const ViewTown* t : m_view.myTowns()) {
@@ -310,18 +343,52 @@ QString GamePage::describeBattle(const QJsonObject& b) const {
         for (auto it = l.begin(); it != l.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value().toInt()).arg(unitName(it.key()));
         return parts.isEmpty() ? tr("nothing") : parts.join(", ");
     };
+    // Seen from your side (you may have attacked or defended).
+    const bool attacker = b["attacker"].toObject()["owner"].toInt() == m_view.you;
+    const QJsonObject me = b[attacker ? "attacker" : "defender"].toObject();
+    const QJsonObject them = b[attacker ? "defender" : "attacker"].toObject();
     const QString outcome = b["outcome"].toString();
-    QString text = outcome == "attacker" ? tr("battle won") : outcome == "defender" ? tr("battle lost") : tr("battle undecided");
+    const bool won = outcome == (attacker ? "attacker" : "defender");
+    QString text = outcome == "draw" ? tr("battle undecided") : won ? tr("battle won") : tr("battle lost");
+    if (!attacker) text = tr("you were attacked: ") + text;
     text += tr(" after %1 rounds (you lost %2; the enemy lost %3)")
                 .arg(b["rounds"].toInt())
-                .arg(losses(b["attacker"].toObject()), losses(b["defender"].toObject()));
-    if (b["experience"].toInt() > 0 && outcome == "attacker") text += tr(", %1 experience").arg(b["experience"].toInt());
-    if (b["levelsGained"].toInt() > 0 && outcome == "attacker") text += tr(", level up!");
-    if (b["loserHeroKilled"].toBool()) text += outcome == "attacker" ? tr(", the enemy hero fell") : tr(", your hero fell");
+                .arg(losses(me), losses(them));
+    if (won && b["experience"].toInt() > 0) text += tr(", %1 experience").arg(b["experience"].toInt());
+    if (won && b["levelsGained"].toInt() > 0) text += tr(", level up!");
+    if (b["loserHeroKilled"].toBool()) text += won ? tr(", the enemy hero fell") : tr(", your hero fell");
     return text;
 }
 
+QString GamePage::describeBattleEvents(const QJsonArray& events) const {
+    QStringList lines;
+    const auto name = [this](int id) {
+        const ViewBattleUnit* u = m_view.battle.unit(id);
+        if (!u) return tr("a stack");
+        return QStringLiteral("%1%2").arg(u->side == m_view.battle.yourSide ? tr("your ") : tr("enemy "), unitName(u->unit));
+    };
+    for (const QJsonValue& v : events) {
+        const QJsonObject e = v.toObject();
+        const QString type = e["type"].toString();
+        if (type == "attack" || type == "shoot" || type == "retaliate") {
+            const QString verb = type == "attack" ? tr("attacks") : type == "shoot" ? tr("shoots") : tr("strikes back at");
+            lines << tr("%1 %2 %3: %4 damage, %5 killed")
+                         .arg(name(e["unit"].toInt()), verb, name(e["target"].toInt()))
+                         .arg(e["damage"].toInt())
+                         .arg(e["killed"].toInt());
+        } else if (type == "move") {
+            lines << tr("%1 moves").arg(name(e["unit"].toInt()));
+        } else if (type == "defend") {
+            lines << tr("%1 defends").arg(name(e["unit"].toInt()));
+        } else if (type == "round") {
+            lines << tr("round %1").arg(e["round"].toInt());
+        }
+    }
+    return lines.join("; ");
+}
+
 QString GamePage::describeResult(const QString& type, const QJsonObject& info) const {
+    if (type == net::msg::moveHero && info["battleStarted"].toBool()) return tr("a battle begins!");
     if (type == net::msg::moveHero) {
         QString text = info["arrived"].toBool() ? tr("arrived") : tr("moved %1 steps, out of movement").arg(info["stepsTaken"].toInt());
         if (info.contains("capturedMine")) text += tr(", captured a mine");
@@ -331,6 +398,11 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
         return text;
     }
     if (type == net::msg::endTurn) return tr("day %1").arg(info["day"].toInt());
+    if (type == net::msg::battleAction) {
+        QString text = describeBattleEvents(info["events"].toArray());
+        if (info["battleOver"].toBool()) text += (text.isEmpty() ? "" : "; ") + tr("the battle is over");
+        return text.isEmpty() ? tr("ok") : text;
+    }
     if (type == net::msg::saveGame) return tr("saved as \"%1\" on the server").arg(info["name"].toString());
     if (type == net::msg::buyAllUnits) {
         return tr("bought %1 units").arg(info["unitsBought"].toInt());

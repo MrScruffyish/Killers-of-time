@@ -40,7 +40,7 @@ void refreshHeroMovement(GameState& state, const ContentRegistry& content, Playe
 }
 
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,
-                    MoveMode mode) {
+                    MoveMode mode, bool deferBattles) {
     MoveResult result;
     Hero* hero = state.hero(heroId);
     Army* army = hero ? state.army(hero->army) : nullptr;
@@ -64,16 +64,9 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
 
     // What stands on the target tile?
     Town* targetTown = nullptr;
-    Mine* targetMine = nullptr;
-    MapDwelling* targetDwelling = nullptr;
+
     for (Town& t : state.towns()) {
         if (t.pos == target) targetTown = &t;
-    }
-    for (Mine& m : state.mines()) {
-        if (m.pos == target) targetMine = &m;
-    }
-    for (MapDwelling& d : state.mapDwellings()) {
-        if (d.pos == target) targetDwelling = &d;
     }
     // Hostile armies on the target are attacked: visiting heroes first, then a town's garrison.
     QList<ArmyId> defenders;
@@ -121,11 +114,17 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     const HeroId heroIdCopy = hero->id;
     const ArmyId armyId = army->id;
 
-    bool won = true;
     if (reached && !defenders.isEmpty()) {
         // Attacking costs the last step; the attacker fights from the tile before.
         if (steps >= 2) army->pos = path.steps[steps - 2];
         result.attacked = true;
+        PendingAttack attack{heroIdCopy, owner, armyId, target, defenders};
+        if (deferBattles) {
+            result.pending = attack;
+            updateExplored(state, content, state.teamOf(owner));
+            return result;
+        }
+        bool won = true;
         for (const ArmyId d : defenders) {
             const BattleReport b = resolveBattle(state, content, armyId, d);
             result.battles.append(b);
@@ -134,34 +133,49 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
                 break;
             }
         }
-        hero = state.hero(heroIdCopy);
-        army = state.army(armyId);
-        result.heroKilled = (hero == nullptr);
-        // A field army stays where it fought from; a won town is entered below.
-        if (won && army && targetTown) army->pos = target;
-        result.arrived = won && army && army->pos == target;
-    } else {
-        army->pos = path.steps[steps - 1];
-        result.arrived = reached;
+        finishAttack(state, content, attack, won, &result);
+        return result;
     }
-
-    if (result.arrived && hero) {
-        if (targetMine && state.isHostile(targetMine->owner, hero->owner)) {
-            targetMine->owner = hero->owner;
-            result.capturedMine = targetMine->id;
-        }
-        if (targetDwelling && state.isHostile(targetDwelling->owner, hero->owner)) {
-            targetDwelling->owner = hero->owner;
-            result.capturedDwelling = targetDwelling->id;
-        }
-        if (targetTown && state.isHostile(targetTown->owner, hero->owner)) {
-            targetTown->owner = hero->owner;
-            if (Army* garrison = state.army(targetTown->garrison)) garrison->owner = hero->owner;
-            result.capturedTown = targetTown->id;
-        }
-    }
+    army->pos = path.steps[steps - 1];
+    result.arrived = reached;
+    if (result.arrived) captureAt(state, owner, target, &result);
     updateExplored(state, content, state.teamOf(owner));
     return result;
+}
+
+void captureAt(GameState& state, PlayerId owner, Pos target, MoveResult* result) {
+    for (Mine& m : state.mines()) {
+        if (m.pos == target && state.isHostile(m.owner, owner)) {
+            m.owner = owner;
+            result->capturedMine = m.id;
+        }
+    }
+    for (MapDwelling& d : state.mapDwellings()) {
+        if (d.pos == target && state.isHostile(d.owner, owner)) {
+            d.owner = owner;
+            result->capturedDwelling = d.id;
+        }
+    }
+    for (Town& t : state.towns()) {
+        if (t.pos == target && state.isHostile(t.owner, owner)) {
+            t.owner = owner;
+            if (Army* garrison = state.army(t.garrison)) garrison->owner = owner;
+            result->capturedTown = t.id;
+        }
+    }
+}
+
+void finishAttack(GameState& state, const ContentRegistry& content, const PendingAttack& attack, bool won,
+                  MoveResult* result) {
+    Army* army = state.army(attack.army);
+    result->heroKilled = (state.hero(attack.hero) == nullptr);
+    bool town = false;
+    for (const Town& t : state.towns()) town = town || t.pos == attack.target;
+    // A field army stays where it fought from; a won town is entered.
+    if (won && army && town) army->pos = attack.target;
+    result->arrived = won && army && army->pos == attack.target;
+    if (result->arrived) captureAt(state, attack.owner, attack.target, result);
+    updateExplored(state, content, state.teamOf(attack.owner));
 }
 
 }  // namespace kot::core

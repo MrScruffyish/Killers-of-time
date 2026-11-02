@@ -93,6 +93,94 @@ private slots:
         QCOMPARE(doIt(1, net::msg::endTurn).code, QString("game_over"));
     }
 
+    void humanAttackFightsAnInteractiveBattle() {
+        core::GameState& gs = session->state();
+        const core::Hero* h = heroOf(pA);
+        core::Army* army = gs.army(h->army);
+        const core::Pos at = army->pos;
+        // Monsters right next to Ann's hero (on a free land tile).
+        core::Pos spot{-1, -1};
+        for (int dx = -1; dx <= 1 && spot.x < 0; ++dx)
+            for (int dy = -1; dy <= 1 && spot.x < 0; ++dy) {
+                const core::Pos p{at.x + dx, at.y + dy};
+                bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrain().value(gs.map().terrainAt(p)).walkable;
+                for (const core::Army& a : gs.armies()) free = free && a.pos != p;
+                for (const core::Town& t : gs.towns()) free = free && t.pos != p;
+                for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
+                for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
+                if (free) spot = p;
+            }
+        QVERIFY(spot.x >= 0);
+        const core::ArmyId monsters = gs.addArmy(core::PlayerId(), spot);
+        gs.army(monsters)->addUnits("militia", 3, 6);
+
+        CommandResult r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
+        QVERIFY2(r.ok, qPrintable(r.message));
+        QVERIFY(r.info["battleStarted"].toBool());
+        QVERIFY(session->battleRunning());
+        const QJsonObject view = session->viewFor(pA);
+        QVERIFY(view.contains("battle"));
+        QCOMPARE(view["battle"].toObject()["yourSide"].toInt(), 0);
+        QVERIFY(session->viewFor(pB)["battleInProgress"].toBool());
+
+        QCOMPARE(doIt(1, net::msg::endTurn).code, QString("battle_in_progress"));
+        QCOMPARE(doIt(2, net::msg::battleAction, {{"action", "defend"}}).code, QString("not_your_turn"));
+        QCOMPARE(doIt(1, net::msg::battleAction, {{"action", "fly"}}).code, QString("bad_request"));
+        r = doIt(1, net::msg::battleAction, {{"action", "defend"}});
+        QVERIFY2(r.ok, qPrintable(r.message));
+        if (session->battleRunning()) {
+            r = doIt(1, net::msg::battleAction, {{"action", "auto"}});
+            QVERIFY2(r.ok, qPrintable(r.message));
+        }
+        QVERIFY(!session->battleRunning());
+        QVERIFY(r.info["battleOver"].toBool());
+        QCOMPARE(r.info["move"].toObject()["battles"].toArray().size(), 1);
+        QVERIFY(!gs.army(monsters));  // 3 militia stand no chance
+        QVERIFY(session->viewFor(pA).contains("lastBattle"));
+        QVERIFY(doIt(1, net::msg::endTurn).ok);  // the game goes on
+    }
+
+    void bothHumansPlayTheirOwnStacks() {
+        core::GameState& gs = session->state();
+        const core::Hero* ha = heroOf(pA);
+        const core::Hero* hb = heroOf(pB);
+        const core::Pos at = gs.army(ha->army)->pos;
+        core::Pos spot{-1, -1};
+        for (const core::Pos p : {core::Pos{at.x + 1, at.y}, core::Pos{at.x - 1, at.y}, core::Pos{at.x, at.y + 1},
+                                  core::Pos{at.x, at.y - 1}}) {
+            bool free = spot.x < 0 && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable;
+            for (const core::Army& a : gs.armies()) free = free && a.pos != p;
+            for (const core::Town& t : gs.towns()) free = free && t.pos != p;
+            for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
+            for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
+            if (free) spot = p;
+        }
+        QVERIFY(spot.x >= 0);
+        gs.army(hb->army)->pos = spot;  // Bob's hero walked up to Ann
+
+        QVERIFY(doIt(1, net::msg::moveHero, {{"hero", id(ha->id)}, {"x", spot.x}, {"y", spot.y}}).info["battleStarted"].toBool());
+        QCOMPARE(session->viewFor(pB)["battle"].toObject()["yourSide"].toInt(), 1);
+        int annActs = 0, bobActs = 0;
+        for (int i = 0; i < 400 && session->battleRunning(); ++i) {
+            const QJsonObject battle = session->viewFor(pA)["battle"].toObject();
+            int activeSide = -1;
+            for (const QJsonValue& u : battle["units"].toArray())
+                if (u.toObject()["id"].toInt() == battle["active"].toInt()) activeSide = u.toObject()["side"].toInt();
+            const int actor = activeSide == 0 ? 1 : 2, other = activeSide == 0 ? 2 : 1;
+            QCOMPARE(doIt(other, net::msg::battleAction, {{"action", "defend"}}).code, QString("not_your_turn"));
+            // Attack the first reachable enemy, else defend.
+            const QJsonArray targets = battle["attackable"].toArray();
+            const QJsonObject body = targets.isEmpty() ? QJsonObject{{"action", "defend"}}
+                                                       : QJsonObject{{"action", "attack"}, {"target", targets[0].toInt()}};
+            QVERIFY(doIt(actor, net::msg::battleAction, body).ok);
+            ++(activeSide == 0 ? annActs : bobActs);
+        }
+        QVERIFY(!session->battleRunning());
+        QVERIFY(annActs > 0 && bobActs > 0);
+        QVERIFY(session->viewFor(pB).contains("lastBattle"));
+        QCOMPARE(session->viewFor(pB)["lastBattle"], session->viewFor(pA)["lastBattle"]);
+    }
+
     void startFailsForAnInvalidLobby() {
         net::LobbyState bad;
         bad.slotList.append(human(0, 1, "Solo", 1, "#d62728"));

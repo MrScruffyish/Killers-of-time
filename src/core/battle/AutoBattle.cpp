@@ -5,160 +5,54 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/battle/BattleAi.h"
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 
 namespace kot::core {
 
-namespace {
-
-struct Fighter {
-    int side = 0;  // 0 attacker, 1 defender
-    int index = 0; // stack index in its army
-    const UnitDef* unit = nullptr;
-    int shotsLeft = 0;
-    bool retaliated = false;
-};
-
-int heroTrait(const GameState& state, HeroId id, const char* trait) {
-    const Hero* h = state.hero(id);
-    return h ? h->trait(QString::fromLatin1(trait)) : 0;
+std::uint64_t newBattleSeed(GameState& state) {
+    return (static_cast<std::uint64_t>(state.rng().nextU32()) << 32) | state.rng().nextU32();
 }
 
-double averageDamage(const UnitStack& s, const UnitDef* u) {
-    return s.count() * (u->damageMin + u->damageMax) / 2.0;
-}
-
-}  // namespace
-
-BattleReport resolveBattle(GameState& state, const ContentRegistry& content, ArmyId attackerArmy,
-                           ArmyId defenderArmy) {
+BattleReport applyBattleResult(GameState& state, const ContentRegistry& content, const Battle& battle) {
     BattleReport report;
-    Army* armies[2] = {state.army(attackerArmy), state.army(defenderArmy)};
-    if (!armies[0] || !armies[1]) return report;
-    report.attacker.owner = armies[0]->owner;
-    report.attacker.hero = armies[0]->hero;
-    report.defender.owner = armies[1]->owner;
-    report.defender.hero = armies[1]->hero;
-    const BattleBalance& bb = content.balance().battle;
-
-    int attack[2], defense[2];
-    for (int s = 0; s < 2; ++s) {
-        attack[s] = heroTrait(state, armies[s]->hero, "attack");
-        defense[s] = heroTrait(state, armies[s]->hero, "defense");
-    }
-
-    QList<Fighter> fighters;
-    QList<UnitStack>* stacks[2] = {&armies[0]->stacks, &armies[1]->stacks};
-    QMap<QString, int> startCount[2];
-    QMap<QString, int> startHpPerUnit[2];
-    for (int s = 0; s < 2; ++s) {
-        for (int i = 0; i < stacks[s]->size(); ++i) {
-            const UnitStack& st = (*stacks[s])[i];
-            const UnitDef* u = content.unit(st.unitTypeId());
-            if (!u || st.isEliminated()) continue;
-            fighters.append({s, i, u, u->shots, false});
-            startCount[s][st.unitTypeId()] += st.count();
-            startHpPerUnit[s][st.unitTypeId()] = st.maxHp();
-        }
-    }
-    // Initiative, then battle speed; attacker first on ties; then army order.
-    std::stable_sort(fighters.begin(), fighters.end(), [](const Fighter& a, const Fighter& b) {
-        if (a.unit->initiative != b.unit->initiative) return a.unit->initiative > b.unit->initiative;
-        if (a.unit->battleSpeed != b.unit->battleSpeed) return a.unit->battleSpeed > b.unit->battleSpeed;
-        if (a.side != b.side) return a.side < b.side;
-        return a.index < b.index;
-    });
-
-    const auto alive = [&](int side) {
-        for (const Fighter& f : fighters)
-            if (f.side == side && !(*stacks[side])[f.index].isEliminated()) return true;
-        return false;
-    };
-    const auto strike = [&](const Fighter& from, const Fighter& to) {
-        const UnitStack& a = (*stacks[from.side])[from.index];
-        UnitStack& t = (*stacks[to.side])[to.index];
-        const int diff = (from.unit->attack + attack[from.side]) - (to.unit->defense + defense[to.side]);
-        double mult = 1.0;
-        if (diff > 0) mult += std::min(diff * bb.attackPercentPerPoint, bb.maxAttackPercent) / 100.0;
-        if (diff < 0) mult -= std::min(-diff * bb.defensePercentPerPoint, bb.maxDefensePercent) / 100.0;
-        const int roll = state.rng().nextInt(from.unit->damageMin, std::max(from.unit->damageMin, from.unit->damageMax));
-        const int damage = std::max(1, static_cast<int>(std::lround(a.count() * roll * mult)));
-        t.applyDamage(damage);
-    };
-    // The enemy stack that deals the most damage (first one on ties).
-    const auto pickTarget = [&](int enemySide) -> Fighter* {
-        Fighter* best = nullptr;
-        double bestDamage = -1;
-        for (Fighter& f : fighters) {
-            if (f.side != enemySide) continue;
-            const UnitStack& s = (*stacks[f.side])[f.index];
-            if (s.isEliminated()) continue;
-            const double d = averageDamage(s, f.unit);
-            if (d > bestDamage) {
-                bestDamage = d;
-                best = &f;
-            }
-        }
-        return best;
-    };
-
-    bool decided = !alive(0) || !alive(1);
-    while (!decided && report.rounds < bb.maxRounds) {
-        ++report.rounds;
-        for (Fighter& f : fighters) f.retaliated = false;
-        for (Fighter& f : fighters) {
-            if ((*stacks[f.side])[f.index].isEliminated()) continue;
-            Fighter* target = pickTarget(1 - f.side);
-            if (!target) break;
-            const bool ranged = f.unit->range > 0 && f.shotsLeft > 0;
-            strike(f, *target);
-            if (ranged) {
-                --f.shotsLeft;
-            } else if (!target->retaliated && !(*stacks[target->side])[target->index].isEliminated()) {
-                target->retaliated = true;
-                strike(*target, f);
-            }
-            if (!alive(0) || !alive(1)) {
-                decided = true;
-                break;
-            }
-        }
-    }
-
-    // Losses, experience (killed HP), cleanup.
+    report.rounds = battle.round();
+    BattleSide* sides[2] = {&report.attacker, &report.defender};
     int killedHp[2] = {0, 0};  // HP side s lost
     for (int s = 0; s < 2; ++s) {
-        QMap<QString, int> left;
-        for (const UnitStack& st : *stacks[s]) left[st.unitTypeId()] += st.count();
-        BattleSide& bs = s == 0 ? report.attacker : report.defender;
-        for (auto it = startCount[s].begin(); it != startCount[s].end(); ++it) {
-            const int lost = it.value() - left.value(it.key());
+        sides[s]->owner = battle.owner(s);
+        sides[s]->hero = battle.hero(s);
+        Army* army = state.army(battle.army(s));
+        if (!army) continue;
+        for (const BattleUnit& u : battle.units()) {
+            if (u.side != s || u.armyIndex >= army->stacks.size()) continue;
+            UnitStack& stack = army->stacks[u.armyIndex];
+            const int lost = stack.count() - u.stack.count();
             if (lost > 0) {
-                bs.losses.insert(it.key(), lost);
-                killedHp[s] += lost * startHpPerUnit[s].value(it.key());
+                sides[s]->losses[stack.unitTypeId()] += lost;
+                killedHp[s] += lost * stack.maxHp();
             }
+            stack = u.stack;
         }
+        army->removeEmptyStacks();
+        for (UnitStack& st : army->stacks) st.restoreFullHealth();
     }
-    const bool attackerAlive = alive(0), defenderAlive = alive(1);
-    if (attackerAlive && !defenderAlive) report.outcome = BattleReport::Outcome::AttackerWon;
-    else if (!attackerAlive) report.outcome = BattleReport::Outcome::DefenderWon;
-    else report.outcome = BattleReport::Outcome::Draw;
-
-    for (int s = 0; s < 2; ++s) {
-        armies[s]->removeEmptyStacks();
-        for (UnitStack& st : armies[s]->stacks) st.restoreFullHealth();
+    switch (battle.outcome()) {
+    case Battle::Outcome::AttackerWon: report.outcome = BattleReport::Outcome::AttackerWon; break;
+    case Battle::Outcome::DefenderWon: report.outcome = BattleReport::Outcome::DefenderWon; break;
+    default: report.outcome = BattleReport::Outcome::Draw; break;
     }
     if (report.outcome == BattleReport::Outcome::Draw) return report;
 
     const int winner = report.attackerWon() ? 0 : 1;
     const int loser = 1 - winner;
-    if (Hero* h = state.hero(armies[winner]->hero)) {
-        report.experience = killedHp[loser] * bb.experiencePerHp;
+    if (Hero* h = state.hero(battle.hero(winner))) {
+        report.experience = killedHp[loser] * content.balance().battle.experiencePerHp;
         report.levelsGained = addExperience(*h, content, report.experience);
     }
-
-    Army* lost = armies[loser];
+    Army* lost = state.army(battle.army(loser));
+    if (!lost) return report;
     bool isGarrison = false;
     for (const Town& t : state.towns()) isGarrison = isGarrison || t.garrison == lost->id;
     if (lost->hero.isValid()) {
@@ -169,6 +63,15 @@ BattleReport resolveBattle(GameState& state, const ContentRegistry& content, Arm
     if (isGarrison) lost->stacks.clear();
     else state.armies().remove(lost->id);
     return report;
+}
+
+BattleReport resolveBattle(GameState& state, const ContentRegistry& content, ArmyId attackerArmy,
+                           ArmyId defenderArmy) {
+    if (!state.army(attackerArmy) || !state.army(defenderArmy)) return {};
+    Battle battle(state, content, attackerArmy, defenderArmy, newBattleSeed(state));
+    // Every action ends a stack's turn, so this always finishes (round limit).
+    while (!battle.isOver()) battle.act(chooseBattleAction(battle));
+    return applyBattleResult(state, content, battle);
 }
 
 QJsonObject battleReportToJson(const BattleReport& report) {

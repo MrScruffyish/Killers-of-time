@@ -5,6 +5,8 @@
 
 #include "ai/AiFactory.h"
 #include "ai/PassiveAi.h"
+#include "core/battle/AutoBattle.h"
+#include "core/battle/BattleAi.h"
 #include "core/content/ContentRegistry.h"
 #include "core/data/JsonReader.h"
 #include "core/model/PlayerView.h"
@@ -110,9 +112,10 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
 void GameSession::playAutoTurns() {
     // At most one full round, so a game with no human left cannot spin forever.
     for (int i = 0; i < m_state.turnOrder().size() && isAuto(m_state.currentPlayer()); ++i) {
-        if (gameOutcome(m_state).over) return;
+        if (gameOutcome(m_state).over || m_battle) return;
         const PlayerId p = m_state.currentPlayer();
         playAiTurn(p, *m_autoPlayers.value(p));
+        if (m_battle) return;  // the AI attacked a human: his turn goes on after the battle
         endTurn(m_state, m_content);
     }
 }
@@ -126,6 +129,7 @@ void GameSession::playAiTurn(PlayerId player, ai::IAiPlayer& ai) {
         if (cmd.type == net::msg::endTurn) return;
         const CommandResult r = dispatch(player, cmd);
         ai.commandDone(cmd, r.ok);
+        if (m_battle) return;  // waits for a human in the battle
     }
     qCWarning(lcKotServer) << "AI" << ai.profileName() << "used up its command budget";
 }
@@ -172,11 +176,24 @@ void GameSession::clientLeft(int clientId) {
     const PlayerId p = m_clientPlayers.take(clientId);
     if (!p.isValid()) return;
     m_autoPlayers.insert(p, std::make_shared<ai::PassiveAi>());
-    playAutoTurns();
+    if (m_battle) runBattles();  // his side is played by the battle AI now
+    afterCommand();
 }
 
 QJsonObject GameSession::viewFor(PlayerId player) const {
-    return buildPlayerView(m_state, m_content, player);
+    QJsonObject view = buildPlayerView(m_state, m_content, player);
+    if (m_battle && m_battle->battle) {
+        const Battle& b = *m_battle->battle;
+        if (b.owner(0) == player || b.owner(1) == player) {
+            QJsonObject battle = battleToJson(b);
+            battle.insert("yourSide", b.owner(0) == player ? 0 : 1);
+            view.insert("battle", battle);
+        } else {
+            view.insert("battleInProgress", true);
+        }
+    }
+    if (m_lastBattle.contains(player)) view.insert("lastBattle", m_lastBattle.value(player));
+    return view;
 }
 
 QJsonObject GameSession::youInfo(PlayerId player) const {
@@ -191,14 +208,124 @@ CommandResult GameSession::handle(int clientId, const Message& command) {
     const PlayerId player = playerOfClient(clientId);
     if (!player.isValid()) return failure("not_a_player", "you are not a player in this game");
     if (gameOutcome(m_state).over) return failure("game_over", "the game is over");
+    if (m_battle) {
+        if (command.type != net::msg::battleAction)
+            return failure("battle_in_progress", "a battle is being fought");
+        CommandResult result = battleAction(player, command);
+        if (result.ok) afterCommand();
+        return result;
+    }
+    if (command.type == net::msg::battleAction) return failure("failed", "there is no battle");
     if (m_state.currentPlayer() != player)
         return failure("not_your_turn", "it is not your turn");
     CommandResult result = dispatch(player, command);
-    // A player who just lost his last hero and town cannot go on: his turn ends.
-    if (result.ok && command.type != net::msg::endTurn && isEliminated(m_state, player) && !gameOutcome(m_state).over)
-        endTurn(m_state, m_content);
-    if (result.ok) playAutoTurns();
+    if (result.ok) afterCommand();
     return result;
+}
+
+void GameSession::afterCommand() {
+    // A player who just lost his last hero and town cannot go on: his turn ends.
+    if (!m_battle && !gameOutcome(m_state).over && isEliminated(m_state, m_state.currentPlayer()))
+        endTurn(m_state, m_content);
+    playAutoTurns();
+}
+
+bool GameSession::humanControls(int side) const {
+    if (!m_battle || !m_battle->battle || m_battle->autoSide[side]) return false;
+    const PlayerId owner = m_battle->battle->owner(side);
+    return owner.isValid() && m_clientPlayers.values().contains(owner);
+}
+
+void GameSession::recordBattle(const BattleReport& report) {
+    const QJsonObject entry{{"id", ++m_battleCounter}, {"report", battleReportToJson(report)}};
+    for (const PlayerId p : {report.attacker.owner, report.defender.owner})
+        if (p.isValid()) m_lastBattle.insert(p, entry);
+}
+
+void GameSession::runBattles() {
+    while (m_battle) {
+        ActiveBattle& ab = *m_battle;
+        if (!ab.battle) {
+            const ArmyId defender = ab.attack.defenders[ab.defenderIndex];
+            ab.battle = std::make_unique<Battle>(m_state, m_content, ab.attack.army, defender, newBattleSeed(m_state));
+        }
+        Battle& b = *ab.battle;
+        while (!b.isOver() && !humanControls(b.activeUnit()->side)) b.act(chooseBattleAction(b));
+        if (!b.isOver()) return;  // a human's turn in the battle
+
+        const BattleReport report = applyBattleResult(m_state, m_content, b);
+        ab.result.battles.append(report);
+        recordBattle(report);
+        ab.battle.reset();
+        const bool won = report.attackerWon();
+        if (won && ab.defenderIndex + 1 < ab.attack.defenders.size() && m_state.army(ab.attack.army)) {
+            ++ab.defenderIndex;
+            continue;
+        }
+        finishAttack(m_state, m_content, ab.attack, won, &ab.result);
+        m_finishedMove = ab.result;
+        m_battle.reset();
+    }
+}
+
+QJsonObject GameSession::moveInfo(const MoveResult& m) const {
+    QJsonObject info;
+    info.insert("arrived", m.arrived);
+    info.insert("stepsTaken", m.stepsTaken);
+    info.insert("movementSpent", m.movementSpent);
+    if (m.capturedMine.isValid()) info.insert("capturedMine", toInt(m.capturedMine.value()));
+    if (m.capturedTown.isValid()) info.insert("capturedTown", toInt(m.capturedTown.value()));
+    if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
+    if (m.attacked) {
+        QJsonArray battles;
+        for (const BattleReport& b : m.battles) battles.append(battleReportToJson(b));
+        info.insert("battles", battles);
+        info.insert("heroKilled", m.heroKilled);
+    }
+    return info;
+}
+
+CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
+    Battle* b = m_battle->battle.get();
+    const BattleUnit* active = b ? b->activeUnit() : nullptr;
+    if (!active) return failure("failed", "the battle is not waiting for anyone");
+    if (b->owner(active->side) != player || !humanControls(active->side))
+        return failure("not_your_turn", "it is not your stack's turn");
+
+    QStringList errors;
+    core::JsonReader r(cmd.body, cmd.type, &errors);
+    const QString action = r.requireString("action");
+    const bool hasHex = cmd.body.contains("x");
+    const int x = r.optionalInt("x", 0, 0, 1000), y = r.optionalInt("y", 0, 0, 1000);
+    const int target = r.optionalInt("target", 0, 0, 1000000);
+    r.finish();
+    if (!r.ok()) return failure("bad_request", errors.join("; "));
+
+    BattleAction a;
+    a.hex = Pos{x, y};
+    a.hasHex = hasHex;
+    a.target = target;
+    if (action == "move") a.type = BattleAction::Type::Move;
+    else if (action == "attack") a.type = BattleAction::Type::Attack;
+    else if (action == "shoot") a.type = BattleAction::Type::Shoot;
+    else if (action == "defend") a.type = BattleAction::Type::Defend;
+    else if (action == "auto") m_battle->autoSide[active->side] = true;
+    else return failure("bad_request", "unknown battle action '" + action + "'");
+
+    QJsonArray events;
+    if (action != "auto") {
+        QList<BattleEvent> ev;
+        const QString error = b->act(a, &ev);
+        if (!error.isEmpty()) return failure("failed", error);
+        for (const BattleEvent& e : ev) events.append(battleEventToJson(e));
+    }
+    runBattles();
+    QJsonObject info{{"events", events}};
+    if (!m_battle) {
+        info.insert("battleOver", true);
+        info.insert("move", moveInfo(m_finishedMove));
+    }
+    return success(info);
 }
 
 CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
@@ -228,22 +355,19 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         if (!r.ok()) return bad();
         const Hero* h = m_state.hero(hero);
         if (!h || h->owner != player) return failure("failed", "that is not your hero");
-        const MoveResult m = moveHero(m_state, m_content, hero, Pos{x, y});
+        const MoveResult m = moveHero(m_state, m_content, hero, Pos{x, y}, MoveMode::Foot, true);
         if (!m.ok) return failure("failed", m.error);
-        QJsonObject info;
-        info.insert("arrived", m.arrived);
-        info.insert("stepsTaken", m.stepsTaken);
-        info.insert("movementSpent", m.movementSpent);
-        if (m.capturedMine.isValid()) info.insert("capturedMine", toInt(m.capturedMine.value()));
-        if (m.capturedTown.isValid()) info.insert("capturedTown", toInt(m.capturedTown.value()));
-        if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
-        if (m.attacked) {
-            QJsonArray battles;
-            for (const BattleReport& b : m.battles) battles.append(battleReportToJson(b));
-            info.insert("battles", battles);
-            info.insert("heroKilled", m.heroKilled);
+        if (!m.pending) return success(moveInfo(m));
+        m_battle = std::make_unique<ActiveBattle>();
+        m_battle->attack = *m.pending;
+        m_battle->result = m;
+        runBattles();
+        if (m_battle) {
+            QJsonObject info = moveInfo(m);
+            info.insert("battleStarted", true);
+            return success(info);
         }
-        return success(info);
+        return success(moveInfo(m_finishedMove));
     }
     if (cmd.type == net::msg::build) {
         const TownId town(id32("town"));

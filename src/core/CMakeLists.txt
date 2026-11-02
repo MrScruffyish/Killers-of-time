@@ -42,6 +42,12 @@ add_library(kot_core STATIC
     rules/Automation.cpp
     rules/Tavern.h
     rules/Tavern.cpp
+    battle/HexGrid.h
+    battle/HexGrid.cpp
+    battle/Battle.h
+    battle/Battle.cpp
+    battle/BattleAi.h
+    battle/BattleAi.cpp
     battle/AutoBattle.h
     battle/AutoBattle.cpp
     rules/Victory.h

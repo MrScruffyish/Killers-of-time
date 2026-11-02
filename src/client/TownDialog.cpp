@@ -100,7 +100,7 @@ void TownDialog::rebuild() {
                 auto* button = new QPushButton(trade ? tr("Build (trade first)") : tr("Build"));
                 button->setObjectName(QStringLiteral("build_%1").arg(id));
                 button->setEnabled(myTurn);
-                connect(button, &QPushButton::clicked, this, [=]() {
+                connect(button, &QPushButton::clicked, this, [=, this]() {
                     send("build", {{"town", tid}, {"building", id}, {"useTrade", trade}},
                          tr("Build %1").arg(name(id)));
                 });
@@ -144,7 +144,7 @@ void TownDialog::rebuild() {
             button->setEnabled(myTurn && rc.available > 0);
             const QString unit = rc.unit;
             const int tid = town->id;
-            connect(button, &QPushButton::clicked, this, [=]() {
+            connect(button, &QPushButton::clicked, this, [=, this]() {
                 if (count->value() > 0)
                     send("recruit", {{"town", tid}, {"unit", unit}, {"count", count->value()}},
                          tr("Recruit %1 x %2").arg(count->value()).arg(unitName(unit)));
@@ -158,7 +158,7 @@ void TownDialog::rebuild() {
         buyAll->setObjectName("buyAllHere");
         buyAll->setEnabled(myTurn);
         const int tid = town->id;
-        connect(buyAll, &QPushButton::clicked, this, [=]() {
+        connect(buyAll, &QPushButton::clicked, this, [=, this]() {
             send("buy_all_units", {{"town", tid}}, tr("Buy all units in %1").arg(town->name));
         });
         layout->addWidget(buyAll);
@@ -192,7 +192,7 @@ void TownDialog::rebuild() {
             hire->setEnabled(myTurn);
             const int tid = town->id;
             const bool trade = gold < cost;
-            connect(hire, &QPushButton::clicked, this, [=]() {
+            connect(hire, &QPushButton::clicked, this, [=, this]() {
                 send("hire_hero", {{"town", tid}, {"hero", offer}, {"useTrade", trade}}, tr("Hire %1").arg(t ? t->name : offer));
             });
             row->addWidget(hire);

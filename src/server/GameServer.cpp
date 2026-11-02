@@ -276,6 +276,10 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
             sendError(client, "no_game", "you are not playing a game", message.seq);
             return true;
         }
+        if (m_session->battleRunning()) {
+            sendError(client, "battle_in_progress", "finish the battle before saving", message.seq);
+            return true;
+        }
         const QString name = message.body.value("name").toString();
         const QString path = savePath(name, &error);
         if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) {
