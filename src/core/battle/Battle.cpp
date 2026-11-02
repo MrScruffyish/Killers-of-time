@@ -53,6 +53,7 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
                 if (const int b = veteranBonus(u.stars, QString::fromLatin1(stat), content)) u.veteran.insert(QString::fromLatin1(stat), b);
             u.pos = Pos{side == 0 ? 0 : hex::kWidth - 1, rows[placed++ % 7]};
             u.shotsLeft = def->shots;
+            u.spellPoints = def->spellPoints;  // full at the start of every battle
             m_units.append(u);
         }
     }
@@ -251,6 +252,15 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
         break;
     case BattleAction::Type::Cast:
         return cast(action, events);  // does not end the stack's turn
+    case BattleAction::Type::UnitCast: {  // the stack's own spell, its turn
+        const QString why = whyUnitCannotCast(action.spell, action.target);
+        if (!why.isEmpty()) return why;
+        if (!target) return QStringLiteral("no target given");
+        const SpellDef* spell = m_content.spell(action.spell);
+        me->spellPoints -= spell->cost;
+        applySpell(*spell, me->def->tier, *target, me->side, me->id, events);
+        break;
+    }
     case BattleAction::Type::Wait: {
         if (me->waited) return QStringLiteral("this stack has already waited this round");
         me->waited = true;
@@ -312,38 +322,55 @@ QString Battle::cast(const BattleAction& action, QList<BattleEvent>* events) {
     const int side = activeUnit()->side;
     const SpellDef* spell = m_content.spell(action.spell);
     Hero& hero = m_heroCopy[side];
-    BattleUnit* t = mutableUnit(action.target);
     hero.spellPoints -= spell->cost;
     m_heroCast[side] = true;
-    const int power = hero.trait(QStringLiteral("spell_power"));
+    applySpell(*spell, hero.trait(QStringLiteral("spell_power")), *mutableUnit(action.target), side, 0, events);
+    checkOver();
+    return {};
+}
+
+QString Battle::whyUnitCannotCast(const QString& spellId, int target) const {
+    const BattleUnit* me = activeUnit();
+    if (!me) return QStringLiteral("the battle is over");
+    const SpellDef* spell = m_content.spell(spellId);
+    if (!spell || !me->def->spells.contains(spellId)) return QStringLiteral("this stack cannot cast that");
+    if (me->spellPoints < spell->cost) return QStringLiteral("the stack has not enough spell points left");
+    if (target == 0) return {};
+    const BattleUnit* t = unit(target);
+    if (!t || !t->alive()) return QStringLiteral("no such stack");
+    if (spell->target == SpellDef::Target::Enemy && t->side == me->side) return QStringLiteral("%1 is cast on an enemy").arg(spell->name);
+    if (spell->target == SpellDef::Target::Ally && t->side != me->side) return QStringLiteral("%1 is cast on your own stack").arg(spell->name);
+    return {};
+}
+
+void Battle::applySpell(const SpellDef& spell, int power, BattleUnit& t, int side, int casterUnit, QList<BattleEvent>* events) {
     BattleEvent e;
     e.type = BattleEvent::Type::Cast;
-    e.target = t->id;
-    e.to = t->pos;
-    e.spell = spell->id;
+    e.unit = casterUnit;
+    e.target = t.id;
+    e.to = t.pos;
+    e.spell = spell.id;
     e.side = side;
-    for (const SpellEffect& effect : spell->effects) {
+    for (const SpellEffect& effect : spell.effects) {
         const int strength = effectStrength(effect, power);
         switch (effect.type) {
         case SpellEffect::Type::Damage: {
-            const UnitStack::DamageResult r = t->stack.applyDamage(std::max(0, strength));
+            const UnitStack::DamageResult r = t.stack.applyDamage(std::max(0, strength));
             e.damage += r.damageDealt;
             e.killed += r.unitsKilled;
             break;
         }
         case SpellEffect::Type::Heal:
-            e.damage += t->stack.heal(std::max(0, strength));
+            e.damage += t.stack.heal(std::max(0, strength));
             break;
         case SpellEffect::Type::ModifyStat:
-            t->modifiers.append({effect.stat, strength, effect.rounds});
+            t.modifiers.append({effect.stat, strength, effect.rounds});
             break;
         default:
             break;  // adventure effects do nothing in battle
         }
     }
     if (events) events->append(e);
-    checkOver();
-    return {};
 }
 
 void Battle::startRound(QList<BattleEvent>* events) {
@@ -460,6 +487,7 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
         j.insert("x", u.pos.x);
         j.insert("y", u.pos.y);
         j.insert("shots", u.shotsLeft);
+        if (u.def->spellPoints > 0) j.insert("spellPoints", u.spellPoints);
         j.insert("retaliated", u.retaliated);
         if (u.stars > 0) j.insert("stars", u.stars);
         QJsonArray mods;
@@ -483,6 +511,12 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
         o.insert("reachable", reach);
         o.insert("canShoot", b.canShoot(*active));
         o.insert("canWait", !active->waited);
+        QJsonArray unitSpells;
+        for (const QString& id : active->def->spells)
+            if (const SpellDef* sp = b.content().spell(id))
+                unitSpells.append(QJsonObject{{"id", id}, {"target", sp->target == SpellDef::Target::Enemy ? "enemy" : "ally"},
+                                              {"cost", sp->cost}, {"castable", b.whyUnitCannotCast(id, 0).isEmpty()}});
+        if (!unitSpells.isEmpty()) o.insert("unitSpells", unitSpells);
         o.insert("canRetreat", active->side == 0);
         QJsonArray attackable;
         for (const BattleUnit& u : b.units()) {

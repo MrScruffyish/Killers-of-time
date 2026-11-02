@@ -396,6 +396,9 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     else if (action == "cast") {
         a.type = BattleAction::Type::Cast;
         a.spell = spell;
+    } else if (action == "unit_cast") {
+        a.type = BattleAction::Type::UnitCast;
+        a.spell = spell;
     }
     else if (action == "auto") m_battle->autoSide[active->side] = true;
     else return failure("bad_request", "unknown battle action '" + action + "'");

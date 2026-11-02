@@ -217,6 +217,43 @@ private slots:
         QVERIFY(gs.hero(h)->spellPoints < sp);
     }
 
+    void unitsCastTheirOwnSpells() {
+        const HeroId h = wizard();
+        gs.army(gs.hero(h)->army)->addUnits("unicorn", 3, 80);
+        const ArmyId m = monsters("wraith", 4);
+        Battle b(gs, reg, gs.hero(h)->army, m, 1);
+        // The wraiths (initiative 7) or unicorns (10): find the unicorns' turn.
+        while (b.activeUnit()->def->id != "unicorn") b.act(BattleAction{});
+        const BattleUnit* uni = b.activeUnit();
+        QCOMPARE(uni->spellPoints, reg.unit("unicorn")->spellPoints);
+        BattleAction cure;
+        cure.type = BattleAction::Type::UnitCast;
+        cure.spell = "cure";
+        cure.target = 2;  // an enemy: refused
+        QVERIFY(!b.act(cure).isEmpty());
+        cure.spell = "magic_arrow";
+        cure.target = 1;
+        QVERIFY(b.act(cure).contains("cannot cast"));
+        cure.spell = "cure";
+        QList<BattleEvent> ev;
+        QVERIFY(b.act(cure, &ev).isEmpty());
+        QCOMPARE(b.unit(1)->spellPoints, reg.unit("unicorn")->spellPoints - reg.spell("cure")->cost);
+        QVERIFY(b.activeUnit()->id != 1);  // it used the turn
+        bool cast = false;
+        for (const BattleEvent& e : ev) cast = cast || (e.type == BattleEvent::Type::Cast && e.unit == 1);
+        QVERIFY(cast);
+    }
+
+    void unitSpellDataIsChecked() {
+        QTemporaryDir tmp;
+        ContentRegistry r;
+        QStringList errors;
+        QVERIFY(!r.loadFromDirectory(copyDataWith(tmp, "units/militia.json",
+            R"({"id":"militia","name":"M","race":"humans","tier":1,"attack":1,"defense":1,"damageMin":1,"damageMax":1,)"
+            R"("maxHp":5,"battleSpeed":4,"spells":["swift_march"],"spellPoints":5})"), &errors));
+        QVERIFY2(errors.join(" ").contains("not a battle spell"), qPrintable(errors.join("\n")));
+    }
+
     void battleJsonShowsYourSpells() {
         const HeroId h = wizard();
         gs.army(gs.hero(h)->army)->addUnits("militia", 5, 6);

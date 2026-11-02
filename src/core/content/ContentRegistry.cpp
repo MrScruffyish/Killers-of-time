@@ -219,6 +219,7 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
         d.spellPoints = r.optionalInt(QStringLiteral("spellPoints"), 0, 0, 10000);
         d.cost = r.optionalIntMap(QStringLiteral("cost"), 1, 1000000);
         d.abilities = r.optionalStringList(QStringLiteral("abilities"));
+        d.spells = r.optionalStringList(QStringLiteral("spells"));
         d.upgradesTo = r.optionalString(QStringLiteral("upgradesTo"));
         r.finish();
         if (!r.ok()) continue;
@@ -648,6 +649,15 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
 }
 
 void ContentRegistry::validateReferences(QStringList& errors) const {
+    for (const UnitDef& u : m_units) {
+        for (const QString& sp : u.spells) {
+            const auto it = m_spells.constFind(sp);
+            if (it == m_spells.cend()) errors << QStringLiteral("unit '%1': unknown spell '%2'").arg(u.id, sp);
+            else if (it->scope != SpellDef::Scope::Battle) errors << QStringLiteral("unit '%1': '%2' is not a battle spell").arg(u.id, sp);
+        }
+        if (!u.spells.isEmpty() && u.spellPoints <= 0)
+            errors << QStringLiteral("unit '%1': has spells but no spellPoints").arg(u.id);
+    }
     for (const ArtifactDef& a : m_artifacts) {
         for (auto it = a.traits.begin(); it != a.traits.end(); ++it)
             if (!m_traits.contains(it.key()))

@@ -111,7 +111,7 @@ and react to; add depth afterwards.
 - [x] Hero spellbook (`Hero::spells`, saved), class `startingSpells`, mage guild buildings (`mageGuild` effect, Mage Guild 2 / Mage Tower 3) teach spells on arrival or at turn start. Later: race access to schools
 - [x] Magic trait level requirement per spell (`requiredMagic`)
 - [x] Battle spells (hero casts once per round, not using the stack's turn; stat changes count down by round; AI heroes cast damage spells); adventure-map spells (`cast_spell`; Swift March, Far Sight; the simple AI casts movement spells)
-- [ ] Unit-cast spells (limited; unit SP refilled fully between battles)
+- [x] Unit-cast spells (unit `spells` + `spellPoints`, full each battle, tier = power; Wraith Curse, Treant Entangle, Unicorn Cure; AI uses them; "Stack's spell" button)
 - [x] Spell Power scaling of effects
 - [x] Spell UI: spells in the hero panel, Cast spell on the map, Cast spell in battle (choose spell, click target). Tests: `tst_spells` (33 test programs)
 

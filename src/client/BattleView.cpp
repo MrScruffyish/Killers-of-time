@@ -152,7 +152,11 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     layout->addLayout(buttons);
     connect(m_defend, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "defend"}}); });
     connect(m_auto, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "auto"}}); });
-    connect(m_cast, &QPushButton::clicked, this, &BattleView::chooseSpell);
+    connect(m_cast, &QPushButton::clicked, this, [this]() { chooseSpell(false); });
+    m_unitCast = new QPushButton(tr("Stack's spell..."), this);
+    m_unitCast->setObjectName("unitCastButton");
+    buttons->insertWidget(1, m_unitCast);
+    connect(m_unitCast, &QPushButton::clicked, this, [this]() { chooseSpell(true); });
     connect(m_wait, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "wait"}}); });
     connect(m_retreat, &QPushButton::clicked, this, [this]() {
         if (QMessageBox::question(this, tr("Retreat"), tr("Retreat? Your army will be lost, but your hero escapes."))
@@ -188,7 +192,8 @@ void BattleView::updateInfo() {
     } else if (mine && !m_castSpell.isEmpty()) {
         const core::SpellDef* s = m_content->spell(m_castSpell);
         bool enemy = true;
-        for (const ViewBattle::Spell& sp : battle.spells) if (sp.id == m_castSpell) enemy = sp.targetsEnemy;
+        for (const ViewBattle::Spell& sp : m_castByUnit ? battle.unitSpells : battle.spells)
+            if (sp.id == m_castSpell) enemy = sp.targetsEnemy;
         text += tr("Cast %1: click %2 (or an empty hex to cancel).")
                     .arg(s ? s->name : m_castSpell, enemy ? tr("an enemy stack") : tr("one of your stacks"));
     } else if (mine) {
@@ -211,12 +216,16 @@ void BattleView::updateInfo() {
     for (const ViewBattle::Spell& sp : battle.spells) anyCastable = anyCastable || sp.castable;
     m_cast->setVisible(battle.hasHero);
     m_cast->setEnabled(mine && anyCastable);
+    bool unitCastable = false;
+    for (const ViewBattle::Spell& sp : battle.unitSpells) unitCastable = unitCastable || sp.castable;
+    m_unitCast->setVisible(mine && !battle.unitSpells.isEmpty());
+    m_unitCast->setEnabled(unitCastable);
 }
 
-void BattleView::chooseSpell() {
+void BattleView::chooseSpell(bool unitSpell) {
     QStringList names;
     QStringList ids;
-    for (const ViewBattle::Spell& sp : m_battle.spells) {
+    for (const ViewBattle::Spell& sp : unitSpell ? m_battle.unitSpells : m_battle.spells) {
         if (!sp.castable) continue;
         const core::SpellDef* s = m_content->spell(sp.id);
         names << tr("%1 (%2 SP)").arg(s ? s->name : sp.id).arg(sp.cost);
@@ -227,6 +236,7 @@ void BattleView::chooseSpell() {
     const QString chosen = QInputDialog::getItem(this, tr("Cast spell"), tr("Spell:"), names, 0, false, &ok);
     if (!ok) return;
     m_castSpell = ids[names.indexOf(chosen)];
+    m_castByUnit = unitSpell;
     updateInfo();
 }
 
@@ -236,7 +246,7 @@ void BattleView::onHexClicked(core::Pos hex) {
         const QString spell = m_castSpell;
         m_castSpell.clear();
         if (const ViewBattleUnit* u = m_battle.unitAt(hex))
-            emit actionRequested({{"action", "cast"}, {"spell", spell}, {"target", u->id}});
+            emit actionRequested({{"action", m_castByUnit ? "unit_cast" : "cast"}, {"spell", spell}, {"target", u->id}});
         updateInfo();
         return;
     }

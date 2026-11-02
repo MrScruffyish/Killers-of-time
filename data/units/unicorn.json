@@ -17,5 +17,9 @@
   "initiative": 10,
   "abilities": [
     "no_retaliation"
+  ],
+  "spellPoints": 10,
+  "spells": [
+    "cure"
   ]
 }

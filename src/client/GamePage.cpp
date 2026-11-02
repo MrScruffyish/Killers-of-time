@@ -518,7 +518,8 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
                          .arg(e["lucky"].toBool() ? tr(" (lucky strike!)") : QString());
         } else if (type == "cast") {
             const core::SpellDef* s = m_content->spell(e["spell"].toString());
-            const QString caster = e["side"].toInt() == m_view.battle.yourSide ? tr("your hero") : tr("the enemy hero");
+            const QString caster = e["unit"].toInt() > 0 ? name(e["unit"].toInt())
+                                   : e["side"].toInt() == m_view.battle.yourSide ? tr("your hero") : tr("the enemy hero");
             lines << tr("%1 casts %2 on %3%4").arg(caster, s ? s->name : e["spell"].toString(), name(e["target"].toInt()),
                                                          e["damage"].toInt() > 0 ? tr(" (%1)").arg(e["damage"].toInt()) : QString());
         } else if (type == "move") {

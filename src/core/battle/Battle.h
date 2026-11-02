@@ -13,6 +13,7 @@ namespace kot::core {
 
 class ContentRegistry;
 struct UnitDef;
+struct SpellDef;
 
 // A temporary change from a spell (Stone Skin, Slow, ...).
 struct StatModifier {
@@ -30,6 +31,7 @@ struct BattleUnit {
     UnitStack stack;
     Pos pos;             // hex
     int shotsLeft = 0;
+    int spellPoints = 0;      // the stack's own pool (units with spells)
     bool retaliated = false;  // this round
     bool waited = false;      // this round
     bool moraleUsed = false;  // got its extra action this round
@@ -43,7 +45,7 @@ struct BattleUnit {
 };
 
 struct BattleAction {
-    enum class Type { Move, Attack, Shoot, Defend, Cast, Wait, Retreat };
+    enum class Type { Move, Attack, Shoot, Defend, Cast, Wait, Retreat, UnitCast };
     Type type = Type::Defend;
     Pos hex;               // Move: where to. Attack: hex to strike from (optional)
     bool hasHex = false;
@@ -86,6 +88,8 @@ struct BattleEvent {
 // Besides, the hero of the active stack's side may cast one battle spell per round
 // (Cast; it does not use up the stack's turn): damage, heal or a stat change for a
 // few rounds. Spell points are spent from a copy and written back afterwards.
+// Units with spells (UnitDef::spells) may cast one instead of acting (UnitCast), from
+// their own spell point pool, full at the start of each battle; their tier is the power.
 // Damage = count * roll(damageMin..damageMax) * attack/defense factor (balance.json
 // "battle"), hero Attack/Defense traits added. The battle ends when one side has no
 // stacks left, or as a draw after maxRounds.
@@ -124,6 +128,8 @@ public:
     // Why the active side's hero cannot cast this spell on `target` now (empty = can).
     // target 0 checks everything except the target.
     QString whyCannotCast(const QString& spellId, int target) const;
+    // Why the active stack cannot cast one of its own spells (UnitCast) now.
+    QString whyUnitCannotCast(const QString& spellId, int target) const;
 
     // Hexes the unit can move to, with the number of steps.
     QHash<Pos, int> reachable(const BattleUnit& unit) const;
@@ -138,6 +144,7 @@ public:
 
 private:
     QString cast(const BattleAction& action, QList<BattleEvent>* events);
+    void applySpell(const SpellDef& spell, int power, BattleUnit& target, int side, int casterUnit, QList<BattleEvent>* events);
     void strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QList<BattleEvent>* events);
     void startRound(QList<BattleEvent>* events);
     bool chance(int percent);

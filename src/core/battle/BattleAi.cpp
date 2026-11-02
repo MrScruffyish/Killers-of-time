@@ -52,6 +52,29 @@ BattleAction chooseBattleAction(const Battle& b) {
         }
     }
 
+    // The stack's own spells: a damage spell at the most dangerous enemy, a heal on a
+    // badly hurt own stack, a curse at the strongest enemy while it has none.
+    for (const QString& id : me->def->spells) {
+        const SpellDef* s = b.content().spell(id);
+        if (!s || !b.whyUnitCannotCast(id, 0).isEmpty()) continue;
+        int target = 0;
+        for (const SpellEffect& e : s->effects) {
+            if (e.type == SpellEffect::Type::Damage && s->target == SpellDef::Target::Enemy) target = enemies.first()->id;
+            if (e.type == SpellEffect::Type::ModifyStat && s->target == SpellDef::Target::Enemy && enemies.first()->modifiers.isEmpty())
+                target = enemies.first()->id;
+            if (e.type == SpellEffect::Type::Heal)
+                for (const BattleUnit& u : b.units())
+                    if (u.alive() && u.side == me->side && u.stack.totalHp() < u.stack.count() * u.stack.maxHp() - u.stack.maxHp())
+                        target = u.id;
+        }
+        if (target) {
+            a.type = BattleAction::Type::UnitCast;
+            a.spell = id;
+            a.target = target;
+            return a;
+        }
+    }
+
     if (b.canShoot(*me)) {
         a.type = BattleAction::Type::Shoot;
         a.target = enemies.first()->id;

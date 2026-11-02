@@ -226,3 +226,8 @@ saves folder (`campaign_<id>.json`) with the best `heroes` heroes of the first h
 (level, experience, traits, spells, artifacts, and the army if `army`); they lead that player's
 heroes in the next chapter. A lost chapter can be played again; after the last chapter the
 campaign starts over.
+
+## Unit spells (`spells` and `spellPoints` in units/<id>.json)
+A unit with `spells` (battle spells) and `spellPoints` may cast one instead of acting; its pool
+is full at the start of every battle and its tier is the spell power. The battle AI uses them
+(damage and curses on the most dangerous enemy, heals on badly hurt own stacks).

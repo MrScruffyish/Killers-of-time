@@ -258,6 +258,11 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         vb.townDefense = b.value("townDefense").toInt();
         for (const QJsonValue& h : b.value("obstacles").toArray())
             vb.obstacles.append({h.toArray().at(0).toInt(), h.toArray().at(1).toInt()});
+        for (const QJsonValue& sv : b.value("unitSpells").toArray()) {
+            const QJsonObject so = sv.toObject();
+            vb.unitSpells.append({so.value("id").toString(), so.value("target").toString() == "enemy",
+                                  so.value("cost").toInt(), so.value("castable").toBool()});
+        }
         if (b.value("hero").isObject()) {
             const QJsonObject hero = b.value("hero").toObject();
             vb.hasHero = true;

@@ -14,5 +14,9 @@
     "gold": 400,
     "wood": 3
   },
-  "mapSpeed": 3
+  "mapSpeed": 3,
+  "spellPoints": 10,
+  "spells": [
+    "entangle"
+  ]
 }

@@ -19,5 +19,9 @@
     "undead",
     "flying",
     "no_retaliation"
+  ],
+  "spellPoints": 10,
+  "spells": [
+    "curse"
   ]
 }

@@ -229,6 +229,7 @@ struct UnitDef {
     int size = 1;          // 1 or 2 hexes
     int weeklyGrowth = 0;
     int spellPoints = 0;   // the unit's own spell point pool (0 = cannot cast)
+    QStringList spells;    // battle spells the unit can cast with it
     ResourceAmounts cost;
     // flying (moves over other stacks and rocks), no_retaliation (its targets do not
     // strike back), double_attack (strikes / shoots twice), undead (ignores morale)

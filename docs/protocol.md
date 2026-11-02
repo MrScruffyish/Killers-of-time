@@ -143,7 +143,7 @@ once by the battle AI and `move_hero` returns the reports.
 
 | Type | Fields | `info` on success |
 |---|---|---|
-| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `wait` (act again at the end of the round, once), `retreat` (attacker only: army lost, hero escapes), `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end) | `events` (list: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
+| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `wait` (act again at the end of the round, once), `retreat` (attacker only: army lost, hero escapes), `unit_cast` (`spell`, `target`: the active stack's own spell, uses its turn), `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end) | `events` (list: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
 
 Battle reports (`battles` entries, and `lastBattle.report` in the view of both participants,
 `lastBattle.id` grows with every battle):

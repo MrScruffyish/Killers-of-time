@@ -35,7 +35,7 @@ signals:
 
 private:
     void onHexClicked(core::Pos hex);
-    void chooseSpell();
+    void chooseSpell(bool unitSpell);
     void updateInfo();
 
     const core::ContentRegistry* m_content;
@@ -45,6 +45,8 @@ private:
     QPushButton* m_defend;
     QPushButton* m_auto;
     QPushButton* m_cast;
+    QPushButton* m_unitCast;
+    bool m_castByUnit = false;
     QPushButton* m_wait;
     QPushButton* m_retreat;
     QString m_castSpell;  // chosen spell waiting for a target click

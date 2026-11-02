@@ -145,6 +145,7 @@ struct ViewBattle {
         int cost = 0;
         bool castable = false;
     };
+    QList<Spell> unitSpells;  // the active stack's own spells
     bool hasHero = false;
     int heroSpellPoints = 0;
     bool heroHasCast = false;
