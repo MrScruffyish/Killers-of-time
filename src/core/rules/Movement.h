@@ -42,6 +42,8 @@ struct MoveResult {
     QList<BattleReport> battles;  // in order; stops at the first one not won
     bool heroKilled = false;   // the moving hero lost a battle (he and his army are gone)
     QStringList learnedSpells;  // arrived in an own town with a mage guild
+    ResourceAmounts foundResources;  // picked up a treasure
+    QStringList foundArtifacts;      // picked up artifacts
     std::optional<PendingAttack> pending;  // deferBattles: the battles still to fight
 };
 
@@ -64,6 +66,9 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
 // target and updates the explored map. `won` = every battle was won.
 void finishAttack(GameState& state, const ContentRegistry& content, const PendingAttack& attack, bool won,
                   MoveResult* result);
+// Picks up the treasures and artifacts lying on `target` (they leave the map):
+// resources go to the hero's owner, artifacts (and their trait bonuses) to the hero.
+void pickUpAt(GameState& state, const ContentRegistry& content, HeroId hero, Pos target, MoveResult* result);
 // Takes over the mine, dwelling or town on `target` if it is not the team's.
 void captureAt(GameState& state, PlayerId owner, Pos target, MoveResult* result);
 

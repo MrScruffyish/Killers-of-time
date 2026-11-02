@@ -298,6 +298,14 @@ void GamePage::updateHeroPanel() {
         spellNames << (s ? s->name : id);
     }
     lines << tr("Spells: %1").arg(spellNames.isEmpty() ? tr("none") : spellNames.join(", "));
+    if (!h->artifacts.isEmpty()) {
+        QStringList names;
+        for (const QString& id : h->artifacts) {
+            const core::ArtifactDef* a = m_content->artifact(id);
+            names << (a ? QStringLiteral("%1 (%2)").arg(a->name, a->description) : id);
+        }
+        lines << tr("Artifacts: %1").arg(names.join(", "));
+    }
     m_heroInfo->setText(lines.join("<br>"));
     bool adventureSpell = false;
     for (const QString& id : h->spells) {
@@ -442,6 +450,16 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
         if (info.contains("capturedMine")) text += tr(", captured a mine");
         if (info.contains("capturedTown")) text += tr(", captured a town");
         if (info.contains("capturedDwelling")) text += tr(", captured a dwelling");
+        if (info.contains("foundResources")) {
+            QStringList parts;
+            const QJsonObject res = info["foundResources"].toObject();
+            for (auto it = res.begin(); it != res.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value().toInt()).arg(it.key());
+            text += tr(", found %1").arg(parts.join(", "));
+        }
+        for (const QJsonValue& v : info["foundArtifacts"].toArray()) {
+            const core::ArtifactDef* a = m_content->artifact(v.toString());
+            text += tr(", found the %1 (%2)!").arg(a ? a->name : v.toString(), a ? a->description : QString());
+        }
         if (info.contains("learnedSpells")) {
             QStringList names;
             for (const QJsonValue& v : info["learnedSpells"].toArray()) {

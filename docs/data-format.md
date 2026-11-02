@@ -180,3 +180,11 @@ abilities are errors.
 to falter), `luckPercentPerPoint` (chance per Luck point for double damage),
 `hpPercentPerTraitLevel` (hero Hit Points: +% max HP for his units, in battle only), `obstacles`
 (rocks on the battle field).
+
+## artifacts.json (optional)
+```json
+{ "artifacts": [ { "id": "iron_sword", "name": "Iron Sword", "description": "+2 Attack",
+                   "traits": { "attack": 2 }, "value": 1 } ] }
+```
+Artifacts lie on the map (guarded by monsters; `value` 1..3 makes the guard stronger). The hero who
+walks onto one keeps it and its trait bonuses are added to his traits.

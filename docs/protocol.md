@@ -78,7 +78,7 @@ Failed commands answer with `error` (`replyTo` names the request). Codes: `not_y
 ### The view (`PlayerView`)
 The server only sends what the player may know: `day`, `currentPlayer`, `you`, own `resources`
 (private), `players` (name, team, colour, race, isAi), `map`, `heroes`, `armies`, `towns`,
-`mines`, `mapDwellings`, `gameOver` (bool) and `winnerTeam` (when over; 0 = nobody). Each
+`mines`, `mapDwellings`, `mapObjects` (in sight: `id`, `kind` treasure/artifact, `x`, `y`, `resources` or `artifact`), `gameOver` (bool) and `winnerTeam` (when over; 0 = nobody). Each
 player has `eliminated` (no towns and no heroes left: out of the game, turns skipped).
 When the game is over every command is refused with code `game_over`.
 - `map`: `width`, `height`, `terrainPalette`, `tiles` (palette index per tile, row-major, **-1 =
@@ -91,7 +91,7 @@ When the game is over every command is refused with code `game_over`.
 | Type | Fields | `info` on success |
 |---|---|---|
 | `end_turn` | | `day`, `newDay`. AI players then play their turns on the server (with these same commands); players who left are skipped. |
-| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled` |
+| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled`; `foundResources`, `foundArtifacts`, `learnedSpells` when that happened |
 | `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
 | `recruit` | `town`, `unit`, `count`, `army`? | |
 | `recruit_at_dwelling` | `dwelling`, `count`, `army` | |

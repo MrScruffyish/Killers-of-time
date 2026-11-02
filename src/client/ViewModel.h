@@ -55,6 +55,7 @@ struct ViewHero {
     int pendingTraitPicks = 0;
     int movementPoints = 0;
     QStringList spells;
+    QStringList artifacts;
 };
 
 struct BuildOption {
@@ -96,6 +97,14 @@ struct ViewDwelling {
     int owner = 0;
     core::Pos pos;
     int available = -1;  // -1 = unknown
+};
+
+struct ViewObject {
+    int id = 0;
+    bool artifact = false;      // else a treasure pile
+    QString artifactId;
+    core::ResourceAmounts resources;
+    core::Pos pos;
 };
 
 struct ViewBattleUnit {
@@ -163,6 +172,7 @@ struct GameView {
     QList<ViewTown> towns;
     QList<ViewMine> mines;
     QList<ViewDwelling> dwellings;
+    QList<ViewObject> objects;
     ViewBattle battle;
     bool battleInProgress = false;  // someone else is fighting
     int lastBattleId = 0;           // newest battle you took part in

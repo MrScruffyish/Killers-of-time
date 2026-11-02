@@ -85,6 +85,7 @@ void ContentRegistry::clear() {
     m_heroTemplates.clear();
     m_spells.clear();
     m_races.clear();
+    m_artifacts.clear();
     m_xpThresholds.clear();
     m_balance = Balance();
 }
@@ -98,6 +99,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadUnits(dataDir, problems);
     loadBuildings(dataDir, problems);
     loadRaces(dataDir, problems);
+    loadArtifacts(dataDir, problems);
     loadSpells(dataDir, problems);
     loadHeroClasses(dataDir, problems);
     loadHeroTemplates(dataDir, problems);
@@ -304,6 +306,27 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
         }
         m_buildings.insert(d.id, d);
     }
+}
+
+void ContentRegistry::loadArtifacts(const QString& dir, QStringList& errors) {
+    if (!QFile::exists(QDir(dir).filePath(QStringLiteral("artifacts.json")))) return;  // optional
+    forEachEntry(dir, QStringLiteral("artifacts.json"), QStringLiteral("artifacts"), errors,
+                 [&](const QJsonObject& o, const QString& ctx) {
+                     JsonReader r(o, ctx, &errors);
+                     ArtifactDef d;
+                     d.id = r.requireId(QStringLiteral("id"));
+                     d.name = r.requireString(QStringLiteral("name"));
+                     d.description = r.optionalString(QStringLiteral("description"));
+                     d.traits = r.optionalIntMap(QStringLiteral("traits"), -100, 100);
+                     d.value = r.optionalInt(QStringLiteral("value"), 1, 1, 3);
+                     r.finish();
+                     if (!r.ok()) return;
+                     if (m_artifacts.contains(d.id)) {
+                         errors << ctx + QStringLiteral(": duplicate artifact id '%1'").arg(d.id);
+                         return;
+                     }
+                     m_artifacts.insert(d.id, d);
+                 });
 }
 
 void ContentRegistry::loadRaces(const QString& dir, QStringList& errors) {
@@ -553,6 +576,11 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
 }
 
 void ContentRegistry::validateReferences(QStringList& errors) const {
+    for (const ArtifactDef& a : m_artifacts) {
+        for (auto it = a.traits.begin(); it != a.traits.end(); ++it)
+            if (!m_traits.contains(it.key()))
+                errors << QStringLiteral("artifact '%1': unknown trait '%2'").arg(a.id, it.key());
+    }
     for (const RaceDef& race : m_races) {
         for (auto it = race.terrainCostPercent.begin(); it != race.terrainCostPercent.end(); ++it)
             if (!m_terrain.contains(it.key()))
@@ -693,6 +721,11 @@ QStringList ContentRegistry::raceIds() const {
 const RaceDef& ContentRegistry::race(const QString& id) const {
     const auto it = m_races.constFind(id);
     return it == m_races.cend() ? m_defaultRace : it.value();
+}
+
+const ArtifactDef* ContentRegistry::artifact(const QString& id) const {
+    const auto it = m_artifacts.constFind(id);
+    return it == m_artifacts.cend() ? nullptr : &it.value();
 }
 
 const SpellDef* ContentRegistry::spell(const QString& id) const {

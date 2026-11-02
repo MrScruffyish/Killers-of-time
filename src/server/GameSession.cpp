@@ -279,6 +279,8 @@ QJsonObject GameSession::moveInfo(const MoveResult& m) const {
     if (m.capturedTown.isValid()) info.insert("capturedTown", toInt(m.capturedTown.value()));
     if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
     if (!m.learnedSpells.isEmpty()) info.insert("learnedSpells", QJsonArray::fromStringList(m.learnedSpells));
+    if (!m.foundResources.isEmpty()) info.insert("foundResources", resourcesJson(m.foundResources));
+    if (!m.foundArtifacts.isEmpty()) info.insert("foundArtifacts", QJsonArray::fromStringList(m.foundArtifacts));
     if (m.attacked) {
         QJsonArray battles;
         for (const BattleReport& b : m.battles) battles.append(battleReportToJson(b));

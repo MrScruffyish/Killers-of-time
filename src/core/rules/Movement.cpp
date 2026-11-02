@@ -62,6 +62,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     for (const Town& t : state.towns()) occupied.insert(t.pos);
     for (const Mine& m : state.mines()) occupied.insert(m.pos);
     for (const MapDwelling& d : state.mapDwellings()) occupied.insert(d.pos);
+    for (const MapObject& o : state.mapObjects()) occupied.insert(o.pos);
 
     // What stands on the target tile?
     Town* targetTown = nullptr;
@@ -143,6 +144,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     result.arrived = reached;
     if (result.arrived) {
         captureAt(state, owner, target, &result);
+        pickUpAt(state, content, heroIdCopy, target, &result);
         result.learnedSpells = learnSpellsInTown(state, content, heroIdCopy);
     }
     updateExplored(state, content, state.teamOf(owner));
@@ -171,6 +173,27 @@ void captureAt(GameState& state, PlayerId owner, Pos target, MoveResult* result)
     }
 }
 
+void pickUpAt(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target, MoveResult* result) {
+    Hero* hero = state.hero(heroId);
+    Player* player = hero ? state.player(hero->owner) : nullptr;
+    if (!player) return;
+    QList<MapObjectId> taken;
+    for (const MapObject& o : state.mapObjects()) {
+        if (o.pos != target) continue;
+        taken.append(o.id);
+        for (auto it = o.resources.begin(); it != o.resources.end(); ++it) {
+            player->resources[it.key()] += it.value();
+            result->foundResources[it.key()] += it.value();
+        }
+        if (const ArtifactDef* a = content.artifact(o.artifact)) {
+            hero->artifacts.append(a->id);
+            for (auto it = a->traits.begin(); it != a->traits.end(); ++it) hero->traits[it.key()] += it.value();
+            result->foundArtifacts.append(a->id);
+        }
+    }
+    for (const MapObjectId id : taken) state.mapObjects().remove(id);
+}
+
 void finishAttack(GameState& state, const ContentRegistry& content, const PendingAttack& attack, bool won,
                   MoveResult* result) {
     Army* army = state.army(attack.army);
@@ -182,6 +205,7 @@ void finishAttack(GameState& state, const ContentRegistry& content, const Pendin
     result->arrived = won && army && army->pos == attack.target;
     if (result->arrived) {
         captureAt(state, attack.owner, attack.target, result);
+        pickUpAt(state, content, attack.hero, attack.target, result);
         result->learnedSpells = learnSpellsInTown(state, content, attack.hero);
     }
     updateExplored(state, content, state.teamOf(attack.owner));

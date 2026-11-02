@@ -182,16 +182,71 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         gs.addMapDwelling(unit->id, where, unit->weeklyGrowth);
     }
 
-    // Neutral monsters wandering the land; stronger units come in smaller groups.
+    // Neutral monsters. `strength` 1 (weak) .. 3 (strong) picks the tiers and the size.
     QStringList monsterUnits;
     for (const UnitDef& u : content.units()) monsterUnits.append(u.id);
-    for (int i = 0, n = std::max(3, area / 300); i < n && !monsterUnits.isEmpty(); ++i) {
+    const QSet<Pos> landSet(land.begin(), land.end());
+    const auto addMonsters = [&](Pos where, int strength) {
+        QStringList fitting;
+        for (const QString& id : monsterUnits) {
+            const int tier = content.unit(id)->tier;
+            if (tier >= strength && tier <= strength + 1) fitting.append(id);
+        }
+        if (fitting.isEmpty()) fitting = monsterUnits;
+        if (fitting.isEmpty()) return;
+        const UnitDef* unit = content.unit(fitting[gs.rng().nextInt(0, static_cast<int>(fitting.size()) - 1)]);
+        const int count = std::max(1, gs.rng().nextInt(10, 20) * strength / (2 * unit->tier));
+        gs.army(gs.addArmy(PlayerId(), where))->addUnits(unit->id, count, unit->maxHp);
+    };
+    // A guard on a free land tile next to `object`.
+    const auto guard = [&](Pos object, int strength) {
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                const Pos p{object.x + dx, object.y + dy};
+                if ((dx || dy) && landSet.contains(p) && !used.contains(p)) {
+                    used.append(p);
+                    addMonsters(p, strength);
+                    return;
+                }
+            }
+    };
+    // Every other non-gold mine and every gold mine is guarded.
+    int mineIndex = 0;
+    for (const Mine& m : QList<Mine>(gs.mines().values()))
+        if (m.resourceId == currency || (mineIndex++ % 2 == 0)) guard(m.pos, m.resourceId == currency ? 2 : 1);
+
+    // Treasure piles and guarded artifacts.
+    QStringList resources;
+    for (const ResourceDef& r : content.resources()) resources.append(r.id);
+    for (int i = 0, n = std::max(4, area / 250); i < n; ++i) {
         Pos where;
         if (!place(&where)) break;
-        const UnitDef* unit = content.unit(monsterUnits[gs.rng().nextInt(0, static_cast<int>(monsterUnits.size()) - 1)]);
-        const int count = std::max(1, gs.rng().nextInt(8, 20) / std::max(1, unit->tier));
-        Army* monsters = gs.army(gs.addArmy(PlayerId(), where));
-        monsters->addUnits(unit->id, count, unit->maxHp);
+        MapObject o;
+        o.kind = MapObject::Kind::Treasure;
+        o.pos = where;
+        const QString res = resources[gs.rng().nextInt(0, static_cast<int>(resources.size()) - 1)];
+        const ResourceDef* rd = content.resource(res);
+        o.resources[res] = res == currency ? 100 * gs.rng().nextInt(5, 15)
+                                           : (rd && rd->value >= 300 ? gs.rng().nextInt(2, 4) : gs.rng().nextInt(4, 10));
+        gs.addMapObject(o);
+    }
+    const QStringList artifactIds = content.artifacts().keys();
+    for (int i = 0, n = std::max(2, area / 600); i < n && !artifactIds.isEmpty(); ++i) {
+        Pos where;
+        if (!place(&where)) break;
+        MapObject o;
+        o.kind = MapObject::Kind::Artifact;
+        o.pos = where;
+        o.artifact = artifactIds[gs.rng().nextInt(0, static_cast<int>(artifactIds.size()) - 1)];
+        gs.addMapObject(o);
+        guard(where, std::clamp(content.artifact(o.artifact)->value + 1, 1, 3));
+    }
+
+    // Wandering monsters.
+    for (int i = 0, n = std::max(3, area / 400); i < n && !monsterUnits.isEmpty(); ++i) {
+        Pos where;
+        if (!place(&where)) break;
+        addMonsters(where, 1 + gs.rng().nextInt(0, 1));
     }
 
     // Everybody starts with full movement (armies now exist) and a look around.

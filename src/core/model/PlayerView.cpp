@@ -116,6 +116,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             o.insert("movementPoints", h.movementPoints);
             o.insert("template", h.templateId);
             o.insert("spells", QJsonArray::fromStringList(h.spells));
+            o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));
         }
         heroes.append(o);
     }
@@ -218,6 +219,20 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
         dwellings.append(o);
     }
     view.insert("mapDwellings", dwellings);
+
+    QJsonArray objects;
+    for (const MapObject& m : state.mapObjects()) {
+        if (!sees(m.pos)) continue;
+        QJsonObject o;
+        o.insert("id", id(m.id.value()));
+        o.insert("kind", m.kind == MapObject::Kind::Artifact ? "artifact" : "treasure");
+        o.insert("x", m.pos.x);
+        o.insert("y", m.pos.y);
+        if (!m.artifact.isEmpty()) o.insert("artifact", m.artifact);
+        if (!m.resources.isEmpty()) o.insert("resources", intMap(m.resources));
+        objects.append(o);
+    }
+    view.insert("mapObjects", objects);
     return view;
 }
 

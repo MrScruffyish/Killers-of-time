@@ -1,0 +1,15 @@
+{
+  "_comment": "Artifacts lie on the map; the hero who picks one up keeps its trait bonuses. value 1..3 sets the guard strength.",
+  "artifacts": [
+    { "id": "iron_sword", "name": "Iron Sword", "description": "+2 Attack", "traits": { "attack": 2 }, "value": 1 },
+    { "id": "oak_shield", "name": "Oak Shield", "description": "+2 Defense", "traits": { "defense": 2 }, "value": 1 },
+    { "id": "boots_of_travel", "name": "Boots of Travel", "description": "+2 Movement Points", "traits": { "movement_points": 2 }, "value": 1 },
+    { "id": "spyglass", "name": "Spyglass", "description": "+2 Scouting Radius", "traits": { "scouting_radius": 2 }, "value": 1 },
+    { "id": "lucky_clover", "name": "Lucky Clover", "description": "+2 Luck", "traits": { "luck": 2 }, "value": 1 },
+    { "id": "war_banner", "name": "War Banner", "description": "+2 Morale", "traits": { "morale": 2 }, "value": 2 },
+    { "id": "amulet_of_life", "name": "Amulet of Life", "description": "+3 Hit Points", "traits": { "hit_points": 3 }, "value": 2 },
+    { "id": "mage_staff", "name": "Mage Staff", "description": "+2 Spell Power, +10 Spell Points", "traits": { "spell_power": 2, "spell_points_max": 10 }, "value": 2 },
+    { "id": "dragon_blade", "name": "Dragon Blade", "description": "+4 Attack, +1 Morale", "traits": { "attack": 4, "morale": 1 }, "value": 3 },
+    { "id": "crown_of_kings", "name": "Crown of Kings", "description": "+2 Attack, +2 Defense, +1 Magic", "traits": { "attack": 2, "defense": 2, "magic": 1 }, "value": 3 }
+  ]
+}

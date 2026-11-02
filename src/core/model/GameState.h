@@ -45,6 +45,7 @@ public:
     ArmyId addArmy(PlayerId owner, Pos pos);
     TownId addTown(const QString& name, const QString& race, Pos pos, PlayerId owner = {});
     MapDwellingId addMapDwelling(const QString& unitId, Pos pos, int available, PlayerId owner = {});
+    MapObjectId addMapObject(MapObject object);  // the id is assigned
     MineId addMine(const QString& resourceId, int dailyAmount, Pos pos, PlayerId owner = {});
 
     const QMap<PlayerId, Player>& players() const { return m_players; }
@@ -57,6 +58,8 @@ public:
     QMap<TownId, Town>& towns() { return m_towns; }
     const QMap<MapDwellingId, MapDwelling>& mapDwellings() const { return m_mapDwellings; }
     QMap<MapDwellingId, MapDwelling>& mapDwellings() { return m_mapDwellings; }
+    const QMap<MapObjectId, MapObject>& mapObjects() const { return m_mapObjects; }
+    QMap<MapObjectId, MapObject>& mapObjects() { return m_mapObjects; }
     const QMap<MineId, Mine>& mines() const { return m_mines; }
     QMap<MineId, Mine>& mines() { return m_mines; }
 
@@ -110,6 +113,7 @@ private:
     QMap<TownId, Town> m_towns;
     QMap<MineId, Mine> m_mines;
     QMap<MapDwellingId, MapDwelling> m_mapDwellings;
+    QMap<MapObjectId, MapObject> m_mapObjects;
     QMap<TeamId, QByteArray> m_explored;
     QList<PlayerId> m_turnOrder;
     int m_currentIndex = 0;

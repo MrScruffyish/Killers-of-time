@@ -37,6 +37,7 @@ struct Hero {
     ArmyId army;                 // the army this hero leads (holds his position)
     QString templateId;          // the tavern hero this one was hired as (empty = none)
     QStringList spells;          // the spellbook: spell ids this hero knows
+    QStringList artifacts;       // artifacts carried (their trait bonuses are in `traits`)
 
     int trait(const QString& traitId) const { return traits.value(traitId, 0); }
 };
@@ -65,6 +66,17 @@ struct MapDwelling {
     Pos pos;
     PlayerId owner;  // invalid = neutral
     int available = 0;
+};
+
+// Something lying on the map that a hero picks up by walking onto it (then it is gone):
+// a pile of resources, or an artifact.
+struct MapObject {
+    enum class Kind { Treasure, Artifact };
+    MapObjectId id;
+    Kind kind = Kind::Treasure;
+    Pos pos;
+    ResourceAmounts resources;  // Treasure
+    QString artifact;           // Artifact: artifact id
 };
 
 struct Mine {

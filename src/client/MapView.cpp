@@ -1,5 +1,7 @@
 #include "client/MapView.h"
 
+#include <cmath>
+
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
@@ -127,6 +129,26 @@ void MapView::paintEvent(QPaintEvent*) {
         p.setPen(QPen(d.owner ? ownerColor(d.owner) : Qt::black, 2));
         p.setBrush(Qt::white);
         p.drawPolygon(tri);
+    }
+    for (const ViewObject& o : m_view.objects) {
+        if (!shown(o.pos)) continue;
+        const QRect r = tileRect(o.pos).adjusted(m * 2, m * 2, -m * 2, -m * 2);
+        if (o.artifact) {  // a purple star
+            QPolygonF star;
+            const QPointF c = QRectF(r).center();
+            for (int i = 0; i < 10; ++i) {
+                const double a = M_PI / 5 * i - M_PI / 2;
+                const double rad = (i % 2 ? 0.45 : 1.0) * r.width() / 2.0;
+                star << QPointF(c.x() + rad * std::cos(a), c.y() + rad * std::sin(a));
+            }
+            p.setPen(QPen(Qt::black, 1));
+            p.setBrush(QColor("#b04de0"));
+            p.drawPolygon(star);
+        } else {  // a chest in the colour of what is inside
+            p.setPen(QPen(QColor("#5a3a10"), 2));
+            p.setBrush(o.resources.isEmpty() ? QColor("#d4a017") : resourceColor(o.resources.firstKey()));
+            p.drawRect(r);
+        }
     }
     for (const ViewTown& t : m_view.towns) {
         if (!shown(t.pos)) continue;

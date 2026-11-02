@@ -152,6 +152,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             h.spellPoints = o.value("spellPoints").toInt();
             h.pendingTraitPicks = o.value("pendingTraitPicks").toInt();
             for (const QJsonValue& s : o.value("spells").toArray()) h.spells << s.toString();
+            for (const QJsonValue& a : o.value("artifacts").toArray()) h.artifacts << a.toString();
             h.movementPoints = o.value("movementPoints").toInt();
         }
         v.heroes.append(h);
@@ -207,6 +208,17 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         d.pos = posOf(o);
         d.available = o.value("available").toInt(-1);
         v.dwellings.append(d);
+    }
+    for (const QJsonValue& ov : json.value("mapObjects").toArray()) {
+        const QJsonObject o = ov.toObject();
+        ViewObject m;
+        m.id = o.value("id").toInt();
+        m.artifact = o.value("kind").toString() == "artifact";
+        m.artifactId = o.value("artifact").toString();
+        const QJsonObject res = o.value("resources").toObject();
+        for (auto it = res.begin(); it != res.end(); ++it) m.resources.insert(it.key(), it.value().toInt());
+        m.pos = posOf(o);
+        v.objects.append(m);
     }
     if (json.value("battle").isObject()) {
         const QJsonObject b = json.value("battle").toObject();

@@ -174,6 +174,15 @@ struct SpellDef {
     QList<SpellEffect> effects;
 };
 
+// Found on the map; the hero who picks it up keeps it and gets its trait bonuses.
+struct ArtifactDef {
+    QString id;
+    QString name;
+    QString description;
+    QMap<QString, int> traits;  // trait id -> bonus
+    int value = 1;              // rough worth, 1 (minor) .. 3 (major); stronger guards
+};
+
 // A hero that can be hired in a tavern. The class decides the race.
 struct HeroTemplateDef {
     QString id;

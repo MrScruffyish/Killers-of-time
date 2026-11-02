@@ -37,6 +37,12 @@ TownId GameState::addTown(const QString& name, const QString& race, Pos pos, Pla
     return t.id;
 }
 
+MapObjectId GameState::addMapObject(MapObject object) {
+    object.id = newId<MapObjectId>();
+    m_mapObjects.insert(object.id, object);
+    return object.id;
+}
+
 MapDwellingId GameState::addMapDwelling(const QString& unitId, Pos pos, int available,
                                         PlayerId owner) {
     MapDwelling d;

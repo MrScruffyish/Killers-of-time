@@ -115,7 +115,7 @@ and react to; add depth afterwards.
 ## M8: Races and balance
 - [x] Race modifier system (`races/<id>.json`: growthPercent, incomePercent, terrainCostPercent, spellSchools), buildings without a race for every race, race names in the lobby. Tests: `tst_races` (34 test programs)
 - [x] 3 races: Humans, Undead (hordes, swamps, poor towns; dark/earth), Sylvan (archers, forests, slow growth; nature/water/air); 4 tiers each with an upgrade, 2 hero classes and 6 heroes each; new spells Curse, Death Touch, Entangle, Regrowth. Later: more races, distinct abilities, balance
-- [ ] Neutral monsters, treasures, artifacts (basic)
+- [x] Neutral monsters (wandering, guarding mines and artifacts), treasure piles, artifacts (`artifacts.json`, trait bonuses, picked up by walking on them). Tests: `tst_mapobjects` (35 test programs). Later: artifact slots/trading, chests with a choice
 
 ## M9: AI
 - [ ] AI player host on the server (same command interface as humans)

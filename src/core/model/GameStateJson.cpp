@@ -104,6 +104,7 @@ QJsonObject GameState::toJson() const {
         o.insert("army", static_cast<int>(h.army.value()));
         if (!h.templateId.isEmpty()) o.insert("template", h.templateId);
         if (!h.spells.isEmpty()) o.insert("spells", QJsonArray::fromStringList(h.spells));
+        if (!h.artifacts.isEmpty()) o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));
         heroes.append(o);
     }
     root.insert("heroes", heroes);
@@ -160,6 +161,19 @@ QJsonObject GameState::toJson() const {
         dwellings.append(o);
     }
     root.insert("mapDwellings", dwellings);
+
+    QJsonArray objects;
+    for (const MapObject& m : m_mapObjects) {
+        QJsonObject o;
+        o.insert("id", static_cast<int>(m.id.value()));
+        o.insert("kind", m.kind == MapObject::Kind::Artifact ? "artifact" : "treasure");
+        o.insert("x", m.pos.x);
+        o.insert("y", m.pos.y);
+        if (!m.resources.isEmpty()) o.insert("resources", intMapToJson(m.resources));
+        if (!m.artifact.isEmpty()) o.insert("artifact", m.artifact);
+        objects.append(o);
+    }
+    root.insert("mapObjects", objects);
 
     QJsonArray mines;
     for (const Mine& m : m_mines) {
@@ -224,6 +238,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
     const QJsonArray townsA = top.requireArray("towns");
     const QJsonArray minesA = top.requireArray("mines");
     const QJsonArray dwellingsA = top.requireArray("mapDwellings");
+    const QJsonArray objectsA = top.has("mapObjects") ? top.requireArray("mapObjects") : QJsonArray();
     top.finish();
     if (!top.ok()) {
         if (errors) *errors = errs;
@@ -337,9 +352,12 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         h.army = ArmyId(static_cast<quint32>(r.requireInt("army", 1, kMaxId)));
         h.templateId = r.optionalString("template");
         h.spells = r.optionalStringList("spells");
+        h.artifacts = r.optionalStringList("artifacts");
         r.finish();
         for (const QString& s : h.spells)
             if (!content.spell(s)) r.addError(QStringLiteral("unknown spell '%1'").arg(s));
+        for (const QString& a : h.artifacts)
+            if (!content.artifact(a)) r.addError(QStringLiteral("unknown artifact '%1'").arg(a));
         if (r.ok() && !h.templateId.isEmpty() && !content.heroTemplate(h.templateId))
             r.addError(QStringLiteral("unknown hero template '%1'").arg(h.templateId));
         if (r.ok() && !content.heroClass(h.classId))
@@ -427,6 +445,26 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
             r.addError(QStringLiteral("unknown unit '%1'").arg(d.unitId));
         checkPos(ctx, d.pos);
         if (r.ok() && claim(ctx, d.id.value())) gs.m_mapDwellings.insert(d.id, d);
+    });
+
+    // ---- map objects (treasures, artifacts)
+    each(objectsA, QStringLiteral("mapObjects"), [&](JsonReader& r, const QString& ctx) {
+        MapObject m;
+        m.id = MapObjectId(static_cast<quint32>(r.requireInt("id", 1, kMaxId)));
+        const QString kind = r.requireString("kind");
+        m.pos.x = r.requireInt("x", 0, 100000);
+        m.pos.y = r.requireInt("y", 0, 100000);
+        m.resources = r.optionalIntMap("resources", 1, 100000000);
+        m.artifact = r.optionalString("artifact");
+        r.finish();
+        if (kind == "artifact") m.kind = MapObject::Kind::Artifact;
+        else if (kind != "treasure") r.addError(QStringLiteral("kind must be treasure or artifact"));
+        if (r.ok() && m.kind == MapObject::Kind::Artifact && !content.artifact(m.artifact))
+            r.addError(QStringLiteral("unknown artifact '%1'").arg(m.artifact));
+        for (auto it = m.resources.begin(); it != m.resources.end(); ++it)
+            if (!content.resource(it.key())) r.addError(QStringLiteral("unknown resource '%1'").arg(it.key()));
+        checkPos(ctx, m.pos);
+        if (r.ok() && claim(ctx, m.id.value())) gs.m_mapObjects.insert(m.id, m);
     });
 
     // ---- mines

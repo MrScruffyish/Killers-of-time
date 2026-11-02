@@ -141,6 +141,8 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         if (view.visible(m.pos) && state.isHostile(m.owner, me)) targets.append(m.pos);
     for (const MapDwelling& d : state.mapDwellings())
         if (view.visible(d.pos) && state.isHostile(d.owner, me)) targets.append(d.pos);
+    for (const MapObject& o : state.mapObjects())
+        if (view.visible(o.pos)) targets.append(o.pos);
     for (const Town& t : state.towns()) {
         if (!view.visible(t.pos) || !state.isHostile(t.owner, me)) continue;
         // The garrison is secret: guess it is about as strong as we are, so only strong heroes go.
