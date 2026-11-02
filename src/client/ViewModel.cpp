@@ -83,6 +83,8 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
     GameView v;
     v.day = json.value("day").toInt(1);
     v.currentPlayer = json.value("currentPlayer").toInt();
+    v.gameOver = json.value("gameOver").toBool();
+    v.winnerTeam = json.value("winnerTeam").toInt();
     v.you = json.value("you").toInt();
     v.resources = amounts(json.value("resources").toObject());
 
@@ -95,6 +97,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         p.color = o.value("color").toString();
         p.race = o.value("race").toString();
         p.isAi = o.value("isAi").toBool();
+        p.eliminated = o.value("eliminated").toBool();
         v.players.append(p);
     }
     const int myTeam = v.myTeam();

@@ -182,6 +182,8 @@ private slots:
 
     void offersRefreshEveryWeek() {
         gs.setDay(7);
+        // Players without towns and heroes are out of the game and skipped; keep B in.
+        createHero(gs, reg, p2, "H2", "knight", {19, 19});
         beginGame(gs, reg);
         endTurn(gs, reg);
         endTurn(gs, reg);  // day 8: a new week

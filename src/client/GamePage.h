@@ -2,6 +2,7 @@
 
 #include <QHash>
 #include <QJsonObject>
+#include <QSet>
 #include <QWidget>
 
 #include "client/ViewModel.h"
@@ -50,6 +51,7 @@ private:
     void updateHeroPanel();
     void selectHero(int id);
     QString unitName(const QString& id) const;
+    void announceEnd();  // victory / defeat messages, once each
     QString describeBattle(const QJsonObject& battle) const;
     QString describeResult(const QString& type, const QJsonObject& info) const;
     void chooseTrait();
@@ -58,6 +60,9 @@ private:
     const core::ContentRegistry* m_content;
     GameView m_view;
     int m_selectedHero = 0;
+    bool m_announcedGameOver = false;
+    bool m_announcedDefeat = false;
+    QSet<int> m_announcedOut;
     bool m_centered = false;
     QHash<int, Pending> m_pending;
 

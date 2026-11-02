@@ -79,6 +79,20 @@ private slots:
         QCOMPARE(session->youInfo(pA)["playerId"].toInt(), id(pA));
     }
 
+    void gameEndsWhenOneTeamIsLeft() {
+        core::GameState& gs = session->state();
+        for (const core::Hero& h : QList<core::Hero>(gs.heroes().values()))
+            if (h.owner != pA) { gs.armies().remove(h.army); gs.heroes().remove(h.id); }
+        for (core::Town& t : gs.towns())
+            if (t.owner != pA) t.owner = core::PlayerId();
+        const QJsonObject view = session->viewFor(pA);
+        QVERIFY(view["gameOver"].toBool());
+        QCOMPARE(view["winnerTeam"].toInt(), id(gs.teamOf(pA)));
+        for (const QJsonValue& v : view["players"].toArray())
+            QCOMPARE(v.toObject()["eliminated"].toBool(), v.toObject()["id"].toInt() != id(pA));
+        QCOMPARE(doIt(1, net::msg::endTurn).code, QString("game_over"));
+    }
+
     void startFailsForAnInvalidLobby() {
         net::LobbyState bad;
         bad.slotList.append(human(0, 1, "Solo", 1, "#d62728"));

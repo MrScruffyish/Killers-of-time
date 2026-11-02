@@ -205,6 +205,8 @@ private slots:
 
     void dwellingsGrowEveryWeek() {
         QVERIFY(build("barracks").ok);
+        // Players without towns and heroes are out of the game and skipped; keep B in.
+        createHero(gs, reg, p2, "H2", "knight", {9, 9});
         beginGame(gs, reg);
         for (int i = 0; i < 6; ++i) endTurn(gs, reg);  // two players: three days later
         QCOMPARE(gs.day(), 4);

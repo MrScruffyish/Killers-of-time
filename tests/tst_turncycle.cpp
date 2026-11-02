@@ -52,6 +52,9 @@ private slots:
     }
 
     void turnsAlternateAndDaysAdvance() {
+        // Players without towns and heroes are out of the game and skipped; keep both in.
+        createHero(gs, reg, p1, "H1", "knight", {0, 0});
+        createHero(gs, reg, p2, "H2", "knight", {19, 19});
         beginGame(gs, reg);
         QCOMPARE(gs.day(), 1);
         TurnInfo t = endTurn(gs, reg);
@@ -68,6 +71,8 @@ private slots:
     void incomeIsPaidAtStartOfTurnFromDayTwo() {
         gs.addTown("T", "humans", {1, 1}, p1);
         gs.addMine("gold", 1000, {5, 5}, p1);
+        // Players without towns and heroes are out of the game and skipped; keep B in.
+        createHero(gs, reg, p2, "H2", "knight", {19, 19});
         beginGame(gs, reg);
         endTurn(gs, reg);  // p2, day 1
         QCOMPARE(gs.player(p1)->resources.value("gold"), 0);
@@ -97,6 +102,8 @@ private slots:
     void capturedMineStartsPayingNextDay() {
         const HeroId h = createHero(gs, reg, p1, "H", "knight", {1, 1});
         const MineId mine = gs.addMine("gems", 3, {3, 1});
+        // Players without towns and heroes are out of the game and skipped; keep B in.
+        createHero(gs, reg, p2, "H2", "knight", {19, 19});
         beginGame(gs, reg);
         QCOMPARE(moveHero(gs, reg, h, {3, 1}).capturedMine, mine);
         endTurn(gs, reg);

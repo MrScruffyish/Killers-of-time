@@ -18,6 +18,7 @@
 #include "core/rules/Trade.h"
 #include "core/util/Log.h"
 #include "core/rules/TurnCycle.h"
+#include "core/rules/Victory.h"
 #include "net/Protocol.h"
 
 namespace kot::server {
@@ -109,6 +110,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
 void GameSession::playAutoTurns() {
     // At most one full round, so a game with no human left cannot spin forever.
     for (int i = 0; i < m_state.turnOrder().size() && isAuto(m_state.currentPlayer()); ++i) {
+        if (gameOutcome(m_state).over) return;
         const PlayerId p = m_state.currentPlayer();
         playAiTurn(p, *m_autoPlayers.value(p));
         endTurn(m_state, m_content);
@@ -150,10 +152,14 @@ CommandResult GameSession::handle(int clientId, const Message& command) {
     if (!m_active) return failure("no_game", "no game is running");
     const PlayerId player = playerOfClient(clientId);
     if (!player.isValid()) return failure("not_a_player", "you are not a player in this game");
+    if (gameOutcome(m_state).over) return failure("game_over", "the game is over");
     if (m_state.currentPlayer() != player)
         return failure("not_your_turn", "it is not your turn");
     CommandResult result = dispatch(player, command);
-    if (result.ok && command.type == net::msg::endTurn) playAutoTurns();
+    // A player who just lost his last hero and town cannot go on: his turn ends.
+    if (result.ok && command.type != net::msg::endTurn && isEliminated(m_state, player) && !gameOutcome(m_state).over)
+        endTurn(m_state, m_content);
+    if (result.ok) playAutoTurns();
     return result;
 }
 

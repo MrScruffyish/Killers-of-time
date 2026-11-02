@@ -22,6 +22,7 @@ struct ViewPlayer {
     QString color;
     QString race;
     bool isAi = false;
+    bool eliminated = false;
 };
 
 struct ViewStack {
@@ -100,6 +101,8 @@ struct GameView {
     int day = 1;
     int currentPlayer = 0;
     int you = 0;
+    bool gameOver = false;
+    int winnerTeam = 0;  // 0 = nobody
     core::ResourceAmounts resources;
     QList<ViewPlayer> players;
 

@@ -163,6 +163,33 @@ void GamePage::onViewChanged() {
     updateHeroPanel();
     m_townDialog->refresh(m_view);
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
+    announceEnd();
+}
+
+void GamePage::announceEnd() {
+    const ViewPlayer* me = m_view.player(m_view.you);
+    QString text;
+    if (m_view.gameOver && !m_announcedGameOver) {
+        m_announcedGameOver = true;
+        m_announcedDefeat = true;
+        text = (me && m_view.winnerTeam == me->team) ? tr("Victory! Your team has won the game.")
+                                                     : tr("Game over. Your team has lost.");
+    } else if (me && me->eliminated && !m_announcedDefeat) {
+        m_announcedDefeat = true;
+        text = tr("You have lost all your towns and heroes. You are out of the game.");
+    }
+    for (const ViewPlayer& p : m_view.players) {
+        if (p.eliminated && !m_announcedOut.contains(p.id) && p.id != m_view.you) {
+            m_announcedOut.insert(p.id);
+            log(tr("%1 is out of the game.").arg(p.name));
+        }
+    }
+    if (text.isEmpty()) return;
+    log(text);
+    auto* box = new QMessageBox(QMessageBox::Information, tr("Game over"), text, QMessageBox::Ok, this);
+    box->setAttribute(Qt::WA_DeleteOnClose);
+    box->setModal(false);
+    box->show();
 }
 
 void GamePage::updateStatus() {
@@ -177,7 +204,7 @@ void GamePage::updateStatus() {
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
                           .arg(res.join(", ")));
     const bool myTurn = m_view.isMyTurn();
-    for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits}) b->setEnabled(myTurn);
+    for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits}) b->setEnabled(myTurn && !m_view.gameOver);
 
     m_townList->clear();
     for (const ViewTown* t : m_view.myTowns()) {

@@ -24,7 +24,8 @@ struct TurnInfo {
 };
 
 // Ends the current player's turn and starts the next one. When the last player
-// has finished, a new day begins (turns are sequential, decision D1).
+// has finished, a new day begins (turns are sequential, decision D1). Eliminated
+// players (core/rules/Victory.h) are skipped.
 TurnInfo endTurn(GameState& state, const ContentRegistry& content);
 
 }  // namespace kot::core

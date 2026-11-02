@@ -1,5 +1,7 @@
 #include "core/model/PlayerView.h"
 
+#include "core/rules/Victory.h"
+
 #include <QHash>
 #include <QJsonArray>
 #include <QSet>
@@ -50,9 +52,13 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
         o.insert("color", p.color);
         o.insert("race", p.race);
         o.insert("isAi", p.controller == Player::Controller::Ai);
+        o.insert("eliminated", isEliminated(state, p.id));
         players.append(o);
     }
     view.insert("players", players);
+    const GameOutcome outcome = gameOutcome(state);
+    view.insert("gameOver", outcome.over);
+    if (outcome.over) view.insert("winnerTeam", id(outcome.winner.value()));
 
     // Map: palette + indices, -1 where the team has not been.
     {

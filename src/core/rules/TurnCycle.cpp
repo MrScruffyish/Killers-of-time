@@ -1,5 +1,7 @@
 #include "core/rules/TurnCycle.h"
 
+#include "core/rules/Victory.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Movement.h"
@@ -49,14 +51,19 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
     TurnInfo info;
     const int count = static_cast<int>(state.turnOrder().size());
     if (count == 0) return info;
-    const int next = (state.currentIndex() + 1) % count;
-    info.newDay = (next == 0);
-    if (info.newDay) {
-        state.setDay(state.day() + 1);
-        if (isNewWeek(state.day())) {
-            applyWeeklyGrowth(state, content);
-            refreshTavernOffers(state, content);
+    // Players who are out of the game are skipped (but the day still advances).
+    int next = state.currentIndex();
+    for (int i = 0; i < count; ++i) {
+        next = (next + 1) % count;
+        if (next == 0) {
+            info.newDay = true;
+            state.setDay(state.day() + 1);
+            if (isNewWeek(state.day())) {
+                applyWeeklyGrowth(state, content);
+                refreshTavernOffers(state, content);
+            }
         }
+        if (!isEliminated(state, state.turnOrder()[next])) break;
     }
     state.setCurrentIndex(next);
     info.player = state.currentPlayer();
