@@ -100,7 +100,7 @@ When the game is over every command is refused with code `game_over`.
 | `move_units` | `from`, `to`, `stack`, `count` | |
 | `pick_trait` | `hero`, `trait` | |
 | `cast_spell` | `hero`, `spell` | an adventure-map spell (costs spell points) |
-| `buy_all_units` | `town`?, `strategy`? (`best`/`most`) | `unitsBought`, `townsServed`, `spent` |
+| `buy_all_units` | `town`?, `strategy`? (`best`/`most`), `useTrade`? | `unitsBought`, `townsServed`, `spent` |
 | `auto_build` | `town`?, `useTrade`? | `built`, `needsChoice` (towns and the buildings that need a decision), `cannotAfford` |
 | `build_then_buy` | `town`?, `useTrade`?, `strategy`? | `build` and `buy` as above |
 | `send_dwelling_units` | `town`? | `dwellingsEmptied`, `unitsSent` (no `town` = each to its closest town) |

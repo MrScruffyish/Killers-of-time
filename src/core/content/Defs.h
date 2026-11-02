@@ -127,7 +127,8 @@ struct BuildingEffect {
         Income,    // daily `amount` of `resource` for the owner
         Tavern,    // heroes can be hired in this town
         MageGuild, // heroes in this town learn all spells up to `amount` (the guild level)
-        Defense    // the town's defenders get +`amount` defense in battle (walls)
+        Defense,   // the town's defenders get +`amount` defense in battle (walls)
+        Market     // its owner trades at +`amount` percent better rates (less fee)
     };
     Type type = Type::Income;
     QString unit;

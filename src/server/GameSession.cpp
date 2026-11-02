@@ -534,9 +534,10 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     if (cmd.type == net::msg::buyAllUnits) {
         const TownId town(id32("town", true));
         const BuyStrategy strategy = strategyOf();
+        const bool useTrade = r.optionalBool("useTrade", false);
         r.finish();
         if (!r.ok()) return bad();
-        return success(buyJson(buyAllUnits(m_state, m_content, player, town, strategy)));
+        return success(buyJson(buyAllUnits(m_state, m_content, player, town, strategy, useTrade)));
     }
     if (cmd.type == net::msg::autoBuild) {
         const TownId town(id32("town", true));

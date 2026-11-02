@@ -26,8 +26,9 @@ struct BuyReport {
 
 // "Buy all units": in each town buy as many units as the money allows, into the
 // garrison, from the dwellings and from units sent there from map dwellings.
+// With `useTrade`, spare resources are traded (see planTradeFor) for more units.
 BuyReport buyAllUnits(GameState& state, const ContentRegistry& content, PlayerId player,
-                      TownId town = {}, BuyStrategy strategy = BuyStrategy::BestFirst);
+                      TownId town = {}, BuyStrategy strategy = BuyStrategy::BestFirst, bool useTrade = false);
 
 struct AutoBuildReport {
     struct Built {

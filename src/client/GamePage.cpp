@@ -142,7 +142,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     connect(m_buildAndBuy, &QPushButton::clicked, this, [this]() {
         send(net::msg::buildThenBuy, {{"useTrade", true}}, tr("Build, then buy units"));
     });
-    connect(m_buyAll, &QPushButton::clicked, this, [this]() { send(net::msg::buyAllUnits, {}, tr("Buy all units")); });
+    connect(m_buyAll, &QPushButton::clicked, this, [this]() { send(net::msg::buyAllUnits, {{"useTrade", true}}, tr("Buy all units")); });
+    m_buyAll->setToolTip(tr("Buy as many units as possible in every town, trading spare resources if needed"));
     connect(m_sendUnits, &QPushButton::clicked, this, [this]() {
         send(net::msg::sendDwellingUnits, {}, tr("Send dwelling units to the closest town"));
     });

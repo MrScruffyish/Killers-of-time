@@ -53,7 +53,7 @@
   - [x] Map dwellings (`MapDwelling`): grow weekly, captured by visiting, `recruitAtDwelling` for a hero standing there; `sendDwellingUnitsToTown` ("send all units to this town") and `sendDwellingUnitsToClosestTown` (global); sent units are recruitable in the town (used before the dwelling stock)
   - [x] `buyAllUnits` (one town or all; BestFirst = highest tier first (default) or MostUnits = cheapest first)
   - [x] `autoBuild` (best affordable building without a choice; buildings that would shut out a rival are flagged in `needsChoice`; optional trade) and `buildThenBuyUnits`
-  - [ ] Later: a Market building could improve the trade efficiency; buy-all with trade; AI uses these actions too
+  - [x] Marketplace (building effect `market`: +5% trade rate per town, max 95%); buy-all with trade (client buttons and the AI use it)
 - [x] Tests: `tst_trade`, `tst_dwellings`, `tst_automation` (18 test programs in total); `tst_towns`, `tst_armyrules`, split/merge cases in `tst_unitstack`, building loading cases in `tst_content` (15 test programs in total)
 
 ## M4: Networking and lobby
@@ -74,7 +74,7 @@ and react to; add depth afterwards.
 3. [x] Simple AI player (`ai/SimpleAi`, profile "simple", the lobby default): plays through the same commands as humans (`IAiPlayer::nextCommand`, run by `GameSession::playAiTurn`, max 200 commands per turn); level-up picks, build then buy, hire heroes, heroes take the garrison along, go for visible mines/dwellings/towns/weaker armies, else explore; own seeded RNG, partly random. Only uses what its team sees (`AiView`). Tests: `tst_ai` (30 test programs). Later: spend its gold, defend towns, difficulty bonuses
 4. [x] Game end (`core/rules/Victory`): a player with no towns and no heroes is out (derived, not stored) and skipped in the turn order; last team standing wins; the view has `eliminated` per player and `gameOver`/`winnerTeam`; the server refuses commands with `game_over`; the client announces defeat/victory. Tests: `tst_victory` (31 test programs). Later: other victory conditions, a lost player watching on
 5. [x] Save and load a running game on the server (`save_game`/`list_saves`/`load_game`, `--saves <dir>`), take over a free human player (`join_game`; reconnect after leaving, or after a load). Client: Save game button, Load game in the lobby (host), player choice when joining a running game. Tests: two cases in `tst_network`. Later: passwords/tokens, AI RNG state in saves, autosave
-6. [ ] Then depth: hex tactical battles with UI (M6), spells (M7), more races and balance (M8), better AI (M9), polish and art (M10)
+6. [~] Then depth: hex battles (M6), spells (M7), races and balance (M8), AI (M9), polish, tools and art (M10): first versions of all done, see below
 
 ## M5: Playable adventure map client
 - [x] Client structure (`kot_client_lib` + `kot_client`): `MainWindow` with connect page, lobby page, game page; "Host a game on this computer" starts `kot_server` from the same folder
@@ -96,9 +96,9 @@ and react to; add depth afterwards.
 - [x] Decision D2: hex grid
 - [x] Battle state (`core/battle/Battle`, 15x11 hex field, odd-r), initiative order, move/melee/ranged, one retaliation per round, damage formula, round limit draw; `BattleAi` (shoot, attack the most dangerous reachable enemy, else close in); the auto-resolve is the battle AI on both sides; `applyBattleResult` writes back. Tests: `tst_hexbattle`
 - [x] Hero trait bonuses in battle: attack, defense, hit points (+% max HP), morale (extra action / falter), luck (double damage). Later: attack range, battle speed tier tables
-- [ ] Unit data: `battleSpeed` (hexes), `mapSpeed`, `range` (for ranged units)
-- [ ] Neutral monster guards trigger battles
-- [ ] Experience after victory -> hero levels (auto max-SP growth + choose one pickable trait per level gained)
+- [x] Unit data: `battleSpeed` (hexes), `mapSpeed`, `range` (for ranged units)
+- [x] Neutral monster guards trigger battles
+- [x] Experience after victory -> hero levels (auto max-SP growth + choose one pickable trait per level gained)
 - [x] Battle UI in the client (`BattleView`: hexes, move by click, attack/shoot by clicking an enemy, Defend, Auto); interactive battles when a connected human takes part, human vs human live over the network, AI turns pause for a human defender; battle results to both sides (`lastBattle`). Tests: session cases, GUI smoke test
 - [x] Deterministic battle replay test (seed + actions)
 - [x] Unit abilities (flying, no_retaliation, double_attack, undead), rocks, wait, retreat (attacker)
@@ -128,7 +128,7 @@ and react to; add depth afterwards.
 - [ ] Teams in mixed human/AI games, victory conditions
 
 ## M10: Polish and extras
-- [ ] Save/load game over server, reconnect
+- [x] Save/load game over server, reconnect
 - [x] Scenarios (`data/scenarios/<id>.json`, save format inside; chosen in the lobby; players mapped in slot order) and `kot_mapgen` for random ones; two sample scenarios. Tests: `tst_scenario` (39 test programs)
 - [x] Map editor `kot_editor` (terrain brush, towns, mines, dwellings, treasures, artifacts, monsters, starting heroes, player slots; random map start; saves checked scenarios)
 - [x] Campaigns (`data/campaigns`, chapters = scenarios, progress in the saves folder, best heroes carried over with their army); sample "The First War". Tests: `tst_campaign` (40 test programs)

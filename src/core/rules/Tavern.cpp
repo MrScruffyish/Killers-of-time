@@ -84,7 +84,7 @@ HireResult hireHero(GameState& state, const ContentRegistry& content, TownId tow
     QList<TradeStep> plan;
     if (player->resources.value(currency) < cost.value(currency)) {
         if (!useTrade) return fail(QStringLiteral("not enough %1").arg(currency));
-        const auto trades = planTradeFor(content, player->resources, cost);
+        const auto trades = planTradeFor(content, player->resources, cost, tradeEfficiency(state, content, player->id));
         if (!trades) return fail(QStringLiteral("cannot be afforded, even by trading"));
         plan = *trades;
     }

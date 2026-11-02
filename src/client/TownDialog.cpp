@@ -154,12 +154,12 @@ void TownDialog::rebuild() {
         }
         table->resizeColumnsToContents();
         layout->addWidget(table, 1);
-        auto* buyAll = new QPushButton(tr("Buy all units here"), page);
+        auto* buyAll = new QPushButton(tr("Buy all units here (trading spare resources if needed)"), page);
         buyAll->setObjectName("buyAllHere");
         buyAll->setEnabled(myTurn);
         const int tid = town->id;
         connect(buyAll, &QPushButton::clicked, this, [=, this]() {
-            send("buy_all_units", {{"town", tid}}, tr("Buy all units in %1").arg(town->name));
+            send("buy_all_units", {{"town", tid}, {"useTrade", true}}, tr("Buy all units in %1").arg(town->name));
         });
         layout->addWidget(buyAll);
         m_tabs->addTab(page, tr("Recruit"));

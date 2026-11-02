@@ -129,7 +129,7 @@ BuildResult buildBuildingWithTrade(GameState& state, const ContentRegistry& cont
     }
     Player* p = state.player(player);
     const BuildingDef* b = content.building(buildingId);
-    const auto plan = planTradeFor(content, p->resources, b->cost);
+    const auto plan = planTradeFor(content, p->resources, b->cost, tradeEfficiency(state, content, player));
     if (!plan) {
         result.error = QStringLiteral("cannot be afforded, even by trading");
         return result;

@@ -19,14 +19,18 @@ struct TradeStep {
     int getAmount = 0;
 };
 
+// The share of the fair value a player gets when trading: tradeEfficiencyPercent from
+// balance.json, plus the `market` building effects of his towns (at most 95).
+int tradeEfficiency(const GameState& state, const ContentRegistry& content, PlayerId player);
+
 // How much you receive for giving `giveAmount` (rounded down). Uses the resources'
-// gold values and the trade efficiency from balance.json (the fee).
+// gold values and the trade efficiency (-1 = the base one from balance.json).
 int tradeYield(const ContentRegistry& content, const QString& give, int giveAmount,
-               const QString& get);
+               const QString& get, int efficiencyPercent = -1);
 
 // How much you must give to receive `getAmount` (rounded up).
 int tradeCostToGet(const ContentRegistry& content, const QString& give, const QString& get,
-                   int getAmount);
+                   int getAmount, int efficiencyPercent = -1);
 
 // Plain trade: give `giveAmount` of one resource for as much as possible of another.
 ActionResult trade(GameState& state, const ContentRegistry& content, PlayerId player,
@@ -37,7 +41,7 @@ ActionResult trade(GameState& state, const ContentRegistry& content, PlayerId pl
 // Returns an empty list if nothing is missing, nothing if it cannot be afforded.
 std::optional<QList<TradeStep>> planTradeFor(const ContentRegistry& content,
                                              const ResourceAmounts& have,
-                                             const ResourceAmounts& cost);
+                                             const ResourceAmounts& cost, int efficiencyPercent = -1);
 
 void applyTradeSteps(ResourceAmounts& resources, const QList<TradeStep>& steps);
 

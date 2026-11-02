@@ -27,6 +27,17 @@ class TstAutomation : public QObject {
     }
 
 private slots:
+    void buyAllCanTradeForMore() {
+        QVERIFY(buildBuilding(gs, reg, t1, "barracks", p1).ok);
+        me().resources = {{"gold", 100}, {"wood", 10}};  // 5 militia for gold; the wood buys more
+        GameState copy = gs;
+        const BuyReport plain = buyAllUnits(gs, reg, p1, t1);
+        const BuyReport traded = buyAllUnits(copy, reg, p1, t1, BuyStrategy::BestFirst, true);
+        QCOMPARE(plain.unitsBought, 5);
+        QVERIFY2(traded.unitsBought > plain.unitsBought, qPrintable(QString::number(traded.unitsBought)));
+        QVERIFY(copy.player(p1)->resources.value("wood") < 10);
+    }
+
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));

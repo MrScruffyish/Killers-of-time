@@ -27,6 +27,19 @@ private slots:
         town = gs.addTown("Home", "humans", {3, 3}, p1);
     }
 
+    void marketsImproveTheRate() {
+        QCOMPARE(tradeEfficiency(gs, reg, p1), 80);
+        gs.town(town)->buildings << "village_hall" << "marketplace";
+        QCOMPARE(tradeEfficiency(gs, reg, p1), 85);
+        const TownId second = gs.addTown("Second", "humans", {9, 9}, p1);
+        gs.town(second)->buildings << "marketplace";
+        QCOMPARE(tradeEfficiency(gs, reg, p1), 90);
+        QCOMPARE(tradeYield(reg, "wood", 10, "gold", tradeEfficiency(gs, reg, p1)), 900);
+        gs.player(p1)->resources = {{"wood", 10}};
+        QVERIFY(trade(gs, reg, p1, "wood", 10, "gold").ok);
+        QCOMPARE(gs.player(p1)->resources.value("gold"), 900);
+    }
+
     // values: gold 1, wood 100, gems 300, efficiency 80%
     void ratesFollowValuesAndFee() {
         QCOMPARE(tradeYield(reg, "wood", 10, "gold"), 800);

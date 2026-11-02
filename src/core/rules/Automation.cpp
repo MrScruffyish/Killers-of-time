@@ -4,6 +4,7 @@
 
 #include "core/content/ContentRegistry.h"
 #include "core/rules/TownRules.h"
+#include "core/rules/Trade.h"
 
 namespace kot::core {
 
@@ -52,7 +53,7 @@ int totalCost(const BuildingDef& b) {
 }  // namespace
 
 BuyReport buyAllUnits(GameState& state, const ContentRegistry& content, PlayerId playerId,
-                      TownId onlyTown, BuyStrategy strategy) {
+                      TownId onlyTown, BuyStrategy strategy, bool useTrade) {
     BuyReport report;
     Player* player = state.player(playerId);
     if (!player) return report;
@@ -81,6 +82,25 @@ BuyReport buyAllUnits(GameState& state, const ContentRegistry& content, PlayerId
             int affordable = option.available;
             for (auto it = unit->cost.begin(); it != unit->cost.end(); ++it)
                 affordable = std::min(affordable, player->resources.value(it.key()) / it.value());
+            if (useTrade && affordable < option.available) {
+                // The most units a trade can still make affordable (binary search).
+                const int eff = tradeEfficiency(state, content, playerId);
+                const auto costOf = [&](int n) {
+                    ResourceAmounts c;
+                    for (auto it = unit->cost.begin(); it != unit->cost.end(); ++it) c[it.key()] = it.value() * n;
+                    return c;
+                };
+                int lo = affordable, hi = option.available;
+                while (lo < hi) {
+                    const int mid = (lo + hi + 1) / 2;
+                    if (planTradeFor(content, player->resources, costOf(mid), eff)) lo = mid;
+                    else hi = mid - 1;
+                }
+                if (lo > affordable) {
+                    applyTradeSteps(player->resources, *planTradeFor(content, player->resources, costOf(lo), eff));
+                    affordable = lo;
+                }
+            }
             if (affordable <= 0) continue;
             if (recruit(state, content, townId, playerId, option.unitId, affordable).ok) {
                 report.unitsBought += affordable;
@@ -138,7 +158,7 @@ BuildAndBuyReport buildThenBuyUnits(GameState& state, const ContentRegistry& con
                                     BuyStrategy strategy) {
     BuildAndBuyReport report;
     report.build = autoBuild(state, content, player, town, useTrade);
-    report.buy = buyAllUnits(state, content, player, town, strategy);
+    report.buy = buyAllUnits(state, content, player, town, strategy, useTrade);
     return report;
 }
 
