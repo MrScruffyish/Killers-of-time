@@ -3,6 +3,7 @@
 #include "ai/AiFactory.h"
 #include "ai/AiView.h"
 #include "core/content/ContentRegistry.h"
+#include "core/rules/Victory.h"
 #include "net/Protocol.h"
 #include "server/GameSession.h"
 
@@ -32,9 +33,15 @@ class TstAi : public QObject {
         if (!session->start(lobby, &error)) qWarning() << error;
         return session;
     }
+    // The human only ends turns; when an AI attacks him he lets the computer fight.
     static void playDays(GameSession& s, int days) {
-        net::Message end{net::msg::endTurn, {}, 1};
-        for (int i = 0; i < days; ++i) s.handle(1, end);
+        const net::Message end{net::msg::endTurn, {}, 1};
+        const net::Message autoFight{net::msg::battleAction, {{"action", "auto"}}, 1};
+        for (int i = 0; i < days; ++i) {
+            for (int guard = 0; guard < 20 && s.battleRunning(); ++guard) s.handle(1, autoFight);
+            s.handle(1, end);
+            for (int guard = 0; guard < 20 && s.battleRunning(); ++guard) s.handle(1, autoFight);
+        }
     }
 
 private slots:
@@ -66,8 +73,14 @@ private slots:
         for (core::PlayerId b : bots) exploredAtStart[b] = explored(b);
 
         playDays(*s, 21);
-        QCOMPARE(s->state().day(), 22);
-        QCOMPARE(s->state().currentPlayer(), s->playerOfClient(1));  // back to the human
+        // The idle human may well have been conquered by now; if not, it is his turn again.
+        const core::PlayerId ann = s->playerOfClient(1);
+        if (!core::isEliminated(s->state(), ann)) {
+            QCOMPARE(s->state().day(), 22);
+            QCOMPARE(s->state().currentPlayer(), ann);
+        } else {
+            QVERIFY(s->state().day() >= 8);
+        }
 
         int captured = 0, buildings = 0;
         for (core::PlayerId b : bots) {

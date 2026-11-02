@@ -8,15 +8,18 @@
 
 namespace kot::ai {
 
-// First real AI (breadth first: simple, partly random). Each turn, in this order:
-//  1. spend pending level-up picks (random battle trait),
-//  2. build, then buy units in all towns (trading as needed),
-//  3. hire a hero when rich and short of heroes,
-//  4. heroes standing in an own town take the garrison along,
-//  5. heroes cast a movement spell if they know one, then every hero heads for a target: a visible enemy or neutral thing it can take
-//     (mines, dwellings, towns, weaker armies), else the edge of the explored map.
-//     A few nearby candidates are chosen from at random.
-//  6. end turn.
+// The standard AI (simple but purposeful). Each turn, in this order:
+//  1. level-up picks that fit the hero's class (might or magic traits),
+//  2. units from captured map dwellings are sent to the closest town,
+//  3. build, then buy units in all towns (trading as needed),
+//  4. hire heroes while rich enough (more as the game goes on),
+//  5. heroes in an own town take the garrison along, unless the town is threatened,
+//  6. movement spells, then every hero goes for the best target:
+//     value / distance over defending a threatened town, picking up reinforcements,
+//     enemy and neutral things it can take (towns, mines, artifacts, treasures,
+//     dwellings, weaker armies; never into a clearly stronger army) and exploring,
+//  7. end turn.
+// It only looks at what its team can see (AiView) and uses its own seeded RNG.
 class SimpleAi : public IAiPlayer {
 public:
     explicit SimpleAi(quint64 seed) : m_rng(seed) {}
@@ -35,10 +38,13 @@ private:
     core::Rng m_rng;
     bool m_built = false;
     bool m_hired = false;
+    bool m_sentUnits = false;
     QSet<quint32> m_garrisonTaken;   // hero ids that took the garrison this turn
     QHash<quint32, int> m_moves;     // hero id -> move commands this turn
     QSet<quint32> m_heroDone;        // heroes with nothing more to do this turn
     QSet<quint32> m_spellCast;       // heroes that considered a movement spell this turn
+    QSet<std::uint64_t> m_failedTargets;  // hero/target pairs refused this turn
+    std::uint64_t m_lastTarget = 0;
 };
 
 }  // namespace kot::ai

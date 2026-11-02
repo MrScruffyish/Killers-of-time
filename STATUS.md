@@ -118,9 +118,9 @@ and react to; add depth afterwards.
 - [x] Neutral monsters (wandering, guarding mines and artifacts), treasure piles, artifacts (`artifacts.json`, trait bonuses, picked up by walking on them). Tests: `tst_mapobjects` (35 test programs). Later: artifact slots/trading, chests with a choice
 
 ## M9: AI
-- [ ] AI player host on the server (same command interface as humans)
-- [ ] Battle AI (basic: attack nearest/weakest, use ranged, cast spells)
-- [ ] Strategic AI v1: explore, collect, capture mines, build, recruit, attack weak targets
+- [x] AI player host on the server (same command interface as humans)
+- [x] Battle AI (basic: most dangerous target, ranged first, damage spells)
+- [x] Strategic AI v1 (`SimpleAi`): scored targets (value / distance: towns, mines, artifacts, treasures, dwellings, weaker armies, exploring), avoids stronger armies, defends threatened towns, collects reinforcements, hires more heroes over time, class-fitting level-ups, sends dwelling units home, movement spells. It now conquers an idle human within three weeks
 - [ ] AI profiles and difficulty bonuses (income, growth, hero stats)
 - [ ] Teams in mixed human/AI games, victory conditions
 
