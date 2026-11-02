@@ -323,6 +323,7 @@ void ContentRegistry::loadHeroClasses(const QString& dir, QStringList& errors) {
                      d.baseTraits = r.optionalIntMap(QStringLiteral("baseTraits"), 0, 1000);
                      d.pickIncrement = r.optionalIntMap(QStringLiteral("pickIncrement"), 1, 100);
                      d.autoGrowth = r.optionalIntMap(QStringLiteral("autoGrowth"), 1, 1000);
+                     d.startingArmy = r.optionalIntMap(QStringLiteral("startingArmy"), 1, 10000);
                      r.finish();
                      if (!r.ok()) return;
                      if (m_heroClasses.contains(d.id)) {
@@ -382,6 +383,8 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         eb.heroCost = er.optionalInt(QStringLiteral("heroCost"), 2500, 0, 10000000);
         eb.tavernOffers = er.optionalInt(QStringLiteral("tavernOffers"), 2, 1, 10);
         eb.maxHeroesPerPlayer = er.optionalInt(QStringLiteral("maxHeroesPerPlayer"), 8, 1, 100);
+        const ResourceAmounts start = er.optionalIntMap(QStringLiteral("startingResources"), 0, 1000000000);
+        if (!start.isEmpty()) eb.startingResources = start;
         er.finish();
         if (vr.ok() && er.ok()) {
             m_balance.vision = vb;
@@ -440,6 +443,10 @@ void ContentRegistry::validateReferences(QStringList& errors) const {
         check(c.baseTraits, "baseTraits", false);
         check(c.pickIncrement, "pickIncrement", true);
         check(c.autoGrowth, "autoGrowth", false);
+        for (auto it = c.startingArmy.begin(); it != c.startingArmy.end(); ++it) {
+            if (!m_units.contains(it.key()))
+                errors << QStringLiteral("hero class '%1': startingArmy uses unknown unit '%2'").arg(c.id, it.key());
+        }
     }
 
     int currencies = 0;
@@ -452,6 +459,11 @@ void ContentRegistry::validateReferences(QStringList& errors) const {
         errors << QStringLiteral("resources.json: exactly one resource must have "
                                  "\"currency\": true (found %1)").arg(currencies);
 
+    for (auto it = m_balance.economy.startingResources.begin();
+         it != m_balance.economy.startingResources.end(); ++it) {
+        if (!m_resources.contains(it.key()))
+            errors << QStringLiteral("balance.json: startingResources uses unknown resource '%1'").arg(it.key());
+    }
     for (const BuildingDef& b : m_buildings) {
         const QString what = QStringLiteral("building '%1'").arg(b.id);
         for (auto it = b.cost.begin(); it != b.cost.end(); ++it) {

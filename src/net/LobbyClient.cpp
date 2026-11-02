@@ -77,6 +77,7 @@ int LobbyClient::setReady(bool ready) { return send(msg::setReady, {{"ready", re
 int LobbyClient::setSettings(const QJsonObject& patch) { return send(msg::setSettings, patch); }
 int LobbyClient::startGame() { return send(msg::startGame); }
 int LobbyClient::ping() { return send(msg::ping); }
+int LobbyClient::sendCommand(const QString& type, const QJsonObject& body) { return send(type, body); }
 
 void LobbyClient::onMessage(const Message& message) {
     if (message.type == msg::welcome) {
@@ -101,6 +102,16 @@ void LobbyClient::onMessage(const Message& message) {
         emit errorReceived(code, message.body.value("message").toString(),
                            message.body.value("replyTo").toInt(0));
         if (!m_welcomed) emit connectionFailed(message.body.value("message").toString());
+    } else if (message.type == msg::gameStarted) {
+        m_you = message.body.value("you").toObject();
+        m_view = message.body.value("view").toObject();
+        emit gameStarted();
+        emit gameStateChanged();
+    } else if (message.type == msg::gameState) {
+        m_view = message.body;
+        emit gameStateChanged();
+    } else if (message.type == msg::commandResult) {
+        emit commandResult(message.body.value("replyTo").toInt(0), message.body.value("info").toObject());
     } else if (message.type == msg::gameStarting) {
         LobbyState state;
         if (LobbyState::fromJson(message.body, &state, nullptr)) m_lobby = state;

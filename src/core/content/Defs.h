@@ -45,6 +45,7 @@ struct TraitDef {
 //   pickIncrement: trait id -> how much one level-up pick adds (missing = 1)
 //   autoGrowth:    trait id -> added automatically on every level-up
 //                  (e.g. spell_points_max)
+//   startingArmy:  units the hero of this class starts a new game with
 struct HeroClassDef {
     QString id;
     QString name;
@@ -52,6 +53,7 @@ struct HeroClassDef {
     QMap<QString, int> baseTraits;
     QMap<QString, int> pickIncrement;
     QMap<QString, int> autoGrowth;
+    QMap<QString, int> startingArmy;  // unit id -> count a new game hero starts with
 };
 
 // Daily movement of an army: base + perTraitLevel * hero Movement Points trait,
@@ -76,6 +78,7 @@ struct EconomyBalance {
     int heroCost = 2500;              // gold to hire a hero in a tavern
     int tavernOffers = 2;             // heroes a tavern offers at a time
     int maxHeroesPerPlayer = 8;
+    ResourceAmounts startingResources{{"gold", 10000}};
 };
 struct Balance {
     MovementBalance movement;

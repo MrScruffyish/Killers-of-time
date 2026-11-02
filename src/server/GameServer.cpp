@@ -52,7 +52,11 @@ void GameServer::removeClient(int clientId) {
     m_clients.erase(it);
     connection->deleteLater();
     qCInfo(lcKotServer) << "Client" << clientId << "left - clients:" << m_clients.size();
-    if (wasMember) {
+    if (m_session && m_session->active()) {
+        m_session->clientLeft(clientId);  // his player is played by the passive AI from now on
+        m_lobby.removeMember(clientId);
+        sendGameStates();
+    } else if (wasMember) {
         m_lobby.removeMember(clientId);
         broadcastLobby();
     }
@@ -148,6 +152,19 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
     } else if (message.type == net::msg::startGame) {
         result = m_lobby.start(id);
         startRequested = result.ok;
+    } else if (m_session && m_session->active()) {
+        const CommandResult command = m_session->handle(id, message);
+        if (!command.ok) {
+            sendError(client, command.code, command.message, message.seq);
+            return;
+        }
+        Message reply;
+        reply.type = net::msg::commandResult;
+        reply.body.insert("replyTo", message.seq);
+        reply.body.insert("info", command.info);
+        client.connection->send(reply);
+        sendGameStates();
+        return;
     } else {
         result = LobbyResult::failure("unknown_message", "unknown message type '" + message.type + "'");
     }
@@ -156,15 +173,56 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
         sendError(client, result.code, result.message, message.seq);
         return;
     }
-    broadcastLobby();
     if (startRequested) {
-        Message starting;
-        starting.type = net::msg::gameStarting;
-        starting.body = m_lobby.state().toJson();
-        for (Client& c : m_clients) {
-            if (c.greeted) c.connection->send(starting);
+        startGame();
+        return;
+    }
+    broadcastLobby();
+}
+
+void GameServer::startGame() {
+    if (m_content) {
+        auto session = std::make_unique<GameSession>(*m_content);
+        QString error;
+        if (!session->start(m_lobby.state(), &error)) {
+            m_lobby.cancelStart();
+            const auto host = m_clients.find(m_lobby.hostId());
+            if (host != m_clients.end()) sendError(host.value(), "cannot_start", error, 0);
+            broadcastLobby();
+            return;
         }
-        emit gameStartRequested(m_lobby.state());
+        m_session = std::move(session);
+    }
+    broadcastLobby();
+    Message starting;
+    starting.type = net::msg::gameStarting;
+    starting.body = m_lobby.state().toJson();
+    for (Client& c : m_clients) {
+        if (c.greeted) c.connection->send(starting);
+    }
+    if (m_session) {
+        for (Client& c : m_clients) {
+            const core::PlayerId p = m_session->playerOfClient(c.id);
+            if (!c.greeted || !p.isValid()) continue;
+            Message started;
+            started.type = net::msg::gameStarted;
+            started.body.insert("you", m_session->youInfo(p));
+            started.body.insert("view", m_session->viewFor(p));
+            c.connection->send(started);
+        }
+    }
+    emit gameStartRequested(m_lobby.state());
+}
+
+void GameServer::sendGameStates() {
+    if (!m_session) return;
+    for (Client& c : m_clients) {
+        const core::PlayerId p = m_session->playerOfClient(c.id);
+        if (!c.greeted || !p.isValid()) continue;
+        Message state;
+        state.type = net::msg::gameState;
+        state.body = m_session->viewFor(p);
+        c.connection->send(state);
     }
 }
 

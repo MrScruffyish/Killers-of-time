@@ -33,12 +33,20 @@ public:
     int setSettings(const QJsonObject& patch);
     int startGame();
     int ping();
+    // Any game command, e.g. sendCommand(msg::moveHero, {{"hero", 5}, {"x", 3}, {"y", 4}}).
+    int sendCommand(const QString& type, const QJsonObject& body = {});
+    // The latest view the server sent (empty before the game starts) and who we are.
+    const QJsonObject& view() const { return m_view; }
+    const QJsonObject& you() const { return m_you; }
 
 signals:
     void connected();                     // handshake done
     void lobbyChanged();
     void errorReceived(const QString& code, const QString& message, int replyTo);
     void gameStarting();
+    void gameStarted();                                  // first view received
+    void gameStateChanged();                             // a new view received
+    void commandResult(int replyTo, const QJsonObject& info);
     void connectionFailed(const QString& reason);  // could not connect or lost the server
     void disconnected();
 
@@ -54,6 +62,8 @@ private:
     LobbyState m_lobby;
     QStringList m_races;
     QStringList m_aiProfiles;
+    QJsonObject m_view;
+    QJsonObject m_you;
 };
 
 }  // namespace kot::net

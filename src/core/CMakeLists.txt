@@ -42,6 +42,10 @@ add_library(kot_core STATIC
     rules/Automation.cpp
     rules/Tavern.h
     rules/Tavern.cpp
+    rules/GameSetup.h
+    rules/GameSetup.cpp
+    model/PlayerView.h
+    model/PlayerView.cpp
     data/JsonReader.h
     data/JsonReader.cpp
     data/DataDir.h

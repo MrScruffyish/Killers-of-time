@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 14)
-**Current milestone:** M4 in progress (slice A: protocol and lobby done); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** M4 slice B: start the game on the server (create GameState from the lobby: generate map from the settings, starting town + hero per player, AI players), game commands over the network (move_hero, build, recruit, trade, the one-click actions, end_turn), fog-filtered state sent to each player
+**Last updated:** 2026-11-01 (session 15)
+**Current milestone:** M4 nearly done (protocol, lobby, running games and filtered views done; client screens and reconnecting left); M0 verified on your machine, everything since verified in sandbox
+**Next session should do:** M5 first slice: the client. Replace the temporary window with a connect screen and lobby screen, then the map view (tiles from the player view with placeholder colours, fog, hero selection, click-to-move, end turn). Reconnect during a game can wait
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -60,11 +60,11 @@
 - [x] Framed JSON protocol, versioned handshake (`docs/protocol.md`; `net/Message`, `MessageFramer`, `Connection`)
 - [x] Server lobby (`server/Lobby`, pure logic): slots human/AI/open/closed, race, team, colour, ready, host, map settings, start rules; `GameServer` runs it over TCP (`kot_server_lib`, `kot_server` finds `data/` itself or `--data`)
 - [x] Client side: `net/LobbyClient` (used by the temporary client window, which logs the lobby)
-- [x] Tests: `tst_framer`, `tst_lobby`, `tst_datadir`, `tst_network` (real server and clients on localhost, protocol violations); 23 test programs in total
-- [ ] Start the game: GameState from the lobby (map from settings, start town + hero per player, AI hosts)
-- [ ] Commands -> validation -> state change -> fog-filtered updates broadcast; EndTurn and turn order over the network
+- [x] Tests: `tst_framer`, `tst_lobby`, `tst_datadir`, `tst_network` (real server and clients on localhost, protocol violations); `tst_gamesetup`, `tst_playerview`, `tst_session` and a full game over sockets in `tst_network`; 26 test programs in total
+- [x] Start the game: `core/rules/GameSetup::createGame` (map from the lobby settings, spread-out start towns, a tavern hero with the class starting army, starting resources, neutral mines and map dwellings, everyone initialised). AI players are the passive AI (they just end their turn).
+- [x] Commands over the network (`server/GameSession`): 14 commands (see docs/protocol.md), only on your turn, own things only; `command_result` to the sender and a fresh filtered `game_state` to everyone; `core/model/PlayerView` filters by team (unexplored tiles masked, enemies only in sight and without secrets)
 - [ ] Client: real connect and lobby screens (M5 has the map)
-- [ ] Disconnect/reconnect handling during a game
+- [~] Disconnect during a game: the player becomes passive AI and the game goes on (done); reconnecting to take the player back (todo)
 
 ## M5: Playable adventure map client
 - [ ] Map view (QGraphicsView): terrain tiles, objects, fog rendering, scrolling/zoom
@@ -121,6 +121,7 @@
 | 2026-11-01 | Added Luck and Attack Range traits; Hit Points confirmed; traits grouped Battle / Magic / Explore (D16, D17) |
 | 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); upkeep later, affects morale (D9); survivors heal fully after battle for now (D18) |
 | 2026-11-01 | Terrain uses `walkable`/`sailable`/`moveCost` (100 = one tile) instead of `passable`/`requiresBoat`; data files are strict (unknown fields are errors, `_` keys are comments); unit id must equal file name; exactly one currency resource |
+| 2026-11-01 | Game over the network: the full filtered view is sent after every change (no deltas yet; fine for now); players of the same team see each other in full, resources are private; a player who leaves is played by the passive AI; starting resources and hero class starting armies are data; bug found by tests: all players are now initialised at game start, not only the first |
 | 2026-11-01 | Protocol v1: 4-byte big-endian length + UTF-8 JSON object with "type" and optional "seq"; lobby_state broadcast after every change; 64-bit seed sent as text; lobby needs 1 human, 2 occupied slots, 2 teams, all humans ready; Qt keyword `slots` cannot be a member name (C++ `slotList`, JSON `slots`) |
 | 2026-11-01 | Design principle: avoid micromanagement (trade, send units to town, buy all, auto-build, build then buy). Buy-all default strategy is quality first (highest tier), cheapest-first as option. A building is a "choice" if it would permanently exclude a rival building of the town's race; those are never auto-built, only flagged. Trade works anywhere for now (a Market building may improve rates later) |
 | 2026-11-01 | Buildings: JSON key `requires` is `requiredBuildings` in C++ (reserved word); dwelling stock is keyed by the root building of an upgrade chain; weekly growth on days 8, 15, ... for every town; stacks keep base max HP |
@@ -140,6 +141,7 @@
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.
 - **Session 13:** Hero tavern slice (hero templates, tavern building, offers, hiring), naming convention written down, tests updated for the new building.
 - **Session 12:** Design principle recorded; trade, map dwellings, send units to town, buy all units, auto-build, build then buy; saves extended (mapDwellings, importedUnits); 3 new test programs (18 in total).

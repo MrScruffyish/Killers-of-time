@@ -3,6 +3,7 @@
 #include <QtTest>
 #include <memory>
 
+#include "core/content/ContentRegistry.h"
 #include "net/Connection.h"
 #include "net/LobbyClient.h"
 #include "net/Protocol.h"
@@ -53,6 +54,7 @@ struct RawClient {
 class TstNetwork : public QObject {
     Q_OBJECT
     QScopedPointer<GameServer> server;
+    kot::core::ContentRegistry content;
 
     std::unique_ptr<LobbyClient> connectClient(const QString& name) {
         auto c = std::make_unique<LobbyClient>();
@@ -61,6 +63,11 @@ class TstNetwork : public QObject {
     }
 
 private slots:
+    void initTestCase() {
+        QStringList errors;
+        QVERIFY2(content.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+    }
+
     void init() {
         server.reset(new GameServer({"humans", "undead"}, {"passive"}));
         QVERIFY(server->start(0));
@@ -226,6 +233,69 @@ private slots:
         raw.send(msg::ping, {}, 77);
         QTRY_VERIFY_WITH_TIMEOUT(raw.gotType(msg::pong), 3000);
         QCOMPARE(raw.received.last().seq, 77);
+    }
+
+    // ---- a real game over the network
+    void aGameFromStartToEndTurn() {
+        server->setContent(&content);
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().members.size(), 2, 3000);
+        QSignalSpy startedA(a.get(), &LobbyClient::gameStarted);
+        QSignalSpy startedB(b.get(), &LobbyClient::gameStarted);
+        a->setReady(true);
+        b->setReady(true);
+        QTRY_VERIFY_WITH_TIMEOUT(a->lobby().slotList[1].ready && a->lobby().slotList[0].ready, 3000);
+        a->startGame();
+        QTRY_COMPARE_WITH_TIMEOUT(startedA.count(), 1, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(startedB.count(), 1, 3000);
+
+        // Each player gets his own identity and his own filtered view.
+        const int idA = a->you()["playerId"].toInt(), idB = b->you()["playerId"].toInt();
+        QVERIFY(idA > 0 && idB > 0 && idA != idB);
+        QCOMPARE(a->view()["you"].toInt(), idA);
+        QCOMPARE(a->view()["heroes"].toArray().size(), 1);
+        QCOMPARE(b->view()["heroes"].toArray().size(), 1);
+        QVERIFY(a->view()["heroes"].toArray()[0].toObject() != b->view()["heroes"].toArray()[0].toObject());
+        QCOMPARE(a->view()["currentPlayer"].toInt(), idA);
+        QVERIFY(server->session());
+
+        // Bob may not act yet.
+        QString code;
+        connect(b.get(), &LobbyClient::errorReceived, this, [&](const QString& c, const QString&, int) { code = c; });
+        b->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(code, QString("not_your_turn"), 3000);
+
+        // Ann ends her turn: she gets a result, both get new views.
+        int day = 0;
+        connect(a.get(), &LobbyClient::commandResult, this, [&](int, const QJsonObject& info) { day = info["day"].toInt(); });
+        a->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(b->view()["currentPlayer"].toInt(), idB, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(a->view()["currentPlayer"].toInt(), idB, 3000);
+        QCOMPARE(day, 1);
+
+        // Bob ends his: a new day starts for Ann.
+        b->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(a->view()["currentPlayer"].toInt(), idA, 3000);
+        QCOMPARE(a->view()["day"].toInt(), 2);
+    }
+
+    void aPlayerLeavingDoesNotStopTheGame() {
+        server->setContent(&content);
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().members.size(), 2, 3000);
+        a->setReady(true);
+        b->setReady(true);
+        QTRY_VERIFY_WITH_TIMEOUT(a->lobby().slotList[1].ready && a->lobby().slotList[0].ready, 3000);
+        a->startGame();
+        QTRY_VERIFY_WITH_TIMEOUT(!a->view().isEmpty() && !b->view().isEmpty(), 3000);
+        const int idA = a->you()["playerId"].toInt();
+        b->disconnectFromServer();
+        QTRY_COMPARE_WITH_TIMEOUT(server->clientCount(), 1, 3000);
+        a->sendCommand(msg::endTurn);  // Bob is now automatic, so it is Ann's turn again on day 2
+        QTRY_COMPARE_WITH_TIMEOUT(a->view()["day"].toInt(), 2, 3000);
+        QCOMPARE(a->view()["currentPlayer"].toInt(), idA);
     }
 
     void connectingToNothingReportsAFailure() {

@@ -21,12 +21,29 @@ inline const QString setReady = QStringLiteral("set_ready");
 inline const QString setSettings = QStringLiteral("set_settings");
 inline const QString startGame = QStringLiteral("start_game");
 inline const QString ping = QStringLiteral("ping");
+// client -> server, during the game (all except end_turn need your turn)
+inline const QString endTurn = QStringLiteral("end_turn");
+inline const QString moveHero = QStringLiteral("move_hero");
+inline const QString build = QStringLiteral("build");
+inline const QString recruit = QStringLiteral("recruit");
+inline const QString recruitAtDwelling = QStringLiteral("recruit_at_dwelling");
+inline const QString hireHero = QStringLiteral("hire_hero");
+inline const QString trade = QStringLiteral("trade");
+inline const QString moveUnits = QStringLiteral("move_units");
+inline const QString pickTrait = QStringLiteral("pick_trait");
+inline const QString buyAllUnits = QStringLiteral("buy_all_units");
+inline const QString autoBuild = QStringLiteral("auto_build");
+inline const QString buildThenBuy = QStringLiteral("build_then_buy");
+inline const QString sendDwellingUnits = QStringLiteral("send_dwelling_units");
 // server -> client
 inline const QString welcome = QStringLiteral("welcome");
 inline const QString lobbyState = QStringLiteral("lobby_state");
 inline const QString gameStarting = QStringLiteral("game_starting");
 inline const QString error = QStringLiteral("error");
 inline const QString pong = QStringLiteral("pong");
+inline const QString gameStarted = QStringLiteral("game_started");   // you + your view
+inline const QString gameState = QStringLiteral("game_state");       // your view, after every change
+inline const QString commandResult = QStringLiteral("command_result");  // replyTo + info
 }  // namespace msg
 
 }  // namespace kot::net

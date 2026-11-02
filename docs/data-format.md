@@ -73,6 +73,7 @@ Trait value tables and hero-class growth come in a later slice.
 | baseTraits | trait id -> starting value (0..1000); missing traits start at 0 |
 | pickIncrement | trait id -> added by one level-up pick (1..100); missing = 1; trait must be pickable |
 | autoGrowth | trait id -> added automatically on every level-up (e.g. `spell_points_max`) |
+| startingArmy | unit id -> count: what the hero of this class starts a new game with |
 
 All trait ids must exist in `traits.json`.
 
@@ -125,3 +126,5 @@ Heroes that can be hired in a tavern. The class decides the race a hero belongs 
 `balance.json` economy: `heroCost` (gold, default 2500), `tavernOffers` (heroes offered at a time,
 default 2), `maxHeroesPerPlayer` (default 8).
 The building effect `{"type": "tavern"}` lets a town hire heroes.
+
+`balance.json` economy also has `startingResources` (resource id -> amount each player starts with).

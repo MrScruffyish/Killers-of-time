@@ -54,6 +54,8 @@ public:
     // different teams, and every human is ready.
     LobbyResult checkStart(int actorId) const;
     LobbyResult start(int actorId);
+    // Undo start() when the game could not be created.
+    void cancelStart() { m_state.started = false; }
 
     static const QStringList& palette();
 

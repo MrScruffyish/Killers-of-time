@@ -6,7 +6,12 @@
 #include <QTcpServer>
 
 #include "net/Connection.h"
+#include <memory>
+
+#include "server/GameSession.h"
 #include "server/Lobby.h"
+
+namespace kot::core { class ContentRegistry; }
 
 namespace kot::server {
 
@@ -22,6 +27,10 @@ public:
     quint16 port() const { return m_server.serverPort(); }
     int clientCount() const { return static_cast<int>(m_clients.size()); }
     const Lobby& lobby() const { return m_lobby; }
+    // With game content set, starting the game from the lobby creates a real game.
+    // Without it (some tests) the server only runs the lobby.
+    void setContent(const core::ContentRegistry* content) { m_content = content; }
+    const GameSession* session() const { return m_session.get(); }
 
 signals:
     void clientCountChanged(int count);
@@ -44,12 +53,16 @@ private:
     void removeClient(int clientId);
     void sendError(Client& client, const QString& code, const QString& text, int replyTo);
     void broadcastLobby();
+    void startGame();
+    void sendGameStates();
 
     QTcpServer m_server;
     QStringList m_races;
     QStringList m_aiProfiles;
     Lobby m_lobby;
     QHash<int, Client> m_clients;
+    const core::ContentRegistry* m_content = nullptr;
+    std::unique_ptr<GameSession> m_session;
     int m_nextClientId = 1;
 };
 

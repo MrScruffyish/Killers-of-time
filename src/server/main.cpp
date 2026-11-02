@@ -51,6 +51,7 @@ int main(int argc, char* argv[]) {
     qCInfo(lcKotServer) << "Loaded game data from" << dataDir;
 
     kot::server::GameServer server(content.raceIds(), {kot::ai::PassiveAi().profileName()});
+    server.setContent(&content);
     if (!server.start(static_cast<quint16>(port))) return 1;
     return app.exec();
 }

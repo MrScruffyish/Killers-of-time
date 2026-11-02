@@ -59,6 +59,54 @@ settings) clears the ready flag; the host can start when there is at least one h
 occupied slots on two different teams, and all humans are ready. Leaving frees the slot, and
 the next member becomes host if the host leaves.
 
+## The game
+When the host starts the game, the server creates it (map from the lobby settings, one town and
+one hero per player, neutral mines and dwellings) and sends, besides `lobby_state` and
+`game_starting`, one `game_started` to every human player:
+
+| Direction | Type | Fields |
+|---|---|---|
+| server -> client | `game_started` | `you` (`playerId`, `team`), `view` |
+| server -> client | `game_state` | the player's `view`, sent after every change anybody makes |
+| server -> client | `command_result` | `replyTo`, `info` (what happened, see below), sent to the player who sent the command |
+
+Failed commands answer with `error` (`replyTo` names the request). Codes: `not_your_turn`,
+`not_a_player`, `no_game`, `bad_request` (missing/invalid fields, `message` says which),
+`failed` (the rules refused, `message` says why: "not enough gold", "requires Barracks", ...),
+`unknown_message`.
+
+### The view (`PlayerView`)
+The server only sends what the player may know: `day`, `currentPlayer`, `you`, own `resources`
+(private), `players` (name, team, colour, race, isAi), `map`, `heroes`, `armies`, `towns`,
+`mines`, `mapDwellings`.
+- `map`: `width`, `height`, `terrainPalette`, `tiles` (palette index per tile, row-major, **-1 =
+  never explored**), `visible` (base64, one byte per tile, 1 = in sight right now).
+- Things of the player's own team are complete (hero traits, exact army HP, town buildings and
+  recruits, dwelling stock). Things of others only appear on tiles in sight, without secrets (no
+  traits, no HP, no garrison, no stock). Own mines and dwellings are always listed.
+
+### Commands (all need your turn)
+| Type | Fields | `info` on success |
+|---|---|---|
+| `end_turn` | | `day`, `newDay`. AI players and players who left are skipped automatically. |
+| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling` |
+| `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
+| `recruit` | `town`, `unit`, `count`, `army`? | |
+| `recruit_at_dwelling` | `dwelling`, `count`, `army` | |
+| `hire_hero` | `town`, `hero` (template id), `useTrade`? | `hero` (id) |
+| `trade` | `give`, `amount`, `get` | |
+| `move_units` | `from`, `to`, `stack`, `count` | |
+| `pick_trait` | `hero`, `trait` | |
+| `buy_all_units` | `town`?, `strategy`? (`best`/`most`) | `unitsBought`, `townsServed`, `spent` |
+| `auto_build` | `town`?, `useTrade`? | `built`, `needsChoice` (towns and the buildings that need a decision), `cannotAfford` |
+| `build_then_buy` | `town`?, `useTrade`?, `strategy`? | `build` and `buy` as above |
+| `send_dwelling_units` | `town`? | `dwellingsEmptied`, `unitsSent` (no `town` = each to its closest town) |
+
+`town` omitted means all of the player's towns for the one-click actions.
+
+### Leaving
+A player who disconnects during the game is played by the passive AI from then on (the game
+continues). Reconnecting comes later.
+
 ## Coming next
-The game itself: `game_started` with the player's view, commands (`move_hero`, `build`, `recruit`,
-`end_turn`, ...), fog-filtered state updates, battle messages, reconnecting.
+Battles and attacking, spells, reconnecting, saving a running game on the server.
