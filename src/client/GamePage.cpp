@@ -213,6 +213,7 @@ void GamePage::onViewChanged() {
     updateHeroPanel();
     m_townDialog->refresh(m_view);
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
+    if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1.").arg(m_view.victory));
     showBattle(first);
     announceEnd();
 }
@@ -325,6 +326,7 @@ void GamePage::updateStatus() {
     const QString campaign = m_view.campaign.isEmpty() ? QString()
         : tr(" &nbsp;&mdash;&nbsp; %1, chapter %2/%3").arg(m_view.campaign["name"].toString())
               .arg(m_view.campaign["chapter"].toInt()).arg(m_view.campaign["chapters"].toInt());
+    m_status->setToolTip(tr("Goal: %1").arg(m_view.victory));
     m_status->setText(tr("<b>Day %1</b> (week %4, %5) &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3%6")
                           .arg(m_view.day)
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))

@@ -61,6 +61,44 @@ private slots:
         QCOMPARE(o.winner, teamB);
     }
 
+    void otherVictoryConditions() {
+        // Take a town.
+        VictoryCondition v;
+        v.type = VictoryCondition::Type::HoldTown;
+        const TownId target = gs.addTown("Prize", "humans", {8, 8});
+        v.town = target;
+        gs.setVictory(v);
+        QVERIFY(!gameOutcome(gs).over);
+        gs.town(target)->owner = a;
+        QCOMPARE(gameOutcome(gs).winner, teamA);
+        QVERIFY(describeVictory(gs).contains("Prize"));
+        // Saved and loaded.
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.victory().town, target);
+        // Gold.
+        gs.town(target)->owner = PlayerId();
+        v = VictoryCondition();
+        v.type = VictoryCondition::Type::Gold;
+        v.amount = 50000;
+        gs.setVictory(v);
+        QVERIFY(!gameOutcome(gs).over);
+        gs.player(c)->resources["gold"] = 60000;
+        QCOMPARE(gameOutcome(gs).winner, teamB);
+        // Days: most towns when time is up.
+        gs.player(c)->resources["gold"] = 0;
+        v = VictoryCondition();
+        v.type = VictoryCondition::Type::Days;
+        v.amount = 3;
+        gs.setVictory(v);
+        gs.setDay(3);
+        QVERIFY(!gameOutcome(gs).over);
+        gs.setDay(4);
+        QVERIFY(gameOutcome(gs).over);
+        QCOMPARE(gameOutcome(gs).winner, teamB);  // B has a town, A none
+    }
+
     void eliminatedPlayersAreSkipped() {
         removeHeroes(b);
         gs.towns().clear();

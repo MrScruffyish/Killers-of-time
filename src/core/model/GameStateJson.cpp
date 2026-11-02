@@ -35,6 +35,13 @@ QJsonObject GameState::toJson() const {
     root.insert("formatVersion", kSaveFormatVersion);
     root.insert("day", m_day);
     root.insert("difficulty", m_difficulty);
+    if (m_victory.type != VictoryCondition::Type::Conquest) {
+        static const char* names[] = {"conquest", "town", "gold", "days"};
+        QJsonObject v{{"type", names[static_cast<int>(m_victory.type)]}};
+        if (m_victory.town.isValid()) v.insert("town", static_cast<int>(m_victory.town.value()));
+        if (m_victory.amount) v.insert("amount", m_victory.amount);
+        root.insert("victory", v);
+    }
     root.insert("nextId", static_cast<int>(m_nextId));
     root.insert("currentIndex", m_currentIndex);
 
@@ -231,6 +238,18 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
                          .arg(version).arg(kSaveFormatVersion));
     gs.m_day = top.requireInt("day", 1, 10000000);
     gs.m_difficulty = top.optionalString("difficulty", QStringLiteral("normal"));
+    const QJsonObject victoryObj = top.has("victory") ? top.requireObject("victory") : QJsonObject();
+    if (!victoryObj.isEmpty()) {
+        JsonReader vr(victoryObj, QStringLiteral("save.victory"), &errs);
+        const QString type = vr.requireString("type");
+        gs.m_victory.town = TownId(static_cast<quint32>(vr.optionalInt("town", 0, 0, kMaxId)));
+        gs.m_victory.amount = vr.optionalInt("amount", 0, 0, 1000000000);
+        vr.finish();
+        if (type == "town") gs.m_victory.type = VictoryCondition::Type::HoldTown;
+        else if (type == "gold") gs.m_victory.type = VictoryCondition::Type::Gold;
+        else if (type == "days") gs.m_victory.type = VictoryCondition::Type::Days;
+        else if (type != "conquest") errs << QStringLiteral("save.victory: unknown type '%1'").arg(type);
+    }
     const int nextId = top.requireInt("nextId", 1, kMaxId);
     const int currentIndex = top.optionalInt("currentIndex", 0, 0, kMaxId);
     const QJsonObject mapObj = top.requireObject("map");
@@ -553,6 +572,8 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
                 errs << what + QStringLiteral(": hero %1 leads a different army").arg(a.hero.value());
         }
     }
+    if (gs.m_victory.type == VictoryCondition::Type::HoldTown && !gs.m_towns.contains(gs.m_victory.town))
+        errs << QStringLiteral("save.victory: town %1 does not exist").arg(gs.m_victory.town.value());
     for (const Town& t : gs.m_towns) {
         const QString what = QStringLiteral("town %1 (%2)").arg(t.id.value()).arg(t.name);
         needPlayer(what, t.owner.value(), true);

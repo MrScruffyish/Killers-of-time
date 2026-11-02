@@ -17,6 +17,14 @@ class ContentRegistry;
 
 inline constexpr int kSaveFormatVersion = 1;
 
+// How a game is won besides being the last team standing (which always counts).
+struct VictoryCondition {
+    enum class Type { Conquest, HoldTown, Gold, Days };
+    Type type = Type::Conquest;
+    TownId town;      // HoldTown: whoever owns it wins
+    int amount = 0;   // Gold: first to have this much gold; Days: the game ends after this day
+};
+
 // The complete state of one game. Plain data plus helpers; the rules live in
 // core/rules. Owned by the server (the clients only ever see filtered views).
 class GameState {
@@ -25,6 +33,8 @@ public:
 
     int day() const { return m_day; }
     const QString& difficulty() const { return m_difficulty; }
+    const VictoryCondition& victory() const { return m_victory; }
+    void setVictory(const VictoryCondition& v) { m_victory = v; }
     void setDifficulty(const QString& d) { m_difficulty = d; }
     void setDay(int day) { m_day = day; }
 
@@ -107,6 +117,7 @@ public:
 private:
     int m_day = 1;
     QString m_difficulty = QStringLiteral("normal");
+    VictoryCondition m_victory;
     GameMap m_map;
     Rng m_rng;
     std::uint32_t m_nextId = 1;

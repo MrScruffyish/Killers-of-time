@@ -71,6 +71,8 @@ player per race and writes `data/scenarios/<id>.json`. Open it in `kot_editor` t
   and click a tile. Placing on an object replaces it; Erase removes it.
 - Player slots: add one per player (in turn order) with its race; each needs a town or a
   hero. Heroes get their class's starting army.
+- Victory: defeat everyone (always), or also take a chosen town, collect an amount of gold,
+  or have the most towns after N days.
 - Save writes `data/scenarios/<id>.json` and checks it the way the game reads it. The lobby
   offers it as a map from then on.
 

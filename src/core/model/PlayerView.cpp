@@ -60,6 +60,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     view.insert("players", players);
     const GameOutcome outcome = gameOutcome(state);
     view.insert("gameOver", outcome.over);
+    view.insert("victory", describeVictory(state));
     if (outcome.over) view.insert("winnerTeam", id(outcome.winner.value()));
 
     // Map: palette + indices, -1 where the team has not been.

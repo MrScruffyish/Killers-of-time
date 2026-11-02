@@ -13,6 +13,10 @@ struct GameOutcome {
     bool over = false;
     TeamId winner;  // invalid when nobody is left (or the game is not over)
 };
+// Also the scenario's victory condition (GameState::victory): holding a town,
+// reaching a gold amount, or the most towns when the last day is over.
 GameOutcome gameOutcome(const GameState& state);
+// A short text for players: what wins this game.
+QString describeVictory(const GameState& state);
 
 }  // namespace kot::core

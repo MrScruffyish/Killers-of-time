@@ -160,6 +160,19 @@ public:
         form->addRow(tr("Name"), m_name);
         form->addRow(tr("Description"), m_description);
         side->addLayout(form);
+        auto* winForm = new QFormLayout();
+        m_victoryType = new QComboBox(dock);
+        m_victoryType->addItem(tr("Defeat everyone"), 0);
+        m_victoryType->addItem(tr("Take a town"), 1);
+        m_victoryType->addItem(tr("Collect gold"), 2);
+        m_victoryType->addItem(tr("Most towns after N days"), 3);
+        m_victoryAmount = new QSpinBox(dock);
+        m_victoryAmount->setRange(0, 10000000);
+        m_victoryTown = new QComboBox(dock);
+        winForm->addRow(tr("Victory"), m_victoryType);
+        winForm->addRow(tr("Gold / days"), m_victoryAmount);
+        winForm->addRow(tr("Town to take"), m_victoryTown);
+        side->addLayout(winForm);
 
         side->addWidget(new QLabel(tr("<b>Tool</b>"), dock));
         m_tool = new QComboBox(dock);
@@ -238,6 +251,8 @@ public:
         GameState::fromJson(s.game, m_content, &gs, &errors);
         m_state = std::move(gs);
         m_path = path;
+        m_victoryType->setCurrentIndex(static_cast<int>(m_state.victory().type));
+        m_victoryAmount->setValue(m_state.victory().amount);
         m_id->setText(s.info.id);
         m_name->setText(s.info.name);
         m_description->setText(s.info.description);
@@ -271,6 +286,11 @@ private:
             ++i;
         }
         m_owner->setCurrentIndex(std::max(0, m_owner->findData(keep.toInt())));
+        const int keepTown = m_victoryTown->currentData().toInt();
+        m_victoryTown->clear();
+        for (const Town& t : m_state.towns())
+            m_victoryTown->addItem(QStringLiteral("%1 (%2, %3)").arg(t.name).arg(t.pos.x).arg(t.pos.y), int(t.id.value()));
+        m_victoryTown->setCurrentIndex(std::max(0, m_victoryTown->findData(keepTown ? keepTown : int(m_state.victory().town.value()))));
         setWindowTitle(tr("Killers of Time - map editor - %1").arg(m_path.isEmpty() ? tr("(new)") : m_path));
     }
 
@@ -507,6 +527,19 @@ private:
             if (path.isEmpty()) return;
         }
         m_state.setCurrentIndex(0);
+        VictoryCondition v;
+        v.type = static_cast<VictoryCondition::Type>(m_victoryType->currentData().toInt());
+        v.amount = m_victoryAmount->value();
+        if (v.type == VictoryCondition::Type::HoldTown) v.town = TownId(quint32(m_victoryTown->currentData().toInt()));
+        if (v.type == VictoryCondition::Type::HoldTown && !m_state.town(v.town)) {
+            QMessageBox::warning(this, tr("Save"), tr("Choose the town to take."));
+            return;
+        }
+        if ((v.type == VictoryCondition::Type::Gold || v.type == VictoryCondition::Type::Days) && v.amount <= 0) {
+            QMessageBox::warning(this, tr("Save"), tr("Set the gold amount or the number of days."));
+            return;
+        }
+        m_state.setVictory(v);
         QString error;
         if (!saveScenario(path, m_id->text(), m_name->text().isEmpty() ? m_id->text() : m_name->text(), m_description->text(),
                           m_state, &error)) {
@@ -530,6 +563,8 @@ private:
     QString m_path;
     EditorMap* m_map;
     QLineEdit *m_id, *m_name, *m_description;
+    QComboBox *m_victoryType, *m_victoryTown;
+    QSpinBox* m_victoryAmount;
     QComboBox *m_tool, *m_terrain, *m_owner, *m_race, *m_resource, *m_unit, *m_artifact, *m_heroClass;
     QSpinBox *m_brush, *m_amount;
     QListWidget* m_players;
