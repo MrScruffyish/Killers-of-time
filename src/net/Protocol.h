@@ -35,6 +35,7 @@ inline const QString buyAllUnits = QStringLiteral("buy_all_units");
 inline const QString autoBuild = QStringLiteral("auto_build");
 inline const QString buildThenBuy = QStringLiteral("build_then_buy");
 inline const QString sendDwellingUnits = QStringLiteral("send_dwelling_units");
+inline const QString castSpell = QStringLiteral("cast_spell");  // adventure-map spell
 inline const QString battleAction = QStringLiteral("battle_action");  // the battle's active stack (any turn)
 // client -> server: saved games and taking over players (any time after hello)
 inline const QString saveGame = QStringLiteral("save_game");      // a player in the running game

@@ -1,5 +1,6 @@
 #include "core/rules/TurnCycle.h"
 
+#include "core/magic/Spells.h"
 #include "core/rules/Victory.h"
 
 #include "core/content/ContentRegistry.h"
@@ -35,9 +36,13 @@ void startTurn(GameState& state, const ContentRegistry& content, PlayerId player
         const ResourceAmounts income = dailyIncome(state, content, playerId);
         for (auto it = income.begin(); it != income.end(); ++it) player->resources[it.key()] += it.value();
     }
+    QList<HeroId> heroes;
     for (Hero& hero : state.heroes()) {
-        if (hero.owner == playerId) regenSpellPoints(hero);
+        if (hero.owner != playerId) continue;
+        regenSpellPoints(hero);
+        heroes.append(hero.id);
     }
+    for (const HeroId h : heroes) learnSpellsInTown(state, content, h);  // heroes in a town with a mage guild
     refreshHeroMovement(state, content, playerId);
     updateExplored(state, content, player->team);
 }

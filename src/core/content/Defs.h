@@ -54,6 +54,7 @@ struct HeroClassDef {
     QMap<QString, int> pickIncrement;
     QMap<QString, int> autoGrowth;
     QMap<QString, int> startingArmy;  // unit id -> count a new game hero starts with
+    QStringList startingSpells;       // spells every hero of this class knows from the start
 };
 
 // Daily movement of an army: base + perTraitLevel * hero Movement Points trait,
@@ -101,7 +102,8 @@ struct BuildingEffect {
     enum class Type {
         Dwelling,  // units can be recruited here (`unit`), growing weekly
         Income,    // daily `amount` of `resource` for the owner
-        Tavern     // heroes can be hired in this town
+        Tavern,    // heroes can be hired in this town
+        MageGuild  // heroes in this town learn all spells up to `amount` (the guild level)
     };
     Type type = Type::Income;
     QString unit;
@@ -121,6 +123,36 @@ struct BuildingDef {
     QStringList excludes;
     QString upgradeOf;
     QList<BuildingEffect> effects;
+};
+
+// One building block of a spell (PROJECT.md 5.9). Its strength is
+//   amount + perPower * caster's Spell Power.
+// Battle: Damage (enemy stack), Heal (own stack, cannot revive), ModifyStat
+// (`stat` attack / defense / battleSpeed changed for `rounds` rounds, negative = a curse).
+// Adventure map: Movement (extra movement points, hundredths), Reveal (explores
+// tiles within the strength as radius around the hero).
+struct SpellEffect {
+    enum class Type { Damage, Heal, ModifyStat, Movement, Reveal };
+    Type type = Type::Damage;
+    int amount = 0;
+    int perPower = 0;
+    QString stat;
+    int rounds = 0;
+};
+
+struct SpellDef {
+    enum class Scope { Battle, Adventure };
+    enum class Target { None, Enemy, Ally };  // battle spells: whom they are cast on
+    QString id;
+    QString name;
+    QString school;
+    QString description;
+    int level = 1;           // mage guild level that teaches it
+    int cost = 1;            // spell points
+    int requiredMagic = 1;   // hero Magic trait needed to cast it
+    Scope scope = Scope::Battle;
+    Target target = Target::None;
+    QList<SpellEffect> effects;
 };
 
 // A hero that can be hired in a tavern. The class decides the race.

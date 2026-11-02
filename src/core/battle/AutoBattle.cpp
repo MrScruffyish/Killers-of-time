@@ -37,6 +37,7 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         }
         army->removeEmptyStacks();
         for (UnitStack& st : army->stacks) st.restoreFullHealth();
+        if (Hero* h = state.hero(battle.hero(s)); h && battle.heroOf(s)) h->spellPoints = battle.heroSpellPoints(s);
     }
     switch (battle.outcome()) {
     case Battle::Outcome::AttackerWon: report.outcome = BattleReport::Outcome::AttackerWon; break;

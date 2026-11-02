@@ -41,6 +41,7 @@ struct MoveResult {
     bool attacked = false;     // the target held hostile armies and battles were fought
     QList<BattleReport> battles;  // in order; stops at the first one not won
     bool heroKilled = false;   // the moving hero lost a battle (he and his army are gone)
+    QStringList learnedSpells;  // arrived in an own town with a mage guild
     std::optional<PendingAttack> pending;  // deferBattles: the battles still to fight
 };
 

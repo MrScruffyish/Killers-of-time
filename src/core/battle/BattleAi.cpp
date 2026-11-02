@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "core/content/ContentRegistry.h"
+#include "core/magic/Spells.h"
 
 namespace kot::core {
 
@@ -26,6 +27,30 @@ BattleAction chooseBattleAction(const Battle& b) {
     std::stable_sort(enemies.begin(), enemies.end(),
                      [](const BattleUnit* x, const BattleUnit* y) { return danger(*x) > danger(*y); });
     if (enemies.isEmpty()) return a;
+
+    // The hero first: the strongest damage spell at the most dangerous enemy.
+    if (const Hero* hero = b.heroOf(me->side); hero && !b.heroHasCast(me->side)) {
+        const int power = hero->trait(QStringLiteral("spell_power"));
+        QString best;
+        int bestDamage = 0;
+        for (const QString& id : hero->spells) {
+            const SpellDef* s = b.content().spell(id);
+            if (!s || s->target != SpellDef::Target::Enemy || !b.whyCannotCast(id, 0).isEmpty()) continue;
+            int damage = 0;
+            for (const SpellEffect& e : s->effects)
+                if (e.type == SpellEffect::Type::Damage) damage += effectStrength(e, power);
+            if (damage > bestDamage) {
+                bestDamage = damage;
+                best = id;
+            }
+        }
+        if (!best.isEmpty()) {
+            a.type = BattleAction::Type::Cast;
+            a.spell = best;
+            a.target = enemies.first()->id;
+            return a;
+        }
+    }
 
     if (b.canShoot(*me)) {
         a.type = BattleAction::Type::Shoot;

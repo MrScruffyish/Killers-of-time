@@ -115,6 +115,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             o.insert("pendingTraitPicks", h.pendingTraitPicks);
             o.insert("movementPoints", h.movementPoints);
             o.insert("template", h.templateId);
+            o.insert("spells", QJsonArray::fromStringList(h.spells));
         }
         heroes.append(o);
     }

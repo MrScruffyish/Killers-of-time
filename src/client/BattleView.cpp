@@ -1,6 +1,7 @@
 #include "client/BattleView.h"
 
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
@@ -121,12 +122,16 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_defend->setObjectName("defendButton");
     m_auto = new QPushButton(tr("Auto: let the computer finish this battle"), this);
     m_auto->setObjectName("autoBattleButton");
+    m_cast = new QPushButton(tr("Cast spell..."), this);
+    m_cast->setObjectName("castSpellButton");
+    buttons->addWidget(m_cast);
     buttons->addWidget(m_defend);
     buttons->addWidget(m_auto);
     buttons->addStretch(1);
     layout->addLayout(buttons);
     connect(m_defend, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "defend"}}); });
     connect(m_auto, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "auto"}}); });
+    connect(m_cast, &QPushButton::clicked, this, &BattleView::chooseSpell);
 }
 
 QWidget* BattleView::field() const { return m_field; }
@@ -140,12 +145,26 @@ void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, con
     m_field->battle = battle;
     m_field->sideColor[0] = attacker;
     m_field->sideColor[1] = defender;
+    if (!battle.myMove()) m_castSpell.clear();
+    updateInfo();
+    m_field->update();
+}
+
+void BattleView::updateInfo() {
+    const ViewBattle& battle = m_battle;
     const bool mine = battle.myMove();
     const ViewBattleUnit* active = battle.unit(battle.active);
     const core::UnitDef* def = active ? m_content->unit(active->unit) : nullptr;
     QString text = tr("<b>Battle, round %1</b> &nbsp; ").arg(battle.round);
-    if (!active) text += tr("waiting...");
-    else if (mine) {
+    if (!active) {
+        text += tr("waiting...");
+    } else if (mine && !m_castSpell.isEmpty()) {
+        const core::SpellDef* s = m_content->spell(m_castSpell);
+        bool enemy = true;
+        for (const ViewBattle::Spell& sp : battle.spells) if (sp.id == m_castSpell) enemy = sp.targetsEnemy;
+        text += tr("Cast %1: click %2 (or an empty hex to cancel).")
+                    .arg(s ? s->name : m_castSpell, enemy ? tr("an enemy stack") : tr("one of your stacks"));
+    } else if (mine) {
         text += tr("Your %1 (%2) acts: click a light hex to move, a red-ringed enemy to %3.")
                     .arg(def ? def->name : active->unit)
                     .arg(active->count)
@@ -153,14 +172,43 @@ void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, con
     } else {
         text += tr("The enemy is acting...");
     }
+    if (battle.hasHero) text += tr(" &nbsp; <i>Hero: %1 spell points</i>").arg(battle.heroSpellPoints);
     m_info->setText(text);
     m_defend->setEnabled(mine);
     m_auto->setEnabled(mine);
-    m_field->update();
+    bool anyCastable = false;
+    for (const ViewBattle::Spell& sp : battle.spells) anyCastable = anyCastable || sp.castable;
+    m_cast->setVisible(battle.hasHero);
+    m_cast->setEnabled(mine && anyCastable);
+}
+
+void BattleView::chooseSpell() {
+    QStringList names;
+    QStringList ids;
+    for (const ViewBattle::Spell& sp : m_battle.spells) {
+        if (!sp.castable) continue;
+        const core::SpellDef* s = m_content->spell(sp.id);
+        names << tr("%1 (%2 SP)").arg(s ? s->name : sp.id).arg(sp.cost);
+        ids << sp.id;
+    }
+    if (names.isEmpty()) return;
+    bool ok = false;
+    const QString chosen = QInputDialog::getItem(this, tr("Cast spell"), tr("Spell:"), names, 0, false, &ok);
+    if (!ok) return;
+    m_castSpell = ids[names.indexOf(chosen)];
+    updateInfo();
 }
 
 void BattleView::onHexClicked(core::Pos hex) {
     if (!m_battle.myMove()) return;
+    if (!m_castSpell.isEmpty()) {
+        const QString spell = m_castSpell;
+        m_castSpell.clear();
+        if (const ViewBattleUnit* u = m_battle.unitAt(hex))
+            emit actionRequested({{"action", "cast"}, {"spell", spell}, {"target", u->id}});
+        updateInfo();
+        return;
+    }
     if (const ViewBattleUnit* u = m_battle.unitAt(hex)) {
         if (u->side != m_battle.yourSide && (m_battle.canShoot || m_battle.attackable.contains(u->id))) {
             emit actionRequested({{"action", m_battle.canShoot ? "shoot" : "attack"}, {"target", u->id}});

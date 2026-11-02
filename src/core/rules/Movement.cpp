@@ -6,6 +6,7 @@
 
 #include "core/content/ContentRegistry.h"
 #include "core/battle/AutoBattle.h"
+#include "core/magic/Spells.h"
 #include "core/rules/Vision.h"
 
 namespace kot::core {
@@ -138,7 +139,10 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     }
     army->pos = path.steps[steps - 1];
     result.arrived = reached;
-    if (result.arrived) captureAt(state, owner, target, &result);
+    if (result.arrived) {
+        captureAt(state, owner, target, &result);
+        result.learnedSpells = learnSpellsInTown(state, content, heroIdCopy);
+    }
     updateExplored(state, content, state.teamOf(owner));
     return result;
 }
@@ -174,7 +178,10 @@ void finishAttack(GameState& state, const ContentRegistry& content, const Pendin
     // A field army stays where it fought from; a won town is entered.
     if (won && army && town) army->pos = attack.target;
     result->arrived = won && army && army->pos == attack.target;
-    if (result->arrived) captureAt(state, attack.owner, attack.target, result);
+    if (result->arrived) {
+        captureAt(state, attack.owner, attack.target, result);
+        result->learnedSpells = learnSpellsInTown(state, content, attack.hero);
+    }
     updateExplored(state, content, state.teamOf(attack.owner));
 }
 

@@ -26,7 +26,10 @@
       "startingArmy": {
         "militia": 10,
         "archer": 3
-      }
+      },
+      "startingSpells": [
+        "cure"
+      ]
     },
     {
       "id": "wizard",
@@ -51,7 +54,12 @@
       "startingArmy": {
         "militia": 5,
         "archer": 5
-      }
+      },
+      "startingSpells": [
+        "magic_arrow",
+        "stone_skin",
+        "swift_march"
+      ]
     }
   ]
 }

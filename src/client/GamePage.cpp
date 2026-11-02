@@ -55,6 +55,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_levelUp = new QPushButton(tr("Level up: choose a trait"), this);
     m_levelUp->setObjectName("levelUpButton");
     side->addWidget(m_levelUp);
+    m_castSpell = new QPushButton(tr("Cast spell..."), this);
+    m_castSpell->setObjectName("castAdventureSpellButton");
+    side->addWidget(m_castSpell);
     auto* townsLabel = new QLabel(tr("<b>My towns</b> (double-click here, or right-click the town on the map)"), this);
     townsLabel->setWordWrap(true);
     side->addWidget(townsLabel);
@@ -103,6 +106,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     connect(m_map, &MapView::tileRightClicked, this, &GamePage::onTileRightClicked);
     connect(m_heroCombo, &QComboBox::activated, this, [this](int i) { selectHero(m_heroCombo->itemData(i).toInt()); });
     connect(m_levelUp, &QPushButton::clicked, this, &GamePage::chooseTrait);
+    connect(m_castSpell, &QPushButton::clicked, this, &GamePage::castAdventureSpell);
     connect(m_townList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
         m_townDialog->showTown(m_view, item->data(Qt::UserRole).toInt());
     });
@@ -247,7 +251,7 @@ void GamePage::updateStatus() {
                           .arg(res.join(", ")));
     const bool myTurn = m_view.isMyTurn();
     const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
-    for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits}) b->setEnabled(free);
+    for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits, m_castSpell}) b->setEnabled(free);
 
     m_townList->clear();
     for (const ViewTown* t : m_view.myTowns()) {
@@ -288,9 +292,38 @@ void GamePage::updateHeroPanel() {
         }
         if (army->stacks.isEmpty()) lines << tr("No army.");
     }
+    QStringList spellNames;
+    for (const QString& id : h->spells) {
+        const core::SpellDef* s = m_content->spell(id);
+        spellNames << (s ? s->name : id);
+    }
+    lines << tr("Spells: %1").arg(spellNames.isEmpty() ? tr("none") : spellNames.join(", "));
     m_heroInfo->setText(lines.join("<br>"));
+    bool adventureSpell = false;
+    for (const QString& id : h->spells) {
+        const core::SpellDef* s = m_content->spell(id);
+        adventureSpell = adventureSpell || (s && s->scope == core::SpellDef::Scope::Adventure);
+    }
+    m_castSpell->setVisible(adventureSpell);
     m_levelUp->setVisible(h->pendingTraitPicks > 0);
     m_levelUp->setText(tr("Level up: choose a trait (%1)").arg(h->pendingTraitPicks));
+}
+
+void GamePage::castAdventureSpell() {
+    const ViewHero* h = m_view.hero(m_selectedHero);
+    if (!h) return;
+    QStringList names, ids;
+    for (const QString& id : h->spells) {
+        const core::SpellDef* s = m_content->spell(id);
+        if (!s || s->scope != core::SpellDef::Scope::Adventure) continue;
+        names << tr("%1 (%2 SP) - %3").arg(s->name).arg(s->cost).arg(s->description);
+        ids << id;
+    }
+    if (names.isEmpty()) return;
+    bool ok = false;
+    const QString chosen = QInputDialog::getItem(this, tr("Cast spell"), tr("%1 casts:").arg(h->name), names, 0, false, &ok);
+    if (ok) send(net::msg::castSpell, {{"hero", h->id}, {"spell", ids[names.indexOf(chosen)]}},
+                 tr("Cast %1").arg(m_content->spell(ids[names.indexOf(chosen)])->name));
 }
 
 void GamePage::selectHero(int id) {
@@ -376,6 +409,11 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
                          .arg(name(e["unit"].toInt()), verb, name(e["target"].toInt()))
                          .arg(e["damage"].toInt())
                          .arg(e["killed"].toInt());
+        } else if (type == "cast") {
+            const core::SpellDef* s = m_content->spell(e["spell"].toString());
+            const QString caster = e["side"].toInt() == m_view.battle.yourSide ? tr("your hero") : tr("the enemy hero");
+            lines << tr("%1 casts %2 on %3%4").arg(caster, s ? s->name : e["spell"].toString(), name(e["target"].toInt()),
+                                                         e["damage"].toInt() > 0 ? tr(" (%1)").arg(e["damage"].toInt()) : QString());
         } else if (type == "move") {
             lines << tr("%1 moves").arg(name(e["unit"].toInt()));
         } else if (type == "defend") {
@@ -394,6 +432,14 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
         if (info.contains("capturedMine")) text += tr(", captured a mine");
         if (info.contains("capturedTown")) text += tr(", captured a town");
         if (info.contains("capturedDwelling")) text += tr(", captured a dwelling");
+        if (info.contains("learnedSpells")) {
+            QStringList names;
+            for (const QJsonValue& v : info["learnedSpells"].toArray()) {
+                const core::SpellDef* s = m_content->spell(v.toString());
+                names << (s ? s->name : v.toString());
+            }
+            text += tr(", learned %1").arg(names.join(", "));
+        }
         for (const QJsonValue& v : info["battles"].toArray()) text += QStringLiteral("; ") + describeBattle(v.toObject());
         return text;
     }

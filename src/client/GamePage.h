@@ -56,7 +56,8 @@ private:
     void updateHeroPanel();
     void selectHero(int id);
     QString unitName(const QString& id) const;
-    void announceEnd();  // victory / defeat messages, once each
+    void announceEnd();
+    void castAdventureSpell();  // victory / defeat messages, once each
     QString describeBattle(const QJsonObject& battle) const;
     QString describeBattleEvents(const QJsonArray& events) const;
     void showBattle(bool firstView);
@@ -76,6 +77,7 @@ private:
     QLabel* m_status;
     QStackedWidget* m_centre;
     MapView* m_map;
+    QPushButton* m_castSpell;
     BattleView* m_battleView;
     int m_seenBattleId = 0;
     QComboBox* m_heroCombo;

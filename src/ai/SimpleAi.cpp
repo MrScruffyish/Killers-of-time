@@ -5,6 +5,7 @@
 
 #include "ai/AiView.h"
 #include "core/content/ContentRegistry.h"
+#include "core/magic/Spells.h"
 #include "net/Protocol.h"
 
 namespace kot::ai {
@@ -37,6 +38,7 @@ void SimpleAi::beginTurn(const GameState&, const ContentRegistry&, PlayerId) {
     m_garrisonTaken.clear();
     m_moves.clear();
     m_heroDone.clear();
+    m_spellCast.clear();
 }
 
 void SimpleAi::commandDone(const net::Message& cmd, bool ok) {
@@ -99,7 +101,18 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
         m_garrisonTaken.insert(h.id.value());
     }
 
-    // 5. Move heroes.
+    // 5. Move heroes (a movement spell first, once a turn).
+    for (const Hero& h : state.heroes()) {
+        if (h.owner != me || m_spellCast.contains(h.id.value())) continue;
+        m_spellCast.insert(h.id.value());
+        for (const QString& id : h.spells) {
+            const SpellDef* s = content.spell(id);
+            bool movement = false;
+            for (const SpellEffect& e : s ? s->effects : QList<SpellEffect>()) movement = movement || e.type == SpellEffect::Type::Movement;
+            if (movement && whyCannotCast(h, content, id, SpellDef::Scope::Adventure, h.spellPoints).isEmpty())
+                return command(net::msg::castSpell, {{"hero", toInt(h.id.value())}, {"spell", id}});
+        }
+    }
     for (const Hero& h : state.heroes()) {
         if (h.owner != me || h.movementPoints <= 0 || m_heroDone.contains(h.id.value())) continue;
         if (m_moves.value(h.id.value()) >= kMaxMovesPerHero) continue;

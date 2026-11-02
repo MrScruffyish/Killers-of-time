@@ -103,6 +103,7 @@ QJsonObject GameState::toJson() const {
         o.insert("movementPoints", h.movementPoints);
         o.insert("army", static_cast<int>(h.army.value()));
         if (!h.templateId.isEmpty()) o.insert("template", h.templateId);
+        if (!h.spells.isEmpty()) o.insert("spells", QJsonArray::fromStringList(h.spells));
         heroes.append(o);
     }
     root.insert("heroes", heroes);
@@ -335,7 +336,10 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         h.movementPoints = r.requireInt("movementPoints", 0, 10000000);
         h.army = ArmyId(static_cast<quint32>(r.requireInt("army", 1, kMaxId)));
         h.templateId = r.optionalString("template");
+        h.spells = r.optionalStringList("spells");
         r.finish();
+        for (const QString& s : h.spells)
+            if (!content.spell(s)) r.addError(QStringLiteral("unknown spell '%1'").arg(s));
         if (r.ok() && !h.templateId.isEmpty() && !content.heroTemplate(h.templateId))
             r.addError(QStringLiteral("unknown hero template '%1'").arg(h.templateId));
         if (r.ok() && !content.heroClass(h.classId))

@@ -54,6 +54,7 @@ struct ViewHero {
     int spellPoints = 0;
     int pendingTraitPicks = 0;
     int movementPoints = 0;
+    QStringList spells;
 };
 
 struct BuildOption {
@@ -122,6 +123,17 @@ struct ViewBattle {
     QList<core::Pos> reachable;  // for the active unit
     QList<int> attackable;
     bool canShoot = false;
+    // Your hero in this battle (absent: no hero).
+    struct Spell {
+        QString id;
+        bool targetsEnemy = true;
+        int cost = 0;
+        bool castable = false;
+    };
+    bool hasHero = false;
+    int heroSpellPoints = 0;
+    bool heroHasCast = false;
+    QList<Spell> spells;
 
     const ViewBattleUnit* unit(int id) const;
     const ViewBattleUnit* unitAt(core::Pos hex) const;

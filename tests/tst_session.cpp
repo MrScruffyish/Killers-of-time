@@ -126,8 +126,28 @@ private slots:
         QCOMPARE(doIt(1, net::msg::endTurn).code, QString("battle_in_progress"));
         QCOMPARE(doIt(2, net::msg::battleAction, {{"action", "defend"}}).code, QString("not_your_turn"));
         QCOMPARE(doIt(1, net::msg::battleAction, {{"action", "fly"}}).code, QString("bad_request"));
-        r = doIt(1, net::msg::battleAction, {{"action", "defend"}});
+        // Ann's hero casts the first spell he can (every class starts with one).
+        const QJsonObject b0 = session->viewFor(pA)["battle"].toObject();
+        const QJsonObject heroInfo = b0["hero"].toObject();
+        const int spBefore = heroInfo["spellPoints"].toInt();
+        QJsonObject spell;
+        for (const QJsonValue& v : heroInfo["spells"].toArray()) if (v.toObject()["castable"].toBool()) { spell = v.toObject(); break; }
+        QVERIFY(!spell.isEmpty());
+        int target = 0;
+        for (const QJsonValue& u : b0["units"].toArray())
+            if ((u.toObject()["side"].toInt() == 1) == (spell["target"].toString() == "enemy")) target = u.toObject()["id"].toInt();
+        r = doIt(1, net::msg::battleAction, {{"action", "cast"}, {"spell", spell["id"]}, {"target", target}});
         QVERIFY2(r.ok, qPrintable(r.message));
+        QCOMPARE(r.info["events"].toArray().last().toObject()["type"].toString(), QString("cast"));
+        if (session->battleRunning()) {
+            const QJsonObject heroAfter = session->viewFor(pA)["battle"].toObject()["hero"].toObject();
+            QCOMPARE(heroAfter["spellPoints"].toInt(), spBefore - spell["cost"].toInt());
+            QVERIFY(heroAfter["hasCast"].toBool());
+        }
+        if (session->battleRunning()) {  // the spell may already have won it
+            r = doIt(1, net::msg::battleAction, {{"action", "defend"}});
+            QVERIFY2(r.ok, qPrintable(r.message));
+        }
         if (session->battleRunning()) {
             r = doIt(1, net::msg::battleAction, {{"action", "auto"}});
             QVERIFY2(r.ok, qPrintable(r.message));

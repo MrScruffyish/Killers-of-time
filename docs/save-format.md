@@ -31,3 +31,5 @@ terrain/resource/class ids exist, a hero and his army point at each other, no
 duplicate ids, at most 7 stacks per army.
 
 Bump `kSaveFormatVersion` when the format changes incompatibly.
+
+Heroes may have `spells` (list of spell ids, the spellbook; optional, validated against the content).

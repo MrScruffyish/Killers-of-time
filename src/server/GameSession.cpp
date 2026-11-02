@@ -9,6 +9,7 @@
 #include "core/battle/BattleAi.h"
 #include "core/content/ContentRegistry.h"
 #include "core/data/JsonReader.h"
+#include "core/magic/Spells.h"
 #include "core/model/PlayerView.h"
 #include "core/rules/Automation.h"
 #include "core/rules/Dwellings.h"
@@ -185,8 +186,9 @@ QJsonObject GameSession::viewFor(PlayerId player) const {
     if (m_battle && m_battle->battle) {
         const Battle& b = *m_battle->battle;
         if (b.owner(0) == player || b.owner(1) == player) {
-            QJsonObject battle = battleToJson(b);
-            battle.insert("yourSide", b.owner(0) == player ? 0 : 1);
+            const int side = b.owner(0) == player ? 0 : 1;
+            QJsonObject battle = battleToJson(b, side);
+            battle.insert("yourSide", side);
             view.insert("battle", battle);
         } else {
             view.insert("battleInProgress", true);
@@ -276,6 +278,7 @@ QJsonObject GameSession::moveInfo(const MoveResult& m) const {
     if (m.capturedMine.isValid()) info.insert("capturedMine", toInt(m.capturedMine.value()));
     if (m.capturedTown.isValid()) info.insert("capturedTown", toInt(m.capturedTown.value()));
     if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
+    if (!m.learnedSpells.isEmpty()) info.insert("learnedSpells", QJsonArray::fromStringList(m.learnedSpells));
     if (m.attacked) {
         QJsonArray battles;
         for (const BattleReport& b : m.battles) battles.append(battleReportToJson(b));
@@ -298,6 +301,7 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     const bool hasHex = cmd.body.contains("x");
     const int x = r.optionalInt("x", 0, 0, 1000), y = r.optionalInt("y", 0, 0, 1000);
     const int target = r.optionalInt("target", 0, 0, 1000000);
+    const QString spell = r.optionalString("spell");
     r.finish();
     if (!r.ok()) return failure("bad_request", errors.join("; "));
 
@@ -309,6 +313,10 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     else if (action == "attack") a.type = BattleAction::Type::Attack;
     else if (action == "shoot") a.type = BattleAction::Type::Shoot;
     else if (action == "defend") a.type = BattleAction::Type::Defend;
+    else if (action == "cast") {
+        a.type = BattleAction::Type::Cast;
+        a.spell = spell;
+    }
     else if (action == "auto") m_battle->autoSide[active->side] = true;
     else return failure("bad_request", "unknown battle action '" + action + "'");
 
@@ -368,6 +376,15 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
             return success(info);
         }
         return success(moveInfo(m_finishedMove));
+    }
+    if (cmd.type == net::msg::castSpell) {
+        const HeroId hero(id32("hero"));
+        const QString spell = r.requireString("spell");
+        r.finish();
+        if (!r.ok()) return bad();
+        const Hero* h = m_state.hero(hero);
+        if (!h || h->owner != player) return failure("failed", "that is not your hero");
+        return fromAction(castAdventureSpell(m_state, m_content, hero, spell));
     }
     if (cmd.type == net::msg::build) {
         const TownId town(id32("town"));

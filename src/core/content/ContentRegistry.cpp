@@ -83,6 +83,7 @@ void ContentRegistry::clear() {
     m_heroClasses.clear();
     m_buildings.clear();
     m_heroTemplates.clear();
+    m_spells.clear();
     m_xpThresholds.clear();
     m_balance = Balance();
 }
@@ -95,6 +96,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadTraits(dataDir, problems);
     loadUnits(dataDir, problems);
     loadBuildings(dataDir, problems);
+    loadSpells(dataDir, problems);
     loadHeroClasses(dataDir, problems);
     loadHeroTemplates(dataDir, problems);
     loadProgression(dataDir, problems);
@@ -276,8 +278,11 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
                 e.type = BuildingEffect::Type::Income;
                 e.resource = er.requireId(QStringLiteral("resource"));
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 1000000);
+            } else if (type == QLatin1String("mageGuild")) {
+                e.type = BuildingEffect::Type::MageGuild;
+                e.amount = er.requireInt(QStringLiteral("level"), 1, 10);
             } else if (!type.isEmpty()) {
-                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income or tavern)").arg(type));
+                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income, tavern or mageGuild)").arg(type));
             }
             er.finish();
             if (er.ok()) d.effects.append(e);
@@ -291,6 +296,79 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
             continue;
         }
         m_buildings.insert(d.id, d);
+    }
+}
+
+void ContentRegistry::loadSpells(const QString& dir, QStringList& errors) {
+    const QDir spellsDir(QDir(dir).filePath(QStringLiteral("spells")));
+    if (!spellsDir.exists()) return;  // a game without magic is fine
+    for (const QFileInfo& info : spellsDir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name)) {
+        const QString ctx = QStringLiteral("spells/") + info.fileName();
+        QJsonObject o;
+        if (!readObjectFile(info.filePath(), ctx, &o, errors)) continue;
+        JsonReader r(o, ctx, &errors);
+        SpellDef d;
+        d.id = r.requireId(QStringLiteral("id"));
+        d.name = r.requireString(QStringLiteral("name"));
+        d.school = r.optionalString(QStringLiteral("school"), QStringLiteral("general"));
+        d.description = r.optionalString(QStringLiteral("description"));
+        d.level = r.requireInt(QStringLiteral("level"), 1, 10);
+        d.cost = r.requireInt(QStringLiteral("cost"), 0, 10000);
+        d.requiredMagic = r.optionalInt(QStringLiteral("requiredMagic"), d.level, 0, 100);
+        const QString scope = r.requireString(QStringLiteral("scope"));
+        const QString target = r.optionalString(QStringLiteral("target"), QStringLiteral("none"));
+        const QJsonArray effects = r.requireArray(QStringLiteral("effects"));
+        r.finish();
+        if (scope == QLatin1String("battle")) d.scope = SpellDef::Scope::Battle;
+        else if (scope == QLatin1String("adventure")) d.scope = SpellDef::Scope::Adventure;
+        else if (!scope.isEmpty()) r.addError(QStringLiteral("scope must be battle or adventure"));
+        if (target == QLatin1String("enemy")) d.target = SpellDef::Target::Enemy;
+        else if (target == QLatin1String("ally")) d.target = SpellDef::Target::Ally;
+        else if (target != QLatin1String("none")) r.addError(QStringLiteral("target must be none, enemy or ally"));
+        if (d.scope == SpellDef::Scope::Battle && d.target == SpellDef::Target::None)
+            r.addError(QStringLiteral("a battle spell needs a target (enemy or ally)"));
+        if (d.scope == SpellDef::Scope::Adventure && d.target != SpellDef::Target::None)
+            r.addError(QStringLiteral("adventure spells have no target"));
+        if (effects.isEmpty()) r.addError(QStringLiteral("a spell needs at least one effect"));
+        for (qsizetype i = 0; i < effects.size(); ++i) {
+            const QString ectx = QStringLiteral("%1: effects[%2]").arg(ctx).arg(i);
+            if (!effects[i].isObject()) {
+                errors << ectx + QStringLiteral(": entry must be an object");
+                continue;
+            }
+            JsonReader er(effects[i].toObject(), ectx, &errors);
+            SpellEffect e;
+            const QString type = er.requireString(QStringLiteral("type"));
+            e.amount = er.optionalInt(QStringLiteral("amount"), 0, -10000, 100000);
+            e.perPower = er.optionalInt(QStringLiteral("perPower"), 0, -10000, 100000);
+            bool battleOnly = true;
+            if (type == QLatin1String("damage")) e.type = SpellEffect::Type::Damage;
+            else if (type == QLatin1String("heal")) e.type = SpellEffect::Type::Heal;
+            else if (type == QLatin1String("modifyStat")) {
+                e.type = SpellEffect::Type::ModifyStat;
+                e.stat = er.requireString(QStringLiteral("stat"));
+                e.rounds = er.requireInt(QStringLiteral("rounds"), 1, 100);
+                if (!e.stat.isEmpty() && e.stat != "attack" && e.stat != "defense" && e.stat != "battleSpeed")
+                    er.addError(QStringLiteral("stat must be attack, defense or battleSpeed"));
+            } else if (type == QLatin1String("movement")) {
+                e.type = SpellEffect::Type::Movement;
+                battleOnly = false;
+            } else if (type == QLatin1String("reveal")) {
+                e.type = SpellEffect::Type::Reveal;
+                battleOnly = false;
+            } else if (!type.isEmpty()) {
+                er.addError(QStringLiteral("unknown effect type '%1' (use damage, heal, modifyStat, movement or reveal)").arg(type));
+            }
+            er.finish();
+            if (er.ok() && battleOnly != (d.scope == SpellDef::Scope::Battle))
+                er.addError(QStringLiteral("effect '%1' does not fit a %2 spell").arg(type, scope));
+            if (er.ok()) d.effects.append(e);
+            else r.addError(QStringLiteral("has an invalid effect"));
+        }
+        if (d.id != info.completeBaseName())
+            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
+        if (!r.ok()) continue;
+        m_spells.insert(d.id, d);
     }
 }
 
@@ -324,6 +402,7 @@ void ContentRegistry::loadHeroClasses(const QString& dir, QStringList& errors) {
                      d.pickIncrement = r.optionalIntMap(QStringLiteral("pickIncrement"), 1, 100);
                      d.autoGrowth = r.optionalIntMap(QStringLiteral("autoGrowth"), 1, 1000);
                      d.startingArmy = r.optionalIntMap(QStringLiteral("startingArmy"), 1, 10000);
+                     d.startingSpells = r.optionalStringList(QStringLiteral("startingSpells"));
                      r.finish();
                      if (!r.ok()) return;
                      if (m_heroClasses.contains(d.id)) {
@@ -458,6 +537,10 @@ void ContentRegistry::validateReferences(QStringList& errors) const {
         check(c.baseTraits, "baseTraits", false);
         check(c.pickIncrement, "pickIncrement", true);
         check(c.autoGrowth, "autoGrowth", false);
+        for (const QString& s : c.startingSpells) {
+            if (!m_spells.contains(s))
+                errors << QStringLiteral("hero class '%1': startingSpells uses unknown spell '%2'").arg(c.id, s);
+        }
         for (auto it = c.startingArmy.begin(); it != c.startingArmy.end(); ++it) {
             if (!m_units.contains(it.key()))
                 errors << QStringLiteral("hero class '%1': startingArmy uses unknown unit '%2'").arg(c.id, it.key());
@@ -563,6 +646,11 @@ QStringList ContentRegistry::raceIds() const {
     }
     races.sort();
     return races;
+}
+
+const SpellDef* ContentRegistry::spell(const QString& id) const {
+    const auto it = m_spells.constFind(id);
+    return it == m_spells.cend() ? nullptr : &it.value();
 }
 
 const HeroTemplateDef* ContentRegistry::heroTemplate(const QString& id) const {

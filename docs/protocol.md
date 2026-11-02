@@ -99,6 +99,7 @@ When the game is over every command is refused with code `game_over`.
 | `trade` | `give`, `amount`, `get` | |
 | `move_units` | `from`, `to`, `stack`, `count` | |
 | `pick_trait` | `hero`, `trait` | |
+| `cast_spell` | `hero`, `spell` | an adventure-map spell (costs spell points) |
 | `buy_all_units` | `town`?, `strategy`? (`best`/`most`) | `unitsBought`, `townsServed`, `spent` |
 | `auto_build` | `town`?, `useTrade`? | `built`, `needsChoice` (towns and the buildings that need a decision), `cannotAfford` |
 | `build_then_buy` | `town`?, `useTrade`?, `strategy`? | `build` and `buy` as above |
@@ -137,12 +138,12 @@ once by the battle AI and `move_hero` returns the reports.
 
 `battle` in the view: `width`, `height`, `round`, `active` (unit id), `yourSide` (0 attacker,
 1 defender), `sides` (`owner`, `hero`), `units` (`id`, `side`, `unit`, `count`, `frontHp`, `maxHp`,
-`x`, `y` (hex, odd-r offset), `shots`, `retaliated`), and for the active stack `reachable`
+`x`, `y` (hex, odd-r offset), `shots`, `retaliated`), `modifiers` (spell effects: `stat`, `amount`, `rounds`)), `hero` (yours only: `spellPoints`, `hasCast`, `spells` [`id`, `target`, `cost`, `castable`]), and for the active stack `reachable`
 (`[[x, y], ...]`), `attackable` (enemy ids it can reach) and `canShoot`.
 
 | Type | Fields | `info` on success |
 |---|---|---|
-| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `auto` (the battle AI plays your side to the end) | `events` (list: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
+| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end) | `events` (list: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
 
 Battle reports (`battles` entries, and `lastBattle.report` in the view of both participants,
 `lastBattle.id` grows with every battle):

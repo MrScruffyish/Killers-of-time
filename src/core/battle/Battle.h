@@ -14,6 +14,13 @@ namespace kot::core {
 class ContentRegistry;
 struct UnitDef;
 
+// A temporary change from a spell (Stone Skin, Slow, ...).
+struct StatModifier {
+    QString stat;    // attack, defense, battleSpeed
+    int amount = 0;
+    int roundsLeft = 0;
+};
+
 // One stack on the battle field (a copy of an army stack while the battle runs).
 struct BattleUnit {
     int id = 0;          // 1.. within this battle
@@ -24,27 +31,32 @@ struct BattleUnit {
     Pos pos;             // hex
     int shotsLeft = 0;
     bool retaliated = false;  // this round
+    QList<StatModifier> modifiers;
 
     bool alive() const { return !stack.isEliminated(); }
+    int modifier(const QString& stat) const;
 };
 
 struct BattleAction {
-    enum class Type { Move, Attack, Shoot, Defend };
+    enum class Type { Move, Attack, Shoot, Defend, Cast };
     Type type = Type::Defend;
     Pos hex;               // Move: where to. Attack: hex to strike from (optional)
     bool hasHex = false;
-    int target = 0;        // Attack / Shoot: enemy unit id
+    int target = 0;        // Attack / Shoot: enemy unit id; Cast: the spell's target
+    QString spell;         // Cast
 };
 
 // What happened, for the battle log and the client.
 struct BattleEvent {
-    enum class Type { Move, Attack, Shoot, Retaliate, Defend, NewRound };
+    enum class Type { Move, Attack, Shoot, Retaliate, Defend, NewRound, Cast };
     Type type = Type::Move;
     int unit = 0;
     int target = 0;
     Pos from, to;
-    int damage = 0;
+    int damage = 0;   // Cast: damage done or HP healed
     int killed = 0;
+    QString spell;
+    int side = -1;    // Cast: the casting hero's side
 };
 
 // A tactical battle on a hex grid (PROJECT.md 5.10, kept simple for now).
@@ -58,6 +70,9 @@ struct BattleEvent {
 //   - Shoot: ranged units with shots left, when no enemy stands next to them;
 //     no retaliation,
 //   - Defend: do nothing this round.
+// Besides, the hero of the active stack's side may cast one battle spell per round
+// (Cast; it does not use up the stack's turn): damage, heal or a stat change for a
+// few rounds. Spell points are spent from a copy and written back afterwards.
 // Damage = count * roll(damageMin..damageMax) * attack/defense factor (balance.json
 // "battle"), hero Attack/Defense traits added. The battle ends when one side has no
 // stacks left, or as a draw after maxRounds.
@@ -72,6 +87,7 @@ public:
     Battle(const GameState& state, const ContentRegistry& content, ArmyId attacker, ArmyId defender,
            std::uint64_t seed);
 
+    const ContentRegistry& content() const { return m_content; }
     ArmyId army(int side) const { return m_army[side]; }
     PlayerId owner(int side) const { return m_owner[side]; }
     HeroId hero(int side) const { return m_hero[side]; }
@@ -83,6 +99,14 @@ public:
     Outcome outcome() const { return m_outcome; }
     bool isOver() const { return m_outcome != Outcome::Running; }
     bool sideAlive(int side) const;
+
+    // The side's hero (a copy taken when the battle started), or null.
+    const Hero* heroOf(int side) const { return m_heroCopy[side].id.isValid() ? &m_heroCopy[side] : nullptr; }
+    int heroSpellPoints(int side) const { return m_heroCopy[side].spellPoints; }
+    bool heroHasCast(int side) const { return m_heroCast[side]; }
+    // Why the active side's hero cannot cast this spell on `target` now (empty = can).
+    // target 0 checks everything except the target.
+    QString whyCannotCast(const QString& spellId, int target) const;
 
     // Hexes the unit can move to, with the number of steps.
     QHash<Pos, int> reachable(const BattleUnit& unit) const;
@@ -96,6 +120,7 @@ public:
     QString act(const BattleAction& action, QList<BattleEvent>* events = nullptr);
 
 private:
+    QString cast(const BattleAction& action, QList<BattleEvent>* events);
     void strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QList<BattleEvent>* events);
     void startRound(QList<BattleEvent>* events);
     void advance(QList<BattleEvent>* events);
@@ -109,6 +134,8 @@ private:
     HeroId m_hero[2];
     int m_attackBonus[2] = {0, 0};
     int m_defenseBonus[2] = {0, 0};
+    Hero m_heroCopy[2];
+    bool m_heroCast[2] = {false, false};
     QList<BattleUnit> m_units;
     QList<int> m_order;  // unit ids, this round
     int m_orderPos = 0;
@@ -116,8 +143,9 @@ private:
     Outcome m_outcome = Outcome::Running;
 };
 
-// The battle as the client sees it (both sides see everything on the field).
-QJsonObject battleToJson(const Battle& battle);
+// The battle as the client sees it (both sides see everything on the field);
+// `viewerSide` (0/1) also gets his hero's spells and spell points.
+QJsonObject battleToJson(const Battle& battle, int viewerSide = -1);
 QJsonObject battleEventToJson(const BattleEvent& event);
 
 }  // namespace kot::core

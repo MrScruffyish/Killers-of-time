@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-02 (session 17, first Claude Code session)
 **Current milestone:** thin playable slice done (connect -> lobby -> map -> move -> town -> end turn, all with placeholder graphics). Now: close the game loop breadth-first (see "Order of work"); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** depth, user picks: spells (M7), more races (M8), better AI (M9) or more battle depth (hero HP/morale/luck traits, flying, 2-hex units, town walls). User: try a hex battle on screen
+**Next session should do:** depth, user picks: more races (M8), better AI (M9), or more depth in battles/magic (hero HP/morale/luck traits, flying, unit spells, spell schools per race). User: try spells on screen (a wizard starts with Magic Arrow, Stone Skin, Swift March)
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -103,13 +103,13 @@ and react to; add depth afterwards.
 - [ ] Later: flying, 2-hex units, obstacles, wait action, town walls, retreat/surrender, hero casting
 
 ## M7: Magic
-- [ ] Effect primitive system and spell data format
-- [ ] Hero spellbook, spell points (max, current, daily regen via Spell Recovery trait), mage guild levels, race access to schools
-- [ ] Magic trait level requirement per spell
-- [ ] Battle spells; adventure-map spells
+- [x] Effect primitive system and spell data format (`spells/<id>.json`; damage, heal, modifyStat, movement, reveal; strength = amount + perPower x Spell Power); 8 sample spells
+- [x] Hero spellbook (`Hero::spells`, saved), class `startingSpells`, mage guild buildings (`mageGuild` effect, Mage Guild 2 / Mage Tower 3) teach spells on arrival or at turn start. Later: race access to schools
+- [x] Magic trait level requirement per spell (`requiredMagic`)
+- [x] Battle spells (hero casts once per round, not using the stack's turn; stat changes count down by round; AI heroes cast damage spells); adventure-map spells (`cast_spell`; Swift March, Far Sight; the simple AI casts movement spells)
 - [ ] Unit-cast spells (limited; unit SP refilled fully between battles)
-- [ ] Spell Power scaling of effects
-- [ ] Spell UI
+- [x] Spell Power scaling of effects
+- [x] Spell UI: spells in the hero panel, Cast spell on the map, Cast spell in battle (choose spell, click target). Tests: `tst_spells` (33 test programs)
 
 ## M8: Races and balance
 - [ ] Race modifier system (bonuses/weaknesses as data)
@@ -160,7 +160,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
-- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen.
+- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple).
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.

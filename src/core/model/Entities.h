@@ -36,6 +36,7 @@ struct Hero {
     int movementPoints = 0;      // left this turn, in hundredths (100 = one grass tile)
     ArmyId army;                 // the army this hero leads (holds his position)
     QString templateId;          // the tavern hero this one was hired as (empty = none)
+    QStringList spells;          // the spellbook: spell ids this hero knows
 
     int trait(const QString& traitId) const { return traits.value(traitId, 0); }
 };

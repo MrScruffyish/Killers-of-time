@@ -133,3 +133,22 @@ default 2), `maxHeroesPerPlayer` (default 8).
 The building effect `{"type": "tavern"}` lets a town hire heroes.
 
 `balance.json` economy also has `startingResources` (resource id -> amount each player starts with).
+
+## spells/<id>.json (one file per spell; the id must equal the file name; the folder is optional)
+```json
+{ "id": "magic_arrow", "name": "Magic Arrow", "school": "air", "level": 1, "cost": 5, "requiredMagic": 1,
+  "scope": "battle", "target": "enemy", "description": "...",
+  "effects": [ { "type": "damage", "amount": 10, "perPower": 10 } ] }
+```
+| Field | Notes |
+|---|---|
+| level | the mage guild level that teaches it |
+| cost | spell points |
+| requiredMagic | the hero's Magic trait must be at least this (default: level) |
+| scope | `battle` (needs `target`: `enemy` or `ally`) or `adventure` (no target) |
+| effects | strength = `amount + perPower * Spell Power`. Battle: `damage`, `heal` (cannot revive), `modifyStat` (`stat`: attack / defense / battleSpeed, `rounds`; negative amount = a curse). Adventure: `movement` (extra movement points, hundredths), `reveal` (explores the radius around the hero). |
+
+A hero casts one battle spell per round (it does not use the stack's turn). Heroes learn spells
+in a town of their team with a `{"type": "mageGuild", "level": n}` building (all spells up to
+that level, when they start their turn there or walk in). Hero classes may have
+`startingSpells`.

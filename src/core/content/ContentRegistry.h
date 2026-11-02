@@ -40,6 +40,8 @@ public:
     const HeroClassDef* heroClass(const QString& id) const;
     const BuildingDef* building(const QString& id) const;
     const HeroTemplateDef* heroTemplate(const QString& id) const;
+    const SpellDef* spell(const QString& id) const;
+    const QMap<QString, SpellDef>& spells() const { return m_spells; }
     const ResourceDef* currency() const;
 
 private:
@@ -50,6 +52,7 @@ private:
     void loadHeroTemplates(const QString& dir, QStringList& errors);
     void loadBuildings(const QString& dir, QStringList& errors);
     void loadHeroClasses(const QString& dir, QStringList& errors);
+    void loadSpells(const QString& dir, QStringList& errors);
     void loadProgression(const QString& dir, QStringList& errors);
     void loadBalance(const QString& dir, QStringList& errors);
     void validateReferences(QStringList& errors) const;
@@ -61,6 +64,7 @@ private:
     QMap<QString, HeroClassDef> m_heroClasses;
     QMap<QString, BuildingDef> m_buildings;
     QMap<QString, HeroTemplateDef> m_heroTemplates;
+    QMap<QString, SpellDef> m_spells;
     QList<int> m_xpThresholds;
     Balance m_balance;
 };

@@ -10,8 +10,9 @@ class ContentRegistry;
 // town (balance.json) plus the daily amount of every owned mine.
 ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& content, PlayerId player);
 
-// Start of a player's turn: income (from day 2 on), heroes recover spell points
-// and get their full movement, and the team's explored map is updated.
+// Start of a player's turn: income (from day 2 on), heroes recover spell points,
+// learn spells in a town with a mage guild and get their full movement, and the
+// team's explored map is updated.
 void startTurn(GameState& state, const ContentRegistry& content, PlayerId player);
 
 // Starts the game: the first player in turn order begins day 1.

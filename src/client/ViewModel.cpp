@@ -151,6 +151,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             h.traits = amounts(o.value("traits").toObject());
             h.spellPoints = o.value("spellPoints").toInt();
             h.pendingTraitPicks = o.value("pendingTraitPicks").toInt();
+            for (const QJsonValue& s : o.value("spells").toArray()) h.spells << s.toString();
             h.movementPoints = o.value("movementPoints").toInt();
         }
         v.heroes.append(h);
@@ -236,6 +237,17 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             vb.reachable.append({h.toArray().at(0).toInt(), h.toArray().at(1).toInt()});
         for (const QJsonValue& a : b.value("attackable").toArray()) vb.attackable.append(a.toInt());
         vb.canShoot = b.value("canShoot").toBool();
+        if (b.value("hero").isObject()) {
+            const QJsonObject hero = b.value("hero").toObject();
+            vb.hasHero = true;
+            vb.heroSpellPoints = hero.value("spellPoints").toInt();
+            vb.heroHasCast = hero.value("hasCast").toBool();
+            for (const QJsonValue& sv : hero.value("spells").toArray()) {
+                const QJsonObject so = sv.toObject();
+                vb.spells.append({so.value("id").toString(), so.value("target").toString() == "enemy",
+                                  so.value("cost").toInt(), so.value("castable").toBool()});
+            }
+        }
         if (vb.width <= 0 || vb.height <= 0) return fail("the battle has no field");
     }
     v.battleInProgress = json.value("battleInProgress").toBool();

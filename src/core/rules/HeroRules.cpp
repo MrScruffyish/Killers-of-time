@@ -35,6 +35,7 @@ HeroId createHero(GameState& state, const ContentRegistry& content, PlayerId own
     hero.owner = owner;
     hero.traits = cls->baseTraits;
     hero.spellPoints = maxSpellPoints(hero);
+    hero.spells = cls->startingSpells;
     hero.army = state.addArmy(owner, pos);
     state.army(hero.army)->hero = hero.id;
     hero.movementPoints = armyMovementPoints(*state.army(hero.army), &hero, content);

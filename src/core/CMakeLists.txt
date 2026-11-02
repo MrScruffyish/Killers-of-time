@@ -42,6 +42,8 @@ add_library(kot_core STATIC
     rules/Automation.cpp
     rules/Tavern.h
     rules/Tavern.cpp
+    magic/Spells.h
+    magic/Spells.cpp
     battle/HexGrid.h
     battle/HexGrid.cpp
     battle/Battle.h
