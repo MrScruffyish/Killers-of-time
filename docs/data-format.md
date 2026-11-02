@@ -202,3 +202,15 @@ average per unit; recruits come in with 0 and merging averages by count.
 `thresholds` (ascending, one per star, up to 5) give the stars; `starBonuses` (one per
 star, cumulative) add to `attack`, `defense`, `initiative`, `battleSpeed` or `morale` in
 battle.
+
+## scenarios/<id>.json
+```json
+{ "format": "kot-scenario", "id": "two_kingdoms", "name": "Two Kingdoms", "description": "...",
+  "game": { ...a complete game in the save format (docs/save-format.md)... } }
+```
+A prepared map: terrain, towns, mines, dwellings, monsters, treasures and each player's start
+(towns, heroes, armies, resources). In the lobby the host picks it as the map; the lobby's
+players take over the scenario's players in turn order (names, colours, teams, human/AI and the
+difficulty come from the lobby, races and positions from the scenario). Make one with
+`kot_mapgen` or `kot_editor` (docs/tools.md). Every scenario in `data/scenarios` is loaded by the
+tests, so content changes that break one are noticed.

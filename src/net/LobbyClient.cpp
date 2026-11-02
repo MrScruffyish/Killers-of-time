@@ -88,6 +88,7 @@ void LobbyClient::onMessage(const Message& message) {
         for (const QJsonValue& v : message.body.value("aiProfiles").toArray()) m_aiProfiles << v.toString();
         m_welcomed = true;
         m_freePlayers = message.body.value("freePlayers").toArray();
+        m_scenarios = message.body.value("scenarios").toArray();
         emit connected();
         if (message.body.contains("freePlayers")) emit playerChoiceOffered();
     } else if (message.type == msg::lobbyState) {

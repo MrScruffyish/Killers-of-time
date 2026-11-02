@@ -114,6 +114,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
         return false;
     }
     if (errors) errors->clear();
+    m_dataDir = dataDir;
     return true;
 }
 

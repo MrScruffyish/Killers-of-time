@@ -5,6 +5,8 @@
 #include <QRegularExpression>
 
 #include "core/Version.h"
+#include "core/content/ContentRegistry.h"
+#include "core/rules/Scenario.h"
 #include "core/util/Log.h"
 #include "net/Protocol.h"
 
@@ -15,6 +17,21 @@ using net::Message;
 GameServer::GameServer(QStringList races, QStringList aiProfiles, QObject* parent)
     : QObject(parent), m_races(races), m_aiProfiles(aiProfiles), m_lobby(races, aiProfiles) {
     connect(&m_server, &QTcpServer::newConnection, this, &GameServer::onNewConnection);
+}
+
+void GameServer::setContent(const core::ContentRegistry* content) {
+    m_content = content;
+    m_scenarios = QJsonArray();
+    QStringList ids;
+    if (content && !content->dataDir().isEmpty()) {
+        for (const core::ScenarioInfo& s : core::listScenarios(QDir(content->dataDir()).filePath("scenarios"), *content)) {
+            m_scenarios.append(QJsonObject{{"id", s.id}, {"name", s.name}, {"description", s.description},
+                                           {"width", s.width}, {"height", s.height},
+                                           {"races", QJsonArray::fromStringList(s.races)}});
+            ids << s.id;
+        }
+    }
+    m_lobby.setScenarioIds(ids);
 }
 
 bool GameServer::start(quint16 port) {
@@ -123,6 +140,7 @@ void GameServer::handleHello(Client& client, const Message& message) {
     welcome.body.insert("clientId", client.id);
     welcome.body.insert("races", QJsonArray::fromStringList(m_races));
     welcome.body.insert("aiProfiles", QJsonArray::fromStringList(m_aiProfiles));
+    welcome.body.insert("scenarios", m_scenarios);
     if (m_session && m_session->active()) welcome.body.insert("freePlayers", freePlayersJson());
     client.connection->send(welcome);
     broadcastLobby();

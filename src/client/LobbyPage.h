@@ -39,6 +39,8 @@ private:
     QSpinBox* m_height;
     QLineEdit* m_seed;
     QComboBox* m_difficulty;
+    QComboBox* m_scenario;
+    QLabel* m_scenarioInfo;
     QPushButton* m_start;
     QPushButton* m_load;
     int m_listSavesSeq = 0;

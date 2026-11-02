@@ -248,6 +248,10 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
                                               : (v.isDouble() && v.toDouble() >= 0 ? (ok = true, static_cast<quint64>(v.toDouble())) : 0);
             if (!ok) return LobbyResult::failure("invalid_value", "seed: must be a number");
             s.seed = seed;
+        } else if (key == "scenario") {
+            if (!v.isString() || (!v.toString().isEmpty() && !m_scenarioIds.contains(v.toString())))
+                return LobbyResult::failure("invalid_value", "scenario: unknown scenario");
+            s.scenario = v.toString();
         } else if (key == "difficulty") {
             static const QStringList levels = {"easy", "normal", "hard", "expert"};
             if (!v.isString() || !levels.contains(v.toString()))
@@ -257,8 +261,8 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
             return LobbyResult::failure("invalid_value", "unknown setting '" + key + "'");
         }
     }
-    const bool changed = s.mapWidth != m_state.settings.mapWidth ||
-                         s.mapHeight != m_state.settings.mapHeight || s.seed != m_state.settings.seed;
+    const bool changed = s.mapWidth != m_state.settings.mapWidth || s.mapHeight != m_state.settings.mapHeight ||
+                         s.seed != m_state.settings.seed || s.scenario != m_state.settings.scenario;
     m_state.settings = s;
     if (changed) {
         for (SlotInfo& slot : m_state.slotList) {

@@ -26,6 +26,8 @@ public:
     const LobbyState& lobby() const { return m_lobby; }
     const QStringList& races() const { return m_races; }
     const QStringList& aiProfiles() const { return m_aiProfiles; }
+    // Scenarios the server offers: [{id, name, description, width, height, races}].
+    const QJsonArray& scenarios() const { return m_scenarios; }
 
     // Each returns the sequence number of the request (an error reply names it).
     int claimSlot(int slot);
@@ -76,6 +78,7 @@ private:
     QJsonObject m_view;
     QJsonObject m_you;
     QJsonArray m_freePlayers;
+    QJsonArray m_scenarios;
 };
 
 }  // namespace kot::net

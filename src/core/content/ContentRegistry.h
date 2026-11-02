@@ -29,6 +29,8 @@ public:
     // xpThresholds()[i] = total experience needed to reach level i + 2.
     const QList<int>& xpThresholds() const { return m_xpThresholds; }
     const Balance& balance() const { return m_balance; }
+    // The folder the data was loaded from (scenarios live in its scenarios/ folder).
+    const QString& dataDir() const { return m_dataDir; }
     // Playable races: the races that have a hero class.
     QStringList raceIds() const;
     int maxLevel() const { return static_cast<int>(m_xpThresholds.size()) + 1; }
@@ -78,6 +80,7 @@ private:
     QMap<QString, RaceDef> m_races;
     QMap<QString, ArtifactDef> m_artifacts;
     RaceDef m_defaultRace;
+    QString m_dataDir;
     QList<int> m_xpThresholds;
     Balance m_balance;
 };

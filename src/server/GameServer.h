@@ -30,7 +30,8 @@ public:
     const Lobby& lobby() const { return m_lobby; }
     // With game content set, starting the game from the lobby creates a real game.
     // Without it (some tests) the server only runs the lobby.
-    void setContent(const core::ContentRegistry* content) { m_content = content; }
+    // Also finds the scenarios in the data folder.
+    void setContent(const core::ContentRegistry* content);
     const GameSession* session() const { return m_session.get(); }
     GameSession* session() { return m_session.get(); }  // tests set up situations
     // Folder for saved games (created when needed).
@@ -76,6 +77,7 @@ private:
     std::unique_ptr<GameSession> m_session;
     int m_nextClientId = 1;
     QString m_saveDir;
+    QJsonArray m_scenarios;  // for the welcome message
 };
 
 }  // namespace kot::server

@@ -11,3 +11,6 @@ target_link_libraries(kot_balance PRIVATE kot_tools_lib kot_warnings)
 
 add_executable(kot_balance_gui kot_balance_gui.cpp)
 target_link_libraries(kot_balance_gui PRIVATE kot_tools_lib Qt6::Widgets kot_warnings)
+
+add_executable(kot_mapgen kot_mapgen.cpp)
+target_link_libraries(kot_mapgen PRIVATE kot_core kot_warnings)

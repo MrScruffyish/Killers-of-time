@@ -1,5 +1,6 @@
 #include "server/GameSession.h"
 
+#include <QDir>
 #include <QJsonArray>
 #include <climits>
 
@@ -15,6 +16,7 @@
 #include "core/rules/Dwellings.h"
 #include "core/rules/GameSetup.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/Scenario.h"
 #include "core/rules/Movement.h"
 #include "core/rules/Tavern.h"
 #include "core/rules/TownRules.h"
@@ -99,7 +101,18 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
         occupiedSlots.append(&s);
     }
     QList<PlayerId> ids;
-    if (!createGame(m_content, params, &m_state, &ids, error)) return false;
+    if (!lobby.settings.scenario.isEmpty()) {
+        Scenario scenario;
+        QStringList problems;
+        const QString path = QDir(m_content.dataDir()).filePath("scenarios/" + lobby.settings.scenario + ".json");
+        if (!loadScenario(path, m_content, &scenario, &problems)) {
+            if (error) *error = problems.join("; ");
+            return false;
+        }
+        if (!startScenario(scenario, m_content, params, &m_state, &ids, error)) return false;
+    } else if (!createGame(m_content, params, &m_state, &ids, error)) {
+        return false;
+    }
 
     m_clientPlayers.clear();
     m_autoPlayers.clear();

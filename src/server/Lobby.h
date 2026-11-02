@@ -58,6 +58,8 @@ public:
     void cancelStart() { m_state.started = false; }
 
     static const QStringList& palette();
+    // Scenario ids the host may choose (setSettings "scenario"; empty = random map).
+    void setScenarioIds(QStringList ids) { m_scenarioIds = std::move(ids); }
 
 private:
     net::SlotInfo freshSlot(int index) const;
@@ -68,6 +70,7 @@ private:
 
     QStringList m_races;
     QStringList m_aiProfiles;
+    QStringList m_scenarioIds;
     net::LobbyState m_state;
 };
 

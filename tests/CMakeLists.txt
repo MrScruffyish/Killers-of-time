@@ -80,3 +80,6 @@ add_test(NAME kot_graph_check COMMAND kot_graph check --data ${CMAKE_SOURCE_DIR}
 add_test(NAME kot_graph_dot COMMAND kot_graph buildings --data ${CMAKE_SOURCE_DIR}/data -o ${CMAKE_BINARY_DIR}/buildings.dot)
 kot_add_test(tst_veterancy)
 target_compile_definitions(tst_veterancy PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+kot_add_test(tst_scenario)
+target_link_libraries(tst_scenario PRIVATE kot_server_lib)
+target_compile_definitions(tst_scenario PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")

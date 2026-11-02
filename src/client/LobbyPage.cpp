@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -39,6 +40,19 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
 
     m_slotHolder = new QWidget(this);
     outer->addWidget(m_slotHolder);
+
+    auto* mapRow = new QHBoxLayout();
+    mapRow->addWidget(new QLabel(tr("Map"), this));
+    m_scenario = new QComboBox(this);
+    m_scenario->setObjectName("scenario");
+    mapRow->addWidget(m_scenario);
+    m_scenarioInfo = new QLabel(this);
+    m_scenarioInfo->setWordWrap(true);
+    mapRow->addWidget(m_scenarioInfo, 1);
+    outer->addLayout(mapRow);
+    connect(m_scenario, &QComboBox::activated, this, [this](int) {
+        m_client->setSettings({{"scenario", m_scenario->currentData().toString()}});
+    });
 
     auto* settings = new QHBoxLayout();
     settings->addWidget(new QLabel(tr("Map size"), this));
@@ -144,9 +158,30 @@ void LobbyPage::rebuild() {
     m_height->blockSignals(false);
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
     m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
-    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed),
-                       static_cast<QWidget*>(m_difficulty)})
-        w->setEnabled(host);
+    // The map: a random one or a scenario.
+    if (m_scenario->count() != m_client->scenarios().size() + 1) {
+        m_scenario->clear();
+        m_scenario->addItem(tr("Random map"), QString());
+        for (const QJsonValue& v : m_client->scenarios())
+            m_scenario->addItem(v.toObject()["name"].toString(), v.toObject()["id"].toString());
+    }
+    m_scenario->setCurrentIndex(std::max(0, m_scenario->findData(lobby.settings.scenario)));
+    m_scenario->setEnabled(host);
+    QString info = tr("A new random map with the size and seed below.");
+    for (const QJsonValue& v : m_client->scenarios()) {
+        const QJsonObject o = v.toObject();
+        if (o["id"].toString() != lobby.settings.scenario) continue;
+        QStringList races;
+        for (const QJsonValue& r : o["races"].toArray()) races << r.toString();
+        info = tr("%1 (%2x%3). For %4 players, in slot order: %5.")
+                   .arg(o["description"].toString()).arg(o["width"].toInt()).arg(o["height"].toInt())
+                   .arg(races.size()).arg(races.join(", "));
+    }
+    m_scenarioInfo->setText(info);
+    const bool random = lobby.settings.scenario.isEmpty();
+    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed)})
+        w->setEnabled(host && random);
+    m_difficulty->setEnabled(host);
     m_start->setEnabled(host);
     m_load->setEnabled(host);
     m_start->setToolTip(host ? QString() : tr("Only the host can start the game"));

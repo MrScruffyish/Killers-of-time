@@ -159,3 +159,5 @@ battle AI.
 
 Lobby settings also have `difficulty` (`easy`/`normal`/`hard`/`expert`, host only); the game view has `difficulty`.
 Stacks in views and battle units may have `stars` (0..5, veterancy).
+
+`welcome` lists `scenarios` (`id`, `name`, `description`, `width`, `height`, `races`). Lobby settings have `scenario` (an id, empty = random map; host only).

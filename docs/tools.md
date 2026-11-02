@@ -52,3 +52,11 @@ the race summary update at once, the Resources tab edits the trade values, and "
 duels" plays the equal-cost duels for a tier. "Save" writes the changed numbers into
 `data/units/<id>.json` and `resources.json` (other fields are kept) and reloads, so the
 game's own data checks run again.
+
+## kot_mapgen: random scenarios
+
+```
+kot_mapgen --id two_rivers --name "Two Rivers" --races humans,undead [--size 48x48] [--seed 7] [--description text] [-o file]
+```
+Makes a random map with everything on it (the same generator as a random game) for one
+player per race and writes `data/scenarios/<id>.json`. Open it in `kot_editor` to change it.
