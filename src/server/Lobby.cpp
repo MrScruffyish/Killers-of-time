@@ -252,6 +252,12 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
             if (!v.isString() || (!v.toString().isEmpty() && !m_scenarioIds.contains(v.toString())))
                 return LobbyResult::failure("invalid_value", "scenario: unknown scenario");
             s.scenario = v.toString();
+            if (!s.scenario.isEmpty()) s.campaign.clear();
+        } else if (key == "campaign") {
+            if (!v.isString() || (!v.toString().isEmpty() && !m_campaignIds.contains(v.toString())))
+                return LobbyResult::failure("invalid_value", "campaign: unknown campaign");
+            s.campaign = v.toString();
+            if (!s.campaign.isEmpty()) s.scenario.clear();
         } else if (key == "difficulty") {
             static const QStringList levels = {"easy", "normal", "hard", "expert"};
             if (!v.isString() || !levels.contains(v.toString()))
@@ -262,7 +268,8 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
         }
     }
     const bool changed = s.mapWidth != m_state.settings.mapWidth || s.mapHeight != m_state.settings.mapHeight ||
-                         s.seed != m_state.settings.seed || s.scenario != m_state.settings.scenario;
+                         s.seed != m_state.settings.seed || s.scenario != m_state.settings.scenario ||
+                         s.campaign != m_state.settings.campaign;
     m_state.settings = s;
     if (changed) {
         for (SlotInfo& slot : m_state.slotList) {

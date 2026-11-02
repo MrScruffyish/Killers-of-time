@@ -56,6 +56,8 @@ add_library(kot_core STATIC
     rules/Veterancy.cpp
     rules/Victory.h
     rules/Victory.cpp
+    rules/Campaign.h
+    rules/Campaign.cpp
     rules/Scenario.h
     rules/Scenario.cpp
     rules/GameSetup.h

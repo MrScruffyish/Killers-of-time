@@ -89,6 +89,7 @@ void LobbyClient::onMessage(const Message& message) {
         m_welcomed = true;
         m_freePlayers = message.body.value("freePlayers").toArray();
         m_scenarios = message.body.value("scenarios").toArray();
+        m_campaigns = message.body.value("campaigns").toArray();
         emit connected();
         if (message.body.contains("freePlayers")) emit playerChoiceOffered();
     } else if (message.type == msg::lobbyState) {

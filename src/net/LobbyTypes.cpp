@@ -91,6 +91,7 @@ QJsonObject LobbyState::toJson() const {
     st.insert("seed", QString::number(settings.seed));  // 64-bit: sent as text
     st.insert("difficulty", settings.difficulty);
     st.insert("scenario", settings.scenario);
+    st.insert("campaign", settings.campaign);
     root.insert("settings", st);
     root.insert("started", started);
     return root;
@@ -140,6 +141,7 @@ bool LobbyState::fromJson(const QJsonObject& json, LobbyState* out, QStringList*
     const QString seedText = sr.requireString("seed");
     s.settings.difficulty = sr.optionalString("difficulty", QStringLiteral("normal"));
     s.settings.scenario = sr.optionalString("scenario");
+    s.settings.campaign = sr.optionalString("campaign");
     sr.finish();
     bool ok = false;
     s.settings.seed = seedText.toULongLong(&ok);

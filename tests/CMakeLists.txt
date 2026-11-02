@@ -83,3 +83,6 @@ target_compile_definitions(tst_veterancy PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DI
 kot_add_test(tst_scenario)
 target_link_libraries(tst_scenario PRIVATE kot_server_lib)
 target_compile_definitions(tst_scenario PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+kot_add_test(tst_campaign)
+target_link_libraries(tst_campaign PRIVATE kot_server_lib)
+target_compile_definitions(tst_campaign PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")

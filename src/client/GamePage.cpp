@@ -251,6 +251,15 @@ void GamePage::announceEnd() {
         m_announcedDefeat = true;
         text = (me && m_view.winnerTeam == me->team) ? tr("Victory! Your team has won the game.")
                                                      : tr("Game over. Your team has lost.");
+        if (!m_view.campaign.isEmpty()) {
+            const bool won = m_view.campaign["result"].toString() == "won";
+            const int chapter = m_view.campaign["chapter"].toInt(), chapters = m_view.campaign["chapters"].toInt();
+            text += QStringLiteral("\n\n") +
+                    (won ? (chapter < chapters ? tr("Chapter %1 of %2 is won. Your best hero continues in the next chapter: "
+                                                    "choose the campaign in the lobby again.").arg(chapter).arg(chapters)
+                                               : tr("The campaign is won!"))
+                         : tr("Choose the campaign in the lobby to try this chapter again."));
+        }
     } else if (me && me->eliminated && !m_announcedDefeat) {
         m_announcedDefeat = true;
         text = tr("You have lost all your towns and heroes. You are out of the game.");
@@ -312,12 +321,16 @@ void GamePage::updateStatus() {
         if (n > 0 || r.isCurrency) res << QStringLiteral("%1 %2").arg(n).arg(r.id);
     }
     const ViewPlayer* current = m_view.player(m_view.currentPlayer);
-    m_status->setText(tr("<b>Day %1</b> (week %4, %5) &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3")
+    const QString campaign = m_view.campaign.isEmpty() ? QString()
+        : tr(" &nbsp;&mdash;&nbsp; %1, chapter %2/%3").arg(m_view.campaign["name"].toString())
+              .arg(m_view.campaign["chapter"].toInt()).arg(m_view.campaign["chapters"].toInt());
+    m_status->setText(tr("<b>Day %1</b> (week %4, %5) &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3%6")
                           .arg(m_view.day)
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
                           .arg(res.join(", "))
                           .arg((m_view.day - 1) / 7 + 1)
-                          .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty));
+                          .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty)
+                          .arg(campaign));
     const bool myTurn = m_view.isMyTurn();
     const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
     for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits, m_castSpell}) b->setEnabled(free);

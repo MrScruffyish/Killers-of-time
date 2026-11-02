@@ -78,6 +78,7 @@ private:
     int m_nextClientId = 1;
     QString m_saveDir;
     QJsonArray m_scenarios;  // for the welcome message
+    QJsonArray campaignsJson() const;  // with each campaign's progress (saves folder)
 };
 
 }  // namespace kot::server

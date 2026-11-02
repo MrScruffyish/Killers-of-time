@@ -161,3 +161,4 @@ Lobby settings also have `difficulty` (`easy`/`normal`/`hard`/`expert`, host onl
 Stacks in views and battle units may have `stars` (0..5, veterancy).
 
 `welcome` lists `scenarios` (`id`, `name`, `description`, `width`, `height`, `races`). Lobby settings have `scenario` (an id, empty = random map; host only).
+`welcome` also lists `campaigns` (`id`, `name`, `description`, `chapters`, `chapterIds`, `next`); lobby settings have `campaign`. The game view has `campaign` (`name`, `chapter`, `chapters`, `result` won/lost at the end).

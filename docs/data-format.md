@@ -214,3 +214,15 @@ players take over the scenario's players in turn order (names, colours, teams, h
 difficulty come from the lobby, races and positions from the scenario). Make one with
 `kot_mapgen` or `kot_editor` (docs/tools.md). Every scenario in `data/scenarios` is loaded by the
 tests, so content changes that break one are noticed.
+
+## campaigns/<id>.json
+```json
+{ "id": "first_war", "name": "The First War", "description": "...",
+  "scenarios": ["two_kingdoms", "three_realms"], "carryOver": { "heroes": 1, "army": true } }
+```
+The host picks a campaign as the map; its next chapter is played (the lobby needs as many
+players as that scenario). When the human team wins, the server stores the progress in its
+saves folder (`campaign_<id>.json`) with the best `heroes` heroes of the first human player
+(level, experience, traits, spells, artifacts, and the army if `army`); they lead that player's
+heroes in the next chapter. A lost chapter can be played again; after the last chapter the
+campaign starts over.

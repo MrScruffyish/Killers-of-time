@@ -60,6 +60,7 @@ public:
     static const QStringList& palette();
     // Scenario ids the host may choose (setSettings "scenario"; empty = random map).
     void setScenarioIds(QStringList ids) { m_scenarioIds = std::move(ids); }
+    void setCampaignIds(QStringList ids) { m_campaignIds = std::move(ids); }
 
 private:
     net::SlotInfo freshSlot(int index) const;
@@ -71,6 +72,7 @@ private:
     QStringList m_races;
     QStringList m_aiProfiles;
     QStringList m_scenarioIds;
+    QStringList m_campaignIds;
     net::LobbyState m_state;
 };
 

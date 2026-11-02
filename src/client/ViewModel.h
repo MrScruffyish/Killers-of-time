@@ -161,6 +161,7 @@ struct GameView {
     int you = 0;
     bool gameOver = false;
     QString difficulty;
+    QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
     core::ResourceAmounts resources;
     QList<ViewPlayer> players;

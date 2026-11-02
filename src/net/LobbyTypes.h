@@ -49,6 +49,7 @@ struct LobbySettings {
     quint64 seed = 1;
     QString difficulty = QStringLiteral("normal");  // easy, normal, hard, expert (balance.json)
     QString scenario;  // scenario id (data/scenarios), empty = a random map
+    QString campaign;  // campaign id (data/campaigns): its next chapter is played
 };
 
 // Everything a client needs to show the game setup screen.

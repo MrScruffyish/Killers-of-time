@@ -131,7 +131,7 @@ and react to; add depth afterwards.
 - [ ] Save/load game over server, reconnect
 - [x] Scenarios (`data/scenarios/<id>.json`, save format inside; chosen in the lobby; players mapped in slot order) and `kot_mapgen` for random ones; two sample scenarios. Tests: `tst_scenario` (39 test programs)
 - [x] Map editor `kot_editor` (terrain brush, towns, mines, dwellings, treasures, artifacts, monsters, starting heroes, player slots; random map start; saves checked scenarios)
-- [ ] Campaigns with carry-over
+- [x] Campaigns (`data/campaigns`, chapters = scenarios, progress in the saves folder, best heroes carried over with their army); sample "The First War". Tests: `tst_campaign` (40 test programs)
 - [ ] Better art, sound, 2.5D projection decision
 - [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
 - [ ] Playtesting, packaging/installers

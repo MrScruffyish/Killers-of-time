@@ -28,6 +28,8 @@ public:
     const QStringList& aiProfiles() const { return m_aiProfiles; }
     // Scenarios the server offers: [{id, name, description, width, height, races}].
     const QJsonArray& scenarios() const { return m_scenarios; }
+    // Campaigns: [{id, name, description, chapters (names), chapterIds, next}].
+    const QJsonArray& campaigns() const { return m_campaigns; }
 
     // Each returns the sequence number of the request (an error reply names it).
     int claimSlot(int slot);
@@ -79,6 +81,7 @@ private:
     QJsonObject m_you;
     QJsonArray m_freePlayers;
     QJsonArray m_scenarios;
+    QJsonArray m_campaigns;
 };
 
 }  // namespace kot::net

@@ -1,0 +1,7 @@
+{
+  "id": "first_war",
+  "name": "The First War",
+  "description": "Win the island, then take the war to the three realms. Your best hero and his army go with you.",
+  "scenarios": ["two_kingdoms", "three_realms"],
+  "carryOver": { "heroes": 1, "army": true }
+}

@@ -6,6 +6,7 @@
 
 #include "core/Version.h"
 #include "core/content/ContentRegistry.h"
+#include "core/rules/Campaign.h"
 #include "core/rules/Scenario.h"
 #include "core/util/Log.h"
 #include "net/Protocol.h"
@@ -32,6 +33,30 @@ void GameServer::setContent(const core::ContentRegistry* content) {
         }
     }
     m_lobby.setScenarioIds(ids);
+    QStringList campaigns;
+    if (content && !content->dataDir().isEmpty())
+        for (const core::CampaignDef& c : core::listCampaigns(QDir(content->dataDir()).filePath("campaigns"))) campaigns << c.id;
+    m_lobby.setCampaignIds(campaigns);
+}
+
+QJsonArray GameServer::campaignsJson() const {
+    QJsonArray list;
+    if (!m_content || m_content->dataDir().isEmpty()) return list;
+    for (const core::CampaignDef& c : core::listCampaigns(QDir(m_content->dataDir()).filePath("campaigns"))) {
+        core::CampaignProgress p;
+        if (!m_saveDir.isEmpty()) core::loadProgress(QDir(m_saveDir).filePath("campaign_" + c.id + ".json"), &p);
+        QJsonArray chapters;
+        for (const QString& s : c.scenarios) {
+            QString name = s;
+            for (const QJsonValue& v : m_scenarios)
+                if (v.toObject()["id"].toString() == s) name = v.toObject()["name"].toString();
+            chapters.append(name);
+        }
+        list.append(QJsonObject{{"id", c.id}, {"name", c.name}, {"description", c.description},
+                                {"chapters", chapters}, {"chapterIds", QJsonArray::fromStringList(c.scenarios)},
+                                {"next", p.next}});
+    }
+    return list;
 }
 
 bool GameServer::start(quint16 port) {
@@ -141,6 +166,7 @@ void GameServer::handleHello(Client& client, const Message& message) {
     welcome.body.insert("races", QJsonArray::fromStringList(m_races));
     welcome.body.insert("aiProfiles", QJsonArray::fromStringList(m_aiProfiles));
     welcome.body.insert("scenarios", m_scenarios);
+    welcome.body.insert("campaigns", campaignsJson());
     if (m_session && m_session->active()) welcome.body.insert("freePlayers", freePlayersJson());
     client.connection->send(welcome);
     broadcastLobby();
@@ -209,6 +235,7 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
 void GameServer::startGame() {
     if (m_content) {
         auto session = std::make_unique<GameSession>(*m_content);
+        session->setCampaignDir(m_saveDir);
         QString error;
         if (!session->start(m_lobby.state(), &error)) {
             m_lobby.cancelStart();

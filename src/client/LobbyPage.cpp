@@ -51,7 +51,9 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     mapRow->addWidget(m_scenarioInfo, 1);
     outer->addLayout(mapRow);
     connect(m_scenario, &QComboBox::activated, this, [this](int) {
-        m_client->setSettings({{"scenario", m_scenario->currentData().toString()}});
+        const QString choice = m_scenario->currentData().toString();
+        if (choice.startsWith("campaign:")) m_client->setSettings({{"campaign", choice.mid(9)}});
+        else m_client->setSettings({{"scenario", choice}, {"campaign", QString()}});
     });
 
     auto* settings = new QHBoxLayout();
@@ -159,26 +161,40 @@ void LobbyPage::rebuild() {
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
     m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
     // The map: a random one or a scenario.
-    if (m_scenario->count() != m_client->scenarios().size() + 1) {
+    if (m_scenario->count() != m_client->scenarios().size() + m_client->campaigns().size() + 1) {
         m_scenario->clear();
         m_scenario->addItem(tr("Random map"), QString());
         for (const QJsonValue& v : m_client->scenarios())
             m_scenario->addItem(v.toObject()["name"].toString(), v.toObject()["id"].toString());
+        for (const QJsonValue& v : m_client->campaigns())
+            m_scenario->addItem(tr("Campaign: %1").arg(v.toObject()["name"].toString()), "campaign:" + v.toObject()["id"].toString());
     }
-    m_scenario->setCurrentIndex(std::max(0, m_scenario->findData(lobby.settings.scenario)));
+    const QString chosen = lobby.settings.campaign.isEmpty() ? lobby.settings.scenario : "campaign:" + lobby.settings.campaign;
+    m_scenario->setCurrentIndex(std::max(0, m_scenario->findData(chosen)));
     m_scenario->setEnabled(host);
     QString info = tr("A new random map with the size and seed below.");
+    QString scenarioId = lobby.settings.scenario;
+    QString campaignText;
+    for (const QJsonValue& v : m_client->campaigns()) {
+        const QJsonObject c = v.toObject();
+        if (c["id"].toString() != lobby.settings.campaign) continue;
+        const QJsonArray ids = c["chapterIds"].toArray();
+        const int next = c["next"].toInt() < ids.size() ? c["next"].toInt() : 0;
+        scenarioId = ids.at(next).toString();
+        campaignText = tr("%1 Chapter %2 of %3: %4. ").arg(c["description"].toString()).arg(next + 1).arg(ids.size())
+                           .arg(c["chapters"].toArray().at(next).toString());
+    }
     for (const QJsonValue& v : m_client->scenarios()) {
         const QJsonObject o = v.toObject();
-        if (o["id"].toString() != lobby.settings.scenario) continue;
+        if (o["id"].toString() != scenarioId) continue;
         QStringList races;
         for (const QJsonValue& r : o["races"].toArray()) races << r.toString();
         info = tr("%1 (%2x%3). For %4 players, in slot order: %5.")
                    .arg(o["description"].toString()).arg(o["width"].toInt()).arg(o["height"].toInt())
                    .arg(races.size()).arg(races.join(", "));
     }
-    m_scenarioInfo->setText(info);
-    const bool random = lobby.settings.scenario.isEmpty();
+    m_scenarioInfo->setText(campaignText + info);
+    const bool random = scenarioId.isEmpty();
     for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed)})
         w->setEnabled(host && random);
     m_difficulty->setEnabled(host);

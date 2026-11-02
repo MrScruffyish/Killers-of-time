@@ -35,6 +35,8 @@ public:
 
     // Creates the game from the finished lobby. On failure `error` says why.
     bool start(const net::LobbyState& lobby, QString* error);
+    // Where campaign progress is kept (the server's saves folder).
+    void setCampaignDir(const QString& dir) { m_campaignDir = dir; }
     // Continues a saved game. AI players get their AI profile again; every human
     // player starts free and the game waits on his turn until someone takes him
     // over (joinPlayer). Players who leave later are skipped as before.
@@ -93,6 +95,15 @@ private:
     core::MoveResult m_finishedMove;  // the last attack that ended
     int m_battleCounter = 0;
     QHash<core::PlayerId, QJsonObject> m_lastBattle;  // per participant: {id, report}
+    QString m_campaignDir;
+    QString m_campaign;          // campaign being played (empty: none)
+    int m_campaignChapter = 0;
+    int m_campaignChapters = 0;
+    QString m_campaignName;
+    bool m_campaignRecorded = false;
+    QString m_campaignResult;    // "won" / "lost" when the game ended
+    core::PlayerId m_campaignPlayer;  // the first human: his heroes carry over
+    void recordCampaign();
 };
 
 }  // namespace kot::server

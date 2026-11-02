@@ -16,6 +16,7 @@
 #include "core/rules/Dwellings.h"
 #include "core/rules/GameSetup.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/Campaign.h"
 #include "core/rules/Scenario.h"
 #include "core/rules/Movement.h"
 #include "core/rules/Tavern.h"
@@ -101,10 +102,31 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
         occupiedSlots.append(&s);
     }
     QList<PlayerId> ids;
-    if (!lobby.settings.scenario.isEmpty()) {
+    QString scenarioId = lobby.settings.scenario;
+    CampaignDef campaign;
+    CampaignProgress progress;
+    m_campaign.clear();
+    if (!lobby.settings.campaign.isEmpty()) {
+        QStringList problems;
+        if (!loadCampaign(QDir(m_content.dataDir()).filePath("campaigns/" + lobby.settings.campaign + ".json"), &campaign, &problems)) {
+            if (error) *error = problems.join("; ");
+            return false;
+        }
+        loadProgress(QDir(m_campaignDir).filePath("campaign_" + campaign.id + ".json"), &progress);
+        if (progress.finished(campaign)) progress = CampaignProgress();  // played through: start again
+        progress.campaign = campaign.id;
+        scenarioId = campaign.scenarios[progress.next];
+        m_campaign = campaign.id;
+        m_campaignName = campaign.name;
+        m_campaignChapter = progress.next;
+        m_campaignChapters = static_cast<int>(campaign.scenarios.size());
+        m_campaignRecorded = false;
+        m_campaignResult.clear();
+    }
+    if (!scenarioId.isEmpty()) {
         Scenario scenario;
         QStringList problems;
-        const QString path = QDir(m_content.dataDir()).filePath("scenarios/" + lobby.settings.scenario + ".json");
+        const QString path = QDir(m_content.dataDir()).filePath("scenarios/" + scenarioId + ".json");
         if (!loadScenario(path, m_content, &scenario, &problems)) {
             if (error) *error = problems.join("; ");
             return false;
@@ -112,6 +134,16 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
         if (!startScenario(scenario, m_content, params, &m_state, &ids, error)) return false;
     } else if (!createGame(m_content, params, &m_state, &ids, error)) {
         return false;
+    }
+    if (!m_campaign.isEmpty()) {
+        // The first human player's heroes continue the campaign.
+        for (int i = 0; i < ids.size(); ++i)
+            if (!params.players[i].isAi) {
+                m_campaignPlayer = ids[i];
+                break;
+            }
+        if (!progress.heroes.isEmpty())
+            applyCarriedHeroes(m_state, m_content, m_campaignPlayer, progress.heroes, campaign.carryArmy);
     }
 
     m_clientPlayers.clear();
@@ -210,6 +242,11 @@ QJsonObject GameSession::viewFor(PlayerId player) const {
         }
     }
     if (m_lastBattle.contains(player)) view.insert("lastBattle", m_lastBattle.value(player));
+    if (!m_campaign.isEmpty()) {
+        QJsonObject c{{"name", m_campaignName}, {"chapter", m_campaignChapter + 1}, {"chapters", m_campaignChapters}};
+        if (!m_campaignResult.isEmpty()) c.insert("result", m_campaignResult);
+        view.insert("campaign", c);
+    }
     return view;
 }
 
@@ -224,7 +261,10 @@ CommandResult GameSession::handle(int clientId, const Message& command) {
     if (!m_active) return failure("no_game", "no game is running");
     const PlayerId player = playerOfClient(clientId);
     if (!player.isValid()) return failure("not_a_player", "you are not a player in this game");
-    if (gameOutcome(m_state).over) return failure("game_over", "the game is over");
+    if (gameOutcome(m_state).over) {
+        recordCampaign();
+        return failure("game_over", "the game is over");
+    }
     if (m_battle) {
         if (command.type != net::msg::battleAction)
             return failure("battle_in_progress", "a battle is being fought");
@@ -240,11 +280,32 @@ CommandResult GameSession::handle(int clientId, const Message& command) {
     return result;
 }
 
+void GameSession::recordCampaign() {
+    if (m_campaign.isEmpty() || m_campaignRecorded) return;
+    const GameOutcome outcome = gameOutcome(m_state);
+    if (!outcome.over) return;
+    m_campaignRecorded = true;
+    const bool won = outcome.winner.isValid() && outcome.winner == m_state.teamOf(m_campaignPlayer);
+    m_campaignResult = won ? QStringLiteral("won") : QStringLiteral("lost");
+    if (!won) return;  // the chapter can be tried again
+    CampaignDef def;
+    if (!loadCampaign(QDir(m_content.dataDir()).filePath("campaigns/" + m_campaign + ".json"), &def, nullptr)) return;
+    CampaignProgress p;
+    p.campaign = m_campaign;
+    p.next = m_campaignChapter + 1;
+    for (const HeroId h : bestHeroes(m_state, m_campaignPlayer, def.carryHeroes)) p.heroes << heroSnapshot(m_state, h);
+    QString error;
+    if (!saveProgress(QDir(m_campaignDir).filePath("campaign_" + m_campaign + ".json"), p, &error))
+        qCWarning(lcKotServer) << "Cannot save the campaign progress:" << error;
+}
+
 void GameSession::afterCommand() {
+    recordCampaign();
     // A player who just lost his last hero and town cannot go on: his turn ends.
     if (!m_battle && !gameOutcome(m_state).over && isEliminated(m_state, m_state.currentPlayer()))
         endTurn(m_state, m_content);
     playAutoTurns();
+    recordCampaign();
 }
 
 bool GameSession::humanControls(int side) const {
