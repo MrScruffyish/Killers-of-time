@@ -136,7 +136,8 @@ and react to; add depth afterwards.
 - [ ] Real art, sound, 2.5D projection decision
 - [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
 - [x] Packaging: install rules, desktop entries, icon, CPack DEB/TGZ (`cpack -G DEB`)
-- [ ] Playtesting
+- [x] Random maps have neutral towns with garrisons to conquer
+- [ ] Playtesting; next ideas: hero screen dialog, boats/shipyards, upkeep (D9), weekly events, sound
 
 ---
 

@@ -228,6 +228,33 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     for (const Mine& m : QList<Mine>(gs.mines().values()))
         if (m.resourceId == currency || (mineIndex++ % 2 == 0)) guard(m.pos, m.resourceId == currency ? 2 : 1);
 
+    // Neutral towns to conquer, each with a garrison and a few buildings.
+    const QStringList raceList = content.raceIds();
+    const int neutralTowns = std::max(1, static_cast<int>(params.players.size()) / 2) + area / 2500;
+    for (int i = 0; i < neutralTowns && !raceList.isEmpty(); ++i) {
+        Pos where;
+        if (!place(&where)) break;
+        const QString race = raceList[gs.rng().nextInt(0, static_cast<int>(raceList.size()) - 1)];
+        const TownId t = gs.addTown(QStringLiteral("Free town %1").arg(i + 1), race, where);
+        Town* town = gs.town(t);
+        // The cheapest dwelling of the race and the village hall, so it is worth taking.
+        const BuildingDef* dwelling = nullptr;
+        for (const BuildingDef& b : content.buildings()) {
+            if (b.race != race || !b.requiredBuildings.isEmpty() || !b.upgradeOf.isEmpty()) continue;
+            for (const BuildingEffect& e : b.effects)
+                if (e.type == BuildingEffect::Type::Dwelling && !dwelling) dwelling = &b;
+        }
+        if (content.building(QStringLiteral("village_hall"))) town->buildings << QStringLiteral("village_hall");
+        if (dwelling) {
+            town->buildings << dwelling->id;
+            for (const BuildingEffect& e : dwelling->effects)
+                if (const UnitDef* u = content.unit(e.unit)) {
+                    const int count = std::max(4, u->weeklyGrowth * 2 * level.monsterPercent / 100);
+                    gs.army(town->garrison)->addUnits(u->id, count, u->maxHp);
+                }
+        }
+    }
+
     // Treasure piles and guarded artifacts.
     QStringList resources;
     for (const ResourceDef& r : content.resources()) resources.append(r.id);

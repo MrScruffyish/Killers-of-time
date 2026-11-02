@@ -77,7 +77,10 @@ private slots:
         QVERIFY2(createGame(reg, params(), &gs, &ids, &error), qPrintable(error));
         QCOMPARE(ids.size(), 3);
         QCOMPARE(gs.players().size(), 3);
-        QCOMPARE(gs.towns().size(), 3);
+        int owned = 0, neutral = 0;
+        for (const Town& t : gs.towns()) (t.owner.isValid() ? owned : neutral)++;
+        QCOMPARE(owned, 3);
+        QVERIFY(neutral >= 1);  // free towns to conquer
         QCOMPARE(gs.heroes().size(), 3);
         QCOMPARE(gs.turnOrder().size(), 3);
         QCOMPARE(gs.currentPlayer(), ids[0]);
