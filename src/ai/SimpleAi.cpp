@@ -16,7 +16,6 @@ using namespace kot::core;
 namespace {
 
 constexpr int kMaxMovesPerHero = 4;
-constexpr double kAttackMargin = 1.3;  // attack only clearly weaker armies
 constexpr int kThreatRange = 8;        // enemies this close to a town are a threat
 
 net::Message command(const QString& type, QJsonObject body = {}) {
@@ -38,8 +37,34 @@ bool isMagicClass(const ContentRegistry& content, const Hero& h) {
 
 }  // namespace
 
+AiPersonality personalityFor(const QString& profile) {
+    AiPersonality p;
+    p.name = profile;
+    if (profile == QLatin1String("aggressive")) {
+        p.attackMargin = 1.1;
+        p.townValue = 1.6;
+        p.armyValue = 1.6;
+        p.mineValue = 0.8;
+        p.extraHeroes = 1;
+    } else if (profile == QLatin1String("economic")) {
+        p.attackMargin = 1.7;
+        p.townValue = 0.8;
+        p.armyValue = 0.6;
+        p.mineValue = 1.6;
+        p.treasureValue = 1.3;
+    } else if (profile == QLatin1String("explorer")) {
+        p.attackMargin = 1.5;
+        p.exploreValue = 2.0;
+        p.treasureValue = 1.6;
+        p.extraHeroes = 1;
+    } else {
+        p.name = QStringLiteral("simple");
+    }
+    return p;
+}
+
 QString SimpleAi::profileName() const {
-    return QStringLiteral("simple");
+    return m_p.name;
 }
 
 void SimpleAi::beginTurn(const GameState&, const ContentRegistry&, PlayerId) {
@@ -92,7 +117,7 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
         m_hired = true;
         int heroes = 0;
         for (const Hero& h : state.heroes()) heroes += (h.owner == me);
-        const int wanted = state.day() < 14 ? 2 : state.day() < 28 ? 3 : 4;
+        const int wanted = (state.day() < 14 ? 2 : state.day() < 28 ? 3 : 4) + m_p.extraHeroes;
         const int cost = content.balance().economy.heroCost;
         if (heroes < wanted && player->resources.value("gold") >= cost + 1000) {
             for (const Town& t : state.towns()) {
@@ -184,7 +209,7 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
     for (const Army& a : state.armies()) {
         if (garrisons.contains(a.id) || !view.visible(a.pos) || !state.isHostile(a.owner, me)) continue;
         const double theirs = armyStrength(state, content, a);
-        if (myStrength > kAttackMargin * theirs && army->totalUnits() > 0) add(a.pos, a.hasHero() ? 80 : 30);
+        if (myStrength > m_p.attackMargin * theirs && army->totalUnits() > 0) add(a.pos, (a.hasHero() ? 80 : 30) * m_p.armyValue);
         else if (theirs > myStrength) dangers.append(&a);
     }
     const auto risky = [&](Pos p) {
@@ -211,16 +236,16 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         for (const Town& t : state.towns()) {
             if (!view.visible(t.pos) || !state.isHostile(t.owner, me) || risky(t.pos)) continue;
             // The garrison is secret: only strong heroes try.
-            if (myStrength > 2500 + 100 * state.day()) add(t.pos, 120);
-            else if (!t.owner.isValid() && myStrength > 1500) add(t.pos, 90);
+            if (myStrength > (2500 + 100 * state.day()) / m_p.townValue) add(t.pos, 120 * m_p.townValue);
+            else if (!t.owner.isValid() && myStrength > 1500) add(t.pos, 90 * m_p.townValue);
         }
         for (const Mine& m : state.mines())
             if (view.visible(m.pos) && state.isHostile(m.owner, me) && !risky(m.pos))
-                add(m.pos, m.resourceId == QStringLiteral("gold") ? 70 : 40);
+                add(m.pos, (m.resourceId == QStringLiteral("gold") ? 70 : 40) * m_p.mineValue);
         for (const MapDwelling& d : state.mapDwellings())
-            if (view.visible(d.pos) && state.isHostile(d.owner, me) && !risky(d.pos)) add(d.pos, 35);
+            if (view.visible(d.pos) && state.isHostile(d.owner, me) && !risky(d.pos)) add(d.pos, 35 * m_p.mineValue);
         for (const MapObject& o : state.mapObjects())
-            if (view.visible(o.pos) && !risky(o.pos)) add(o.pos, o.kind == MapObject::Kind::Artifact ? 65 : 30);
+            if (view.visible(o.pos) && !risky(o.pos)) add(o.pos, (o.kind == MapObject::Kind::Artifact ? 65 : 30) * m_p.treasureValue);
     }
     // Explore: the nearest edges of the known world.
     const int w = state.map().width(), hgt = state.map().height();
@@ -230,7 +255,7 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
             if (view.isFrontier({x, y})) frontier.append({x, y});
     std::stable_sort(frontier.begin(), frontier.end(),
                      [&](Pos a, Pos b) { return distance(a, army->pos) < distance(b, army->pos); });
-    for (int i = 0; i < std::min<qsizetype>(6, frontier.size()); ++i) add(frontier[i], 15);
+    for (int i = 0; i < std::min<qsizetype>(6, frontier.size()); ++i) add(frontier[i], 15 * m_p.exploreValue);
     if (targets.isEmpty()) return {};
 
     // Best value per distance; a little randomness among near-equal choices.

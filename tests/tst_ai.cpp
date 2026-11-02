@@ -15,7 +15,8 @@ class TstAi : public QObject {
     Q_OBJECT
     core::ContentRegistry reg;
 
-    std::unique_ptr<GameSession> startGame(quint64 seed, const QStringList& aiRaces = {"humans", "humans"}) {
+    std::unique_ptr<GameSession> startGame(quint64 seed, const QStringList& aiRaces = {"humans", "humans"},
+                                           const QStringList& profiles = {"simple", "simple"}) {
         net::LobbyState lobby;
         lobby.settings.seed = seed;
         net::SlotInfo human;
@@ -25,7 +26,7 @@ class TstAi : public QObject {
         for (int i = 1; i <= 2; ++i) {
             net::SlotInfo ai;
             ai.index = i; ai.kind = net::SlotKind::Ai; ai.name = QString("Bot%1").arg(i); ai.race = aiRaces[i - 1];
-            ai.team = 1 + i; ai.color = i == 1 ? "#2ca02c" : "#1f77b4"; ai.ready = true; ai.aiProfile = "simple";
+            ai.team = 1 + i; ai.color = i == 1 ? "#2ca02c" : "#1f77b4"; ai.ready = true; ai.aiProfile = profiles[i - 1];
             lobby.slotList.append(ai);
         }
         auto session = std::make_unique<GameSession>(reg);
@@ -55,6 +56,7 @@ private slots:
         QCOMPARE(ai::createAi("simple", 1)->profileName(), QString("simple"));
         QCOMPARE(ai::createAi("passive", 1)->profileName(), QString("passive"));
         QCOMPARE(ai::createAi("nonsense", 1)->profileName(), QString("simple"));
+        for (const QString& p : ai::aiProfileNames()) QCOMPARE(ai::createAi(p, 1)->profileName(), p);
     }
 
     void simpleAiDevelopsAndExplores() {
@@ -104,6 +106,19 @@ private slots:
             for (const core::Town& t : s->state().towns())
                 if (t.owner == p.id) buildings += int(t.buildings.size());
             QVERIFY2(buildings >= 2, qPrintable(p.race));
+        }
+    }
+
+    void personalitiesPlay() {
+        auto s = startGame(8, {"undead", "humans"}, {"aggressive", "economic"});
+        playDays(*s, 10);
+        QVERIFY(s->state().day() >= 8);
+        for (const core::Player& p : s->state().players()) {
+            if (p.controller != core::Player::Controller::Ai) continue;
+            QVERIFY(p.aiProfile == "aggressive" || p.aiProfile == "economic");
+            int buildings = 0;
+            for (const core::Town& t : s->state().towns()) buildings += t.owner == p.id ? int(t.buildings.size()) : 0;
+            QVERIFY2(buildings >= 2 || core::isEliminated(s->state(), p.id), qPrintable(p.aiProfile));
         }
     }
 

@@ -20,9 +20,23 @@ namespace kot::ai {
 //     dwellings, weaker armies; never into a clearly stronger army) and exploring,
 //  7. end turn.
 // It only looks at what its team can see (AiView) and uses its own seeded RNG.
+// Weights that make AI personalities (profiles "simple", "aggressive", "economic",
+// "explorer").
+struct AiPersonality {
+    QString name = QStringLiteral("simple");
+    double attackMargin = 1.3;   // attack armies this much weaker than us
+    double townValue = 1.0;      // weights on the target values
+    double armyValue = 1.0;
+    double mineValue = 1.0;
+    double treasureValue = 1.0;
+    double exploreValue = 1.0;
+    int extraHeroes = 0;         // hire more (or fewer) heroes than usual
+};
+AiPersonality personalityFor(const QString& profile);
+
 class SimpleAi : public IAiPlayer {
 public:
-    explicit SimpleAi(quint64 seed) : m_rng(seed) {}
+    explicit SimpleAi(quint64 seed, AiPersonality personality = {}) : m_rng(seed), m_p(std::move(personality)) {}
 
     QString profileName() const override;
     void beginTurn(const core::GameState& state, const core::ContentRegistry& content,
@@ -36,6 +50,7 @@ private:
                           core::PlayerId me, const core::Hero& hero);
 
     core::Rng m_rng;
+    AiPersonality m_p;
     bool m_built = false;
     bool m_hired = false;
     bool m_sentUnits = false;

@@ -6,12 +6,13 @@
 namespace kot::ai {
 
 QStringList aiProfileNames() {
-    return {QStringLiteral("simple"), QStringLiteral("passive")};
+    return {QStringLiteral("simple"), QStringLiteral("aggressive"), QStringLiteral("economic"), QStringLiteral("explorer"),
+            QStringLiteral("passive")};
 }
 
 std::unique_ptr<IAiPlayer> createAi(const QString& profile, quint64 seed) {
     if (profile == QStringLiteral("passive")) return std::make_unique<PassiveAi>();
-    return std::make_unique<SimpleAi>(seed);
+    return std::make_unique<SimpleAi>(seed, personalityFor(profile));
 }
 
 }  // namespace kot::ai
