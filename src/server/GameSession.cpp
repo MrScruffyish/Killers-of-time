@@ -3,6 +3,8 @@
 #include <QJsonArray>
 #include <climits>
 
+#include "ai/AiFactory.h"
+#include "ai/PassiveAi.h"
 #include "core/content/ContentRegistry.h"
 #include "core/data/JsonReader.h"
 #include "core/model/PlayerView.h"
@@ -14,6 +16,7 @@
 #include "core/rules/Tavern.h"
 #include "core/rules/TownRules.h"
 #include "core/rules/Trade.h"
+#include "core/util/Log.h"
 #include "core/rules/TurnCycle.h"
 #include "net/Protocol.h"
 
@@ -96,7 +99,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     m_autoPlayers.clear();
     for (int i = 0; i < ids.size(); ++i) {
         if (occupiedSlots[i]->kind == net::SlotKind::Human) m_clientPlayers.insert(occupiedSlots[i]->clientId, ids[i]);
-        else m_autoPlayers.insert(ids[i]);
+        else m_autoPlayers.insert(ids[i], ai::createAi(occupiedSlots[i]->aiProfile, params.seed ^ (0x9e3779b97f4a7c15ULL * (i + 1))));
     }
     m_active = true;
     playAutoTurns();
@@ -105,14 +108,30 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
 
 void GameSession::playAutoTurns() {
     // At most one full round, so a game with no human left cannot spin forever.
-    for (int i = 0; i < m_state.turnOrder().size() && isAuto(m_state.currentPlayer()); ++i)
+    for (int i = 0; i < m_state.turnOrder().size() && isAuto(m_state.currentPlayer()); ++i) {
+        const PlayerId p = m_state.currentPlayer();
+        playAiTurn(p, *m_autoPlayers.value(p));
         endTurn(m_state, m_content);
+    }
+}
+
+void GameSession::playAiTurn(PlayerId player, ai::IAiPlayer& ai) {
+    constexpr int kMaxCommands = 200;  // a confused AI cannot hang the game
+    ai.beginTurn(m_state, m_content, player);
+    for (int i = 0; i < kMaxCommands; ++i) {
+        if (!m_state.player(player)) return;
+        const Message cmd = ai.nextCommand(m_state, m_content, player);
+        if (cmd.type == net::msg::endTurn) return;
+        const CommandResult r = dispatch(player, cmd);
+        ai.commandDone(cmd, r.ok);
+    }
+    qCWarning(lcKotServer) << "AI" << ai.profileName() << "used up its command budget";
 }
 
 void GameSession::clientLeft(int clientId) {
     const PlayerId p = m_clientPlayers.take(clientId);
     if (!p.isValid()) return;
-    m_autoPlayers.insert(p);
+    m_autoPlayers.insert(p, std::make_shared<ai::PassiveAi>());
     playAutoTurns();
 }
 

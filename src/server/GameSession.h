@@ -4,6 +4,9 @@
 #include <QJsonObject>
 #include <QSet>
 #include <QString>
+#include <memory>
+
+#include "ai/IAiPlayer.h"
 
 #include "core/model/GameState.h"
 #include "net/LobbyTypes.h"
@@ -22,8 +25,8 @@ struct CommandResult {
 
 // One running game on the server. Owns the GameState, checks every command of every
 // player (right turn, own things), applies it with the rules in core/rules, and
-// builds each player's filtered view. AI players and players who left are played
-// by a passive AI that just ends the turn.
+// builds each player's filtered view. AI players are played by their AI profile
+// (ai/AiFactory.h) through the same commands; players who left by the passive AI.
 class GameSession {
 public:
     explicit GameSession(const core::ContentRegistry& content);
@@ -46,14 +49,16 @@ public:
 
 private:
     CommandResult dispatch(core::PlayerId player, const net::Message& command);
+    // Plays the turns of AI players (and players who left) until a human is next.
     void playAutoTurns();
+    void playAiTurn(core::PlayerId player, ai::IAiPlayer& ai);
     bool isAuto(core::PlayerId p) const { return m_autoPlayers.contains(p); }
 
     const core::ContentRegistry& m_content;
     core::GameState m_state;
     bool m_active = false;
     QHash<int, core::PlayerId> m_clientPlayers;  // connected humans
-    QSet<core::PlayerId> m_autoPlayers;          // AI and abandoned players
+    QHash<core::PlayerId, std::shared_ptr<ai::IAiPlayer>> m_autoPlayers;  // AI and abandoned players
 };
 
 }  // namespace kot::server

@@ -1,7 +1,7 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 
-#include "ai/PassiveAi.h"
+#include "ai/AiFactory.h"
 #include "core/Version.h"
 #include "core/content/ContentRegistry.h"
 #include "core/data/DataDir.h"
@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
     }
     qCInfo(lcKotServer) << "Loaded game data from" << dataDir;
 
-    kot::server::GameServer server(content.raceIds(), {kot::ai::PassiveAi().profileName()});
+    kot::server::GameServer server(content.raceIds(), kot::ai::aiProfileNames());
     server.setContent(&content);
     if (!server.start(static_cast<quint16>(port))) return 1;
     return app.exec();

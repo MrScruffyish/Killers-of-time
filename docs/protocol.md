@@ -88,7 +88,7 @@ The server only sends what the player may know: `day`, `currentPlayer`, `you`, o
 ### Commands (all need your turn)
 | Type | Fields | `info` on success |
 |---|---|---|
-| `end_turn` | | `day`, `newDay`. AI players and players who left are skipped automatically. |
+| `end_turn` | | `day`, `newDay`. AI players then play their turns on the server (with these same commands); players who left are skipped. |
 | `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled` |
 | `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
 | `recruit` | `town`, `unit`, `count`, `army`? | |

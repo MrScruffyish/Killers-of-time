@@ -61,3 +61,6 @@ target_compile_definitions(tst_clientsmoke PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_
 set_tests_properties(tst_clientsmoke PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 kot_add_test(tst_battle)
 target_compile_definitions(tst_battle PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+kot_add_test(tst_ai)
+target_link_libraries(tst_ai PRIVATE kot_server_lib)
+target_compile_definitions(tst_ai PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
