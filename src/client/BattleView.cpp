@@ -11,6 +11,7 @@
 #include <QVBoxLayout>
 #include <cmath>
 
+#include "client/Art.h"
 #include "core/content/ContentRegistry.h"
 
 namespace kot::client {
@@ -54,7 +55,7 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter p(this);
-        p.fillRect(rect(), QColor("#2e3b1f"));
+        p.fillRect(rect(), QColor("#1f1810"));
         if (!battle.present) return;
         p.setRenderHint(QPainter::Antialiasing, true);
         const double r = radius();
@@ -71,34 +72,43 @@ protected:
             return path;
         };
         const bool mine = battle.myMove();
+        // Grass hexes with a little texture; reachable ones lit, rocks grey.
         for (int y = 0; y < battle.height; ++y)
             for (int x = 0; x < battle.width; ++x) {
                 const core::Pos h{x, y};
-                QColor fill("#5d7a3a");
-                if (mine && battle.reachable.contains(h)) fill = QColor("#8fb35a");
-                if (battle.obstacles.contains(h)) fill = QColor("#6b6b6b");
-                p.setPen(QPen(QColor("#3c5226"), 1));
-                p.setBrush(fill);
-                p.drawPath(hexPath(h, 0.97));
+                const QPainterPath path = hexPath(h, 0.97);
+                const QRectF box = path.boundingRect();
+                p.save();
+                p.setClipPath(path);
+                p.drawPixmap(box.topLeft(), art::terrainTile(QStringLiteral("grass"), QColor("#5d8a3a"), int(box.width()) + 2,
+                                                             art::variantFor(x, y)));
+                p.restore();
+                if (mine && battle.reachable.contains(h)) p.fillPath(path, QColor(255, 240, 160, 70));
+                p.setPen(QPen(QColor(30, 45, 20, 160), 1));
+                p.setBrush(Qt::NoBrush);
+                p.drawPath(path);
+                if (battle.obstacles.contains(h)) {
+                    const QPointF c = centre(h);
+                    p.setPen(QPen(QColor("#3a3a3a"), 1.5));
+                    QRadialGradient g(c - QPointF(r * 0.2, r * 0.3), r);
+                    g.setColorAt(0, QColor("#b8b8b0"));
+                    g.setColorAt(1, QColor("#5a5a55"));
+                    p.setBrush(g);
+                    QPolygonF rock;
+                    for (int i = 0; i < 7; ++i) {
+                        const double a = 2 * M_PI * i / 7;
+                        const double rr = r * (0.55 + 0.15 * ((x * 7 + y * 3 + i) % 3) / 2.0);
+                        rock << QPointF(c.x() + rr * std::cos(a), c.y() + rr * 0.75 * std::sin(a));
+                    }
+                    p.drawPolygon(rock);
+                }
             }
         for (const ViewBattleUnit& u : battle.units) {
             const bool active = (u.id == battle.active);
             const bool target = mine && u.side != battle.yourSide && (battle.canShoot || battle.attackable.contains(u.id));
-            p.setPen(QPen(active ? QColor("#ffff00") : target ? QColor("#ff2020") : Qt::black, active || target ? 3 : 1.5));
-            p.setBrush(sideColor[u.side]);
-            const QPointF c = centre(u.hex);
-            p.drawEllipse(c, r * 0.72, r * 0.72);
-            if (r >= 12) {
-                const core::UnitDef* def = m_content->unit(u.unit);
-                const QString name = def ? def->name : u.unit;
-                QFont f = font();
-                f.setPixelSize(std::max(8, int(r * 0.42)));
-                p.setFont(f);
-                p.setPen(Qt::white);
-                const QRectF box(c.x() - r, c.y() - r * 0.6, 2 * r, r * 1.2);
-                p.drawText(box, Qt::AlignCenter, QStringLiteral("%1\n%2%3").arg(name.left(8)).arg(u.count)
-                                                     .arg(u.stars > 0 ? QStringLiteral(" ") + QString(u.stars, QChar(0x2605)) : QString()));
-            }
+            const core::UnitDef* def = m_content->unit(u.unit);
+            art::drawUnitToken(p, centre(u.hex), r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars,
+                               active, target);
         }
     }
     void mouseReleaseEvent(QMouseEvent* e) override {

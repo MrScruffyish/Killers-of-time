@@ -132,7 +132,8 @@ and react to; add depth afterwards.
 - [x] Scenarios (`data/scenarios/<id>.json`, save format inside; chosen in the lobby; players mapped in slot order) and `kot_mapgen` for random ones; two sample scenarios. Tests: `tst_scenario` (39 test programs)
 - [x] Map editor `kot_editor` (terrain brush, towns, mines, dwellings, treasures, artifacts, monsters, starting heroes, player slots; random map start; saves checked scenarios)
 - [x] Campaigns (`data/campaigns`, chapters = scenarios, progress in the saves folder, best heroes carried over with their army); sample "The First War". Tests: `tst_campaign` (40 test programs)
-- [ ] Better art, sound, 2.5D projection decision
+- [x] Better placeholder art: textured terrain tiles, soft fog edges, drawn icons (castle, mines, huts, chests, artifacts, hero banners, monsters), textured battle hexes with rocks and unit tokens, a dark wood-and-gold style sheet
+- [ ] Real art, sound, 2.5D projection decision
 - [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
 - [ ] Playtesting, packaging/installers
 

@@ -61,7 +61,7 @@ private:
     GameView m_view;
     QList<QColor> m_paletteColors;
     int m_selectedHero = 0;
-    int m_tile = 14;
+    int m_tile = 28;
     QPoint m_pressPos;
     MovePlanner m_planner;
     MovePlan m_plan;

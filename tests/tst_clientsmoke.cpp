@@ -4,6 +4,7 @@
 #include <QTabWidget>
 #include <QtTest>
 
+#include "client/Art.h"
 #include "client/BattleView.h"
 #include "client/GamePage.h"
 #include "client/MainWindow.h"
@@ -33,6 +34,7 @@ private slots:
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
         qputenv("KOT_DATA_DIR", KOT_DATA_DIR);
+        qApp->setStyleSheet(art::styleSheet());  // the real look
     }
 
     void playThroughTheClient() {

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "client/Art.h"
 #include "core/content/ContentRegistry.h"
 
 namespace kot::client {
@@ -135,7 +136,7 @@ QString MapView::describeTile(core::Pos t) const {
 }
 
 void MapView::setTileSize(int pixels) {
-    m_tile = std::clamp(pixels, 6, 48);
+    m_tile = std::clamp(pixels, 6, 64);
     horizontalScrollBar()->setSingleStep(m_tile);
     verticalScrollBar()->setSingleStep(m_tile);
     updateScrollBars();
@@ -185,85 +186,63 @@ void MapView::paintEvent(QPaintEvent*) {
     const int x1 = std::min(m_view.width - 1, (hx + viewport()->width()) / m_tile);
     const int y1 = std::min(m_view.height - 1, (vy + viewport()->height()) / m_tile);
 
-    // Terrain and fog.
+    // Terrain (textured tiles) and fog: remembered tiles dimmed, unexplored stays black
+    // with a soft edge.
     for (int y = y0; y <= y1; ++y) {
         for (int x = x0; x <= x1; ++x) {
             const int index = m_view.tiles[y * m_view.width + x];
-            if (index < 0) continue;  // unexplored: stays black
-            QColor c = m_paletteColors.value(index, Qt::magenta);
-            if (!m_view.inSight({x, y})) c = c.darker(230);  // remembered, not in sight
-            p.fillRect(tileRect({x, y}), c);
+            if (index < 0) continue;
+            const QRect r = tileRect({x, y});
+            p.drawPixmap(r.topLeft(), art::terrainTile(m_view.terrainPalette.value(index), m_paletteColors.value(index, Qt::magenta),
+                                                       m_tile, art::variantFor(x, y)));
+            if (!m_view.inSight({x, y})) p.fillRect(r, QColor(10, 8, 20, 140));
         }
     }
+    for (int y = y0; y <= y1; ++y)
+        for (int x = x0; x <= x1; ++x) {
+            if (m_view.tiles[y * m_view.width + x] >= 0) continue;
+            const QRect r = tileRect({x, y});
+            const auto dark = [&](int dx, int dy) {
+                const core::Pos n{x + dx, y + dy};
+                return !m_view.inBounds(n) || m_view.tiles[n.y * m_view.width + n.x] < 0;
+            };
+            const int f = std::max(2, m_tile / 3);
+            QLinearGradient g;
+            const auto edge = [&](QRect band, QPointF from, QPointF to) {
+                g = QLinearGradient(from, to);
+                g.setColorAt(0, QColor(0, 0, 0, 255));
+                g.setColorAt(1, QColor(0, 0, 0, 0));
+                p.fillRect(band, g);
+            };
+            if (!dark(-1, 0)) edge(QRect(r.left() - f, r.top(), f, r.height()), QPointF(r.left(), 0), QPointF(r.left() - f, 0));
+            if (!dark(1, 0)) edge(QRect(r.right() + 1, r.top(), f, r.height()), QPointF(r.right(), 0), QPointF(r.right() + f, 0));
+            if (!dark(0, -1)) edge(QRect(r.left(), r.top() - f, r.width(), f), QPointF(0, r.top()), QPointF(0, r.top() - f));
+            if (!dark(0, 1)) edge(QRect(r.left(), r.bottom() + 1, r.width(), f), QPointF(0, r.bottom()), QPointF(0, r.bottom() + f));
+        }
 
     const auto shown = [&](core::Pos t) { return m_view.known(t); };
     p.setRenderHint(QPainter::Antialiasing, true);
-    const int m = std::max(1, m_tile / 8);  // margin inside a tile
+    const double m = std::max(1, m_tile / 10);  // margin inside a tile
+    const auto inner = [&](core::Pos t) { return QRectF(tileRect(t)).adjusted(m, m, -m, -m); };
+    const auto ownerOrNeutral = [&](int owner) { return owner ? ownerColor(owner) : QColor("#9a9a9a"); };
 
-    for (const ViewMine& mine : m_view.mines) {
-        if (!shown(mine.pos)) continue;
-        const QRect r = tileRect(mine.pos).adjusted(m, m, -m, -m);
-        QPolygon diamond;
-        diamond << QPoint(r.center().x(), r.top()) << QPoint(r.right(), r.center().y())
-                << QPoint(r.center().x(), r.bottom()) << QPoint(r.left(), r.center().y());
-        p.setPen(QPen(mine.owner ? ownerColor(mine.owner) : Qt::black, 2));
-        p.setBrush(resourceColor(mine.resource));
-        p.drawPolygon(diamond);
-    }
-    for (const ViewDwelling& d : m_view.dwellings) {
-        if (!shown(d.pos)) continue;
-        const QRect r = tileRect(d.pos).adjusted(m, m, -m, -m);
-        QPolygon tri;
-        tri << QPoint(r.center().x(), r.top()) << QPoint(r.right(), r.bottom()) << QPoint(r.left(), r.bottom());
-        p.setPen(QPen(d.owner ? ownerColor(d.owner) : Qt::black, 2));
-        p.setBrush(Qt::white);
-        p.drawPolygon(tri);
-    }
+    for (const ViewMine& mine : m_view.mines)
+        if (shown(mine.pos)) art::drawMine(p, inner(mine.pos), resourceColor(mine.resource), ownerOrNeutral(mine.owner));
+    for (const ViewDwelling& d : m_view.dwellings)
+        if (shown(d.pos)) art::drawDwelling(p, inner(d.pos), ownerOrNeutral(d.owner));
     for (const ViewObject& o : m_view.objects) {
         if (!shown(o.pos)) continue;
-        const QRect r = tileRect(o.pos).adjusted(m * 2, m * 2, -m * 2, -m * 2);
-        if (o.artifact) {  // a purple star
-            QPolygonF star;
-            const QPointF c = QRectF(r).center();
-            for (int i = 0; i < 10; ++i) {
-                const double a = M_PI / 5 * i - M_PI / 2;
-                const double rad = (i % 2 ? 0.45 : 1.0) * r.width() / 2.0;
-                star << QPointF(c.x() + rad * std::cos(a), c.y() + rad * std::sin(a));
-            }
-            p.setPen(QPen(Qt::black, 1));
-            p.setBrush(QColor("#b04de0"));
-            p.drawPolygon(star);
-        } else {  // a chest in the colour of what is inside
-            p.setPen(QPen(QColor("#5a3a10"), 2));
-            p.setBrush(o.resources.isEmpty() ? QColor("#d4a017") : resourceColor(o.resources.firstKey()));
-            p.drawRect(r);
-        }
+        if (o.artifact) art::drawArtifact(p, inner(o.pos));
+        else art::drawChest(p, inner(o.pos), o.resources.isEmpty() ? QColor("#d4a017") : resourceColor(o.resources.firstKey()));
     }
-    for (const ViewTown& t : m_view.towns) {
-        if (!shown(t.pos)) continue;
-        const QRect r = tileRect(t.pos).adjusted(1, 1, -1, -1);
-        p.setPen(QPen(Qt::black, 2));
-        p.setBrush(ownerColor(t.owner));
-        p.drawRect(r);
-        if (m_tile >= 14) {
-            p.setPen(Qt::white);
-            p.drawText(r, Qt::AlignCenter, "T");
-        }
-    }
-    // Hero-less armies outside towns: neutral monsters (dark red, "M") or other garrison-less groups.
+    for (const ViewTown& t : m_view.towns)
+        if (shown(t.pos)) art::drawTown(p, QRectF(tileRect(t.pos)).adjusted(-m, -m * 2, m, 0), ownerOrNeutral(t.owner));
+    // Hero-less armies outside towns: neutral monsters (or garrison-less groups).
     for (const ViewArmy& a : m_view.armies) {
         if (a.hero || !shown(a.pos)) continue;
         bool inTown = false;
         for (const ViewTown& t : m_view.towns) inTown = inTown || t.pos == a.pos;
-        if (inTown) continue;
-        const QRect r = tileRect(a.pos).adjusted(m, m, -m, -m);
-        p.setPen(QPen(Qt::black, 2));
-        p.setBrush(a.owner ? ownerColor(a.owner) : QColor("#8b1a1a"));
-        p.drawRoundedRect(r, m, m);
-        if (m_tile >= 14) {
-            p.setPen(Qt::white);
-            p.drawText(r, Qt::AlignCenter, "M");
-        }
+        if (!inTown) art::drawMonster(p, inner(a.pos));
     }
     // Where the selected hero can go today, and the planned path under the mouse.
     if (m_view.isMyTurn() && m_planner.ready()) {
@@ -279,14 +258,8 @@ void MapView::paintEvent(QPaintEvent*) {
             }
         }
     }
-    for (const ViewHero& h : m_view.heroes) {
-        if (!shown(h.pos)) continue;
-        const QRect r = tileRect(h.pos).adjusted(m, m, -m, -m);
-        const bool selected = (h.id == m_selectedHero);
-        p.setPen(QPen(selected ? QColor("#ffff00") : Qt::white, selected ? 3 : 2));
-        p.setBrush(ownerColor(h.owner));
-        p.drawEllipse(r);
-    }
+    for (const ViewHero& h : m_view.heroes)
+        if (shown(h.pos)) art::drawHero(p, inner(h.pos), ownerColor(h.owner), h.id == m_selectedHero);
 }
 
 void MapView::mousePressEvent(QMouseEvent* event) {

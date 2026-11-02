@@ -76,10 +76,10 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_buyAll->setObjectName("buyAllButton");
     m_sendUnits = new QPushButton(tr("Send dwelling units to closest town"), this);
     m_sendUnits->setObjectName("sendUnitsButton");
-    auto* save = new QPushButton(tr("Save game..."), this);
-    save->setObjectName("saveButton");
-    side->addWidget(save);
-    connect(save, &QPushButton::clicked, this, [this]() {
+    m_save = new QPushButton(tr("Save game..."), this);
+    m_save->setObjectName("saveButton");
+    side->addWidget(m_save);
+    connect(m_save, &QPushButton::clicked, this, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("Save game"), tr("Name (letters, digits, _ and -):"),
                                                    QLineEdit::Normal, tr("day%1").arg(m_view.day), &ok);
@@ -334,6 +334,7 @@ void GamePage::updateStatus() {
     const bool myTurn = m_view.isMyTurn();
     const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
     for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits, m_castSpell}) b->setEnabled(free);
+    m_save->setEnabled(!m_view.battle.present && !m_view.battleInProgress && !m_view.gameOver);
 
     m_townList->clear();
     for (const ViewTown* t : m_view.myTowns()) {

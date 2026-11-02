@@ -87,6 +87,7 @@ private:
     QList<ViewObject> m_memObjects;
     int m_memoryOwner = -1;
     QPushButton* m_castSpell;
+    QPushButton* m_save;
     BattleView* m_battleView;
     int m_seenBattleId = 0;
     QComboBox* m_heroCombo;
