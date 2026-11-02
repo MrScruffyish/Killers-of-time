@@ -27,7 +27,8 @@ int stepCost(int terrainMoveCost, bool diagonal) {
     return diagonal ? (terrainMoveCost * 141 + 50) / 100 : terrainMoveCost;
 }
 
-MoveCostGrid::MoveCostGrid(const GameMap& map, const ContentRegistry& content, MoveMode mode)
+MoveCostGrid::MoveCostGrid(const GameMap& map, const ContentRegistry& content, MoveMode mode,
+                           const QMap<QString, int>& terrainPercent)
     : m_width(map.width()), m_height(map.height()) {
     QHash<QString, int> byTerrain;
     m_costs.reserve(map.tiles().size());
@@ -39,7 +40,7 @@ MoveCostGrid::MoveCostGrid(const GameMap& map, const ContentRegistry& content, M
             int c = -1;
             if (t) {
                 const bool enterable = (mode == MoveMode::Foot) ? t->walkable : t->sailable;
-                if (enterable) c = t->moveCost;
+                if (enterable) c = std::max(1, t->moveCost * terrainPercent.value(id, 100) / 100);
             }
             it = byTerrain.insert(id, c);
         }

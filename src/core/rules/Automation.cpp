@@ -37,7 +37,7 @@ QStringList liveRivals(const Town& town, const QString& id, const ContentRegistr
     const BuildingDef* b = content.building(id);
     if (!b) return rivals;
     for (const BuildingDef& other : content.buildings()) {
-        if (other.id == id || other.race != town.race || town.buildings.contains(other.id)) continue;
+        if (other.id == id || !other.fitsRace(town.race) || town.buildings.contains(other.id)) continue;
         if (b->excludes.contains(other.id) || other.excludes.contains(id)) rivals.append(other.id);
     }
     return rivals;

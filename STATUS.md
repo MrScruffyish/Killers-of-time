@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-02 (session 17, first Claude Code session)
 **Current milestone:** thin playable slice done (connect -> lobby -> map -> move -> town -> end turn, all with placeholder graphics). Now: close the game loop breadth-first (see "Order of work"); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** depth, user picks: more races (M8), better AI (M9), or more depth in battles/magic (hero HP/morale/luck traits, flying, unit spells, spell schools per race). User: try spells on screen (a wizard starts with Magic Arrow, Stone Skin, Swift March)
+**Next session should do:** user picks: better AI (M9), more battle depth (hero HP/morale/luck traits, flying, unit abilities), neutral treasures/artifacts (M8), or a balance/playtest round. User: try the Undead and Sylvan on screen
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -112,8 +112,8 @@ and react to; add depth afterwards.
 - [x] Spell UI: spells in the hero panel, Cast spell on the map, Cast spell in battle (choose spell, click target). Tests: `tst_spells` (33 test programs)
 
 ## M8: Races and balance
-- [ ] Race modifier system (bonuses/weaknesses as data)
-- [ ] 3 complete races (full unit tiers, building trees, schools)
+- [x] Race modifier system (`races/<id>.json`: growthPercent, incomePercent, terrainCostPercent, spellSchools), buildings without a race for every race, race names in the lobby. Tests: `tst_races` (34 test programs)
+- [x] 3 races: Humans, Undead (hordes, swamps, poor towns; dark/earth), Sylvan (archers, forests, slow growth; nature/water/air); 4 tiers each with an upgrade, 2 hero classes and 6 heroes each; new spells Curse, Death Touch, Entangle, Regrowth. Later: more races, distinct abilities, balance
 - [ ] Neutral monsters, treasures, artifacts (basic)
 
 ## M9: AI
@@ -160,7 +160,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
-- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple).
+- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple). Three races.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.

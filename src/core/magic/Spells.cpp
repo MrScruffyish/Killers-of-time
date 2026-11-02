@@ -78,7 +78,9 @@ QStringList learnSpellsInTown(GameState& state, const ContentRegistry& content, 
     for (const Town& t : state.towns()) {
         if (t.pos != army->pos || state.isHostile(t.owner, hero->owner)) continue;
         const int level = mageGuildLevel(t, content);
+        const QStringList& schools = content.race(t.race).spellSchools;
         for (const SpellDef& s : content.spells()) {
+            if (!schools.isEmpty() && !schools.contains(s.school)) continue;
             if (s.level <= level && !hero->spells.contains(s.id)) {
                 hero->spells.append(s.id);
                 learned.append(s.id);

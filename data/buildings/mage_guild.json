@@ -1,8 +1,18 @@
 {
   "id": "mage_guild",
   "name": "Mage Guild",
-  "race": "humans",
-  "cost": { "gold": 2000, "wood": 5, "stone": 5 },
-  "requires": ["village_hall"],
-  "effects": [ { "type": "mageGuild", "level": 2 } ]
+  "cost": {
+    "gold": 2000,
+    "wood": 5,
+    "stone": 5
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "mageGuild",
+      "level": 2
+    }
+  ]
 }

@@ -317,7 +317,12 @@ private slots:
         ContentRegistry reg;
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
-        QCOMPARE(reg.heroTemplates().size(), 6);
+        QVERIFY(reg.heroTemplates().size() >= 6);
+        for (const QString& race : reg.raceIds()) {  // every race can hire a few heroes
+            int n = 0;
+            for (const HeroTemplateDef& t : reg.heroTemplates()) n += reg.heroClass(t.classId)->race == race;
+            QVERIFY2(n >= 4, qPrintable(race));
+        }
         QCOMPARE(reg.heroTemplate("merlin")->classId, QString("wizard"));
         QVERIFY(reg.building("tavern"));
         QCOMPARE(reg.balance().economy.heroCost, 2500);

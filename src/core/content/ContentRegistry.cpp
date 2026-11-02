@@ -84,6 +84,7 @@ void ContentRegistry::clear() {
     m_buildings.clear();
     m_heroTemplates.clear();
     m_spells.clear();
+    m_races.clear();
     m_xpThresholds.clear();
     m_balance = Balance();
 }
@@ -96,6 +97,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadTraits(dataDir, problems);
     loadUnits(dataDir, problems);
     loadBuildings(dataDir, problems);
+    loadRaces(dataDir, problems);
     loadSpells(dataDir, problems);
     loadHeroClasses(dataDir, problems);
     loadHeroTemplates(dataDir, problems);
@@ -252,7 +254,7 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
         BuildingDef d;
         d.id = r.requireId(QStringLiteral("id"));
         d.name = r.requireString(QStringLiteral("name"));
-        d.race = r.requireId(QStringLiteral("race"));
+        d.race = r.has(QStringLiteral("race")) ? r.requireId(QStringLiteral("race")) : QString();
         d.cost = r.optionalIntMap(QStringLiteral("cost"), 1, 1000000);
         d.requiredBuildings = r.optionalStringList(QStringLiteral("requires"));
         d.excludes = r.optionalStringList(QStringLiteral("excludes"));
@@ -296,6 +298,30 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
             continue;
         }
         m_buildings.insert(d.id, d);
+    }
+}
+
+void ContentRegistry::loadRaces(const QString& dir, QStringList& errors) {
+    const QDir racesDir(QDir(dir).filePath(QStringLiteral("races")));
+    if (!racesDir.exists()) return;  // races without a file have no bonuses
+    for (const QFileInfo& info : racesDir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name)) {
+        const QString ctx = QStringLiteral("races/") + info.fileName();
+        QJsonObject o;
+        if (!readObjectFile(info.filePath(), ctx, &o, errors)) continue;
+        JsonReader r(o, ctx, &errors);
+        RaceDef d;
+        d.id = r.requireId(QStringLiteral("id"));
+        d.name = r.requireString(QStringLiteral("name"));
+        d.description = r.optionalString(QStringLiteral("description"));
+        d.growthPercent = r.optionalInt(QStringLiteral("growthPercent"), 0, -90, 500);
+        d.incomePercent = r.optionalInt(QStringLiteral("incomePercent"), 0, -90, 500);
+        d.terrainCostPercent = r.optionalIntMap(QStringLiteral("terrainCostPercent"), 10, 1000);
+        d.spellSchools = r.optionalStringList(QStringLiteral("spellSchools"));
+        r.finish();
+        if (d.id != info.completeBaseName())
+            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
+        if (!r.ok()) continue;
+        m_races.insert(d.id, d);
     }
 }
 
@@ -518,6 +544,11 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
 }
 
 void ContentRegistry::validateReferences(QStringList& errors) const {
+    for (const RaceDef& race : m_races) {
+        for (auto it = race.terrainCostPercent.begin(); it != race.terrainCostPercent.end(); ++it)
+            if (!m_terrain.contains(it.key()))
+                errors << QStringLiteral("race '%1': unknown terrain '%2'").arg(race.id, it.key());
+    }
     for (const HeroTemplateDef& h : m_heroTemplates) {
         if (!m_heroClasses.contains(h.classId))
             errors << QStringLiteral("hero '%1': unknown class '%2'").arg(h.id, h.classId);
@@ -537,6 +568,8 @@ void ContentRegistry::validateReferences(QStringList& errors) const {
         check(c.baseTraits, "baseTraits", false);
         check(c.pickIncrement, "pickIncrement", true);
         check(c.autoGrowth, "autoGrowth", false);
+        if (!m_races.isEmpty() && !m_races.contains(c.race))
+            errors << QStringLiteral("hero class '%1': race '%2' has no file in races/").arg(c.id, c.race);
         for (const QString& s : c.startingSpells) {
             if (!m_spells.contains(s))
                 errors << QStringLiteral("hero class '%1': startingSpells uses unknown spell '%2'").arg(c.id, s);
@@ -646,6 +679,11 @@ QStringList ContentRegistry::raceIds() const {
     }
     races.sort();
     return races;
+}
+
+const RaceDef& ContentRegistry::race(const QString& id) const {
+    const auto it = m_races.constFind(id);
+    return it == m_races.cend() ? m_defaultRace : it.value();
 }
 
 const SpellDef* ContentRegistry::spell(const QString& id) const {

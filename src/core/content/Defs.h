@@ -111,7 +111,20 @@ struct BuildingEffect {
     int amount = 0;
 };
 
-// A building a town of `race` can build. All `requires` must be built, none
+// A race (faction): its bonuses and weaknesses as data (PROJECT.md 5.4).
+// Units, buildings and hero classes name their race; a race without a file gets
+// these defaults.
+struct RaceDef {
+    QString id;
+    QString name;
+    QString description;
+    int growthPercent = 0;   // weekly growth of the race's town dwellings, +/- percent
+    int incomePercent = 0;   // base gold of the race's towns, +/- percent
+    QMap<QString, int> terrainCostPercent;  // terrain id -> move cost percent for the race's heroes
+    QStringList spellSchools;  // schools its mage guilds teach (empty = all)
+};
+
+// A building a town of `race` can build (empty race = every race). All `requires` must be built, none
 // of the `excludes` may be built (either way round), and `upgradeOf` (a dwelling
 // building) must be built: this building then replaces it with the upgraded unit.
 struct BuildingDef {
@@ -123,6 +136,8 @@ struct BuildingDef {
     QStringList excludes;
     QString upgradeOf;
     QList<BuildingEffect> effects;
+
+    bool fitsRace(const QString& townRace) const { return race.isEmpty() || race == townRace; }
 };
 
 // One building block of a spell (PROJECT.md 5.9). Its strength is

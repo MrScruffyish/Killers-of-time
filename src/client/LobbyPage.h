@@ -10,13 +10,16 @@ class QLineEdit;
 class QPushButton;
 class QSpinBox;
 
+namespace kot::core { class ContentRegistry; }
+
 namespace kot::client {
 
 // The game setup screen: slots with race, team and colour, ready flags, map settings.
 class LobbyPage : public QWidget {
     Q_OBJECT
 public:
-    explicit LobbyPage(net::LobbyClient* client, QWidget* parent = nullptr);
+    // `content` (optional) gives race names and descriptions.
+    LobbyPage(net::LobbyClient* client, const core::ContentRegistry* content, QWidget* parent = nullptr);
     void showError(const QString& text);
 
 signals:
@@ -28,6 +31,7 @@ private slots:
 private:
 
     net::LobbyClient* m_client;
+    const core::ContentRegistry* m_content;
     QWidget* m_slotHolder;
     QGridLayout* m_grid = nullptr;
     QSpinBox* m_width;

@@ -1,0 +1,18 @@
+{
+  "id": "treant",
+  "name": "Treant",
+  "race": "sylvan",
+  "tier": 3,
+  "attack": 8,
+  "defense": 12,
+  "damageMin": 5,
+  "damageMax": 8,
+  "maxHp": 50,
+  "battleSpeed": 2,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 400,
+    "wood": 3
+  },
+  "mapSpeed": 3
+}

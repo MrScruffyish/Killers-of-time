@@ -152,3 +152,20 @@ A hero casts one battle spell per round (it does not use the stack's turn). Hero
 in a town of their team with a `{"type": "mageGuild", "level": n}` building (all spells up to
 that level, when they start their turn there or walk in). Hero classes may have
 `startingSpells`.
+
+## races/<id>.json (one file per race; the folder is optional)
+```json
+{ "id": "undead", "name": "Undead", "description": "...",
+  "growthPercent": 25, "incomePercent": -20, "terrainCostPercent": { "swamp": 50 },
+  "spellSchools": ["dark", "earth"] }
+```
+| Field | Notes |
+|---|---|
+| growthPercent | weekly growth of the race's town dwellings, +/- percent (at least 1 unit) |
+| incomePercent | base gold of the race's towns (`townDailyGold`), +/- percent |
+| terrainCostPercent | terrain id -> percent of the move cost, for heroes whose class has this race |
+| spellSchools | schools its mage guilds teach (empty = all) |
+
+Units, buildings and hero classes name their race. When the folder exists, every hero class's
+race needs a file. A building without `race` can be built by every race (tavern, village hall,
+mage guilds).

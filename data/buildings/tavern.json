@@ -1,7 +1,6 @@
 {
   "id": "tavern",
   "name": "Tavern",
-  "race": "humans",
   "cost": {
     "gold": 500,
     "wood": 5

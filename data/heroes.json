@@ -30,6 +30,66 @@
       "id": "elaine",
       "name": "Elaine",
       "class": "wizard"
+    },
+    {
+      "id": "mordred",
+      "name": "Mordred",
+      "class": "death_knight"
+    },
+    {
+      "id": "valka",
+      "name": "Valka",
+      "class": "death_knight"
+    },
+    {
+      "id": "ossian",
+      "name": "Ossian",
+      "class": "death_knight"
+    },
+    {
+      "id": "lich_varn",
+      "name": "Varn",
+      "class": "necromancer"
+    },
+    {
+      "id": "sabine",
+      "name": "Sabine",
+      "class": "necromancer"
+    },
+    {
+      "id": "morwen",
+      "name": "Morwen",
+      "class": "necromancer"
+    },
+    {
+      "id": "aelin",
+      "name": "Aelin",
+      "class": "ranger"
+    },
+    {
+      "id": "thalion",
+      "name": "Thalion",
+      "class": "ranger"
+    },
+    {
+      "id": "ivy",
+      "name": "Ivy",
+      "class": "ranger"
+    },
+    {
+      "id": "elowen",
+      "name": "Elowen",
+      "class": "druid"
+    },
+    {
+      "id": "oakheart",
+      "name": "Oakheart",
+      "class": "druid"
+    },
+    {
+      "id": "faelan",
+      "name": "Faelan",
+      "class": "druid"
     }
   ]
 }

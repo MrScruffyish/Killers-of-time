@@ -35,7 +35,7 @@ private slots:
         ContentRegistry reg;
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
-        QCOMPARE(reg.raceIds(), QStringList({"humans"}));
+        QCOMPARE(reg.raceIds(), QStringList({"humans", "sylvan", "undead"}));
     }
 };
 

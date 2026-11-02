@@ -1,8 +1,19 @@
 {
   "id": "mage_tower",
   "name": "Mage Tower",
-  "race": "humans",
-  "cost": { "gold": 4000, "wood": 5, "stone": 10, "gems": 3 },
-  "requires": ["mage_guild"],
-  "effects": [ { "type": "mageGuild", "level": 3 } ]
+  "cost": {
+    "gold": 4000,
+    "wood": 5,
+    "stone": 10,
+    "gems": 3
+  },
+  "requires": [
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "mageGuild",
+      "level": 3
+    }
+  ]
 }

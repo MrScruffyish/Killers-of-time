@@ -1,0 +1,17 @@
+{
+  "id": "zombie",
+  "name": "Zombie",
+  "race": "undead",
+  "tier": 2,
+  "attack": 5,
+  "defense": 5,
+  "damageMin": 2,
+  "damageMax": 3,
+  "maxHp": 20,
+  "battleSpeed": 2,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 80
+  },
+  "mapSpeed": 3
+}

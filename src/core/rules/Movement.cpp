@@ -89,7 +89,9 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
         return result;
     }
 
-    const MoveCostGrid grid(state.map(), content, mode);
+    const HeroClassDef* cls = content.heroClass(hero->classId);
+    const MoveCostGrid grid(state.map(), content, mode,
+                            cls ? content.race(cls->race).terrainCostPercent : QMap<QString, int>());
     const PathResult path =
         findPath(grid, army->pos, target, [&](Pos p) { return occupied.contains(p); });
     if (!path.found) {

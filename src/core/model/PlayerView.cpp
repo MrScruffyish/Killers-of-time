@@ -169,7 +169,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
                 // What the player can do here, worked out by the server's rules.
                 QJsonArray buildOptions;
                 for (const BuildingDef& b : content.buildings()) {
-                    if (b.race != t.race || t.buildings.contains(b.id)) continue;
+                    if (!b.fitsRace(t.race) || t.buildings.contains(b.id)) continue;
                     QJsonObject bo;
                     bo.insert("id", b.id);
                     bo.insert("why", whyCannotBuild(state, content, t.id, b.id, viewer));  // empty = can build now

@@ -41,6 +41,9 @@ public:
     const BuildingDef* building(const QString& id) const;
     const HeroTemplateDef* heroTemplate(const QString& id) const;
     const SpellDef* spell(const QString& id) const;
+    // The race's data, or defaults (no bonuses) for a race without a file.
+    const RaceDef& race(const QString& id) const;
+    const QMap<QString, RaceDef>& races() const { return m_races; }
     const QMap<QString, SpellDef>& spells() const { return m_spells; }
     const ResourceDef* currency() const;
 
@@ -53,6 +56,7 @@ private:
     void loadBuildings(const QString& dir, QStringList& errors);
     void loadHeroClasses(const QString& dir, QStringList& errors);
     void loadSpells(const QString& dir, QStringList& errors);
+    void loadRaces(const QString& dir, QStringList& errors);
     void loadProgression(const QString& dir, QStringList& errors);
     void loadBalance(const QString& dir, QStringList& errors);
     void validateReferences(QStringList& errors) const;
@@ -65,6 +69,8 @@ private:
     QMap<QString, BuildingDef> m_buildings;
     QMap<QString, HeroTemplateDef> m_heroTemplates;
     QMap<QString, SpellDef> m_spells;
+    QMap<QString, RaceDef> m_races;
+    RaceDef m_defaultRace;
     QList<int> m_xpThresholds;
     Balance m_balance;
 };

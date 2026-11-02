@@ -1,0 +1,18 @@
+{
+  "id": "unicorn",
+  "name": "Unicorn",
+  "race": "sylvan",
+  "tier": 4,
+  "attack": 13,
+  "defense": 11,
+  "damageMin": 10,
+  "damageMax": 18,
+  "maxHp": 80,
+  "battleSpeed": 9,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 1500,
+    "gems": 1
+  },
+  "initiative": 10
+}

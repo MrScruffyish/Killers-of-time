@@ -32,7 +32,7 @@ ActionResult castAdventureSpell(GameState& state, const ContentRegistry& content
 int mageGuildLevel(const Town& town, const ContentRegistry& content);
 
 // A hero standing in a town of his team that has a mage guild learns every spell
-// up to the guild's level. Returns the spells learned.
+// up to the guild's level, of the schools the town's race teaches. Returns the spells learned.
 QStringList learnSpellsInTown(GameState& state, const ContentRegistry& content, HeroId hero);
 
 }  // namespace kot::core

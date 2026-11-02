@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     m_pages = new QStackedWidget(this);
     setCentralWidget(m_pages);
     m_connect = new ConnectPage(this);
-    m_lobby = new LobbyPage(&m_client, this);
+    m_lobby = new LobbyPage(&m_client, &m_content, this);
     m_pages->addWidget(m_connect);
     m_pages->addWidget(m_lobby);
 

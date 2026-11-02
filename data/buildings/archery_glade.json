@@ -1,0 +1,18 @@
+{
+  "id": "archery_glade",
+  "name": "Archery Glade",
+  "race": "sylvan",
+  "cost": {
+    "gold": 600,
+    "wood": 5
+  },
+  "requires": [
+    "woodcutters_lodge"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "elf_archer"
+    }
+  ]
+}

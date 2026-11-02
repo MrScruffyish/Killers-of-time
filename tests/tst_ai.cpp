@@ -14,7 +14,7 @@ class TstAi : public QObject {
     Q_OBJECT
     core::ContentRegistry reg;
 
-    std::unique_ptr<GameSession> startGame(quint64 seed) {
+    std::unique_ptr<GameSession> startGame(quint64 seed, const QStringList& aiRaces = {"humans", "humans"}) {
         net::LobbyState lobby;
         lobby.settings.seed = seed;
         net::SlotInfo human;
@@ -23,7 +23,7 @@ class TstAi : public QObject {
         lobby.slotList.append(human);
         for (int i = 1; i <= 2; ++i) {
             net::SlotInfo ai;
-            ai.index = i; ai.kind = net::SlotKind::Ai; ai.name = QString("Bot%1").arg(i); ai.race = "humans";
+            ai.index = i; ai.kind = net::SlotKind::Ai; ai.name = QString("Bot%1").arg(i); ai.race = aiRaces[i - 1];
             ai.team = 1 + i; ai.color = i == 1 ? "#2ca02c" : "#1f77b4"; ai.ready = true; ai.aiProfile = "simple";
             lobby.slotList.append(ai);
         }
@@ -78,6 +78,20 @@ private slots:
         }
         QVERIFY2(captured > 0, "the AIs should capture something in three weeks");
         QVERIFY2(buildings > 2, "the AIs should build");
+    }
+
+    void otherRacesPlayToo() {
+        auto s = startGame(21, {"undead", "sylvan"});
+        QVERIFY(s->active());
+        playDays(*s, 14);
+        QCOMPARE(s->state().day(), 15);
+        for (const core::Player& p : s->state().players()) {
+            if (p.controller != core::Player::Controller::Ai) continue;
+            int buildings = 0;
+            for (const core::Town& t : s->state().towns())
+                if (t.owner == p.id) buildings += int(t.buildings.size());
+            QVERIFY2(buildings >= 2, qPrintable(p.race));
+        }
     }
 
     void deterministic() {

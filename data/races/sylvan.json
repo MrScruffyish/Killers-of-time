@@ -1,0 +1,14 @@
+{
+  "id": "sylvan",
+  "name": "Sylvan",
+  "description": "Forest folk with deadly archers. Fast in forests, but they grow slowly (-15%). Nature, water and air magic.",
+  "growthPercent": -15,
+  "terrainCostPercent": {
+    "forest": 50
+  },
+  "spellSchools": [
+    "nature",
+    "water",
+    "air"
+  ]
+}

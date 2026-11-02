@@ -1,0 +1,18 @@
+{
+  "id": "wraith",
+  "name": "Wraith",
+  "race": "undead",
+  "tier": 3,
+  "attack": 8,
+  "defense": 7,
+  "damageMin": 4,
+  "damageMax": 6,
+  "maxHp": 18,
+  "battleSpeed": 7,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 250,
+    "stone": 1
+  },
+  "initiative": 9
+}

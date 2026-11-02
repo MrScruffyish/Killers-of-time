@@ -18,7 +18,8 @@ ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& conte
     const QString currency = content.currency() ? content.currency()->id : QString();
     for (const Town& t : state.towns()) {
         if (t.owner != player) continue;
-        if (!currency.isEmpty()) income[currency] += content.balance().economy.townDailyGold;
+        if (!currency.isEmpty())
+            income[currency] += content.balance().economy.townDailyGold * (100 + content.race(t.race).incomePercent) / 100;
         const ResourceAmounts fromBuildings = buildingIncome(t, content);
         for (auto it = fromBuildings.begin(); it != fromBuildings.end(); ++it)
             income[it.key()] += it.value();

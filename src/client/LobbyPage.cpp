@@ -5,15 +5,18 @@
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QInputDialog>
+#include <QJsonArray>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPixmap>
 #include <QPushButton>
-#include <QMessageBox>
-#include <QJsonArray>
-#include <QInputDialog>
 #include <QSpinBox>
 #include <QVBoxLayout>
+#include <algorithm>
+
+#include "core/content/ContentRegistry.h"
 
 namespace kot::client {
 
@@ -28,7 +31,8 @@ QIcon swatch(const QString& color) {
 }
 }  // namespace
 
-LobbyPage::LobbyPage(net::LobbyClient* client, QWidget* parent) : QWidget(parent), m_client(client) {
+LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* content, QWidget* parent)
+    : QWidget(parent), m_client(client), m_content(content) {
     auto* outer = new QVBoxLayout(this);
     outer->addWidget(new QLabel(tr("<h2>Game setup</h2>"), this));
 
@@ -192,11 +196,15 @@ void LobbyPage::rebuild() {
         if (!s.occupied()) continue;
 
         auto* race = new QComboBox(m_slotHolder);
-        race->addItems(m_client->races());
-        race->setCurrentText(s.race);
+        for (const QString& id : m_client->races()) {
+            const core::RaceDef* def = m_content && m_content->races().contains(id) ? &m_content->race(id) : nullptr;
+            race->addItem(def ? def->name : id, id);
+            if (def) race->setItemData(race->count() - 1, def->description, Qt::ToolTipRole);
+        }
+        race->setCurrentIndex(std::max(0, race->findData(s.race)));
         race->setEnabled(canEdit);
         connect(race, &QComboBox::activated, this, [this, slot, race](int) {
-            m_client->setSlot(slot, {{"race", race->currentText()}});
+            m_client->setSlot(slot, {{"race", race->currentData().toString()}});
         });
         m_grid->addWidget(race, row, 2);
 

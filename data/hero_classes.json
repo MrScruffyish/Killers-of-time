@@ -60,6 +60,125 @@
         "stone_skin",
         "swift_march"
       ]
+    },
+    {
+      "id": "death_knight",
+      "name": "Death Knight",
+      "race": "undead",
+      "baseTraits": {
+        "attack": 3,
+        "defense": 2,
+        "morale": 1,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 10,
+        "spell_recovery": 1,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "attack": 2,
+        "defense": 2
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "skeleton": 14,
+        "zombie": 3
+      },
+      "startingSpells": [
+        "curse"
+      ]
+    },
+    {
+      "id": "necromancer",
+      "name": "Necromancer",
+      "race": "undead",
+      "baseTraits": {
+        "attack": 1,
+        "defense": 1,
+        "spell_power": 3,
+        "magic": 3,
+        "spell_points_max": 30,
+        "spell_recovery": 2,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "skeleton": 10,
+        "zombie": 2
+      },
+      "startingSpells": [
+        "curse",
+        "death_touch"
+      ]
+    },
+    {
+      "id": "ranger",
+      "name": "Ranger",
+      "race": "sylvan",
+      "baseTraits": {
+        "attack": 3,
+        "defense": 2,
+        "morale": 1,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 10,
+        "spell_recovery": 1,
+        "movement_points": 2,
+        "scouting_radius": 6
+      },
+      "pickIncrement": {
+        "attack": 2,
+        "movement_points": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "woodsman": 10,
+        "elf_archer": 3
+      },
+      "startingSpells": [
+        "entangle"
+      ]
+    },
+    {
+      "id": "druid",
+      "name": "Druid",
+      "race": "sylvan",
+      "baseTraits": {
+        "attack": 1,
+        "defense": 1,
+        "spell_power": 3,
+        "magic": 3,
+        "spell_points_max": 30,
+        "spell_recovery": 2,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "woodsman": 7,
+        "elf_archer": 3
+      },
+      "startingSpells": [
+        "entangle",
+        "cure",
+        "swift_march"
+      ]
     }
   ]
 }

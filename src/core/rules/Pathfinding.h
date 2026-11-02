@@ -2,6 +2,8 @@
 
 #include <QHash>
 #include <QList>
+#include <QMap>
+#include <QString>
 #include <functional>
 
 #include "core/model/GameMap.h"
@@ -22,7 +24,9 @@ int stepCost(int terrainMoveCost, bool diagonal);
 // path searches. cost() is -1 for tiles that cannot be entered in this mode.
 class MoveCostGrid {
 public:
-    MoveCostGrid(const GameMap& map, const ContentRegistry& content, MoveMode mode);
+    // `terrainPercent`: terrain id -> percent of the normal cost (race bonuses).
+    MoveCostGrid(const GameMap& map, const ContentRegistry& content, MoveMode mode,
+                 const QMap<QString, int>& terrainPercent = {});
 
     int width() const { return m_width; }
     int height() const { return m_height; }

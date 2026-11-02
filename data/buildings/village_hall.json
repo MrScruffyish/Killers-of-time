@@ -1,7 +1,6 @@
 {
   "id": "village_hall",
   "name": "Village Hall",
-  "race": "humans",
   "cost": {
     "gold": 500
   },

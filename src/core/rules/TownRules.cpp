@@ -68,7 +68,7 @@ QString whyCannotBuild(const GameState& state, const ContentRegistry& content, T
         return QStringLiteral("this is not your town");
     const BuildingDef* b = content.building(buildingId);
     if (!b) return QStringLiteral("unknown building '%1'").arg(buildingId);
-    if (b->race != town->race)
+    if (!b->fitsRace(town->race))
         return QStringLiteral("%1 cannot be built in a %2 town").arg(b->name, town->race);
     if (town->buildings.contains(buildingId)) return QStringLiteral("already built");
     if (town->lastBuildDay == state.day())
@@ -109,7 +109,7 @@ ActionResult buildBuilding(GameState& state, const ContentRegistry& content, Tow
     for (const Dwelling& d : dwellings(*town, content)) {
         if (d.buildingId != buildingId || town->recruitPool.contains(d.poolKey)) continue;
         const UnitDef* unit = content.unit(d.unitId);
-        town->recruitPool[d.poolKey] = unit ? unit->weeklyGrowth : 0;
+        town->recruitPool[d.poolKey] = unit ? townGrowth(*town, *unit, content) : 0;
     }
     // A new tavern offers its first heroes.
     if (hasTavern(*town, content)) refreshTavernOffers(state, content, townId);
@@ -214,11 +214,16 @@ ActionResult recruit(GameState& state, const ContentRegistry& content, TownId to
     return paid;
 }
 
+int townGrowth(const Town& town, const UnitDef& unit, const ContentRegistry& content) {
+    const int percent = 100 + content.race(town.race).growthPercent;
+    return std::max(unit.weeklyGrowth > 0 ? 1 : 0, (unit.weeklyGrowth * percent + 50) / 100);
+}
+
 void applyWeeklyGrowth(GameState& state, const ContentRegistry& content) {
     for (Town& town : state.towns()) {
         for (const Dwelling& d : dwellings(town, content)) {
             const UnitDef* unit = content.unit(d.unitId);
-            if (unit) town.recruitPool[d.poolKey] += unit->weeklyGrowth;
+            if (unit) town.recruitPool[d.poolKey] += townGrowth(town, *unit, content);
         }
     }
     for (MapDwelling& d : state.mapDwellings()) {

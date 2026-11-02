@@ -1,0 +1,19 @@
+{
+  "id": "elf_marksman",
+  "name": "Elf Marksman",
+  "race": "sylvan",
+  "tier": 2,
+  "attack": 9,
+  "defense": 4,
+  "damageMin": 3,
+  "damageMax": 5,
+  "maxHp": 14,
+  "battleSpeed": 7,
+  "weeklyGrowth": 7,
+  "cost": {
+    "gold": 170,
+    "wood": 1
+  },
+  "range": 12,
+  "shots": 24
+}

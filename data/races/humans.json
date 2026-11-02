@@ -1,0 +1,10 @@
+{
+  "id": "humans",
+  "name": "Humans",
+  "description": "Balanced knights and archers. Their mage guilds teach air, water and earth magic.",
+  "spellSchools": [
+    "air",
+    "water",
+    "earth"
+  ]
+}
