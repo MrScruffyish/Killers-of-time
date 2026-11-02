@@ -33,7 +33,9 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
                 sides[s]->losses[stack.unitTypeId()] += lost;
                 killedHp[s] += lost * stack.maxHp();
             }
-            stack = u.stack;
+            // Back to the army's own max HP (the hero's bonus only counts in battle).
+            stack = u.alive() ? UnitStack(stack.unitTypeId(), u.stack.count(), u.baseMaxHp)
+                              : UnitStack::fromTotalHp(stack.unitTypeId(), 0, u.baseMaxHp);
         }
         army->removeEmptyStacks();
         for (UnitStack& st : army->stacks) st.restoreFullHealth();
@@ -54,6 +56,15 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
     }
     Army* lost = state.army(battle.army(loser));
     if (!lost) return report;
+    if (battle.retreated(loser)) {  // the hero got away; his army is lost
+        for (const UnitStack& st : lost->stacks) {
+            sides[loser]->losses[st.unitTypeId()] += st.count();
+            killedHp[loser] += st.count() * st.maxHp();
+        }
+        lost->stacks.clear();
+        report.retreated = true;
+        return report;
+    }
     bool isGarrison = false;
     for (const Town& t : state.towns()) isGarrison = isGarrison || t.garrison == lost->id;
     if (lost->hero.isValid()) {
@@ -95,6 +106,7 @@ QJsonObject battleReportToJson(const BattleReport& report) {
     o.insert("experience", report.experience);
     o.insert("levelsGained", report.levelsGained);
     o.insert("loserHeroKilled", report.loserHeroKilled);
+    if (report.retreated) o.insert("retreated", true);
     return o;
 }
 

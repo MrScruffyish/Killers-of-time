@@ -13,5 +13,8 @@
   "cost": {
     "gold": 25
   },
-  "upgradesTo": "skeleton_warrior"
+  "upgradesTo": "skeleton_warrior",
+  "abilities": [
+    "undead"
+  ]
 }

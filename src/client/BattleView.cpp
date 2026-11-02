@@ -3,6 +3,7 @@
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -75,6 +76,7 @@ protected:
                 const core::Pos h{x, y};
                 QColor fill("#5d7a3a");
                 if (mine && battle.reachable.contains(h)) fill = QColor("#8fb35a");
+                if (battle.obstacles.contains(h)) fill = QColor("#6b6b6b");
                 p.setPen(QPen(QColor("#3c5226"), 1));
                 p.setBrush(fill);
                 p.drawPath(hexPath(h, 0.97));
@@ -126,12 +128,26 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_cast->setObjectName("castSpellButton");
     buttons->addWidget(m_cast);
     buttons->addWidget(m_defend);
+    m_wait = new QPushButton(tr("Wait"), this);
+    m_wait->setObjectName("waitButton");
+    m_wait->setToolTip(tr("Act again at the end of this round"));
+    buttons->addWidget(m_wait);
+    m_retreat = new QPushButton(tr("Retreat"), this);
+    m_retreat->setObjectName("retreatButton");
+    m_retreat->setToolTip(tr("Give up the battle: your army is lost, your hero escapes"));
+    buttons->addWidget(m_retreat);
     buttons->addWidget(m_auto);
     buttons->addStretch(1);
     layout->addLayout(buttons);
     connect(m_defend, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "defend"}}); });
     connect(m_auto, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "auto"}}); });
     connect(m_cast, &QPushButton::clicked, this, &BattleView::chooseSpell);
+    connect(m_wait, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "wait"}}); });
+    connect(m_retreat, &QPushButton::clicked, this, [this]() {
+        if (QMessageBox::question(this, tr("Retreat"), tr("Retreat? Your army will be lost, but your hero escapes."))
+            == QMessageBox::Yes)
+            emit actionRequested({{"action", "retreat"}});
+    });
 }
 
 QWidget* BattleView::field() const { return m_field; }
@@ -175,6 +191,9 @@ void BattleView::updateInfo() {
     if (battle.hasHero) text += tr(" &nbsp; <i>Hero: %1 spell points</i>").arg(battle.heroSpellPoints);
     m_info->setText(text);
     m_defend->setEnabled(mine);
+    m_wait->setEnabled(mine && battle.canWait);
+    m_retreat->setVisible(battle.yourSide == 0);
+    m_retreat->setEnabled(mine && battle.canRetreat);
     m_auto->setEnabled(mine);
     bool anyCastable = false;
     for (const ViewBattle::Spell& sp : battle.spells) anyCastable = anyCastable || sp.castable;

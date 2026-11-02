@@ -90,6 +90,10 @@ struct BattleBalance {
     int maxAttackPercent = 300;
     int defensePercentPerPoint = 3;
     int maxDefensePercent = 70;
+    int moralePercentPerPoint = 5;   // chance per hero Morale point: extra action (or, negative, falter)
+    int luckPercentPerPoint = 5;     // chance per hero Luck point: double damage
+    int hpPercentPerTraitLevel = 5;  // hero Hit Points trait: +% max HP of his units
+    int obstacles = 4;               // rocks on the battle field
 };
 struct Balance {
     MovementBalance movement;
@@ -196,7 +200,10 @@ struct UnitDef {
     int weeklyGrowth = 0;
     int spellPoints = 0;   // the unit's own spell point pool (0 = cannot cast)
     ResourceAmounts cost;
-    QStringList abilities;  // e.g. "flying"; validated once abilities exist
+    // flying (moves over other stacks and rocks), no_retaliation (its targets do not
+    // strike back), double_attack (strikes / shoots twice), undead (ignores morale)
+    QStringList abilities;
+    bool has(const QString& ability) const { return abilities.contains(ability); }
     QString upgradesTo;     // unit id of the upgraded version, or empty
 };
 

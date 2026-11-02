@@ -12,5 +12,8 @@
   "weeklyGrowth": 14,
   "cost": {
     "gold": 35
-  }
+  },
+  "abilities": [
+    "undead"
+  ]
 }

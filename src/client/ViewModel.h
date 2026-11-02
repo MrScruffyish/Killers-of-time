@@ -123,6 +123,9 @@ struct ViewBattle {
     QList<core::Pos> reachable;  // for the active unit
     QList<int> attackable;
     bool canShoot = false;
+    bool canWait = false;
+    bool canRetreat = false;
+    QList<core::Pos> obstacles;
     // Your hero in this battle (absent: no hero).
     struct Spell {
         QString id;

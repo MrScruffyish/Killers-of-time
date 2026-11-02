@@ -14,5 +14,10 @@
     "gold": 250,
     "stone": 1
   },
-  "initiative": 9
+  "initiative": 9,
+  "abilities": [
+    "undead",
+    "flying",
+    "no_retaliation"
+  ]
 }

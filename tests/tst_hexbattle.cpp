@@ -153,6 +153,136 @@ private slots:
         QCOMPARE(gs.hero(hero)->experience, r.experience);
     }
 
+    // ---- depth: abilities, hero traits, wait, retreat, rocks
+    void rocksBlockWalkers() {
+        add("militia", 5);
+        Battle b(gs, reg, mine(), monsters("militia", 5), 1);
+        QCOMPARE(b.obstacles().size(), reg.balance().battle.obstacles);
+        for (const Pos p : b.obstacles()) {
+            QVERIFY(p.x >= 3 && p.x <= hex::kWidth - 4);
+            QVERIFY(b.blocked(p));
+            for (const BattleUnit& u : b.units()) QVERIFY(!b.reachable(u).contains(p));
+        }
+    }
+
+    void flyersPassOverStacks() {
+        add("armoured_eagle", 2);  // flying, speed 12
+        gs.army(mine())->stacks.append(UnitStack("militia", 1, 6));
+        const ArmyId m = monsters("militia", 3);
+        Battle b(gs, reg, mine(), m, 1);
+        const BattleUnit* eagle = b.activeUnit();
+        QVERIFY(eagle->def->has("flying"));
+        // Every free hex within its speed is reachable, stacks or rocks in between or not.
+        int free = 0;
+        for (int y = 0; y < hex::kHeight; ++y)
+            for (int x = 0; x < hex::kWidth; ++x)
+                free += (!b.blocked({x, y}) && hex::distance(eagle->pos, {x, y}) <= 12 && Pos{x, y} != eagle->pos);
+        QCOMPARE(b.reachable(*eagle).size() - 1, free);
+    }
+
+    void noRetaliationAgainstWraiths() {
+        gs.army(mine())->addUnits("wraith", 5, 18);
+        Battle b(gs, reg, mine(), monsters("pikeman", 5), 1);
+        // Over the battle the wraith attacks, and nothing ever strikes back at it.
+        int attacks = 0;
+        while (!b.isOver()) {
+            QList<BattleEvent> ev;
+            b.act(chooseBattleAction(b), &ev);
+            for (const BattleEvent& e : ev) {
+                attacks += (e.type == BattleEvent::Type::Attack && e.unit == 1);
+                QVERIFY(!(e.type == BattleEvent::Type::Retaliate && e.target == 1));
+            }
+        }
+        QVERIFY(attacks > 0);
+    }
+
+    void marksmenShootTwice() {
+        add("elf_marksman", 4);
+        Battle b(gs, reg, mine(), monsters("treant", 3), 1);
+        const int shots = b.activeUnit()->shotsLeft;
+        QList<BattleEvent> ev;
+        QVERIFY(b.act(shoot(2), &ev).isEmpty());
+        int shotsFired = 0;
+        for (const BattleEvent& e : ev) shotsFired += e.type == BattleEvent::Type::Shoot;
+        QCOMPARE(shotsFired, 2);
+        QCOMPARE(b.unit(1)->shotsLeft, shots - 2);
+    }
+
+    void goodMoraleGivesAnExtraAction() {
+        gs.hero(hero)->traits["morale"] = 20;  // 100%
+        add("militia", 5);
+        Battle b(gs, reg, mine(), monsters("battle_snail", 1), 1);
+        QList<BattleEvent> ev;
+        QVERIFY(b.act(move({2, 5}), &ev).isEmpty());
+        QCOMPARE(ev.last().type, BattleEvent::Type::Morale);
+        QCOMPARE(b.activeUnit()->id, 1);  // again
+        QVERIFY(b.act(move({3, 5}), &ev).isEmpty());
+        QCOMPARE(b.activeUnit()->side, 1);  // only once per round
+    }
+
+    void badMoraleMakesStacksFalterButNotUndead() {
+        gs.hero(hero)->traits["morale"] = -20;
+        add("militia", 5);
+        gs.army(mine())->stacks.append(UnitStack("skeleton", 5, 6));
+        Battle b(gs, reg, mine(), monsters("battle_snail", 1), 1);
+        // The militia always falters; the skeletons (undead) act.
+        QCOMPARE(b.activeUnit()->def->id, QString("skeleton"));
+    }
+
+    void luckDoublesDamage() {
+        gs.hero(hero)->traits["luck"] = 20;
+        add("militia", 10);
+        Battle b(gs, reg, mine(), monsters("battle_snail", 50), 1);
+        while (!b.isOver() && b.round() < 4) {
+            QList<BattleEvent> ev;
+            b.act(chooseBattleAction(b), &ev);
+            for (const BattleEvent& e : ev)
+                if (e.type == BattleEvent::Type::Attack && b.unit(e.unit)->side == 0) QVERIFY(e.lucky);
+        }
+    }
+
+    void hitPointsTraitRaisesMaxHpInBattleOnly() {
+        gs.hero(hero)->traits["hit_points"] = 4;  // +20%
+        add("pikeman", 10);
+        const ArmyId m = monsters("militia", 2);
+        Battle b(gs, reg, mine(), m, 1);
+        QCOMPARE(b.unit(1)->stack.maxHp(), 12);
+        QCOMPARE(b.unit(1)->stack.count(), 10);
+        while (!b.isOver()) b.act(chooseBattleAction(b));
+        applyBattleResult(gs, reg, b);
+        QCOMPARE(gs.army(mine())->stacks[0].maxHp(), 10);
+    }
+
+    void waitingActsLater() {
+        add("militia", 5);
+        Battle b(gs, reg, mine(), monsters("pikeman", 5), 1);
+        BattleAction wait;
+        wait.type = BattleAction::Type::Wait;
+        QCOMPARE(b.activeUnit()->id, 1);
+        QVERIFY(b.act(wait).isEmpty());
+        QCOMPARE(b.activeUnit()->id, 2);
+        QVERIFY(b.act(defend()).isEmpty());
+        QCOMPARE(b.activeUnit()->id, 1);  // its turn comes back
+        QVERIFY(!b.act(wait).isEmpty());  // only once per round
+        QCOMPARE(b.round(), 1);
+    }
+
+    void attackerCanRetreat() {
+        add("militia", 5);
+        const ArmyId m = monsters("bone_dragon", 3);
+        Battle b(gs, reg, mine(), m, 1);
+        BattleAction retreat;
+        retreat.type = BattleAction::Type::Retreat;
+        while (b.activeUnit()->side != 0) b.act(defend());
+        QVERIFY(b.act(retreat).isEmpty());
+        QCOMPARE(b.outcome(), Battle::Outcome::DefenderWon);
+        const BattleReport r = applyBattleResult(gs, reg, b);
+        QVERIFY(r.retreated);
+        QVERIFY(!r.loserHeroKilled);
+        QVERIFY(gs.hero(hero));
+        QVERIFY(gs.army(mine())->stacks.isEmpty());
+    }
+
     void jsonForTheClient() {
         add("archer", 3);
         Battle b(gs, reg, mine(), monsters("militia", 3), 1);

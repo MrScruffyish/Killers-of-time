@@ -13,5 +13,8 @@
   "cost": {
     "gold": 80
   },
-  "mapSpeed": 3
+  "mapSpeed": 3,
+  "abilities": [
+    "undead"
+  ]
 }

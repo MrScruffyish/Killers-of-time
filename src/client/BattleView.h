@@ -45,6 +45,8 @@ private:
     QPushButton* m_defend;
     QPushButton* m_auto;
     QPushButton* m_cast;
+    QPushButton* m_wait;
+    QPushButton* m_retreat;
     QString m_castSpell;  // chosen spell waiting for a target click
 };
 

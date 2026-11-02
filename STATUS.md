@@ -94,13 +94,14 @@ and react to; add depth afterwards.
 ## M6: Battle engine (core, then UI)
 - [x] Decision D2: hex grid
 - [x] Battle state (`core/battle/Battle`, 15x11 hex field, odd-r), initiative order, move/melee/ranged, one retaliation per round, damage formula, round limit draw; `BattleAi` (shoot, attack the most dangerous reachable enemy, else close in); the auto-resolve is the battle AI on both sides; `applyBattleResult` writes back. Tests: `tst_hexbattle`
-- [ ] Hero trait bonuses (attack, defense, hit points, morale, luck, attack range, battle speed tier tables) applied to army
+- [x] Hero trait bonuses in battle: attack, defense, hit points (+% max HP), morale (extra action / falter), luck (double damage). Later: attack range, battle speed tier tables
 - [ ] Unit data: `battleSpeed` (hexes), `mapSpeed`, `range` (for ranged units)
 - [ ] Neutral monster guards trigger battles
 - [ ] Experience after victory -> hero levels (auto max-SP growth + choose one pickable trait per level gained)
 - [x] Battle UI in the client (`BattleView`: hexes, move by click, attack/shoot by clicking an enemy, Defend, Auto); interactive battles when a connected human takes part, human vs human live over the network, AI turns pause for a human defender; battle results to both sides (`lastBattle`). Tests: session cases, GUI smoke test
 - [x] Deterministic battle replay test (seed + actions)
-- [ ] Later: flying, 2-hex units, obstacles, wait action, town walls, retreat/surrender, hero casting
+- [x] Unit abilities (flying, no_retaliation, double_attack, undead), rocks, wait, retreat (attacker)
+- [ ] Later: 2-hex units, town walls, surrender, defender retreat
 
 ## M7: Magic
 - [x] Effect primitive system and spell data format (`spells/<id>.json`; damage, heal, modifyStat, movement, reveal; strength = amount + perPower x Spell Power); 8 sample spells

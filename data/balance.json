@@ -6,7 +6,8 @@
                "startingResources": { "gold": 10000, "wood": 20, "stone": 20 } },
   "battle": { "maxRounds": 30, "experiencePerHp": 2,
               "attackPercentPerPoint": 5, "maxAttackPercent": 300,
-              "defensePercentPerPoint": 3, "maxDefensePercent": 70 },
+              "defensePercentPerPoint": 3, "maxDefensePercent": 70,
+              "moralePercentPerPoint": 5, "luckPercentPerPoint": 5, "hpPercentPerTraitLevel": 5, "obstacles": 4 },
   "movement": {
     "base": 1000,
     "perTraitLevel": 100,

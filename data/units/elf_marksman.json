@@ -15,5 +15,8 @@
     "wood": 1
   },
   "range": 12,
-  "shots": 24
+  "shots": 24,
+  "abilities": [
+    "double_attack"
+  ]
 }

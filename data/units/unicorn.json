@@ -14,5 +14,8 @@
     "gold": 1500,
     "gems": 1
   },
-  "initiative": 10
+  "initiative": 10,
+  "abilities": [
+    "no_retaliation"
+  ]
 }

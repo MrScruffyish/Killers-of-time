@@ -225,6 +225,11 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
             r.addError(QStringLiteral("a ranged unit (range > 0) needs shots >= 1"));
         if (d.range == 0 && d.shots > 0)
             r.addError(QStringLiteral("shots > 0 but range is 0 (melee units have no shots)"));
+        static const QStringList knownAbilities = {QStringLiteral("flying"), QStringLiteral("no_retaliation"),
+                                                   QStringLiteral("double_attack"), QStringLiteral("undead")};
+        for (const QString& a : d.abilities)
+            if (!knownAbilities.contains(a))
+                r.addError(QStringLiteral("unknown ability '%1' (known: %2)").arg(a, knownAbilities.join(", ")));
         if (d.id != info.completeBaseName())
             r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
         if (!r.ok()) continue;
@@ -486,6 +491,10 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         bb.maxAttackPercent = br.optionalInt(QStringLiteral("maxAttackPercent"), bb.maxAttackPercent, 0, 10000);
         bb.defensePercentPerPoint = br.optionalInt(QStringLiteral("defensePercentPerPoint"), bb.defensePercentPerPoint, 0, 100);
         bb.maxDefensePercent = br.optionalInt(QStringLiteral("maxDefensePercent"), bb.maxDefensePercent, 0, 99);
+        bb.moralePercentPerPoint = br.optionalInt(QStringLiteral("moralePercentPerPoint"), bb.moralePercentPerPoint, 0, 100);
+        bb.luckPercentPerPoint = br.optionalInt(QStringLiteral("luckPercentPerPoint"), bb.luckPercentPerPoint, 0, 100);
+        bb.hpPercentPerTraitLevel = br.optionalInt(QStringLiteral("hpPercentPerTraitLevel"), bb.hpPercentPerTraitLevel, 0, 100);
+        bb.obstacles = br.optionalInt(QStringLiteral("obstacles"), bb.obstacles, 0, 30);
         br.finish();
         if (br.ok()) m_balance.battle = bb;
     }

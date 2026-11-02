@@ -31,6 +31,9 @@ struct BattleUnit {
     Pos pos;             // hex
     int shotsLeft = 0;
     bool retaliated = false;  // this round
+    bool waited = false;      // this round
+    bool moraleUsed = false;  // got its extra action this round
+    int baseMaxHp = 1;        // max HP per unit in the army (before the hero's Hit Points bonus)
     QList<StatModifier> modifiers;
 
     bool alive() const { return !stack.isEliminated(); }
@@ -38,7 +41,7 @@ struct BattleUnit {
 };
 
 struct BattleAction {
-    enum class Type { Move, Attack, Shoot, Defend, Cast };
+    enum class Type { Move, Attack, Shoot, Defend, Cast, Wait, Retreat };
     Type type = Type::Defend;
     Pos hex;               // Move: where to. Attack: hex to strike from (optional)
     bool hasHex = false;
@@ -48,7 +51,7 @@ struct BattleAction {
 
 // What happened, for the battle log and the client.
 struct BattleEvent {
-    enum class Type { Move, Attack, Shoot, Retaliate, Defend, NewRound, Cast };
+    enum class Type { Move, Attack, Shoot, Retaliate, Defend, NewRound, Cast, Wait, Morale, Falter, Retreat };
     Type type = Type::Move;
     int unit = 0;
     int target = 0;
@@ -57,6 +60,7 @@ struct BattleEvent {
     int killed = 0;
     QString spell;
     int side = -1;    // Cast: the casting hero's side
+    bool lucky = false;  // a lucky strike (double damage)
 };
 
 // A tactical battle on a hex grid (PROJECT.md 5.10, kept simple for now).
@@ -69,7 +73,13 @@ struct BattleEvent {
 //     back once per round,
 //   - Shoot: ranged units with shots left, when no enemy stands next to them;
 //     no retaliation,
-//   - Defend: do nothing this round.
+//   - Defend: do nothing this round,
+//   - Wait: act again at the end of this round (once per round),
+//   - Retreat (attacker only): give up; the army is lost, the hero survives.
+// The hero's Morale trait may give a stack an extra action (or, negative, make it
+// falter and lose its turn; undead ignore morale), his Luck may double a strike's
+// damage, his Hit Points raise the max HP of his units. Unit abilities: flying,
+// no_retaliation, double_attack, undead (UnitDef). A few rocks block hexes.
 // Besides, the hero of the active stack's side may cast one battle spell per round
 // (Cast; it does not use up the stack's turn): damage, heal or a stat change for a
 // few rounds. Spell points are spent from a copy and written back afterwards.
@@ -99,6 +109,9 @@ public:
     Outcome outcome() const { return m_outcome; }
     bool isOver() const { return m_outcome != Outcome::Running; }
     bool sideAlive(int side) const;
+    bool retreated(int side) const { return m_retreated[side]; }
+    const QList<Pos>& obstacles() const { return m_obstacles; }
+    bool blocked(Pos hex) const { return m_obstacles.contains(hex) || unitAt(hex); }
 
     // The side's hero (a copy taken when the battle started), or null.
     const Hero* heroOf(int side) const { return m_heroCopy[side].id.isValid() ? &m_heroCopy[side] : nullptr; }
@@ -123,7 +136,10 @@ private:
     QString cast(const BattleAction& action, QList<BattleEvent>* events);
     void strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QList<BattleEvent>* events);
     void startRound(QList<BattleEvent>* events);
+    bool chance(int percent);
     void advance(QList<BattleEvent>* events);
+    void settle(QList<BattleEvent>* events);  // the next stack that can act
+    bool ignoresMorale(const BattleUnit& u) const;
     void checkOver();
     BattleUnit* mutableUnit(int id);
 
@@ -135,6 +151,10 @@ private:
     int m_attackBonus[2] = {0, 0};
     int m_defenseBonus[2] = {0, 0};
     Hero m_heroCopy[2];
+    int m_morale[2] = {0, 0};
+    int m_luck[2] = {0, 0};
+    bool m_retreated[2] = {false, false};
+    QList<Pos> m_obstacles;
     bool m_heroCast[2] = {false, false};
     QList<BattleUnit> m_units;
     QList<int> m_order;  // unit ids, this round

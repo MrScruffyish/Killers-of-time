@@ -169,3 +169,14 @@ that level, when they start their turn there or walk in). Hero classes may have
 Units, buildings and hero classes name their race. When the folder exists, every hero class's
 race needs a file. A building without `race` can be built by every race (tavern, village hall,
 mage guilds).
+
+## Unit abilities (`abilities` in units/<id>.json)
+`flying` (moves over stacks and rocks, lands on a free hex), `no_retaliation` (its targets do not
+strike back), `double_attack` (strikes or shoots twice), `undead` (ignores morale). Unknown
+abilities are errors.
+
+## balance.json "battle" (more)
+`moralePercentPerPoint` (chance per hero Morale point for an extra action; negative morale: chance
+to falter), `luckPercentPerPoint` (chance per Luck point for double damage),
+`hpPercentPerTraitLevel` (hero Hit Points: +% max HP for his units, in battle only), `obstacles`
+(rocks on the battle field).

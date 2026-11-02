@@ -313,6 +313,8 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     else if (action == "attack") a.type = BattleAction::Type::Attack;
     else if (action == "shoot") a.type = BattleAction::Type::Shoot;
     else if (action == "defend") a.type = BattleAction::Type::Defend;
+    else if (action == "wait") a.type = BattleAction::Type::Wait;
+    else if (action == "retreat") a.type = BattleAction::Type::Retreat;
     else if (action == "cast") {
         a.type = BattleAction::Type::Cast;
         a.spell = spell;

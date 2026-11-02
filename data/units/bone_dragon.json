@@ -14,5 +14,9 @@
     "gold": 1800,
     "mercury": 1
   },
-  "initiative": 10
+  "initiative": 10,
+  "abilities": [
+    "undead",
+    "flying"
+  ]
 }

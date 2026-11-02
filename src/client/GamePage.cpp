@@ -390,6 +390,7 @@ QString GamePage::describeBattle(const QJsonObject& b) const {
     if (won && b["experience"].toInt() > 0) text += tr(", %1 experience").arg(b["experience"].toInt());
     if (won && b["levelsGained"].toInt() > 0) text += tr(", level up!");
     if (b["loserHeroKilled"].toBool()) text += won ? tr(", the enemy hero fell") : tr(", your hero fell");
+    if (b["retreated"].toBool()) text += attacker ? tr(", your hero escaped") : tr(", the enemy fled");
     return text;
 }
 
@@ -405,10 +406,11 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
         const QString type = e["type"].toString();
         if (type == "attack" || type == "shoot" || type == "retaliate") {
             const QString verb = type == "attack" ? tr("attacks") : type == "shoot" ? tr("shoots") : tr("strikes back at");
-            lines << tr("%1 %2 %3: %4 damage, %5 killed")
+            lines << tr("%1 %2 %3: %4 damage, %5 killed%6")
                          .arg(name(e["unit"].toInt()), verb, name(e["target"].toInt()))
                          .arg(e["damage"].toInt())
-                         .arg(e["killed"].toInt());
+                         .arg(e["killed"].toInt())
+                         .arg(e["lucky"].toBool() ? tr(" (lucky strike!)") : QString());
         } else if (type == "cast") {
             const core::SpellDef* s = m_content->spell(e["spell"].toString());
             const QString caster = e["side"].toInt() == m_view.battle.yourSide ? tr("your hero") : tr("the enemy hero");
@@ -416,6 +418,14 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
                                                          e["damage"].toInt() > 0 ? tr(" (%1)").arg(e["damage"].toInt()) : QString());
         } else if (type == "move") {
             lines << tr("%1 moves").arg(name(e["unit"].toInt()));
+        } else if (type == "morale") {
+            lines << tr("%1 is inspired and acts again").arg(name(e["unit"].toInt()));
+        } else if (type == "falter") {
+            lines << tr("%1 falters (bad morale)").arg(name(e["unit"].toInt()));
+        } else if (type == "wait") {
+            lines << tr("%1 waits").arg(name(e["unit"].toInt()));
+        } else if (type == "retreat") {
+            lines << tr("you retreat");
         } else if (type == "defend") {
             lines << tr("%1 defends").arg(name(e["unit"].toInt()));
         } else if (type == "round") {

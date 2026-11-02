@@ -2,6 +2,7 @@
 
 #include <QJsonArray>
 #include <QQueue>
+#include <QSet>
 #include <algorithm>
 #include <cmath>
 
@@ -24,7 +25,11 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             m_attackBonus[side] = h->trait(QStringLiteral("attack"));
             m_defenseBonus[side] = h->trait(QStringLiteral("defense"));
             m_heroCopy[side] = *h;
+            m_morale[side] = h->trait(QStringLiteral("morale"));
+            m_luck[side] = h->trait(QStringLiteral("luck"));
         }
+        const int hpPercent = (m_heroCopy[side].id.isValid() ? m_heroCopy[side].trait(QStringLiteral("hit_points")) : 0)
+                            * content.balance().battle.hpPercentPerTraitLevel;
         // Up to 7 stacks over the start column, from the middle outwards.
         static const int rows[] = {5, 3, 7, 1, 9, 0, 10};
         int placed = 0;
@@ -37,14 +42,31 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             u.side = side;
             u.armyIndex = i;
             u.def = def;
-            u.stack = s;
+            u.baseMaxHp = s.maxHp();
+            // The hero's Hit Points: more HP per unit, same number of units.
+            const int maxHp = effectiveMaxHp(s.maxHp(), HpBonus{0, hpPercent / 100.0});
+            u.stack = UnitStack::fromTotalHp(s.unitTypeId(), s.totalHp() * maxHp / std::max(1, s.maxHp()), maxHp);
             u.pos = Pos{side == 0 ? 0 : hex::kWidth - 1, rows[placed++ % 7]};
             u.shotsLeft = def->shots;
             m_units.append(u);
         }
     }
+    // Rocks in the middle columns.
+    for (int i = 0, tries = 0; i < content.balance().battle.obstacles && tries < 100; ++tries) {
+        const Pos p{m_rng.nextInt(3, hex::kWidth - 4), m_rng.nextInt(0, hex::kHeight - 1)};
+        if (m_obstacles.contains(p)) continue;
+        m_obstacles.append(p);
+        ++i;
+    }
     checkOver();
-    if (!isOver()) startRound(nullptr);
+    if (!isOver()) {
+        startRound(nullptr);
+        if (!isOver()) settle(nullptr);
+    }
+}
+
+bool Battle::chance(int percent) {
+    return percent > 0 && m_rng.nextInt(1, 100) <= percent;
 }
 
 int BattleUnit::modifier(const QString& stat) const {
@@ -84,21 +106,26 @@ bool Battle::sideAlive(int side) const {
 }
 
 QHash<Pos, int> Battle::reachable(const BattleUnit& who) const {
-    QHash<Pos, int> steps;
-    steps.insert(who.pos, 0);
+    // Breadth-first over hexes. Walkers go around stacks and rocks; flyers pass
+    // over them but must land on a free hex.
+    const int speed = std::max(1, who.def->battleSpeed + who.modifier(QStringLiteral("battleSpeed")));
+    const bool flying = who.def->has(QStringLiteral("flying"));
+    QHash<Pos, int> dist{{who.pos, 0}};
     QQueue<Pos> queue;
     queue.enqueue(who.pos);
-    const int speed = std::max(1, who.def->battleSpeed + who.modifier(QStringLiteral("battleSpeed")));
     while (!queue.isEmpty()) {
         const Pos p = queue.dequeue();
-        const int s = steps.value(p);
-        if (s >= speed) continue;
+        const int d = dist.value(p);
+        if (d >= speed) continue;
         for (const Pos n : hex::neighbours(p)) {
-            if (steps.contains(n) || unitAt(n)) continue;
-            steps.insert(n, s + 1);
+            if (dist.contains(n) || (!flying && blocked(n))) continue;
+            dist.insert(n, d + 1);
             queue.enqueue(n);
         }
     }
+    QHash<Pos, int> steps;
+    for (auto it = dist.cbegin(); it != dist.cend(); ++it)
+        if (it.key() == who.pos || !blocked(it.key())) steps.insert(it.key(), it.value());
     return steps;
 }
 
@@ -137,7 +164,9 @@ void Battle::strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QL
     if (diff > 0) mult += std::min(diff * bb.attackPercentPerPoint, bb.maxAttackPercent) / 100.0;
     if (diff < 0) mult -= std::min(-diff * bb.defensePercentPerPoint, bb.maxDefensePercent) / 100.0;
     const int roll = m_rng.nextInt(from.def->damageMin, std::max(from.def->damageMin, from.def->damageMax));
-    const int damage = std::max(1, static_cast<int>(std::lround(from.stack.count() * roll * mult)));
+    int damage = std::max(1, static_cast<int>(std::lround(from.stack.count() * roll * mult)));
+    const bool lucky = m_luck[from.side] > 0 && chance(m_luck[from.side] * bb.luckPercentPerPoint);
+    if (lucky) damage *= 2;
     const UnitStack::DamageResult r = to.stack.applyDamage(damage);
     if (events) {
         BattleEvent e;
@@ -148,6 +177,7 @@ void Battle::strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QL
         e.to = to.pos;
         e.damage = r.damageDealt;
         e.killed = r.unitsKilled;
+        e.lucky = lucky;
         events->append(e);
     }
 }
@@ -181,10 +211,12 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
             me->pos = from;
         }
         strike(*me, *target, BattleEvent::Type::Attack, events);
-        if (target->alive() && !target->retaliated) {
+        if (target->alive() && !target->retaliated && !me->def->has(QStringLiteral("no_retaliation"))) {
             target->retaliated = true;
             strike(*target, *me, BattleEvent::Type::Retaliate, events);
         }
+        if (me->def->has(QStringLiteral("double_attack")) && me->alive() && target->alive())
+            strike(*me, *target, BattleEvent::Type::Attack, events);
         break;
     }
     case BattleAction::Type::Shoot: {
@@ -192,6 +224,10 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
         if (!canShoot(*me)) return QStringLiteral("this stack cannot shoot now");
         --me->shotsLeft;
         strike(*me, *target, BattleEvent::Type::Shoot, events);
+        if (me->def->has(QStringLiteral("double_attack")) && me->shotsLeft > 0 && target->alive()) {
+            --me->shotsLeft;
+            strike(*me, *target, BattleEvent::Type::Shoot, events);
+        }
         break;
     }
     case BattleAction::Type::Defend:
@@ -199,10 +235,38 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
         break;
     case BattleAction::Type::Cast:
         return cast(action, events);  // does not end the stack's turn
+    case BattleAction::Type::Wait: {
+        if (me->waited) return QStringLiteral("this stack has already waited this round");
+        me->waited = true;
+        if (events) events->append({BattleEvent::Type::Wait, me->id, 0, me->pos, me->pos, 0, 0, {}});
+        m_order.removeAt(m_orderPos);  // to the end of this round
+        m_order.append(me->id);
+        settle(events);
+        return {};
+    }
+    case BattleAction::Type::Retreat: {
+        if (me->side != 0) return QStringLiteral("only the attacker can retreat");
+        m_retreated[0] = true;
+        if (events) events->append({BattleEvent::Type::Retreat, me->id, 0, me->pos, me->pos, 0, 0, {}});
+        m_outcome = Outcome::DefenderWon;
+        return {};
+    }
     }
     checkOver();
-    if (!isOver()) advance(events);
+    if (isOver()) return {};
+    // Good morale: sometimes the same stack acts once more.
+    if (action.type != BattleAction::Type::Defend && me->alive() && !me->moraleUsed && !ignoresMorale(*me)
+        && m_morale[me->side] > 0 && chance(m_morale[me->side] * m_content.balance().battle.moralePercentPerPoint)) {
+        me->moraleUsed = true;
+        if (events) events->append({BattleEvent::Type::Morale, me->id, 0, me->pos, me->pos, 0, 0, {}});
+        return {};
+    }
+    advance(events);
     return {};
+}
+
+bool Battle::ignoresMorale(const BattleUnit& u) const {
+    return u.def->has(QStringLiteral("undead"));
 }
 
 QString Battle::whyCannotCast(const QString& spellId, int target) const {
@@ -275,6 +339,8 @@ void Battle::startRound(QList<BattleEvent>* events) {
     m_heroCast[0] = m_heroCast[1] = false;
     for (BattleUnit& u : m_units) {
         u.retaliated = false;
+        u.waited = false;
+        u.moraleUsed = false;
         // Spell effects run out.
         for (StatModifier& m : u.modifiers) --m.roundsLeft;
         u.modifiers.removeIf([](const StatModifier& m) { return m.roundsLeft <= 0; });
@@ -291,13 +357,30 @@ void Battle::startRound(QList<BattleEvent>* events) {
 }
 
 void Battle::advance(QList<BattleEvent>* events) {
-    do {
-        ++m_orderPos;
+    ++m_orderPos;
+    settle(events);
+}
+
+void Battle::settle(QList<BattleEvent>* events) {
+    for (;;) {
         if (m_orderPos >= m_order.size()) {
             startRound(events);
             if (isOver()) return;
         }
-    } while (!unit(m_order[m_orderPos])->alive());
+        BattleUnit* u = mutableUnit(m_order[m_orderPos]);
+        if (!u->alive()) {
+            ++m_orderPos;
+            continue;
+        }
+        // Bad morale: the stack falters and loses its turn.
+        if (m_morale[u->side] < 0 && !ignoresMorale(*u)
+            && chance(-m_morale[u->side] * m_content.balance().battle.moralePercentPerPoint)) {
+            if (events) events->append({BattleEvent::Type::Falter, u->id, 0, u->pos, u->pos, 0, 0, {}});
+            ++m_orderPos;
+            continue;
+        }
+        return;
+    }
 }
 
 void Battle::checkOver() {
@@ -307,7 +390,8 @@ void Battle::checkOver() {
 }
 
 QJsonObject battleEventToJson(const BattleEvent& e) {
-    static const char* names[] = {"move", "attack", "shoot", "retaliate", "defend", "round", "cast"};
+    static const char* names[] = {"move",  "attack", "shoot",  "retaliate", "defend", "round",
+                                  "cast",  "wait",   "morale", "falter",    "retreat"};
     QJsonObject o;
     o.insert("type", names[static_cast<int>(e.type)]);
     if (e.type == BattleEvent::Type::NewRound) {
@@ -326,6 +410,7 @@ QJsonObject battleEventToJson(const BattleEvent& e) {
     }
     if (!e.spell.isEmpty()) o.insert("spell", e.spell);
     if (e.side >= 0) o.insert("side", e.side);
+    if (e.lucky) o.insert("lucky", true);
     return o;
 }
 
@@ -361,6 +446,9 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
         units.append(j);
     }
     o.insert("units", units);
+    QJsonArray rocks;
+    for (const Pos p : b.obstacles()) rocks.append(QJsonArray{p.x, p.y});
+    o.insert("obstacles", rocks);
     if (active) {
         QJsonArray reach;
         const QHash<Pos, int> r = b.reachable(*active);
@@ -370,6 +458,8 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
             if (p != active->pos) reach.append(QJsonArray{p.x, p.y});
         o.insert("reachable", reach);
         o.insert("canShoot", b.canShoot(*active));
+        o.insert("canWait", !active->waited);
+        o.insert("canRetreat", active->side == 0);
         QJsonArray attackable;
         for (const BattleUnit& u : b.units()) {
             Pos from;

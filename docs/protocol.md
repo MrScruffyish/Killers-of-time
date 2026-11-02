@@ -139,11 +139,11 @@ once by the battle AI and `move_hero` returns the reports.
 `battle` in the view: `width`, `height`, `round`, `active` (unit id), `yourSide` (0 attacker,
 1 defender), `sides` (`owner`, `hero`), `units` (`id`, `side`, `unit`, `count`, `frontHp`, `maxHp`,
 `x`, `y` (hex, odd-r offset), `shots`, `retaliated`), `modifiers` (spell effects: `stat`, `amount`, `rounds`)), `hero` (yours only: `spellPoints`, `hasCast`, `spells` [`id`, `target`, `cost`, `castable`]), and for the active stack `reachable`
-(`[[x, y], ...]`), `attackable` (enemy ids it can reach) and `canShoot`.
+(`[[x, y], ...]`), `attackable` (enemy ids it can reach), `canShoot`, `canWait`, `canRetreat`; `obstacles` (rock hexes). Events may also be `wait`, `morale` (extra action), `falter` (bad morale), `retreat`; strikes may have `lucky: true`.
 
 | Type | Fields | `info` on success |
 |---|---|---|
-| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end) | `events` (list: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
+| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `wait` (act again at the end of the round, once), `retreat` (attacker only: army lost, hero escapes), `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end) | `events` (list: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
 
 Battle reports (`battles` entries, and `lastBattle.report` in the view of both participants,
 `lastBattle.id` grows with every battle):
