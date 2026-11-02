@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Killers of Time
+GenericName=Turn-based strategy
+Comment=Heroes, towns, magic and hex battles; play against the computer or friends
+Exec=kot_client
+Icon=killers-of-time
+Terminal=false
+Categories=Game;StrategyGame;
+Keywords=strategy;fantasy;turn-based;heroes;

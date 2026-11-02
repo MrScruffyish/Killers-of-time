@@ -135,7 +135,8 @@ and react to; add depth afterwards.
 - [x] Better placeholder art: textured terrain tiles, soft fog edges, drawn icons (castle, mines, huts, chests, artifacts, hero banners, monsters), textured battle hexes with rocks and unit tokens, a dark wood-and-gold style sheet
 - [ ] Real art, sound, 2.5D projection decision
 - [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
-- [ ] Playtesting, packaging/installers
+- [x] Packaging: install rules, desktop entries, icon, CPack DEB/TGZ (`cpack -G DEB`)
+- [ ] Playtesting
 
 ---
 

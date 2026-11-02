@@ -20,7 +20,7 @@ QString findDataDirectory(const QString& explicitDir) {
     candidates << qEnvironmentVariable("KOT_DATA_DIR");
     candidates << QDir::current().filePath(QStringLiteral("data"));
     const QString app = QCoreApplication::applicationDirPath();
-    for (const char* rel : {"data", "../data", "../../data", "../../../data"})
+    for (const char* rel : {"data", "../data", "../../data", "../../../data", "../share/killers-of-time/data"})
         candidates << QDir(app).filePath(QString::fromLatin1(rel));
     for (const QString& c : candidates) {
         if (looksLikeDataDir(c)) return QDir(c).canonicalPath();

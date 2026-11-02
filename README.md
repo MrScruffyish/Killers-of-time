@@ -56,10 +56,23 @@ data/       game content (JSON), later
 docs/       protocol and data format docs, later
 ```
 
+## Install and packages
+
+```
+cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build-release
+sudo cmake --install build-release            # /usr/local: kot_client, kot_server, tools, data, menu entries
+(cd build-release && cpack -G DEB)            # killers-of-time-<version>-Linux.deb
+sudo apt install ./build-release/killers-of-time-*.deb
+```
+Installed programs find their data in `<prefix>/share/killers-of-time/data`. "Killers of Time" and
+its map editor appear in the desktop menu.
+
 ## Content tools
 
-`kot_graph` draws building/unit/spell graphs (Graphviz, PDF) and checks the data for loops;
-see `docs/tools.md`.
+`kot_graph` (structure graphs and checks), `kot_balance` / `kot_balance_gui` (balance numbers,
+tweaking), `kot_mapgen` (random scenarios) and `kot_editor` (map, scenario and campaign
+making); see `docs/tools.md`.
 
 ## Commit messages
 
