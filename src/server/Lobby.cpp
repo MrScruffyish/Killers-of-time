@@ -10,8 +10,7 @@ using net::SlotInfo;
 using net::SlotKind;
 
 namespace {
-const QStringList kPalette = {"#d62728", "#1f77b4", "#2ca02c", "#ff7f0e",
-                              "#9467bd", "#17becf", "#e377c2", "#8c564b"};
+const QStringList& kPalette = net::defaultPlayerColors();
 const QStringList kDifficulties = {"easy", "normal", "hard"};
 
 LobbyResult started() {
@@ -253,9 +252,13 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
             return LobbyResult::failure("invalid_value", "unknown setting '" + key + "'");
         }
     }
+    const bool changed = s.mapWidth != m_state.settings.mapWidth ||
+                         s.mapHeight != m_state.settings.mapHeight || s.seed != m_state.settings.seed;
     m_state.settings = s;
-    for (SlotInfo& slot : m_state.slotList) {
-        if (slot.kind == SlotKind::Human) slot.ready = false;  // map changed: confirm again
+    if (changed) {
+        for (SlotInfo& slot : m_state.slotList) {
+            if (slot.kind == SlotKind::Human) slot.ready = false;  // map changed: confirm again
+        }
     }
     return LobbyResult::success();
 }

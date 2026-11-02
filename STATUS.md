@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-01 (session 15)
-**Current milestone:** M4 nearly done (protocol, lobby, running games and filtered views done; client screens and reconnecting left); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** M5 first slice: the client. Replace the temporary window with a connect screen and lobby screen, then the map view (tiles from the player view with placeholder colours, fog, hero selection, click-to-move, end turn). Reconnect during a game can wait
+**Last updated:** 2026-11-01 (session 16)
+**Current milestone:** thin playable slice done (connect -> lobby -> map -> move -> town -> end turn, all with placeholder graphics). Now: close the game loop breadth-first (see "Order of work"); M0 verified on your machine, everything since verified in sandbox
+**Next session should do:** basic battles (attacking armies/guards/defended towns resolved by the rules, simple result screen), then a simple AI so single-player works. First: feedback from the user on the client screens (see docs/screenshots)
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -66,13 +66,30 @@
 - [ ] Client: real connect and lobby screens (M5 has the map)
 - [~] Disconnect during a game: the player becomes passive AI and the game goes on (done); reconnecting to take the player back (todo)
 
+## Order of work (breadth first, agreed in session 16)
+Get every part of the game working in a thin, simple form first, so there is something to try
+and react to; add depth afterwards.
+1. [x] Playable client slice (this section, M5)
+2. [ ] Basic battles: attack enemy heroes, defended towns, monster guards; resolved by the rules with the damage formula (simple, no hex UI yet), result shown in the client; experience to the hero
+3. [ ] Simple AI player (explore, capture mines, build, recruit, attack weak targets) so single-player works
+4. [ ] Game end: victory / defeat when a team has no towns and heroes left
+5. [ ] Save and load a running game on the server; reconnect to a running game
+6. [ ] Then depth: hex tactical battles with UI (M6), spells (M7), more races and balance (M8), better AI (M9), polish and art (M10)
+
 ## M5: Playable adventure map client
-- [ ] Map view (QGraphicsView): terrain tiles, objects, fog rendering, scrolling/zoom
-- [ ] Hero selection, path preview, move
-- [ ] Resource bar, day counter, end-turn button
-- [ ] Town screen (buildings, recruit) with the one-click actions: "Buy (trade first if needed)", "Send all units to this town", "Buy all units", "Auto-build"
-- [ ] Global toolbar buttons: "Send all units to closest town", "Buy all units", "Build, then buy units" (flags towns that need a building choice)
+- [x] Client structure (`kot_client_lib` + `kot_client`): `MainWindow` with connect page, lobby page, game page; "Host a game on this computer" starts `kot_server` from the same folder
+- [x] Lobby screen: slots, host controls (open/AI/closed, AI difficulty), race, team, colour, ready, map size and seed, start
+- [x] Map view (`MapView`): placeholder tiles from the terrain colours, black = never explored, darkened = remembered, shapes for hero (circle, yellow ring when selected), town (square with T), mine (diamond, resource colour), dwelling (triangle); scrollbars, Ctrl+wheel zoom
+- [x] Hero selection (click hero or drop-down), click a tile to move (the server moves him as far as his movement allows)
+- [x] Status bar (day, whose turn, resources), end turn, log of what happened (and server refusals)
+- [x] Town dialog (right-click a town on the map, or double-click in the list): buildings with the reason when unavailable and "Build (trade first)" when only resources are missing, recruit with count, buy all here, tavern with hire (trade first if needed)
+- [x] Toolbar one-click actions: "Build, then buy units" (with trade), "Buy all units", "Send dwelling units to closest town"; level-up trait choice
+- [x] Tests: `tst_viewmodel`, `tst_clientsmoke` (the real windows against a real server, offscreen, clicks included; set `KOT_SCREENSHOT_DIR` to save screenshots); 28 test programs in total. Screenshots in `docs/screenshots/`.
+- [ ] Path preview and movement range overlay
 - [ ] Minimap
+- [ ] Flag towns that need a building choice (the server already reports them in `auto_build`)
+- [ ] Hover info (tile, object tooltips), keyboard shortcuts, better layout, real art later
+- [ ] Enemy object memory (objects out of sight disappear from the map for now)
 
 ## M6: Battle engine (core, then UI)
 - [x] Decision D2: hex grid
@@ -121,6 +138,7 @@
 | 2026-11-01 | Added Luck and Attack Range traits; Hit Points confirmed; traits grouped Battle / Magic / Explore (D16, D17) |
 | 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); upkeep later, affects morale (D9); survivors heal fully after battle for now (D18) |
 | 2026-11-01 | Terrain uses `walkable`/`sailable`/`moveCost` (100 = one tile) instead of `passable`/`requiresBoat`; data files are strict (unknown fields are errors, `_` keys are comments); unit id must equal file name; exactly one currency resource |
+| 2026-11-01 | Work breadth-first (user suggestion): thin version of every part of the game first, depth later. Client is Qt Widgets with a custom scroll-area map; the server computes what can be built/recruited and sends the reasons, the client only displays them. Lobby: unchanged settings no longer reset ready flags (found by the GUI test) |
 | 2026-11-01 | Game over the network: the full filtered view is sent after every change (no deltas yet; fine for now); players of the same team see each other in full, resources are private; a player who leaves is played by the passive AI; starting resources and hero class starting armies are data; bug found by tests: all players are now initialised at game start, not only the first |
 | 2026-11-01 | Protocol v1: 4-byte big-endian length + UTF-8 JSON object with "type" and optional "seq"; lobby_state broadcast after every change; 64-bit seed sent as text; lobby needs 1 human, 2 occupied slots, 2 teams, all humans ready; Qt keyword `slots` cannot be a member name (C++ `slotList`, JSON `slots`) |
 | 2026-11-01 | Design principle: avoid micromanagement (trade, send units to town, buy all, auto-build, build then buy). Buy-all default strategy is quality first (highest tier), cheapest-first as option. A building is a "choice" if it would permanently exclude a rival building of the town's race; those are never auto-built, only flagged. Trade works anywhere for now (a Market building may improve rates later) |
@@ -141,6 +159,7 @@
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.
 - **Session 13:** Hero tavern slice (hero templates, tavern building, offers, hiring), naming convention written down, tests updated for the new building.

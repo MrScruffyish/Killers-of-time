@@ -5,6 +5,7 @@
 #include <QSet>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/TownRules.h"
 #include "core/rules/Vision.h"
 
 namespace kot::core {
@@ -157,6 +158,26 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             o.insert("recruitPool", intMap(t.recruitPool));
             o.insert("importedUnits", intMap(t.importedUnits));
             o.insert("tavernOffers", QJsonArray::fromStringList(t.tavernOffers));
+            if (t.owner == viewer) {
+                // What the player can do here, worked out by the server's rules.
+                QJsonArray buildOptions;
+                for (const BuildingDef& b : content.buildings()) {
+                    if (b.race != t.race || t.buildings.contains(b.id)) continue;
+                    QJsonObject bo;
+                    bo.insert("id", b.id);
+                    bo.insert("why", whyCannotBuild(state, content, t.id, b.id, viewer));  // empty = can build now
+                    buildOptions.append(bo);
+                }
+                o.insert("buildOptions", buildOptions);
+                QJsonArray recruitOpts;
+                for (const RecruitOption& r : recruitOptions(t, content)) {
+                    QJsonObject ro;
+                    ro.insert("unit", r.unitId);
+                    ro.insert("available", r.available);
+                    recruitOpts.append(ro);
+                }
+                o.insert("recruitOptions", recruitOpts);
+            }
         }
         towns.append(o);
     }

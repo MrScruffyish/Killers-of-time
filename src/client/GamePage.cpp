@@ -1,0 +1,289 @@
+#include "client/GamePage.h"
+
+#include <QComboBox>
+#include <QHBoxLayout>
+#include <QInputDialog>
+#include <QJsonArray>
+#include <QLabel>
+#include <QListWidget>
+#include <QPlainTextEdit>
+#include <QPushButton>
+#include <QVBoxLayout>
+
+#include "client/MapView.h"
+#include "client/TownDialog.h"
+#include "core/content/ContentRegistry.h"
+#include "net/Protocol.h"
+
+namespace kot::client {
+
+GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* content, QWidget* parent)
+    : QWidget(parent), m_client(client), m_content(content) {
+    auto* outer = new QVBoxLayout(this);
+    m_status = new QLabel(this);
+    m_status->setObjectName("statusLabel");
+    outer->addWidget(m_status);
+
+    auto* middle = new QHBoxLayout();
+    m_map = new MapView(content, this);
+    m_map->setObjectName("mapView");
+    middle->addWidget(m_map, 1);
+
+    auto* side = new QVBoxLayout();
+    m_heroCombo = new QComboBox(this);
+    m_heroCombo->setObjectName("heroCombo");
+    side->addWidget(m_heroCombo);
+    m_heroInfo = new QLabel(this);
+    m_heroInfo->setObjectName("heroInfo");
+    m_heroInfo->setWordWrap(true);
+    m_heroInfo->setTextFormat(Qt::RichText);
+    m_heroInfo->setAlignment(Qt::AlignTop);
+    side->addWidget(m_heroInfo);
+    m_levelUp = new QPushButton(tr("Level up: choose a trait"), this);
+    m_levelUp->setObjectName("levelUpButton");
+    side->addWidget(m_levelUp);
+    auto* townsLabel = new QLabel(tr("<b>My towns</b> (double-click here, or right-click the town on the map)"), this);
+    townsLabel->setWordWrap(true);
+    side->addWidget(townsLabel);
+    m_townList = new QListWidget(this);
+    m_townList->setObjectName("townList");
+    m_townList->setMaximumHeight(120);
+    side->addWidget(m_townList);
+    m_buildAndBuy = new QPushButton(tr("Build, then buy units"), this);
+    m_buildAndBuy->setObjectName("buildAndBuyButton");
+    m_buyAll = new QPushButton(tr("Buy all units"), this);
+    m_buyAll->setObjectName("buyAllButton");
+    m_sendUnits = new QPushButton(tr("Send dwelling units to closest town"), this);
+    m_sendUnits->setObjectName("sendUnitsButton");
+    m_endTurn = new QPushButton(tr("End turn"), this);
+    m_endTurn->setObjectName("endTurnButton");
+    side->addWidget(m_buildAndBuy);
+    side->addWidget(m_buyAll);
+    side->addWidget(m_sendUnits);
+    side->addStretch(1);
+    side->addWidget(m_endTurn);
+    auto* sideHolder = new QWidget(this);
+    sideHolder->setLayout(side);
+    sideHolder->setFixedWidth(270);
+    middle->addWidget(sideHolder);
+    outer->addLayout(middle, 1);
+
+    m_log = new QPlainTextEdit(this);
+    m_log->setObjectName("logView");
+    m_log->setReadOnly(true);
+    m_log->setMaximumBlockCount(300);
+    m_log->setMaximumHeight(110);
+    outer->addWidget(m_log);
+
+    m_townDialog = new TownDialog(content, this);
+
+    connect(m_map, &MapView::tileClicked, this, &GamePage::onTileClicked);
+    connect(m_map, &MapView::tileRightClicked, this, &GamePage::onTileRightClicked);
+    connect(m_heroCombo, &QComboBox::activated, this, [this](int i) { selectHero(m_heroCombo->itemData(i).toInt()); });
+    connect(m_levelUp, &QPushButton::clicked, this, &GamePage::chooseTrait);
+    connect(m_townList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
+        m_townDialog->showTown(m_view, item->data(Qt::UserRole).toInt());
+    });
+    connect(m_endTurn, &QPushButton::clicked, this, [this]() { send(net::msg::endTurn, {}, tr("End turn")); });
+    connect(m_buildAndBuy, &QPushButton::clicked, this, [this]() {
+        send(net::msg::buildThenBuy, {{"useTrade", true}}, tr("Build, then buy units"));
+    });
+    connect(m_buyAll, &QPushButton::clicked, this, [this]() { send(net::msg::buyAllUnits, {}, tr("Buy all units")); });
+    connect(m_sendUnits, &QPushButton::clicked, this, [this]() {
+        send(net::msg::sendDwellingUnits, {}, tr("Send dwelling units to the closest town"));
+    });
+    connect(m_townDialog, &TownDialog::commandRequested, this,
+            [this](const QString& type, const QJsonObject& body, const QString& what) { send(type, body, what); });
+
+    connect(m_client, &net::LobbyClient::gameStateChanged, this, &GamePage::onViewChanged);
+    connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
+        const Pending p = m_pending.take(replyTo);
+        log(QStringLiteral("%1: %2").arg(p.what.isEmpty() ? tr("Done") : p.what, describeResult(p.type, info)));
+    });
+    connect(m_client, &net::LobbyClient::errorReceived, this, [this](const QString&, const QString& text, int replyTo) {
+        const Pending p = m_pending.take(replyTo);
+        log(QStringLiteral("\u26A0 %1%2").arg(p.what.isEmpty() ? QString() : p.what + ": ", text));
+    });
+
+    onViewChanged();
+}
+
+QString GamePage::logText() const { return m_log->toPlainText(); }
+
+void GamePage::log(const QString& text) { m_log->appendPlainText(text); }
+
+QString GamePage::unitName(const QString& id) const {
+    const core::UnitDef* u = m_content->unit(id);
+    return u ? u->name : id;
+}
+
+void GamePage::send(const QString& type, const QJsonObject& body, const QString& what) {
+    const int seq = m_client->sendCommand(type, body);
+    if (seq == 0) {
+        log(tr("Not connected."));
+        return;
+    }
+    m_pending.insert(seq, {type, what});
+}
+
+void GamePage::onViewChanged() {
+    GameView view;
+    QString error;
+    if (!parseGameView(m_client->view(), &view, &error)) {
+        if (!m_client->view().isEmpty()) log(tr("Bad view from the server: %1").arg(error));
+        return;
+    }
+    const bool wasMyTurn = m_view.isMyTurn() && m_view.you == view.you;
+    m_view = view;
+    if (!m_view.myHeroes().isEmpty()) {
+        bool stillThere = false;
+        for (const ViewHero* h : m_view.myHeroes()) stillThere = stillThere || h->id == m_selectedHero;
+        if (!stillThere) m_selectedHero = m_view.myHeroes().first()->id;
+    } else {
+        m_selectedHero = 0;
+    }
+    m_map->setView(m_view);
+    m_map->setSelectedHero(m_selectedHero);
+    if (!m_centered && m_selectedHero) {
+        const ViewHero* h = m_view.hero(m_selectedHero);
+        if (h) m_map->centerOn(h->pos);
+        m_centered = true;
+    }
+    updateStatus();
+    updateHeroPanel();
+    m_townDialog->refresh(m_view);
+    if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
+}
+
+void GamePage::updateStatus() {
+    QStringList res;
+    for (const core::ResourceDef& r : m_content->resources()) {
+        const int n = m_view.resources.value(r.id);
+        if (n > 0 || r.isCurrency) res << QStringLiteral("%1 %2").arg(n).arg(r.id);
+    }
+    const ViewPlayer* current = m_view.player(m_view.currentPlayer);
+    m_status->setText(tr("<b>Day %1</b> &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3")
+                          .arg(m_view.day)
+                          .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
+                          .arg(res.join(", ")));
+    const bool myTurn = m_view.isMyTurn();
+    for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits}) b->setEnabled(myTurn);
+
+    m_townList->clear();
+    for (const ViewTown* t : m_view.myTowns()) {
+        auto* item = new QListWidgetItem(QStringLiteral("%1 (%2, %3)").arg(t->name).arg(t->pos.x).arg(t->pos.y), m_townList);
+        item->setData(Qt::UserRole, t->id);
+    }
+}
+
+void GamePage::updateHeroPanel() {
+    m_heroCombo->blockSignals(true);
+    m_heroCombo->clear();
+    for (const ViewHero* h : m_view.myHeroes()) m_heroCombo->addItem(h->name, h->id);
+    const int index = m_heroCombo->findData(m_selectedHero);
+    if (index >= 0) m_heroCombo->setCurrentIndex(index);
+    m_heroCombo->blockSignals(false);
+
+    const ViewHero* h = m_view.hero(m_selectedHero);
+    if (!h) {
+        m_heroInfo->setText(tr("No hero."));
+        m_levelUp->setVisible(false);
+        return;
+    }
+    QStringList lines;
+    lines << tr("<b>%1</b> - %2, level %3").arg(h->name, h->classId).arg(h->level);
+    lines << tr("Movement: %1 &nbsp; Spell points: %2/%3")
+                 .arg(h->movementPoints / 100.0, 0, 'f', 1)
+                 .arg(h->spellPoints)
+                 .arg(h->traits.value("spell_points_max"));
+    lines << tr("Attack %1, Defense %2, Spell power %3, Magic %4")
+                 .arg(h->traits.value("attack")).arg(h->traits.value("defense"))
+                 .arg(h->traits.value("spell_power")).arg(h->traits.value("magic"));
+    const ViewArmy* army = m_view.army(h->army);
+    if (army) {
+        for (const ViewStack& s : army->stacks) {
+            QString line = QStringLiteral("%1 x %2").arg(s.count).arg(unitName(s.unit));
+            if (s.totalHp >= 0 && s.totalHp < s.count * s.maxHp) line += tr(" (wounded)");
+            lines << line;
+        }
+        if (army->stacks.isEmpty()) lines << tr("No army.");
+    }
+    m_heroInfo->setText(lines.join("<br>"));
+    m_levelUp->setVisible(h->pendingTraitPicks > 0);
+    m_levelUp->setText(tr("Level up: choose a trait (%1)").arg(h->pendingTraitPicks));
+}
+
+void GamePage::selectHero(int id) {
+    m_selectedHero = id;
+    m_map->setSelectedHero(id);
+    updateHeroPanel();
+    const ViewHero* h = m_view.hero(id);
+    if (h) m_map->centerOn(h->pos);
+}
+
+void GamePage::onTileClicked(core::Pos tile) {
+    const ViewHero* at = m_view.heroAt(tile);
+    if (at && at->owner == m_view.you) {
+        selectHero(at->id);
+        return;
+    }
+    if (!m_selectedHero) return;
+    if (!m_view.isMyTurn()) {
+        log(tr("It is not your turn."));
+        return;
+    }
+    send(net::msg::moveHero, {{"hero", m_selectedHero}, {"x", tile.x}, {"y", tile.y}}, tr("Move"));
+}
+
+void GamePage::onTileRightClicked(core::Pos tile) {
+    const ViewTown* t = m_view.townAt(tile);
+    if (t && t->mine) m_townDialog->showTown(m_view, t->id);
+}
+
+void GamePage::chooseTrait() {
+    const ViewHero* h = m_view.hero(m_selectedHero);
+    if (!h || h->pendingTraitPicks <= 0) return;
+    QStringList names;
+    QMap<QString, QString> idOf;
+    for (const core::TraitDef& t : m_content->traits()) {
+        if (!t.pickable) continue;
+        const QString label = QStringLiteral("%1 (%2: %3)").arg(t.name, core::traitGroupName(t.group)).arg(h->traits.value(t.id));
+        names << label;
+        idOf.insert(label, t.id);
+    }
+    bool ok = false;
+    const QString chosen = QInputDialog::getItem(this, tr("Level up"), tr("Boost which trait?"), names, 0, false, &ok);
+    if (ok) send(net::msg::pickTrait, {{"hero", h->id}, {"trait", idOf.value(chosen)}}, tr("Level up"));
+}
+
+QString GamePage::describeResult(const QString& type, const QJsonObject& info) const {
+    if (type == net::msg::moveHero) {
+        QString text = info["arrived"].toBool() ? tr("arrived") : tr("moved %1 steps, out of movement").arg(info["stepsTaken"].toInt());
+        if (info.contains("capturedMine")) text += tr(", captured a mine");
+        if (info.contains("capturedTown")) text += tr(", captured a town");
+        if (info.contains("capturedDwelling")) text += tr(", captured a dwelling");
+        return text;
+    }
+    if (type == net::msg::endTurn) return tr("day %1").arg(info["day"].toInt());
+    if (type == net::msg::buyAllUnits) {
+        return tr("bought %1 units").arg(info["unitsBought"].toInt());
+    }
+    if (type == net::msg::autoBuild || type == net::msg::buildThenBuy) {
+        const QJsonObject build = type == net::msg::buildThenBuy ? info["build"].toObject() : info;
+        QStringList parts;
+        for (const QJsonValue& v : build["built"].toArray()) {
+            const core::BuildingDef* b = m_content->building(v.toObject()["building"].toString());
+            const ViewTown* t = m_view.town(v.toObject()["town"].toInt());
+            parts << tr("built %1 in %2").arg(b ? b->name : "?", t ? t->name : "?");
+        }
+        if (parts.isEmpty()) parts << tr("nothing to build");
+        const QJsonArray choices = build["needsChoice"].toArray();
+        if (!choices.isEmpty()) parts << tr("%1 town(s) need a building choice from you").arg(choices.size());
+        if (type == net::msg::buildThenBuy) parts << tr("bought %1 units").arg(info["buy"].toObject()["unitsBought"].toInt());
+        return parts.join("; ");
+    }
+    if (type == net::msg::sendDwellingUnits) return tr("%1 units sent").arg(info["unitsSent"].toInt());
+    return tr("ok");
+}
+
+}  // namespace kot::client

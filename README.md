@@ -36,6 +36,13 @@ ctest --test-dir build --output-on-failure
 
 Log filtering example: `QT_LOGGING_RULES="kot.*.debug=true" ./build/bin/kot_server`
 
+## Playing
+
+Build everything, then run `kot_client` (from `<build dir>/bin`, so it finds `kot_server` and the
+`data/` folder). Click "Host a game on this computer", set up the slots, tick Ready, Start.
+Other players join with the server address. Right-click your town on the map to open it.
+`KOT_DATA_DIR=/path/to/data` tells the programs where the game data is if it is not found.
+
 ## Layout
 
 ```

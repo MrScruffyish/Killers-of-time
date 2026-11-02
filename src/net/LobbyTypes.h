@@ -15,6 +15,9 @@ bool parseSlotKind(const QString& name, SlotKind* out);
 inline constexpr int kMaxSlots = 8;
 inline constexpr int kMaxTeams = 8;
 
+// The eight default player colours, in slot order.
+const QStringList& defaultPlayerColors();
+
 // One player position in a game being set up.
 struct SlotInfo {
     int index = 0;

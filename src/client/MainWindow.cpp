@@ -1,100 +1,107 @@
 #include "client/MainWindow.h"
 
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPlainTextEdit>
-#include <QPushButton>
-#include <QSpinBox>
-#include <QVBoxLayout>
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QStackedWidget>
+#include <QTimer>
 
+#include "client/ConnectPage.h"
+#include "client/GamePage.h"
+#include "client/LobbyPage.h"
 #include "core/Version.h"
-#include "net/Protocol.h"
+#include "core/data/DataDir.h"
 
 namespace kot::client {
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setWindowTitle(QStringLiteral("%1 %2")
-                       .arg(QString::fromLatin1(core::kGameName),
-                            QString::fromLatin1(core::kGameVersion)));
-    resize(900, 600);
+    setWindowTitle(QStringLiteral("%1 %2").arg(QString::fromLatin1(core::kGameName), QString::fromLatin1(core::kGameVersion)));
+    resize(1150, 760);
 
-    auto* central = new QWidget(this);
-    auto* layout = new QVBoxLayout(central);
-    auto* row = new QHBoxLayout();
-    row->addWidget(new QLabel(tr("Name:"), central));
-    m_name = new QLineEdit(QStringLiteral("Player"), central);
-    row->addWidget(m_name);
-    row->addWidget(new QLabel(tr("Server:"), central));
-    m_host = new QLineEdit(QStringLiteral("127.0.0.1"), central);
-    row->addWidget(m_host, 1);
-    m_port = new QSpinBox(central);
-    m_port->setRange(1, 65535);
-    m_port->setValue(net::kDefaultPort);
-    row->addWidget(m_port);
-    m_connectButton = new QPushButton(central);
-    row->addWidget(m_connectButton);
-    layout->addLayout(row);
+    m_pages = new QStackedWidget(this);
+    setCentralWidget(m_pages);
+    m_connect = new ConnectPage(this);
+    m_lobby = new LobbyPage(&m_client, this);
+    m_pages->addWidget(m_connect);
+    m_pages->addWidget(m_lobby);
 
-    m_log = new QPlainTextEdit(central);
-    m_log->setReadOnly(true);
-    layout->addWidget(m_log, 1);
-    setCentralWidget(central);
-
-    connect(m_connectButton, &QPushButton::clicked, this, &MainWindow::onConnectClicked);
-    connect(&m_client, &net::LobbyClient::connected, this, [this]() {
-        m_open = true;
-        log(tr("Connected as client %1.").arg(m_client.clientId()));
-        updateButton();
-    });
-    connect(&m_client, &net::LobbyClient::lobbyChanged, this, &MainWindow::onLobbyChanged);
-    connect(&m_client, &net::LobbyClient::errorReceived, this,
-            [this](const QString& code, const QString& text, int) { log(tr("Server: %1 (%2)").arg(text, code)); });
-    connect(&m_client, &net::LobbyClient::connectionFailed, this,
-            [this](const QString& why) { log(tr("Connection problem: %1").arg(why)); });
-    connect(&m_client, &net::LobbyClient::disconnected, this, [this]() {
-        m_open = false;
-        log(tr("Disconnected."));
-        updateButton();
-    });
-
-    updateButton();
-    log(tr("Client started. Protocol version %1.").arg(net::kProtocolVersion));
-}
-
-void MainWindow::onConnectClicked() {
-    if (m_open) {
-        m_client.disconnectFromServer();
-        m_open = false;
-        log(tr("Disconnected."));
+    QString contentMessage;
+    const QString dataDir = core::findDataDirectory();
+    if (dataDir.isEmpty()) {
+        contentMessage = tr("Cannot find the game data folder. Set KOT_DATA_DIR or start the game from the project folder.");
     } else {
-        log(tr("Connecting to %1:%2 ...").arg(m_host->text()).arg(m_port->value()));
-        m_client.connectToServer(m_host->text(), static_cast<quint16>(m_port->value()), m_name->text());
+        QStringList errors;
+        m_contentLoaded = m_content.loadFromDirectory(dataDir, &errors);
+        if (!m_contentLoaded) contentMessage = tr("The game data is invalid:\n%1").arg(errors.join('\n'));
     }
-    updateButton();
+    showConnect(contentMessage, !contentMessage.isEmpty());
+
+    connect(m_connect, &ConnectPage::joinRequested, this,
+            [this](const QString& host, quint16 port, const QString& name) { connectToServer(host, port, name); });
+    connect(m_connect, &ConnectPage::hostRequested, this,
+            [this](quint16 port, const QString& name) { hostLocalGame(port, name); });
+    connect(m_lobby, &LobbyPage::leaveRequested, this, [this]() {
+        m_client.disconnectFromServer();
+        showConnect(tr("You left the game."), false);
+    });
+    connect(&m_client, &net::LobbyClient::connected, this, [this]() { m_pages->setCurrentWidget(m_lobby); });
+    connect(&m_client, &net::LobbyClient::gameStarted, this, [this]() {
+        if (m_game) {
+            m_pages->removeWidget(m_game);
+            delete m_game;
+        }
+        m_game = new GamePage(&m_client, &m_content, this);
+        m_pages->addWidget(m_game);
+        m_pages->setCurrentWidget(m_game);
+    });
+    connect(&m_client, &net::LobbyClient::connectionFailed, this,
+            [this](const QString& why) { showConnect(tr("Connection problem: %1").arg(why), true); });
 }
 
-void MainWindow::onLobbyChanged() {
-    const net::LobbyState& lobby = m_client.lobby();
-    QStringList lines;
-    for (const net::SlotInfo& s : lobby.slotList) {
-        lines << tr("  slot %1: %2 %3 (team %4, %5)%6")
-                     .arg(s.index + 1)
-                     .arg(net::slotKindName(s.kind), s.name, QString::number(s.team), s.race,
-                          s.ready && s.occupied() ? tr(", ready") : QString());
+MainWindow::~MainWindow() {
+    m_client.disconnectFromServer();
+    if (m_serverProcess.state() != QProcess::NotRunning) {
+        m_serverProcess.terminate();
+        m_serverProcess.waitForFinished(1500);
     }
-    log(tr("Lobby: %1 members\n%2").arg(lobby.members.size()).arg(lines.join('\n')));
 }
 
-void MainWindow::log(const QString& text) {
-    m_log->appendPlainText(text);
+void MainWindow::showConnect(const QString& message, bool error) {
+    m_pages->setCurrentWidget(m_connect);
+    m_connect->showMessage(message, error);
 }
 
-void MainWindow::updateButton() {
-    m_connectButton->setText(m_open ? tr("Disconnect") : tr("Connect"));
-    m_name->setEnabled(!m_open);
-    m_host->setEnabled(!m_open);
-    m_port->setEnabled(!m_open);
+QString MainWindow::currentPage() const {
+    QWidget* w = m_pages->currentWidget();
+    if (w == m_connect) return QStringLiteral("connect");
+    if (w == m_lobby) return QStringLiteral("lobby");
+    return QStringLiteral("game");
+}
+
+void MainWindow::connectToServer(const QString& host, quint16 port, const QString& name) {
+    if (!m_contentLoaded) {
+        showConnect(tr("The game data could not be loaded, so the game cannot start."), true);
+        return;
+    }
+    m_connect->showMessage(tr("Connecting to %1:%2 ...").arg(host).arg(port), false);
+    m_client.connectToServer(host, port, name.isEmpty() ? tr("Player") : name);
+}
+
+void MainWindow::hostLocalGame(quint16 port, const QString& name) {
+    const QString exe = QCoreApplication::applicationDirPath() + QStringLiteral("/kot_server");
+    if (!QFileInfo::exists(exe)) {
+        showConnect(tr("Cannot find kot_server next to this program (%1). Build it, or start a server yourself.").arg(exe), true);
+        return;
+    }
+    if (m_serverProcess.state() == QProcess::NotRunning) {
+        m_serverProcess.setProcessChannelMode(QProcess::ForwardedChannels);
+        m_serverProcess.start(exe, {QStringLiteral("--port"), QString::number(port)});
+        if (!m_serverProcess.waitForStarted(3000)) {
+            showConnect(tr("Could not start the server: %1").arg(m_serverProcess.errorString()), true);
+            return;
+        }
+    }
+    m_connect->showMessage(tr("Starting a local server ..."), false);
+    QTimer::singleShot(900, this, [this, port, name]() { connectToServer(QStringLiteral("127.0.0.1"), port, name); });
 }
 
 }  // namespace kot::client

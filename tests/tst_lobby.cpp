@@ -181,6 +181,14 @@ private slots:
         QCOMPARE(lobby.state().settings.seed, quint64(42));
     }
 
+    void unchangedSettingsKeepTheReadyFlags() {
+        lobby.addMember(1, "Ann");
+        lobby.addMember(2, "Bob");
+        lobby.setReady(2, true);
+        QVERIFY(lobby.setSettings(1, {{"mapWidth", 64}, {"seed", 1}}).ok);  // same as before
+        QVERIFY(slot(1).ready);
+    }
+
     void settingsRejections() {
         lobby.addMember(1, "Ann");
         lobby.addMember(2, "Bob");

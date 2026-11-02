@@ -8,6 +8,12 @@ namespace kot::net {
 
 using core::JsonReader;
 
+const QStringList& defaultPlayerColors() {
+    static const QStringList colors = {"#d62728", "#1f77b4", "#2ca02c", "#ff7f0e",
+                                       "#9467bd", "#17becf", "#e377c2", "#8c564b"};
+    return colors;
+}
+
 QString slotKindName(SlotKind kind) {
     switch (kind) {
         case SlotKind::Open: return QStringLiteral("open");
