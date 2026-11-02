@@ -83,6 +83,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     params.mapWidth = lobby.settings.mapWidth;
     params.mapHeight = lobby.settings.mapHeight;
     params.seed = lobby.settings.seed;
+    params.difficulty = lobby.settings.difficulty;
     QList<const net::SlotInfo*> occupiedSlots;
     for (const net::SlotInfo& s : lobby.slotList) {
         if (!s.occupied()) continue;
@@ -90,6 +91,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
         p.name = s.name;
         p.isAi = (s.kind == net::SlotKind::Ai);
         p.aiProfile = s.aiProfile;
+        if (!s.difficulty.isEmpty()) p.aiDifficulty = s.difficulty;
         p.race = s.race;
         p.team = s.team;
         p.color = s.color;

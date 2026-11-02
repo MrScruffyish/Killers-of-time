@@ -16,12 +16,14 @@ struct PlayerSetup {
     QString race;
     int team = 1;       // players with the same number are on one team
     QString color;      // "#RRGGBB"
+    QString aiDifficulty = QStringLiteral("normal");  // easy, normal, hard (AI players)
 };
 
 struct GameSetupParams {
     int mapWidth = 64;
     int mapHeight = 64;
     quint64 seed = 1;
+    QString difficulty = QStringLiteral("normal");  // overall level, see balance.json
     QList<PlayerSetup> players;
 };
 

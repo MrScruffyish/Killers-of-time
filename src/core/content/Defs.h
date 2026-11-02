@@ -95,11 +95,21 @@ struct BattleBalance {
     int hpPercentPerTraitLevel = 5;  // hero Hit Points trait: +% max HP of his units
     int obstacles = 4;               // rocks on the battle field
 };
+// The overall difficulty level of a game (lobby setting) and the per-AI slot level.
+struct DifficultyLevel {
+    int humanStartPercent = 100;  // starting resources of human players
+    int monsterPercent = 100;     // size of neutral monster groups
+    int aiIncomePercent = 0;      // +/- percent income for AI players
+    int aiGrowthPercent = 0;      // +/- percent dwelling growth in AI towns
+};
 struct Balance {
     MovementBalance movement;
     VisionBalance vision;
     EconomyBalance economy;
     BattleBalance battle;
+    QMap<QString, DifficultyLevel> difficulty;  // easy, normal, hard, expert
+    QMap<QString, DifficultyLevel> aiSlot;      // easy, normal, hard: added for that AI
+    const DifficultyLevel level(const QString& name) const { return difficulty.value(name); }
 };
 
 struct BuildingEffect {

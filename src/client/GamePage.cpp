@@ -245,10 +245,12 @@ void GamePage::updateStatus() {
         if (n > 0 || r.isCurrency) res << QStringLiteral("%1 %2").arg(n).arg(r.id);
     }
     const ViewPlayer* current = m_view.player(m_view.currentPlayer);
-    m_status->setText(tr("<b>Day %1</b> &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3")
+    m_status->setText(tr("<b>Day %1</b> (week %4, %5) &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3")
                           .arg(m_view.day)
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
-                          .arg(res.join(", ")));
+                          .arg(res.join(", "))
+                          .arg((m_view.day - 1) / 7 + 1)
+                          .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty));
     const bool myTurn = m_view.isMyTurn();
     const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
     for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits, m_castSpell}) b->setEnabled(free);

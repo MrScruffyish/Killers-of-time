@@ -1,5 +1,7 @@
 #include "core/rules/TurnCycle.h"
 
+#include <algorithm>
+
 #include "core/magic/Spells.h"
 #include "core/rules/Victory.h"
 
@@ -27,6 +29,10 @@ ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& conte
     for (const Mine& m : state.mines()) {
         if (m.owner == player) income[m.resourceId] += m.dailyAmount;
     }
+    // Difficulty bonus or malus (AI players).
+    const Player* p = state.player(player);
+    if (p && p->incomePercent != 0)
+        for (auto it = income.begin(); it != income.end(); ++it) it.value() = std::max(0, it.value() * (100 + p->incomePercent) / 100);
     return income;
 }
 

@@ -109,7 +109,7 @@ ActionResult buildBuilding(GameState& state, const ContentRegistry& content, Tow
     for (const Dwelling& d : dwellings(*town, content)) {
         if (d.buildingId != buildingId || town->recruitPool.contains(d.poolKey)) continue;
         const UnitDef* unit = content.unit(d.unitId);
-        town->recruitPool[d.poolKey] = unit ? townGrowth(*town, *unit, content) : 0;
+        town->recruitPool[d.poolKey] = unit ? townGrowth(state, *town, *unit, content) : 0;
     }
     // A new tavern offers its first heroes.
     if (hasTavern(*town, content)) refreshTavernOffers(state, content, townId);
@@ -214,8 +214,9 @@ ActionResult recruit(GameState& state, const ContentRegistry& content, TownId to
     return paid;
 }
 
-int townGrowth(const Town& town, const UnitDef& unit, const ContentRegistry& content) {
-    const int percent = 100 + content.race(town.race).growthPercent;
+int townGrowth(const GameState& state, const Town& town, const UnitDef& unit, const ContentRegistry& content) {
+    const Player* owner = state.player(town.owner);
+    const int percent = 100 + content.race(town.race).growthPercent + (owner ? owner->growthPercent : 0);
     return std::max(unit.weeklyGrowth > 0 ? 1 : 0, (unit.weeklyGrowth * percent + 50) / 100);
 }
 
@@ -223,7 +224,7 @@ void applyWeeklyGrowth(GameState& state, const ContentRegistry& content) {
     for (Town& town : state.towns()) {
         for (const Dwelling& d : dwellings(town, content)) {
             const UnitDef* unit = content.unit(d.unitId);
-            if (unit) town.recruitPool[d.poolKey] += townGrowth(town, *unit, content);
+            if (unit) town.recruitPool[d.poolKey] += townGrowth(state, town, *unit, content);
         }
     }
     for (MapDwelling& d : state.mapDwellings()) {

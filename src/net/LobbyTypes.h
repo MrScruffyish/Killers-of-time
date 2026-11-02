@@ -47,6 +47,7 @@ struct LobbySettings {
     int mapWidth = 64;
     int mapHeight = 64;
     quint64 seed = 1;
+    QString difficulty = QStringLiteral("normal");  // easy, normal, hard, expert (balance.json)
 };
 
 // Everything a client needs to show the game setup screen.

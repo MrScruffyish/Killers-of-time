@@ -188,3 +188,9 @@ to falter), `luckPercentPerPoint` (chance per Luck point for double damage),
 ```
 Artifacts lie on the map (guarded by monsters; `value` 1..3 makes the guard stronger). The hero who
 walks onto one keeps it and its trait bonuses are added to his traits.
+
+## balance.json "difficulty" and "aiSlotDifficulty"
+`difficulty`: one entry per overall level (`easy`, `normal`, `hard`, `expert`, chosen in the lobby):
+`humanStartPercent` (starting resources of humans), `monsterPercent` (neutral monster group size),
+`aiIncomePercent` and `aiGrowthPercent` (+/- percent for AI players). `aiSlotDifficulty`: per AI
+slot level (`easy`, `normal`, `hard`), its `aiIncomePercent` / `aiGrowthPercent` are added.

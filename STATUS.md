@@ -121,7 +121,7 @@ and react to; add depth afterwards.
 - [x] AI player host on the server (same command interface as humans)
 - [x] Battle AI (basic: most dangerous target, ranged first, damage spells)
 - [x] Strategic AI v1 (`SimpleAi`): scored targets (value / distance: towns, mines, artifacts, treasures, dwellings, weaker armies, exploring), avoids stronger armies, defends threatened towns, collects reinforcements, hires more heroes over time, class-fitting level-ups, sends dwelling units home, movement spells. It now conquers an idle human within three weeks
-- [ ] AI profiles and difficulty bonuses (income, growth, hero stats)
+- [x] Difficulty: overall level in the lobby (easy/normal/hard/expert: human starting resources, monster size, AI income and growth) plus the per-AI slot level; numbers in balance.json; saved. Later: AI profiles (aggressive, economic), hero stat bonuses
 - [ ] Teams in mixed human/AI games, victory conditions
 
 ## M10: Polish and extras

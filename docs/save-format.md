@@ -35,3 +35,4 @@ Bump `kSaveFormatVersion` when the format changes incompatibly.
 Heroes may have `spells` (list of spell ids, the spellbook; optional, validated against the content).
 Heroes may have `artifacts` (artifact ids; their bonuses are already in `traits`).
 `mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`), `x`, `y`, `resources` or `artifact`.
+The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses).

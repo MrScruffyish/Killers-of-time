@@ -4,6 +4,19 @@
   "economy": { "townDailyGold": 500, "tradeEfficiencyPercent": 80,
                "heroCost": 2500, "tavernOffers": 2, "maxHeroesPerPlayer": 8,
                "startingResources": { "gold": 10000, "wood": 20, "stone": 20 } },
+  "_difficulty": "Overall level (lobby): human starting resources, monster group size, AI income and growth bonus.",
+  "difficulty": {
+    "easy":   { "humanStartPercent": 150, "monsterPercent": 70,  "aiIncomePercent": -20, "aiGrowthPercent": -10 },
+    "normal": { "humanStartPercent": 100, "monsterPercent": 100, "aiIncomePercent": 0,   "aiGrowthPercent": 0 },
+    "hard":   { "humanStartPercent": 75,  "monsterPercent": 130, "aiIncomePercent": 20,  "aiGrowthPercent": 10 },
+    "expert": { "humanStartPercent": 50,  "monsterPercent": 160, "aiIncomePercent": 40,  "aiGrowthPercent": 25 }
+  },
+  "_aiSlotDifficulty": "Added for one AI player on top of the overall level (lobby slot setting).",
+  "aiSlotDifficulty": {
+    "easy":   { "aiIncomePercent": -15, "aiGrowthPercent": -10 },
+    "normal": { },
+    "hard":   { "aiIncomePercent": 15,  "aiGrowthPercent": 10 }
+  },
   "battle": { "maxRounds": 30, "experiencePerHp": 2,
               "attackPercentPerPoint": 5, "maxAttackPercent": 300,
               "defensePercentPerPoint": 3, "maxDefensePercent": 70,

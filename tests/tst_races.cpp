@@ -59,6 +59,7 @@ private slots:
         const TownId u = town("undead");
         QVERIFY(buildBuilding(gs, reg, u, "cursed_graveyard", p1).ok);
         QCOMPARE(gs.town(u)->recruitPool.value("cursed_graveyard"), (14 * 125 + 50) / 100);  // 18
+        QCOMPARE(townGrowth(gs, *gs.town(u), *reg.unit("skeleton"), reg), 18);
         const TownId s = gs.addTown("S", "sylvan", {9, 9}, p1);
         QVERIFY(buildBuilding(gs, reg, s, "woodcutters_lodge", p1).ok);
         QCOMPARE(gs.town(s)->recruitPool.value("woodcutters_lodge"), (12 * 85 + 50) / 100);  // 10

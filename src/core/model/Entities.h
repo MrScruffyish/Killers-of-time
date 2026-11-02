@@ -21,6 +21,8 @@ struct Player {
     QString race;
     QString color;      // "#RRGGBB"
     ResourceAmounts resources;
+    int incomePercent = 0;   // difficulty bonus: +/- percent of all income
+    int growthPercent = 0;   // difficulty bonus: +/- percent dwelling growth in his towns
 };
 
 struct Hero {

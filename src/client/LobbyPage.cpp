@@ -15,6 +15,7 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <tuple>
 
 #include "core/content/ContentRegistry.h"
 
@@ -56,6 +57,18 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     m_seed->setObjectName("mapSeed");
     m_seed->setMaximumWidth(160);
     settings->addWidget(m_seed);
+    settings->addSpacing(20);
+    settings->addWidget(new QLabel(tr("Difficulty"), this));
+    m_difficulty = new QComboBox(this);
+    m_difficulty->setObjectName("difficulty");
+    for (const auto& [id, name, tip] : {std::tuple{"easy", tr("Easy"), tr("More starting resources, weaker monsters, AI players get less")},
+                                        std::tuple{"normal", tr("Normal"), tr("The standard game")},
+                                        std::tuple{"hard", tr("Hard"), tr("Fewer starting resources, stronger monsters, AI players get more")},
+                                        std::tuple{"expert", tr("Expert"), tr("Much harder in every way")}}) {
+        m_difficulty->addItem(name, QString::fromLatin1(id));
+        m_difficulty->setItemData(m_difficulty->count() - 1, tip, Qt::ToolTipRole);
+    }
+    settings->addWidget(m_difficulty);
     settings->addStretch(1);
     outer->addLayout(settings);
 
@@ -100,6 +113,9 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     connect(m_height, &QSpinBox::editingFinished, this, [this]() {
         if (m_height->value() != m_client->lobby().settings.mapHeight) m_client->setSettings({{"mapHeight", m_height->value()}});
     });
+    connect(m_difficulty, &QComboBox::activated, this, [this](int) {
+        m_client->setSettings({{"difficulty", m_difficulty->currentData().toString()}});
+    });
     connect(m_seed, &QLineEdit::editingFinished, this, [this]() {
         if (!m_seed->text().isEmpty() && m_seed->text() != QString::number(m_client->lobby().settings.seed))
             m_client->setSettings({{"seed", m_seed->text()}});
@@ -127,7 +143,9 @@ void LobbyPage::rebuild() {
     m_width->blockSignals(false);
     m_height->blockSignals(false);
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
-    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed)})
+    m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
+    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed),
+                       static_cast<QWidget*>(m_difficulty)})
         w->setEnabled(host);
     m_start->setEnabled(host);
     m_load->setEnabled(host);

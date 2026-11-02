@@ -156,3 +156,5 @@ Battle reports (`battles` entries, and `lastBattle.report` in the view of both p
 Owner/hero 0 = neutral / none. Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.
 Saving is refused while a battle runs. A human who disconnects during a battle is replaced by the
 battle AI.
+
+Lobby settings also have `difficulty` (`easy`/`normal`/`hard`/`expert`, host only); the game view has `difficulty`.

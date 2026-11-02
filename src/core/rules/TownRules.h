@@ -62,8 +62,8 @@ ActionResult recruit(GameState& state, const ContentRegistry& content, TownId to
 
 // A new week: every dwelling (in towns and on the map) gets the weekly growth of its unit.
 // Units a town dwelling grows per week: the unit's weeklyGrowth with the town race's
-// growthPercent (at least 1 for growing units).
-int townGrowth(const Town& town, const UnitDef& unit, const ContentRegistry& content);
+// growthPercent and the owner's difficulty growthPercent (at least 1 for growing units).
+int townGrowth(const GameState& state, const Town& town, const UnitDef& unit, const ContentRegistry& content);
 void applyWeeklyGrowth(GameState& state, const ContentRegistry& content);
 
 // Daily income from the "income" effects of a town's buildings.

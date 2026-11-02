@@ -3,6 +3,7 @@
 
 #include "core/content/ContentRegistry.h"
 #include "core/rules/GameSetup.h"
+#include "core/rules/TurnCycle.h"
 #include "core/rules/Movement.h"
 
 using namespace kot::core;
@@ -30,6 +31,43 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+    }
+
+    void difficultyChangesTheStart() {
+        const auto make = [&](const QString& difficulty, const QString& aiLevel, GameState* gs, QList<PlayerId>* ids) {
+            GameSetupParams params;
+            params.seed = 12;
+            params.difficulty = difficulty;
+            PlayerSetup ai{"Bot", true, "simple", "humans", 2, "#00ff00"};
+            ai.aiDifficulty = aiLevel;
+            params.players = {{"Ann", false, {}, "humans", 1, "#ff0000"}, ai};
+            QString error;
+            return createGame(reg, params, gs, ids, &error);
+        };
+        GameState easy, expert;
+        QList<PlayerId> e, x;
+        QVERIFY(make("easy", "normal", &easy, &e));
+        QVERIFY(make("expert", "hard", &expert, &x));
+        const int startGold = reg.balance().economy.startingResources.value("gold");
+        QCOMPARE(easy.player(e[0])->resources.value("gold"), startGold * 150 / 100);
+        QCOMPARE(expert.player(x[0])->resources.value("gold"), startGold * 50 / 100);
+        QCOMPARE(easy.player(e[1])->incomePercent, -20);
+        QCOMPARE(expert.player(x[1])->incomePercent, 40 + 15);
+        QCOMPARE(expert.difficulty(), QString("expert"));
+        const auto monsters = [](const GameState& gs) {
+            int n = 0;
+            for (const Army& a : gs.armies()) if (!a.owner.isValid()) n += a.totalUnits();
+            return n;
+        };
+        QVERIFY(monsters(expert) > monsters(easy));
+        // The AI's bonus shows in its income; it is saved.
+        GameState loaded;
+        QStringList errors;
+        QVERIFY(GameState::fromJson(expert.toJson(), reg, &loaded, &errors));
+        QCOMPARE(loaded.player(x[1])->incomePercent, 55);
+        QCOMPARE(loaded.difficulty(), QString("expert"));
+        QCOMPARE(dailyIncome(expert, reg, x[1]).value("gold"),
+                 dailyIncome(expert, reg, x[0]).value("gold") * 155 / 100);
     }
 
     void createsPlayersTownsAndHeroes() {

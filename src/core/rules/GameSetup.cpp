@@ -106,6 +106,10 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         starts.append(best);
     }
 
+    gs.setDifficulty(params.difficulty);
+    DifficultyLevel level = content.balance().level(params.difficulty);
+    if (!content.balance().difficulty.contains(params.difficulty)) level = DifficultyLevel();
+
     // Players, towns, heroes.
     QMap<int, TeamId> teams;
     QList<PlayerId> ids;
@@ -116,7 +120,16 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
                                          ps.isAi ? Player::Controller::Ai : Player::Controller::Human,
                                          ps.race, ps.color);
         gs.player(id)->aiProfile = ps.aiProfile;
-        gs.player(id)->resources = content.balance().economy.startingResources;
+        Player* player = gs.player(id);
+        player->resources = content.balance().economy.startingResources;
+        if (!ps.isAi) {
+            for (auto it = player->resources.begin(); it != player->resources.end(); ++it)
+                it.value() = it.value() * level.humanStartPercent / 100;
+        } else {
+            const DifficultyLevel slot = content.balance().aiSlot.value(ps.aiDifficulty);
+            player->incomePercent = level.aiIncomePercent + slot.aiIncomePercent;
+            player->growthPercent = level.aiGrowthPercent + slot.aiGrowthPercent;
+        }
         ids.append(id);
 
         gs.addTown(QStringLiteral("%1's capital").arg(ps.name), ps.race, starts[i], id);
@@ -195,7 +208,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         if (fitting.isEmpty()) fitting = monsterUnits;
         if (fitting.isEmpty()) return;
         const UnitDef* unit = content.unit(fitting[gs.rng().nextInt(0, static_cast<int>(fitting.size()) - 1)]);
-        const int count = std::max(1, gs.rng().nextInt(10, 20) * strength / (2 * unit->tier));
+        const int count = std::max(1, gs.rng().nextInt(10, 20) * strength * level.monsterPercent / (200 * unit->tier));
         gs.army(gs.addArmy(PlayerId(), where))->addUnits(unit->id, count, unit->maxHp);
     };
     // A guard on a free land tile next to `object`.

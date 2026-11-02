@@ -89,6 +89,7 @@ QJsonObject LobbyState::toJson() const {
     st.insert("mapWidth", settings.mapWidth);
     st.insert("mapHeight", settings.mapHeight);
     st.insert("seed", QString::number(settings.seed));  // 64-bit: sent as text
+    st.insert("difficulty", settings.difficulty);
     root.insert("settings", st);
     root.insert("started", started);
     return root;
@@ -136,6 +137,7 @@ bool LobbyState::fromJson(const QJsonObject& json, LobbyState* out, QStringList*
     s.settings.mapWidth = sr.requireInt("mapWidth", 16, 256);
     s.settings.mapHeight = sr.requireInt("mapHeight", 16, 256);
     const QString seedText = sr.requireString("seed");
+    s.settings.difficulty = sr.optionalString("difficulty", QStringLiteral("normal"));
     sr.finish();
     bool ok = false;
     s.settings.seed = seedText.toULongLong(&ok);

@@ -24,6 +24,8 @@ public:
     explicit GameState(std::uint64_t seed = 1) : m_rng(seed) {}
 
     int day() const { return m_day; }
+    const QString& difficulty() const { return m_difficulty; }
+    void setDifficulty(const QString& d) { m_difficulty = d; }
     void setDay(int day) { m_day = day; }
 
     GameMap& map() { return m_map; }
@@ -104,6 +106,7 @@ public:
 
 private:
     int m_day = 1;
+    QString m_difficulty = QStringLiteral("normal");
     GameMap m_map;
     Rng m_rng;
     std::uint32_t m_nextId = 1;

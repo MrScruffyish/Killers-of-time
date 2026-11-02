@@ -502,8 +502,33 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
     const QJsonObject economy = top.requireObject(QStringLiteral("economy"));
     const QJsonObject battle = root.contains(QStringLiteral("battle"))
         ? top.requireObject(QStringLiteral("battle")) : QJsonObject();
+    const QJsonObject difficulty = root.contains(QStringLiteral("difficulty"))
+        ? top.requireObject(QStringLiteral("difficulty")) : QJsonObject();
+    const QJsonObject aiSlot = root.contains(QStringLiteral("aiSlotDifficulty"))
+        ? top.requireObject(QStringLiteral("aiSlotDifficulty")) : QJsonObject();
     top.finish();
     if (!top.ok()) return;
+
+    const auto readLevels = [&](const QJsonObject& obj, const QString& name, QMap<QString, DifficultyLevel>* out) {
+        for (auto it = obj.begin(); it != obj.end(); ++it) {
+            if (it.key().startsWith('_')) continue;
+            const QString ctx = file + "/" + name + "/" + it.key();
+            if (!it.value().isObject()) {
+                errors << ctx + QStringLiteral(": must be an object");
+                continue;
+            }
+            JsonReader lr(it.value().toObject(), ctx, &errors);
+            DifficultyLevel d;
+            d.humanStartPercent = lr.optionalInt(QStringLiteral("humanStartPercent"), 100, 0, 1000);
+            d.monsterPercent = lr.optionalInt(QStringLiteral("monsterPercent"), 100, 10, 1000);
+            d.aiIncomePercent = lr.optionalInt(QStringLiteral("aiIncomePercent"), 0, -90, 500);
+            d.aiGrowthPercent = lr.optionalInt(QStringLiteral("aiGrowthPercent"), 0, -90, 500);
+            lr.finish();
+            if (lr.ok()) out->insert(it.key(), d);
+        }
+    };
+    readLevels(difficulty, QStringLiteral("difficulty"), &m_balance.difficulty);
+    readLevels(aiSlot, QStringLiteral("aiSlotDifficulty"), &m_balance.aiSlot);
 
     {
         JsonReader br(battle, file + QStringLiteral("/battle"), &errors);

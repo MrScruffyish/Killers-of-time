@@ -248,6 +248,11 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
                                               : (v.isDouble() && v.toDouble() >= 0 ? (ok = true, static_cast<quint64>(v.toDouble())) : 0);
             if (!ok) return LobbyResult::failure("invalid_value", "seed: must be a number");
             s.seed = seed;
+        } else if (key == "difficulty") {
+            static const QStringList levels = {"easy", "normal", "hard", "expert"};
+            if (!v.isString() || !levels.contains(v.toString()))
+                return LobbyResult::failure("invalid_value", "difficulty: must be easy, normal, hard or expert");
+            s.difficulty = v.toString();
         } else {
             return LobbyResult::failure("invalid_value", "unknown setting '" + key + "'");
         }

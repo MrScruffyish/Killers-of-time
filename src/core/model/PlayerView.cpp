@@ -38,6 +38,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
 
     QJsonObject view;
     view.insert("day", state.day());
+    view.insert("difficulty", state.difficulty());
     view.insert("currentPlayer", id(state.currentPlayer().value()));
     view.insert("you", id(viewer.value()));
     const Player* me = state.player(viewer);

@@ -5,6 +5,7 @@
 #include "net/LobbyClient.h"
 
 class QGridLayout;
+class QComboBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -37,6 +38,7 @@ private:
     QSpinBox* m_width;
     QSpinBox* m_height;
     QLineEdit* m_seed;
+    QComboBox* m_difficulty;
     QPushButton* m_start;
     QPushButton* m_load;
     int m_listSavesSeq = 0;

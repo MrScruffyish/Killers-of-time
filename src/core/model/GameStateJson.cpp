@@ -34,6 +34,7 @@ QJsonObject GameState::toJson() const {
     QJsonObject root;
     root.insert("formatVersion", kSaveFormatVersion);
     root.insert("day", m_day);
+    root.insert("difficulty", m_difficulty);
     root.insert("nextId", static_cast<int>(m_nextId));
     root.insert("currentIndex", m_currentIndex);
 
@@ -81,6 +82,8 @@ QJsonObject GameState::toJson() const {
         o.insert("team", static_cast<int>(p.team.value()));
         o.insert("controller", p.controller == Player::Controller::Ai ? "ai" : "human");
         if (!p.aiProfile.isEmpty()) o.insert("aiProfile", p.aiProfile);
+        if (p.incomePercent) o.insert("incomePercent", p.incomePercent);
+        if (p.growthPercent) o.insert("growthPercent", p.growthPercent);
         o.insert("race", p.race);
         o.insert("color", p.color);
         o.insert("resources", intMapToJson(p.resources));
@@ -226,6 +229,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         top.addError(QStringLiteral("unsupported formatVersion %1 (expected %2)")
                          .arg(version).arg(kSaveFormatVersion));
     gs.m_day = top.requireInt("day", 1, 10000000);
+    gs.m_difficulty = top.optionalString("difficulty", QStringLiteral("normal"));
     const int nextId = top.requireInt("nextId", 1, kMaxId);
     const int currentIndex = top.optionalInt("currentIndex", 0, 0, kMaxId);
     const QJsonObject mapObj = top.requireObject("map");
@@ -324,6 +328,8 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         else if (!controller.isEmpty())
             r.addError(QStringLiteral("field 'controller' must be 'human' or 'ai'"));
         p.aiProfile = r.optionalString("aiProfile");
+        p.incomePercent = r.optionalInt("incomePercent", 0, -100, 1000);
+        p.growthPercent = r.optionalInt("growthPercent", 0, -100, 1000);
         p.race = r.requireId("race");
         p.color = r.requireColor("color");
         p.resources = r.optionalIntMap("resources", 0, 1000000000);
