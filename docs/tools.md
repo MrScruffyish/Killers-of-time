@@ -60,3 +60,18 @@ kot_mapgen --id two_rivers --name "Two Rivers" --races humans,undead [--size 48x
 ```
 Makes a random map with everything on it (the same generator as a random game) for one
 player per race and writes `data/scenarios/<id>.json`. Open it in `kot_editor` to change it.
+
+## kot_editor: the map / scenario editor
+
+`kot_editor [--data dir] [scenario.json]`. Start from a blank map (New) or a random one
+(Random map: size, seed, one race per player), then:
+- Terrain: pick a terrain and a brush size, click or drag.
+- Town, Mine, Dwelling, Treasure, Artifact, Monsters, Hero (start): pick the tool and its
+  options on the right (owner, race, resource, amount / count, unit, artifact, hero class)
+  and click a tile. Placing on an object replaces it; Erase removes it.
+- Player slots: add one per player (in turn order) with its race; each needs a town or a
+  hero. Heroes get their class's starting army.
+- Save writes `data/scenarios/<id>.json` and checks it the way the game reads it. The lobby
+  offers it as a map from then on.
+
+`KOT_SCREENSHOT=file.png kot_editor ...` saves a picture of the window and quits.
