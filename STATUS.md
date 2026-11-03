@@ -104,7 +104,7 @@ and react to; add depth afterwards.
 - [x] Unit abilities (flying, no_retaliation, double_attack, undead), rocks, wait, retreat (attacker)
 - [x] Town walls (building effect `defense`: Fort +3, Citadel +3 more)
 - [x] Unit veterancy: stacks gain experience in battle, 0-5 stars with small bonuses (morale, initiative, battle speed, attack, defense; data), averaged when merging; shown as stars. Tests: `tst_veterancy` (38 test programs)
-- [ ] Later: surrender, defender retreat, siege (no 2-hex units: every unit takes one hex, decided)
+- [ ] Later: surrender, defender retreat (every unit takes one hex: the old `size` field is gone)
 
 ## M7: Magic
 - [x] Effect primitive system and spell data format (`spells/<id>.json`; damage, heal, modifyStat, movement, reveal; strength = amount + perPower x Spell Power); 8 sample spells
@@ -179,7 +179,7 @@ and react to; add depth afterwards.
 - [x] Level-ups are loud: fanfare and a Level up window with the portrait and "Choose now"; a gold "Level N! Choose a trait" button; End turn asks first when a pick is waiting
 - [x] T cycles through your towns (the map looks there), O opens one; a click in the town list centres the map; treasures stay on screen until the walking hero reaches them; auto-play is off at the start of every battle; buildings ruled out by a rival are not listed
 - [x] Fog of war is a lobby option (on by default); off: everyone sees the whole map from the start (saved as `fogOfWar: false`)
-- [x] Weak monsters offer to join: neutral armies at least `joinStrengthRatio` (5) times weaker than the hero's army that fit into it stop him with an offer (welcome them / fight / leave them); computer players always welcome them
+- [x] Weak monsters offer to join: neutral armies at least `joinStrengthRatio` (5) times weaker than the hero's army that fit into it stop him with an offer (pay / fight / leave them); joining costs `joinCostPercent` (50) of their recruit price in gold; computer players pay when they can, else fight
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

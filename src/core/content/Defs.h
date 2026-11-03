@@ -98,6 +98,7 @@ struct BattleBalance {
     // Neutral monsters this many times weaker than the hero's army offer to join
     // him instead of fighting (0 = never).
     int joinStrengthRatio = 5;
+    int joinCostPercent = 50;  // what joining costs: this share of the units' recruit price (gold)
 };
 // The overall difficulty level of a game (lobby setting) and the per-AI slot level.
 struct DifficultyLevel {
@@ -255,7 +256,6 @@ struct UnitDef {
     int initiative = 1;    // turn order in battle
     int range = 0;         // 0 = melee only, else range in hexes
     int shots = 0;         // ammunition for ranged units
-    int size = 1;          // 1 or 2 hexes
     int weeklyGrowth = 0;
     int spellPoints = 0;   // the unit's own spell point pool (0 = cannot cast)
     QStringList spells;    // battle spells the unit can cast with it

@@ -506,17 +506,25 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
             // Much weaker monsters offer to join. The computer always takes them;
             // a human answers with answer_join.
             if (m_state.player(player)->controller == Player::Controller::Ai) {
-                acceptJoin(m_state, m_content, hero, m.joinOffer);
-                QJsonObject info = moveInfo(m);
-                info.insert("joined", true);
-                return success(info);
+                // The computer pays when it can, else it fights them.
+                if (acceptJoin(m_state, m_content, hero, m.joinOffer).ok) {
+                    QJsonObject info = moveInfo(m);
+                    info.insert("joined", true);
+                    return success(info);
+                }
+                m_joinOffer = {player, hero, m.joinOffer};
+                net::Message fight;
+                fight.type = net::msg::answerJoin;
+                fight.body.insert("answer", "fight");
+                return dispatch(player, fight);
             }
             m_joinOffer = {player, hero, m.joinOffer};
             QJsonObject info = moveInfo(m);
             QJsonArray units;
             for (const UnitStack& s : m_state.army(m.joinOffer)->stacks)
                 units.append(QJsonObject{{"unit", s.unitTypeId()}, {"count", s.count()}});
-            info.insert("joinOffer", QJsonObject{{"army", toInt(m.joinOffer.value())}, {"hero", toInt(hero.value())}, {"units", units}});
+            info.insert("joinOffer", QJsonObject{{"army", toInt(m.joinOffer.value())}, {"hero", toInt(hero.value())}, {"units", units},
+                                                 {"cost", joinCost(m_state, m_content, m.joinOffer)}});
             return success(info);
         }
         if (!m.pending) return success(moveInfo(m));

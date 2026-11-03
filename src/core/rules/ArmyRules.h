@@ -32,7 +32,9 @@ double armyStrength(const GameState& state, const ContentRegistry& content, cons
 // Neutral monsters (no owner, no hero) that are at least joinStrengthRatio times
 // weaker than the hero's army and all fit into it would rather join than fight.
 bool wouldJoin(const GameState& state, const ContentRegistry& content, ArmyId heroArmy, ArmyId monsters);
-// The monsters join the hero's army (for free) and leave the map.
+// What the monsters ask for joining: joinCostPercent of their recruit price in gold.
+int joinCost(const GameState& state, const ContentRegistry& content, ArmyId monsters);
+// The monsters join the hero's army (his owner pays joinCost) and leave the map.
 ActionResult acceptJoin(GameState& state, const ContentRegistry& content, HeroId hero, ArmyId monsters);
 
 }  // namespace kot::core

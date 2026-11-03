@@ -228,7 +228,6 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
         d.initiative = r.optionalInt(QStringLiteral("initiative"), d.battleSpeed, 1, 100);
         d.range = r.optionalInt(QStringLiteral("range"), 0, 0, 100);
         d.shots = r.optionalInt(QStringLiteral("shots"), 0, 0, 1000);
-        d.size = r.optionalInt(QStringLiteral("size"), 1, 1, 2);
         d.weeklyGrowth = r.optionalInt(QStringLiteral("weeklyGrowth"), 0, 0, 10000);
         d.spellPoints = r.optionalInt(QStringLiteral("spellPoints"), 0, 0, 10000);
         d.cost = r.optionalIntMap(QStringLiteral("cost"), 1, 1000000);
@@ -641,6 +640,7 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         bb.hpPercentPerTraitLevel = br.optionalInt(QStringLiteral("hpPercentPerTraitLevel"), bb.hpPercentPerTraitLevel, 0, 100);
         bb.obstacles = br.optionalInt(QStringLiteral("obstacles"), bb.obstacles, 0, 30);
         bb.joinStrengthRatio = br.optionalInt(QStringLiteral("joinStrengthRatio"), bb.joinStrengthRatio, 0, 1000);
+        bb.joinCostPercent = br.optionalInt(QStringLiteral("joinCostPercent"), bb.joinCostPercent, 0, 1000);
         br.finish();
         if (br.ok()) m_balance.battle = bb;
     }

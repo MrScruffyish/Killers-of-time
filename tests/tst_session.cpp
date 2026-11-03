@@ -198,10 +198,14 @@ private slots:
         // Ask again (from where he stands) and welcome them.
         r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
         QVERIFY(r.info.contains("joinOffer"));
+        const int cost = r.info["joinOffer"].toObject()["cost"].toInt();
+        QCOMPARE(cost, 2 * reg.unit("militia")->cost.value("gold") * reg.balance().battle.joinCostPercent / 100);
+        const int gold = gs.player(pA)->resources.value("gold");
         r = doIt(1, net::msg::answerJoin, {{"answer", "accept"}});
         QVERIFY2(r.ok, qPrintable(r.message));
         QVERIFY(!gs.army(monsters));
         QCOMPARE(gs.army(h->army)->totalUnits(), before + 2);
+        QCOMPARE(gs.player(pA)->resources.value("gold"), gold - cost);  // they were paid
     }
 
     void bothHumansPlayTheirOwnStacks() {

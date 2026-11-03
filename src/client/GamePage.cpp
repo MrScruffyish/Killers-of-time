@@ -438,7 +438,12 @@ void GamePage::offerToJoin(const QJsonObject& offer) {
         icon->setPixmap(art::unitIcon(u.toObject()["unit"].toString(), def ? def->rank : 0, 72));
         row->addWidget(icon);
     }
-    auto* text = new QLabel(tr("<b>%1</b> are impressed by your army<br>and offer to join you.").arg(who.join(", ")), box);
+    const int cost = offer["cost"].toInt();
+    const int gold = m_view.resources.value(QStringLiteral("gold"));
+    auto* text = new QLabel(tr("<b>%1</b> are impressed by your army<br>and offer to join you for <b>%2 gold</b>%3.")
+                                .arg(who.join(", ")).arg(cost)
+                                .arg(gold < cost ? tr(" <span style='color:#ff6a5a'>(you have %1)</span>").arg(gold) : QString()),
+                            box);
     text->setTextFormat(Qt::RichText);
     row->addWidget(text, 1);
     v->addLayout(row);
@@ -450,9 +455,10 @@ void GamePage::offerToJoin(const QJsonObject& offer) {
             send(net::msg::answerJoin, {{"answer", a}}, what);
         };
     };
-    auto* accept = new QPushButton(tr("Welcome them"), box);
+    auto* accept = new QPushButton(tr("Pay %1 gold").arg(cost), box);
     accept->setObjectName("joinAccept");
-    accept->setDefault(true);
+    accept->setEnabled(gold >= cost);
+    accept->setDefault(gold >= cost);
     auto* fight = new QPushButton(tr("Fight"), box);
     fight->setObjectName("joinFight");
     auto* leave = new QPushButton(tr("Leave them"), box);
