@@ -18,5 +18,6 @@
     "undead",
     "flying",
     "no_retaliation"
-  ]
+  ],
+  "upgradesTo": "vampire_lord"
 }

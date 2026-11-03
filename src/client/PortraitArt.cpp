@@ -27,7 +27,8 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     p.setBrush(bg);
     p.drawRoundedRect(r, w * 0.12, w * 0.12);
     const bool undead = classId == "death_knight" || classId == "necromancer";
-    const QColor skin = undead ? QColor("#c8d0c0") : (seed % 3 == 0 ? QColor("#e8b890") : seed % 3 == 1 ? QColor("#f0c8a0") : QColor("#b07850"));
+    const bool orc = classId == "warlord" || classId == "shaman_chief";
+    const QColor skin = orc ? QColor("#7aa04a") : undead ? QColor("#c8d0c0") : (seed % 3 == 0 ? QColor("#e8b890") : seed % 3 == 1 ? QColor("#f0c8a0") : QColor("#b07850"));
     // Shoulders in the class's clothes.
     QColor coat = owner.darker(120);
     if (classId == "wizard") coat = QColor("#3a4aa0");
@@ -59,6 +60,21 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     p.setPen(QPen(ink, std::max(1.0, w / 80)));
     p.drawLine(QPointF(X(0.45), Y(0.54)), QPointF(X(0.55), Y(0.54)));
     // A beard for some.
+    if (classId == "thane" || classId == "runesmith") {  // a great dwarf beard
+        p.setPen(pen);
+        p.setBrush(QColor("#c86a2a"));
+        QPainterPath beard;
+        beard.moveTo(X(0.3), Y(0.44));
+        beard.quadTo(X(0.5), Y(0.95), X(0.7), Y(0.44));
+        beard.quadTo(X(0.5), Y(0.56), X(0.3), Y(0.44));
+        p.drawPath(beard);
+    }
+    if (orc) {  // tusks
+        p.setPen(QPen(ink, std::max(1.0, w / 80)));
+        p.setBrush(QColor("#f4f0e0"));
+        p.drawEllipse(QRectF(X(0.42), Y(0.5), w * 0.04, h * 0.06));
+        p.drawEllipse(QRectF(X(0.54), Y(0.5), w * 0.04, h * 0.06));
+    }
     if (classId == "wizard" || classId == "druid" || (classId == "knight" && seed % 2)) {
         p.setPen(pen);
         p.setBrush(classId == "wizard" ? QColor("#e8e8f0") : QColor("#7a5a30"));
@@ -96,6 +112,13 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
         hood.quadTo(X(0.66), Y(0.28), X(0.5), Y(0.27));
         hood.quadTo(X(0.34), Y(0.28), X(0.26), Y(0.5));
         p.drawPath(hood);
+    } else if (classId == "runesmith" || classId == "shaman_chief") {
+        // A hood with a glowing rune (runesmith) or a bone headdress (shaman).
+        p.setBrush(classId == "runesmith" ? QColor("#5a4a6a") : QColor("#ece4cc"));
+        p.drawChord(QRectF(X(0.26), Y(0.12), w * 0.48, h * 0.34), 0, 180 * 16);
+        p.setPen(Qt::NoPen);
+        p.setBrush(classId == "runesmith" ? QColor("#80c0ff") : QColor("#c03a2a"));
+        p.drawEllipse(QPointF(X(0.5), Y(0.2)), w * 0.04, w * 0.04);
     } else if (classId == "druid") {
         // A crown of leaves.
         for (int i = 0; i < 7; ++i) {
@@ -109,7 +132,7 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
         }
     } else {
         // Helmets: steel for knights, black with a skull look for death knights.
-        const bool dark = classId == "death_knight";
+        const bool dark = classId == "death_knight" || classId == "warlord";
         p.setBrush(dark ? QColor("#3a3640") : QColor("#c8ccd8"));
         p.drawChord(QRectF(X(0.27), Y(0.16), w * 0.46, h * 0.36), 0, 180 * 16);
         p.drawRect(QRectF(X(0.27), Y(0.33), w * 0.46, h * 0.05));

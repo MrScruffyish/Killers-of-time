@@ -1,0 +1,17 @@
+{
+  "id": "hobgoblin",
+  "name": "Hobgoblin",
+  "race": "orcs",
+  "tier": 1,
+  "attack": 5,
+  "defense": 3,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 8,
+  "battleSpeed": 7,
+  "weeklyGrowth": 16,
+  "cost": {
+    "gold": 40
+  },
+  "initiative": 10
+}

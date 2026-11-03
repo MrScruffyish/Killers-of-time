@@ -1,0 +1,16 @@
+{
+  "id": "veteran_hall",
+  "name": "Veterans' Hall",
+  "race": "dwarves",
+  "cost": {
+    "gold": 500,
+    "stone": 5
+  },
+  "upgradeOf": "dwarf_hall",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "dwarf_veteran"
+    }
+  ]
+}

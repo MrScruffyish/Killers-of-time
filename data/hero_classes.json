@@ -180,6 +180,126 @@
         "cure",
         "swift_march"
       ]
+    },
+    {
+      "id": "thane",
+      "name": "Thane",
+      "race": "dwarves",
+      "baseTraits": {
+        "attack": 2,
+        "defense": 4,
+        "morale": 1,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 10,
+        "spell_recovery": 1,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "defense": 2,
+        "attack": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "dwarf_warrior": 10,
+        "axe_thrower": 3
+      },
+      "startingSpells": [
+        "stone_skin"
+      ]
+    },
+    {
+      "id": "runesmith",
+      "name": "Runesmith",
+      "race": "dwarves",
+      "baseTraits": {
+        "attack": 1,
+        "defense": 2,
+        "spell_power": 3,
+        "magic": 3,
+        "spell_points_max": 28,
+        "spell_recovery": 2,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2,
+        "magic": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "dwarf_warrior": 8,
+        "axe_thrower": 2
+      },
+      "startingSpells": [
+        "stone_skin",
+        "cure"
+      ]
+    },
+    {
+      "id": "warlord",
+      "name": "Warlord",
+      "race": "orcs",
+      "baseTraits": {
+        "attack": 4,
+        "defense": 1,
+        "morale": 2,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 8,
+        "spell_recovery": 1,
+        "movement_points": 2,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "attack": 2,
+        "movement_points": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "goblin": 18,
+        "wolf_rider": 3
+      },
+      "startingSpells": [
+        "haste"
+      ]
+    },
+    {
+      "id": "shaman_chief",
+      "name": "Shaman Chief",
+      "race": "orcs",
+      "baseTraits": {
+        "attack": 2,
+        "defense": 1,
+        "spell_power": 3,
+        "magic": 3,
+        "spell_points_max": 26,
+        "spell_recovery": 2,
+        "movement_points": 2,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2,
+        "magic": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "goblin": 14,
+        "wolf_rider": 2
+      },
+      "startingSpells": [
+        "haste",
+        "curse"
+      ]
     }
   ]
 }

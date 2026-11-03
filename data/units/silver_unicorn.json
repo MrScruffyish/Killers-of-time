@@ -1,0 +1,18 @@
+{
+  "id": "silver_unicorn",
+  "name": "Silver Unicorn",
+  "race": "sylvan",
+  "tier": 4,
+  "attack": 17,
+  "defense": 16,
+  "damageMin": 20,
+  "damageMax": 28,
+  "maxHp": 110,
+  "battleSpeed": 10,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 2400,
+    "gems": 1
+  },
+  "initiative": 11
+}

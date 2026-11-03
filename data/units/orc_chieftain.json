@@ -1,0 +1,20 @@
+{
+  "id": "orc_chieftain",
+  "name": "Orc Chieftain",
+  "race": "orcs",
+  "tier": 3,
+  "attack": 14,
+  "defense": 9,
+  "damageMin": 8,
+  "damageMax": 13,
+  "maxHp": 45,
+  "battleSpeed": 6,
+  "weeklyGrowth": 6,
+  "cost": {
+    "gold": 585
+  },
+  "initiative": 8,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

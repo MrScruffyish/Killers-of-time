@@ -13,5 +13,6 @@
   "cost": {
     "gold": 1500
   },
-  "initiative": 11
+  "initiative": 11,
+  "upgradesTo": "paladin"
 }

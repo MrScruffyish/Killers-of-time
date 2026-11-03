@@ -1,0 +1,22 @@
+{
+  "id": "earth_titan",
+  "name": "Earth Titan",
+  "race": "dwarves",
+  "tier": 5,
+  "attack": 22,
+  "defense": 24,
+  "damageMin": 40,
+  "damageMax": 55,
+  "maxHp": 220,
+  "battleSpeed": 6,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3920,
+    "stone": 5
+  },
+  "initiative": 7,
+  "spellPoints": 20,
+  "spells": [
+    "rock_fall"
+  ]
+}

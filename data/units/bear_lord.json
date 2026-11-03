@@ -1,0 +1,17 @@
+{
+  "id": "bear_lord",
+  "name": "Bear Lord",
+  "race": "dwarves",
+  "tier": 4,
+  "attack": 17,
+  "defense": 19,
+  "damageMin": 16,
+  "damageMax": 25,
+  "maxHp": 110,
+  "battleSpeed": 7,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1905
+  },
+  "initiative": 9
+}

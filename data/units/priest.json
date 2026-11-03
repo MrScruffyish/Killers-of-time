@@ -1,0 +1,25 @@
+{
+  "id": "priest",
+  "name": "Priest",
+  "race": "humans",
+  "tier": 3,
+  "attack": 10,
+  "defense": 9,
+  "damageMin": 8,
+  "damageMax": 12,
+  "maxHp": 35,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 500,
+    "gems": 1
+  },
+  "initiative": 10,
+  "range": 7,
+  "shots": 14,
+  "spellPoints": 16,
+  "spells": [
+    "cure",
+    "bless"
+  ]
+}

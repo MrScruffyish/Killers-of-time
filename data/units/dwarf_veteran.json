@@ -1,0 +1,17 @@
+{
+  "id": "dwarf_veteran",
+  "name": "Dwarf Veteran",
+  "race": "dwarves",
+  "tier": 1,
+  "attack": 6,
+  "defense": 9,
+  "damageMin": 3,
+  "damageMax": 4,
+  "maxHp": 18,
+  "battleSpeed": 4,
+  "weeklyGrowth": 10,
+  "cost": {
+    "gold": 75
+  },
+  "initiative": 6
+}

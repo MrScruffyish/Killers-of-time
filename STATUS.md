@@ -189,6 +189,7 @@ and react to; add depth afterwards.
 - [x] Lobby: one Start button (adds a computer opponent when there is nobody to play against); Home or the button next to the hero list centres the map on the hero
 - [x] Spell book: casting opens cards with a school rune, cost and description (not castable ones greyed); build list: built buildings in one line, "built today" said once, narrower columns
 - [x] Routes go around visible enemies' zones of control when there is a way (server and planner alike), even if longer; hold and drag the map to move it
+- [x] Two new races: Dwarves (hills and snow, earth and water magic: warriors, axe throwers, golems, rune priests, bear riders, earth titan) and Orcs (steppe, air and dark magic: goblins, wolf riders, orc warriors, shamans, cyclopes, behemoth), each with upgrade paths, dwellings, 2 hero classes and 4 tavern heroes; new upgrades for the old races (forest warden, silver unicorn, paladin, priest, vampire lord, arch lich); neutral monsters giant spider, fire elemental, basilisk, minotaur, hydra; 14 new artifacts (24); pictures, town looks and portraits for all. Content: 5 races, 67 units, 66 buildings, 24 spells
 - [~] Balance: a quick pass on prices (crusader, swordsman, cavalier, vampire, ogre, troll, snail, ancient treant dearer; green dragon cheaper): power per 1000 gold now 3.2-3.5k for every race. More later with kot_balance_gui
 
 ---

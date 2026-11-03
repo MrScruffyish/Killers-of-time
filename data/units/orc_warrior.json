@@ -1,0 +1,18 @@
+{
+  "id": "orc_warrior",
+  "name": "Orc Warrior",
+  "race": "orcs",
+  "tier": 3,
+  "attack": 12,
+  "defense": 7,
+  "damageMin": 7,
+  "damageMax": 11,
+  "maxHp": 38,
+  "battleSpeed": 5,
+  "weeklyGrowth": 6,
+  "cost": {
+    "gold": 430
+  },
+  "initiative": 7,
+  "upgradesTo": "orc_chieftain"
+}

@@ -23,6 +23,8 @@ struct Palette {
 Palette paletteFor(const QString& race) {
     if (race == "undead") return {QColor("#7a7482"), QColor("#3a3048"), QColor("#4a3a30"), QColor("#9aff9a")};
     if (race == "sylvan") return {QColor("#b8b090"), QColor("#3e7a3a"), QColor("#9a7444"), QColor("#ffe27a")};
+    if (race == "dwarves") return {QColor("#9a948a"), QColor("#6a4a2a"), QColor("#7a5a3a"), QColor("#ff9a30")};
+    if (race == "orcs") return {QColor("#b09a7a"), QColor("#8a2a1a"), QColor("#8a6a3a"), QColor("#ffb040")};
     return {QColor("#cfc6b2"), QColor("#a03a2a"), QColor("#8a5a2b"), QColor("#ffd27a")};
 }
 

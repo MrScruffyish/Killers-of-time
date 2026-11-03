@@ -1,0 +1,16 @@
+{
+  "id": "warden_lodge",
+  "name": "Wardens' Lodge",
+  "race": "sylvan",
+  "cost": {
+    "gold": 450,
+    "wood": 5
+  },
+  "upgradeOf": "woodcutters_lodge",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "forest_warden"
+    }
+  ]
+}

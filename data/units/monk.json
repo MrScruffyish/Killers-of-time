@@ -20,5 +20,6 @@
   "spellPoints": 12,
   "spells": [
     "cure"
-  ]
+  ],
+  "upgradesTo": "priest"
 }

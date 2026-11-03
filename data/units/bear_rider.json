@@ -1,0 +1,18 @@
+{
+  "id": "bear_rider",
+  "name": "Bear Rider",
+  "race": "dwarves",
+  "tier": 4,
+  "attack": 15,
+  "defense": 17,
+  "damageMin": 14,
+  "damageMax": 22,
+  "maxHp": 95,
+  "battleSpeed": 6,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1455
+  },
+  "initiative": 8,
+  "upgradesTo": "bear_lord"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "paladin",
+  "name": "Paladin",
+  "race": "humans",
+  "tier": 4,
+  "attack": 17,
+  "defense": 17,
+  "damageMin": 18,
+  "damageMax": 28,
+  "maxHp": 115,
+  "battleSpeed": 9,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1900
+  },
+  "initiative": 12
+}

@@ -1,0 +1,18 @@
+{
+  "id": "cyclops_cave",
+  "name": "Cyclops Cave",
+  "race": "orcs",
+  "cost": {
+    "gold": 2800,
+    "stone": 10
+  },
+  "requires": [
+    "war_camp"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "cyclops"
+    }
+  ]
+}

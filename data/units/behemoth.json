@@ -1,0 +1,20 @@
+{
+  "id": "behemoth",
+  "name": "Behemoth",
+  "race": "orcs",
+  "tier": 5,
+  "attack": 24,
+  "defense": 16,
+  "damageMin": 45,
+  "damageMax": 60,
+  "maxHp": 210,
+  "battleSpeed": 7,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 4290
+  },
+  "initiative": 8,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

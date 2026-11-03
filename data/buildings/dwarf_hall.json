@@ -1,0 +1,15 @@
+{
+  "id": "dwarf_hall",
+  "name": "Dwarf Hall",
+  "race": "dwarves",
+  "cost": {
+    "gold": 350,
+    "stone": 5
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "dwarf_warrior"
+    }
+  ]
+}

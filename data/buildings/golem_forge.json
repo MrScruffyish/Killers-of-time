@@ -1,0 +1,18 @@
+{
+  "id": "golem_forge",
+  "name": "Golem Forge",
+  "race": "dwarves",
+  "cost": {
+    "gold": 1500,
+    "stone": 15
+  },
+  "requires": [
+    "axe_range"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "stone_golem"
+    }
+  ]
+}

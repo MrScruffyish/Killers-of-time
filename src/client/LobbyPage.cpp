@@ -375,7 +375,8 @@ void LobbyPage::rebuild() {
         for (const QString& id : m_client->races()) {
             const core::RaceDef* def = m_content && m_content->races().contains(id) ? &m_content->race(id) : nullptr;
             // A face for the race: one of its typical units.
-            static const QMap<QString, QString> face = {{"humans", "cavalier"}, {"sylvan", "elf_archer"}, {"undead", "skeleton"}};
+            static const QMap<QString, QString> face = {{"humans", "cavalier"}, {"sylvan", "elf_archer"}, {"undead", "skeleton"},
+                                                         {"dwarves", "dwarf_warrior"}, {"orcs", "orc_warrior"}};
             race->addItem(QIcon(art::unitIcon(face.value(id, id), 0, 32)), def ? def->name : id, id);
             if (def) race->setItemData(race->count() - 1, def->description, Qt::ToolTipRole);
         }

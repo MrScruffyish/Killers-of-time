@@ -1,0 +1,15 @@
+{
+  "id": "dwarves",
+  "name": "Dwarves",
+  "description": "Mountain folk: slow, tough and well armoured, quick in the hills and snow. Earth and water magic.",
+  "growthPercent": 0,
+  "incomePercent": 10,
+  "terrainCostPercent": {
+    "hills": 60,
+    "snow": 70
+  },
+  "spellSchools": [
+    "earth",
+    "water"
+  ]
+}

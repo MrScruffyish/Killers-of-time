@@ -1,0 +1,20 @@
+{
+  "id": "warg_rider",
+  "name": "Warg Rider",
+  "race": "orcs",
+  "tier": 2,
+  "attack": 9,
+  "defense": 5,
+  "damageMin": 4,
+  "damageMax": 7,
+  "maxHp": 22,
+  "battleSpeed": 9,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 220
+  },
+  "initiative": 12,
+  "abilities": [
+    "double_attack"
+  ]
+}

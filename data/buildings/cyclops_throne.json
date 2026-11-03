@@ -1,0 +1,16 @@
+{
+  "id": "cyclops_throne",
+  "name": "Cyclops Throne",
+  "race": "orcs",
+  "cost": {
+    "gold": 3200,
+    "stone": 10
+  },
+  "upgradeOf": "cyclops_cave",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "cyclops_king"
+    }
+  ]
+}

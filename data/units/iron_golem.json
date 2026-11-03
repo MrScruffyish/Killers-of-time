@@ -1,0 +1,18 @@
+{
+  "id": "iron_golem",
+  "name": "Iron Golem",
+  "race": "dwarves",
+  "tier": 3,
+  "attack": 12,
+  "defense": 18,
+  "damageMin": 8,
+  "damageMax": 12,
+  "maxHp": 65,
+  "battleSpeed": 4,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 625,
+    "stone": 2
+  },
+  "initiative": 4
+}

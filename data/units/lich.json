@@ -23,5 +23,6 @@
   "spellPoints": 15,
   "spells": [
     "death_touch"
-  ]
+  ],
+  "upgradesTo": "arch_lich"
 }

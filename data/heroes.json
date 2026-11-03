@@ -90,6 +90,46 @@
       "id": "faelan",
       "name": "Faelan",
       "class": "druid"
+    },
+    {
+      "id": "borin",
+      "name": "Borin",
+      "class": "thane"
+    },
+    {
+      "id": "dagna",
+      "name": "Dagna",
+      "class": "thane"
+    },
+    {
+      "id": "thorek",
+      "name": "Thorek",
+      "class": "runesmith"
+    },
+    {
+      "id": "helga",
+      "name": "Helga",
+      "class": "runesmith"
+    },
+    {
+      "id": "grosh",
+      "name": "Grosh",
+      "class": "warlord"
+    },
+    {
+      "id": "urka",
+      "name": "Urka",
+      "class": "warlord"
+    },
+    {
+      "id": "zugra",
+      "name": "Zugra",
+      "class": "shaman_chief"
+    },
+    {
+      "id": "morgul",
+      "name": "Morgul",
+      "class": "shaman_chief"
     }
   ]
 }

@@ -35,7 +35,7 @@ private slots:
     }
 
     void racesLoad() {
-        QCOMPARE(reg.raceIds(), QStringList({"humans", "sylvan", "undead"}));
+        QCOMPARE(reg.raceIds(), QStringList({"dwarves", "humans", "orcs", "sylvan", "undead"}));
         QCOMPARE(reg.race("undead").growthPercent, 25);
         QCOMPARE(reg.race("sylvan").terrainCostPercent.value("forest"), 50);
         QCOMPARE(reg.race("nobody").growthPercent, 0);  // defaults

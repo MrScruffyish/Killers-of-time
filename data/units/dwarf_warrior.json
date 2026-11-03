@@ -1,0 +1,18 @@
+{
+  "id": "dwarf_warrior",
+  "name": "Dwarf Warrior",
+  "race": "dwarves",
+  "tier": 1,
+  "attack": 5,
+  "defense": 7,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 14,
+  "battleSpeed": 3,
+  "weeklyGrowth": 10,
+  "cost": {
+    "gold": 50
+  },
+  "initiative": 5,
+  "upgradesTo": "dwarf_veteran"
+}
