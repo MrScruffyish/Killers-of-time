@@ -1,13 +1,17 @@
 #include "client/MapView.h"
 
+#include <utility>
+
 #include <QHelpEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPen>
 #include <QScrollBar>
 #include <QToolTip>
 #include <QWheelEvent>
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include "client/Art.h"
 #include "core/content/ContentRegistry.h"
@@ -38,16 +42,27 @@ void MapView::setView(const GameView& view) {
         const core::TerrainDef* t = m_content ? m_content->terrainType(terrain) : nullptr;
         m_paletteColors.append(t ? QColor(t->color) : QColor(Qt::magenta));
     }
-    if (m_content) m_planner.prepare(m_view, *m_content, m_selectedHero);
-    m_plan = m_planner.plan(m_hover);
+    replan();
     updateScrollBars();
     viewport()->update();
 }
 
 void MapView::setSelectedHero(int heroId) {
     m_selectedHero = heroId;
+    replan();
+}
+
+void MapView::replan() {
     if (m_content) m_planner.prepare(m_view, *m_content, m_selectedHero);
     m_plan = m_planner.plan(m_hover);
+    m_routePlan = m_route ? m_planner.plan(*m_route) : MovePlan();
+    viewport()->update();
+}
+
+void MapView::setRoute(std::optional<core::Pos> target) {
+    if (target == m_route) return;
+    m_route = target;
+    m_routePlan = m_route ? m_planner.plan(*m_route) : MovePlan();
     viewport()->update();
 }
 
@@ -130,8 +145,12 @@ QString MapView::describeTile(core::Pos t) const {
     if (m_plan.found && m_plan.steps.last() == t) {
         lines << (m_plan.affordable == m_plan.steps.size()
                       ? tr("Reachable today (%1 steps)").arg(m_plan.steps.size())
-                      : tr("%1 of %2 steps today").arg(m_plan.affordable).arg(m_plan.steps.size()));
+                      : tr("%1 of %2 steps today; the rest on the next days").arg(m_plan.affordable).arg(m_plan.steps.size()));
+        if (m_plan.ambushAt >= 0)
+            lines << tr("Attacked on the way after %1 steps (zone of control)").arg(m_plan.ambushAt + 1);
+        lines << (m_route == t ? tr("Double click or Enter: go") : tr("Click: plot the route"));
     }
+    if (m_planner.dangerTiles().contains(t)) lines << tr("Too close to a hostile army: it attacks here");
     return lines.join("\n");
 }
 
@@ -248,18 +267,45 @@ void MapView::paintEvent(QPaintEvent*) {
     if (m_view.isMyTurn() && m_planner.ready()) {
         for (const core::Pos t : m_planner.reachableToday())
             if (t.x >= x0 && t.x <= x1 && t.y >= y0 && t.y <= y1) p.fillRect(tileRect(t), QColor(255, 255, 255, 40));
-        if (m_plan.found) {
-            for (int i = 0; i < m_plan.steps.size(); ++i) {
-                const QRect r = tileRect(m_plan.steps[i]);
-                const int d = std::max(3, m_tile / 4);
-                p.setPen(Qt::NoPen);
-                p.setBrush(i < m_plan.affordable ? QColor("#ffffff") : QColor("#ff4040"));
-                p.drawEllipse(r.center(), d / 2, d / 2);
-            }
-        }
+        for (const core::Pos t : m_planner.dangerTiles())
+            if (t.x >= x0 && t.x <= x1 && t.y >= y0 && t.y <= y1 && m_view.inSight(t)) p.fillRect(tileRect(t), QColor(255, 60, 0, 45));
+        if (m_routePlan.found) drawPlan(p, m_routePlan, true);
+        if (m_plan.found && !(m_route && m_plan.steps.last() == *m_route)) drawPlan(p, m_plan, false);
     }
     for (const ViewHero& h : m_view.heroes)
         if (shown(h.pos)) art::drawHero(p, inner(h.pos), ownerColor(h.owner), h.id == m_selectedHero, h.inBoat);
+}
+
+void MapView::drawPlan(QPainter& p, const MovePlan& plan, bool pinned) const {
+    // Pinned route: big dots, white today, red later; a preview: small and faint.
+    p.save();
+    p.setPen(Qt::NoPen);
+    const int last = plan.ambushAt >= 0 ? plan.ambushAt : plan.steps.size() - 1;
+    for (int i = 0; i < plan.steps.size(); ++i) {
+        const QRect r = tileRect(plan.steps[i]);
+        int d = std::max(3, m_tile / (pinned ? 3 : 5));
+        QColor c = i < plan.affordable ? QColor("#ffffff") : QColor("#ff4040");
+        if (!pinned) c.setAlpha(150);
+        if (i > last) c.setAlpha(pinned ? 90 : 60);
+        if (i == plan.steps.size() - 1 && pinned) {
+            // The goal: a ring.
+            p.setBrush(Qt::NoBrush);
+            p.setPen(QPen(c, std::max(2, m_tile / 10)));
+            p.drawEllipse(r.center(), m_tile / 3, m_tile / 3);
+            p.setPen(Qt::NoPen);
+            continue;
+        }
+        p.setBrush(c);
+        p.drawEllipse(r.center(), d / 2, d / 2);
+    }
+    if (plan.ambushAt >= 0) {
+        // Where the hero would be attacked: an orange cross.
+        const QRect r = tileRect(plan.steps[plan.ambushAt]).adjusted(m_tile / 4, m_tile / 4, -m_tile / 4, -m_tile / 4);
+        p.setPen(QPen(QColor("#ff9020"), std::max(2, m_tile / 8), Qt::SolidLine, Qt::RoundCap));
+        p.drawLine(r.topLeft(), r.bottomRight());
+        p.drawLine(r.topRight(), r.bottomLeft());
+    }
+    p.restore();
 }
 
 void MapView::mousePressEvent(QMouseEvent* event) {
@@ -267,7 +313,16 @@ void MapView::mousePressEvent(QMouseEvent* event) {
     event->accept();
 }
 
+void MapView::mouseDoubleClickEvent(QMouseEvent* event) {
+    event->accept();
+    if (event->button() != Qt::LeftButton) return;
+    m_doubleClicked = true;  // the release that follows is not another click
+    const core::Pos t = tileAt(event->pos());
+    if (m_view.inBounds(t)) emit tileDoubleClicked(t);
+}
+
 void MapView::mouseReleaseEvent(QMouseEvent* event) {
+    if (std::exchange(m_doubleClicked, false)) return;
     if ((event->pos() - m_pressPos).manhattanLength() > 6) return;
     const core::Pos t = tileAt(event->pos());
     if (!m_view.inBounds(t)) return;

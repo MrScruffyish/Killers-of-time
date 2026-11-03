@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-03 (session 17, Claude Code)
 **Current milestone:** first versions of every part of the game are in (M0-M10), plus content tools, scenarios, campaigns, art, sound and packaging. Now: playtesting and polish
-**Next session should do:** react to the user's playtest (balance with kot_balance_gui, bugs, feel). Open ideas: 2-hex units, surrender/sieges, a smarter battle AI, real art
+**Next session should do:** react to the user's playtest (balance with kot_balance_gui, bugs, feel). Open ideas: surrender/sieges, a smarter battle AI, real art
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -104,7 +104,7 @@ and react to; add depth afterwards.
 - [x] Unit abilities (flying, no_retaliation, double_attack, undead), rocks, wait, retreat (attacker)
 - [x] Town walls (building effect `defense`: Fort +3, Citadel +3 more)
 - [x] Unit veterancy: stacks gain experience in battle, 0-5 stars with small bonuses (morale, initiative, battle speed, attack, defense; data), averaged when merging; shown as stars. Tests: `tst_veterancy` (38 test programs)
-- [ ] Later: 2-hex units, surrender, defender retreat, siege
+- [ ] Later: surrender, defender retreat, siege (no 2-hex units: every unit takes one hex, decided)
 
 ## M7: Magic
 - [x] Effect primitive system and spell data format (`spells/<id>.json`; damage, heal, modifyStat, movement, reveal; strength = amount + perPower x Spell Power); 8 sample spells
@@ -142,7 +142,9 @@ and react to; add depth afterwards.
 - [x] Island maps (lobby map type; sea channels, one island per player, starts near the shore) and the AI uses boats when its island is done
 - [x] Weekly events (`events.json`: resources for everyone, growth changes, extra units; announced in the client)
 - [x] Hero screen (H): experience bar, traits by group with + buttons for level-up picks, army with stats and stars, spellbook and artifacts with descriptions
-- [x] Unit upkeep (D9): 10% of the units' gold cost per week; unpaid = -2 morale that week; shown in the status bar
+- [x] Routes: a click plots the route (dots, ring at the goal), double click or Enter walks it; a move that runs out of movement keeps its destination for the next day (saved; the AI uses it too)
+- [x] Zone of control: monsters and enemy heroes on the map attack a hero who comes within 2 tiles (shown in orange; the planned path marks where); new Scouting trait: +vision, +movement, smaller zone (balance.json "scouting")
+- [x] End turn button glows when no hero can move; town build tab: buildable first, "only what I can build", What it does, bigger Close
 - [ ] Playtesting
 
 ---
@@ -153,7 +155,8 @@ and react to; add depth afterwards.
 | 2026-11-01 | Sequential turns (D1); hex battle grid (D2); spell-point magic (D5); placeholder art (D7); title "Killers of Time" (D11); Ubuntu + Qt Creator; one trait boost per level-up (D13) |
 | 2026-11-01 | Added traits: Spell Recovery, Magic (gates spells), Hit Points; split Speed into Movement Points + Battle Speed (D14); units have own speeds; slowest unit only slightly lowers army map movement; auto max-SP + one picked trait per level (D13) |
 | 2026-11-01 | Added Luck and Attack Range traits; Hit Points confirmed; traits grouped Battle / Magic / Explore (D16, D17) |
-| 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); upkeep later, affects morale (D9); survivors heal fully after battle for now (D18) |
+| 2026-11-03 | No 2-hex units, every unit takes one hex |
+| 2026-11-01 | Stacks with pooled HP; hero HP bonus flat + percent (D16); survivors heal fully after battle for now (D18) |
 | 2026-11-01 | Terrain uses `walkable`/`sailable`/`moveCost` (100 = one tile) instead of `passable`/`requiresBoat`; data files are strict (unknown fields are errors, `_` keys are comments); unit id must equal file name; exactly one currency resource |
 | 2026-11-01 | Work breadth-first (user suggestion): thin version of every part of the game first, depth later. Client is Qt Widgets with a custom scroll-area map; the server computes what can be built/recruited and sends the reasons, the client only displays them. Lobby: unchanged settings no longer reset ready flags (found by the GUI test) |
 | 2026-11-01 | Game over the network: the full filtered view is sent after every change (no deltas yet; fine for now); players of the same team see each other in full, resources are private; a player who leaves is played by the passive AI; starting resources and hero class starting armies are data; bug found by tests: all players are now initialised at game start, not only the first |
@@ -177,7 +180,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
-- **Session 17:** Moved to Claude Code (CLAUDE.md added). Long autonomous run: battle depth, map content, AI, difficulty, client polish, tools (kot_graph, kot_balance(_gui), kot_mapgen, kot_editor), scenarios, campaigns, veterancy, art, sound, packaging, hero screen, weekly events, boats and islands, upkeep (41 test programs). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple). Three races.
+- **Session 17:** Moved to Claude Code (CLAUDE.md added). Long autonomous run: battle depth, map content, AI, difficulty, client polish, tools (kot_graph, kot_balance(_gui), kot_mapgen, kot_editor), scenarios, campaigns, veterancy, art, sound, packaging, hero screen, weekly events, boats and islands (41 test programs). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple). Three races.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.

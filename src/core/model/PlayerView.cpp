@@ -1,6 +1,5 @@
 #include "core/model/PlayerView.h"
 
-#include "core/rules/TurnCycle.h"
 #include "core/rules/Veterancy.h"
 #include "core/rules/Victory.h"
 
@@ -47,8 +46,6 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     view.insert("you", id(viewer.value()));
     const Player* me = state.player(viewer);
     view.insert("resources", intMap(me ? me->resources : ResourceAmounts()));
-    view.insert("upkeep", me ? weeklyUpkeep(state, content, viewer) : 0);
-    view.insert("upkeepUnpaid", me && me->upkeepUnpaid);
 
     QJsonArray players;
     for (const Player& p : state.players()) {
@@ -126,6 +123,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             o.insert("template", h.templateId);
             o.insert("spells", QJsonArray::fromStringList(h.spells));
             o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));
+            if (h.destination) o.insert("destination", QJsonArray{h.destination->x, h.destination->y});
         }
         heroes.append(o);
     }

@@ -3,6 +3,9 @@
 #include <QAbstractScrollArea>
 #include <QColor>
 #include <QList>
+#include <optional>
+
+class QPainter;
 
 #include "client/MovePlanner.h"
 #include "client/ViewModel.h"
@@ -36,16 +39,25 @@ public:
     // The visible part of the map, in tiles (for the minimap).
     QRect visibleTiles() const;
     const MovePlan& plan() const { return m_plan; }
+    // The plotted route of the selected hero (single click sets it; shown until
+    // cleared). Without one the path under the mouse is previewed.
+    void setRoute(std::optional<core::Pos> target);
+    std::optional<core::Pos> route() const { return m_route; }
+    const MovePlan& routePlan() const { return m_routePlan; }
+    // Can the selected hero still take a step today?
+    bool canMoveToday() const { return m_planner.ready() && !m_planner.reachableToday().isEmpty(); }
 
 signals:
     void tileClicked(core::Pos tile);        // left click
     void tileRightClicked(core::Pos tile);   // right click
+    void tileDoubleClicked(core::Pos tile);  // left double click
     void scrolled();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -55,6 +67,8 @@ protected:
 
 private:
     void updateScrollBars();
+    void replan();
+    void drawPlan(QPainter& p, const MovePlan& plan, bool pinned) const;
     QColor ownerColor(int owner) const;
 
     const core::ContentRegistry* m_content;
@@ -64,7 +78,10 @@ private:
     int m_tile = 28;
     QPoint m_pressPos;
     MovePlanner m_planner;
-    MovePlan m_plan;
+    MovePlan m_plan;       // under the mouse
+    MovePlan m_routePlan;  // to the plotted route's target
+    std::optional<core::Pos> m_route;
+    bool m_doubleClicked = false;
     core::Pos m_hover{-1, -1};
 };
 

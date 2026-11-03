@@ -90,6 +90,13 @@
       "group": "explore",
       "pickable": true,
       "description": "Vision radius on the adventure map."
+    },
+    {
+      "id": "scouting",
+      "name": "Scouting",
+      "group": "explore",
+      "pickable": true,
+      "description": "Sees farther, moves a little faster and can pass closer by monsters and enemy heroes without being attacked (zone of control)."
     }
   ]
 }

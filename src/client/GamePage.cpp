@@ -13,11 +13,14 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QShortcut>
+#include <QStyle>
+#include <QTimer>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
 #include "client/BattleView.h"
 #include "client/MapView.h"
+#include "client/MovePlanner.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
 #include "client/Sound.h"
@@ -119,6 +122,14 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_townDialog = new TownDialog(content, this);
 
     connect(m_map, &MapView::tileClicked, this, &GamePage::onTileClicked);
+    connect(m_map, &MapView::tileDoubleClicked, this, [this](core::Pos tile) {
+        const ViewHero* at = m_view.heroAt(tile);
+        if (at && at->owner == m_view.you) return selectHero(at->id);
+        if (!m_selectedHero) return;
+        m_routes.insert(m_selectedHero, tile);
+        m_map->setRoute(tile);
+        goAlongRoute();
+    });
     connect(m_map, &MapView::scrolled, this, [this]() { m_miniMap->setVisibleTiles(m_map->visibleTiles()); });
     connect(m_miniMap, &MiniMap::centerRequested, this, [this](core::Pos t) {
         m_map->centerOn(t);
@@ -132,6 +143,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     };
     shortcut("E", [this]() { if (m_endTurn->isEnabled()) m_endTurn->click(); });
     shortcut("N", [this]() { selectNextHero(); });
+    shortcut("Return", [this]() { goAlongRoute(); });
+    shortcut("Enter", [this]() { goAlongRoute(); });
     shortcut("M", [this]() {
         sound::setMuted(!sound::muted());
         log(sound::muted() ? tr("Sound off (M)") : tr("Sound on (M)"));
@@ -149,6 +162,14 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
         if (t && t->mine) m_townDialog->showTown(m_view, t->id);
     });
     m_endTurn->setToolTip(tr("End your turn (E)"));
+    m_pulse = new QTimer(this);
+    m_pulse->setInterval(650);
+    connect(m_pulse, &QTimer::timeout, this, [this]() {
+        m_pulseOn = !m_pulseOn;
+        m_endTurn->setProperty("pulse", m_pulseOn);
+        m_endTurn->style()->unpolish(m_endTurn);
+        m_endTurn->style()->polish(m_endTurn);
+    });
     connect(m_map, &MapView::tileRightClicked, this, &GamePage::onTileRightClicked);
     connect(m_heroCombo, &QComboBox::activated, this, [this](int i) { selectHero(m_heroCombo->itemData(i).toInt()); });
     connect(m_levelUp, &QPushButton::clicked, this, [this]() {
@@ -239,6 +260,7 @@ void GamePage::onViewChanged() {
     }
     m_map->setView(m_view);
     m_map->setSelectedHero(m_selectedHero);
+    syncRoutes();
     m_miniMap->setView(m_view);
     m_miniMap->setVisibleTiles(m_map->visibleTiles());
     if (!m_centered && m_selectedHero) {
@@ -387,9 +409,7 @@ void GamePage::updateStatus() {
     m_status->setText(tr("<b>Day %1</b> (week %4, %5) &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3%6")
                           .arg(m_view.day)
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
-                          .arg(res.join(", ") + (m_view.upkeep > 0 ? tr(" &nbsp;(upkeep %1/week%2)").arg(m_view.upkeep)
-                                                         .arg(m_view.upkeepUnpaid ? tr(", <b style='color:#ff6060'>unpaid: morale -2</b>") : QString())
-                                                   : QString()))
+                          .arg(res.join(", "))
                           .arg((m_view.day - 1) / 7 + 1)
                           .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty)
                           .arg(campaign));
@@ -397,6 +417,7 @@ void GamePage::updateStatus() {
     const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
     for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits, m_castSpell}) b->setEnabled(free);
     m_save->setEnabled(!m_view.battle.present && !m_view.battleInProgress && !m_view.gameOver);
+    updateEndTurnHighlight();
 
     m_townList->clear();
     for (const ViewTown* t : m_view.myTowns()) {
@@ -495,6 +516,8 @@ void GamePage::castAdventureSpell() {
 void GamePage::selectHero(int id) {
     m_selectedHero = id;
     m_map->setSelectedHero(id);
+    const auto r = m_routes.constFind(id);
+    m_map->setRoute(r == m_routes.cend() ? std::nullopt : std::optional<core::Pos>(*r));
     updateHeroPanel();
     const ViewHero* h = m_view.hero(id);
     if (h) m_map->centerOn(h->pos);
@@ -507,11 +530,65 @@ void GamePage::onTileClicked(core::Pos tile) {
         return;
     }
     if (!m_selectedHero) return;
+    // A click plots the route; double click or Enter walks it.
+    m_routes.insert(m_selectedHero, tile);
+    m_map->setRoute(tile);
+}
+
+void GamePage::goAlongRoute() {
+    if (!m_selectedHero) return;
+    const auto it = m_routes.constFind(m_selectedHero);
+    if (it == m_routes.cend()) {
+        log(tr("Click a tile to plot the route first."));
+        return;
+    }
     if (!m_view.isMyTurn()) {
         log(tr("It is not your turn."));
         return;
     }
-    send(net::msg::moveHero, {{"hero", m_selectedHero}, {"x", tile.x}, {"y", tile.y}}, tr("Move"));
+    send(net::msg::moveHero, {{"hero", m_selectedHero}, {"x", it->x}, {"y", it->y}}, tr("Move"));
+}
+
+void GamePage::syncRoutes() {
+    QSet<int> alive;
+    for (const ViewHero* h : m_view.myHeroes()) {
+        alive.insert(h->id);
+        const std::optional<core::Pos> dest = h->destination;
+        if (!m_serverRoutes.contains(h->id) || m_serverRoutes.value(h->id) != dest) {
+            m_serverRoutes.insert(h->id, dest);
+            if (dest) m_routes.insert(h->id, *dest);
+            else m_routes.remove(h->id);
+        }
+        if (m_routes.contains(h->id) && m_routes.value(h->id) == h->pos) m_routes.remove(h->id);
+    }
+    for (auto it = m_routes.begin(); it != m_routes.end();) it = alive.contains(it.key()) ? std::next(it) : m_routes.erase(it);
+    const auto r = m_routes.constFind(m_selectedHero);
+    m_map->setRoute(r == m_routes.cend() ? std::nullopt : std::optional<core::Pos>(*r));
+}
+
+bool GamePage::anyHeroCanMove() const {
+    for (const ViewHero* h : m_view.myHeroes()) {
+        MovePlanner planner;
+        planner.prepare(m_view, *m_content, h->id);
+        if (!planner.reachableToday().isEmpty()) return true;
+    }
+    return false;
+}
+
+void GamePage::updateEndTurnHighlight() {
+    // Nothing left to move: the End turn button glows and pulses.
+    const bool ready = m_endTurn->isEnabled() && !anyHeroCanMove();
+    m_endTurn->setText(ready ? tr("End turn  \u25B6") : tr("End turn"));
+    m_endTurn->setToolTip(ready ? tr("No hero can move any more today: end your turn (E)") : tr("End your turn (E)"));
+    if (ready != m_endTurn->property("ready").toBool()) {
+        m_endTurn->setProperty("ready", ready);
+        m_endTurn->setProperty("pulse", false);
+        m_pulseOn = false;
+        m_endTurn->style()->unpolish(m_endTurn);
+        m_endTurn->style()->polish(m_endTurn);
+    }
+    if (ready && !m_pulse->isActive()) m_pulse->start();
+    if (!ready) m_pulse->stop();
 }
 
 void GamePage::onTileRightClicked(core::Pos tile) {
@@ -587,11 +664,15 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
 }
 
 QString GamePage::describeResult(const QString& type, const QJsonObject& info) const {
+    if (type == net::msg::moveHero && info["ambushed"].toBool() && info["battleStarted"].toBool())
+        return tr("you came too close: they attack! (zone of control)");
     if (type == net::msg::moveHero && info["battleStarted"].toBool()) return tr("a battle begins!");
     if (type == net::msg::moveHero && info["landed"].toBool()) return tr("landed (that ends the day's movement)");
     if (type == net::msg::buyBoat) return tr("the hero boards the boat; click the water to sail, the shore to land");
     if (type == net::msg::moveHero) {
-        QString text = info["arrived"].toBool() ? tr("arrived") : tr("moved %1 steps, out of movement").arg(info["stepsTaken"].toInt());
+        QString text = info["arrived"].toBool() ? tr("arrived")
+                       : info["ambushed"].toBool() ? tr("ambushed after %1 steps (zone of control)").arg(info["stepsTaken"].toInt())
+                       : tr("moved %1 steps, out of movement; the route is kept for the next day").arg(info["stepsTaken"].toInt());
         if (info.contains("capturedMine")) text += tr(", captured a mine");
         if (info.contains("capturedTown")) text += tr(", captured a town");
         if (info.contains("capturedDwelling")) text += tr(", captured a dwelling");

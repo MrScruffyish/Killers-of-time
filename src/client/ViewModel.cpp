@@ -103,8 +103,6 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
     v.gameOver = json.value("gameOver").toBool();
     v.difficulty = json.value("difficulty").toString();
     v.victory = json.value("victory").toString();
-    v.upkeep = json.value("upkeep").toInt();
-    v.upkeepUnpaid = json.value("upkeepUnpaid").toBool();
     v.weekEventName = json.value("weekEvent").toObject().value("name").toString();
     v.weekEventText = json.value("weekEvent").toObject().value("description").toString();
     v.campaign = json.value("campaign").toObject();
@@ -162,6 +160,8 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             for (const QJsonValue& s : o.value("spells").toArray()) h.spells << s.toString();
             for (const QJsonValue& a : o.value("artifacts").toArray()) h.artifacts << a.toString();
             h.movementPoints = o.value("movementPoints").toInt();
+            const QJsonArray d = o.value("destination").toArray();
+            if (d.size() == 2) h.destination = core::Pos{d[0].toInt(), d[1].toInt()};
         }
         v.heroes.append(h);
     }

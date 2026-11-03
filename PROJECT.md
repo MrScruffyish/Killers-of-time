@@ -136,10 +136,10 @@ Dependency direction: `client -> net -> core`, `server -> net, ai -> core`.
 
 | Resource | Role |
 |---|---|
-| gold | Currency; income from towns/mines; upkeep optional |
+| gold | Currency; income from towns/mines |
 | wood | Basic building material |
 | stone | Basic building material |
-| grain | Food/upkeep, some buildings and units |
+| grain | Some buildings and units |
 | gems, sulphur, coal, mercury, papyrus | Rare resources for advanced buildings, units, spells, artifacts |
 
 Each player has a stockpile. **Mines** produce a fixed daily amount of one
@@ -221,7 +221,7 @@ cast (limited: mana-less with charges per battle, or small spell list).
   | **Battle** | Attack | bonus to attack of all army units in battle | pickable |
   | | Defense | bonus to defense of all army units in battle | pickable |
   | | Hit Points | bonus to the health of army units in battle (flat or % per stack, tunable) | pickable |
-  | | Morale | extra/lost actions and similar modifiers; later also lowered by unpaid upkeep (units may refuse to attack or attack badly) | pickable |
+  | | Morale | extra/lost actions and similar modifiers | pickable |
   | | Luck | chance of bonus damage / avoiding a bad outcome (exact effect tuned) | pickable |
   | | Attack Range | bonus range (hexes) for ranged units such as archers; no effect on melee-only units | pickable |
   | | Battle Speed | small tiered bonus to unit speed in battle (see 5.7.1) | pickable |
@@ -423,7 +423,6 @@ one-click actions on top of the basic rules. They are part of the rules engine
 | D3 | Network format | JSON first, optimize later |
 | D6 | Map size / tile size | Up to 256x256, 32 px tiles |
 | D8 | Win conditions | Last team standing first |
-| D9 | Unit upkeep | **Done:** weekly, `upkeepPercent` of the units' gold cost (balance.json); unpaid lowers Morale that week |
 | D18 | Do wounded stacks heal after a battle? | Survivors restored to full HP after battle; eliminated units stay dead (revisit when balancing) |
 | D10 | Hot-seat mode on one machine | Later, via multiple local clients |
 | D15 | Exact numbers (unit speeds, trait->bonus tables, slow-unit penalty, XP curve) | Tuned in data files during M2/M6 |

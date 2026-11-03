@@ -92,7 +92,6 @@ QJsonObject GameState::toJson() const {
         if (!p.aiProfile.isEmpty()) o.insert("aiProfile", p.aiProfile);
         if (p.incomePercent) o.insert("incomePercent", p.incomePercent);
         if (p.growthPercent) o.insert("growthPercent", p.growthPercent);
-        if (p.upkeepUnpaid) o.insert("upkeepUnpaid", true);
         o.insert("race", p.race);
         o.insert("color", p.color);
         o.insert("resources", intMapToJson(p.resources));
@@ -118,6 +117,7 @@ QJsonObject GameState::toJson() const {
         if (!h.spells.isEmpty()) o.insert("spells", QJsonArray::fromStringList(h.spells));
         if (!h.artifacts.isEmpty()) o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));
         if (h.inBoat) o.insert("inBoat", true);
+        if (h.destination) o.insert("destination", QJsonArray{h.destination->x, h.destination->y});
         heroes.append(o);
     }
     root.insert("heroes", heroes);
@@ -356,7 +356,6 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         p.aiProfile = r.optionalString("aiProfile");
         p.incomePercent = r.optionalInt("incomePercent", 0, -100, 1000);
         p.growthPercent = r.optionalInt("growthPercent", 0, -100, 1000);
-        p.upkeepUnpaid = r.optionalBool("upkeepUnpaid", false);
         p.race = r.requireId("race");
         p.color = r.requireColor("color");
         p.resources = r.optionalIntMap("resources", 0, 1000000000);
@@ -387,6 +386,11 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         h.spells = r.optionalStringList("spells");
         h.artifacts = r.optionalStringList("artifacts");
         h.inBoat = r.optionalBool("inBoat", false);
+        if (r.has("destination")) {
+            const QJsonArray d = r.requireArray("destination");
+            if (d.size() == 2 && d[0].isDouble() && d[1].isDouble()) h.destination = Pos{d[0].toInt(), d[1].toInt()};
+            else r.addError(QStringLiteral("destination must be [x, y]"));
+        }
         r.finish();
         for (const QString& s : h.spells)
             if (!content.spell(s)) r.addError(QStringLiteral("unknown spell '%1'").arg(s));

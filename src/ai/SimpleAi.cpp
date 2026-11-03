@@ -1,5 +1,7 @@
 #include "ai/SimpleAi.h"
 
+#include "core/rules/Movement.h"
+
 #include <QJsonObject>
 #include <algorithm>
 #include <cmath>
@@ -311,9 +313,11 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         if (myStrength > m_p.attackMargin * theirs && army->totalUnits() > 0) add(a.pos, (a.hasHero() ? 80 : 30) * m_p.armyValue);
         else if (theirs > myStrength) dangers.append(&a);
     }
+    // Inside a strong army's zone of control it would attack us.
+    const int zone = zoneOfControlRadius(hero, content);
     const auto risky = [&](Pos p) {
         for (const Army* d : dangers)
-            if (distance(d->pos, p) <= 1) return true;
+            if (distance(d->pos, p) <= zone) return true;
         return false;
     };
 
@@ -354,8 +358,23 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
             if (view.isFrontier({x, y})) frontier.append({x, y});
     std::stable_sort(frontier.begin(), frontier.end(),
                      [&](Pos a, Pos b) { return distance(a, army->pos) < distance(b, army->pos); });
-    for (int i = 0; i < std::min<qsizetype>(6, frontier.size()); ++i) add(frontier[i], 15 * m_p.exploreValue);
+    int explore = 0;
+    for (int i = 0; i < frontier.size() && explore < 6; ++i)
+        if (!risky(frontier[i])) {
+            add(frontier[i], 15 * m_p.exploreValue);
+            ++explore;
+        }
     if (targets.isEmpty()) return {};
+
+    // Keep going where the hero went yesterday while that is still a target
+    // (no flip-flopping between far goals).
+    if (hero.destination) {
+        for (const Target& t : targets)
+            if (t.pos == *hero.destination) {
+                m_lastTarget = key(hid, t.pos);
+                return command(net::msg::moveHero, {{"hero", toInt(hid)}, {"x", t.pos.x}, {"y", t.pos.y}});
+            }
+    }
 
     // Best value per distance; a little randomness among near-equal choices.
     QList<double> scores;

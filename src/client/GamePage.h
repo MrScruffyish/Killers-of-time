@@ -58,6 +58,12 @@ private:
     void updateStatus();
     void updateHeroPanel();
     void selectHero(int id);
+    // Moves the selected hero along his plotted route (Enter, double click).
+    void goAlongRoute();
+    // Keeps the plotted routes in step with the server's remembered destinations.
+    void syncRoutes();
+    bool anyHeroCanMove() const;
+    void updateEndTurnHighlight();
     QString unitName(const QString& id) const;
     void announceEnd();
     void rememberObjects(GameView* view);
@@ -93,6 +99,10 @@ private:
     BattleView* m_battleView;
     int m_seenBattleId = 0;
     int m_announcedWeek = 0;
+    QHash<int, core::Pos> m_routes;                     // hero -> plotted target
+    QHash<int, std::optional<core::Pos>> m_serverRoutes;  // hero -> last destination the server reported
+    class QTimer* m_pulse = nullptr;
+    bool m_pulseOn = false;
     QComboBox* m_heroCombo;
     QLabel* m_heroInfo;
     QPushButton* m_levelUp;

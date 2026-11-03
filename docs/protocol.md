@@ -91,7 +91,7 @@ When the game is over every command is refused with code `game_over`.
 | Type | Fields | `info` on success |
 |---|---|---|
 | `end_turn` | | `day`, `newDay`. AI players then play their turns on the server (with these same commands); players who left are skipped. |
-| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled`; `foundResources`, `foundArtifacts`, `learnedSpells` when that happened |
+| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled`; `foundResources`, `foundArtifacts`, `learnedSpells` when that happened; `ambushed: true` when a zone of control stopped the hero and the armies there attacked. A move that runs out of movement keeps the target as the hero's `destination` (own heroes in the view: `destination: [x, y]`) |
 | `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
 | `recruit` | `town`, `unit`, `count`, `army`? | |
 | `recruit_at_dwelling` | `dwelling`, `count`, `army` | |
@@ -166,4 +166,3 @@ Stacks in views and battle units may have `stars` (0..5, veterancy).
 The game view has `victory` (a short text: what wins this game).
 The game view has `weekEvent` (`id`, `name`, `description`) when an event is on.
 Lobby settings also have `mapType` (`continent` or `islands`: one island per player, boats needed; random maps only).
-The game view has `upkeep` (your weekly upkeep in gold) and `upkeepUnpaid`.

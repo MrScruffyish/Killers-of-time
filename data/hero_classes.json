@@ -133,7 +133,8 @@
         "spell_points_max": 10,
         "spell_recovery": 1,
         "movement_points": 2,
-        "scouting_radius": 6
+        "scouting_radius": 6,
+        "scouting": 1
       },
       "pickIncrement": {
         "attack": 2,

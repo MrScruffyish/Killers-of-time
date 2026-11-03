@@ -21,6 +21,7 @@ struct MovePlan {
     QList<core::Pos> steps;
     int affordable = 0;   // steps the hero can walk this turn
     int totalCost = 0;    // in hundredths of a movement point
+    int ambushAt = -1;    // step where a visible monster or enemy attacks (zone of control), -1 = none
 };
 
 class MovePlanner {
@@ -30,6 +31,8 @@ public:
     MovePlan plan(core::Pos target) const;
     // Tiles the hero can still reach this turn.
     const QSet<core::Pos>& reachableToday() const { return m_today; }
+    // Tiles where a visible hostile army would attack the hero (zone of control).
+    const QSet<core::Pos>& dangerTiles() const { return m_danger; }
     bool ready() const { return m_heroId != 0; }
 
 private:
@@ -43,6 +46,8 @@ private:
     QSet<core::Pos> m_blocked;
     QSet<core::Pos> m_unexplored;
     QSet<core::Pos> m_today;
+    QSet<core::Pos> m_danger;
+    QHash<core::Pos, QList<core::Pos>> m_dangerFrom;  // danger tile -> armies whose zone it is in
 };
 
 }  // namespace kot::client

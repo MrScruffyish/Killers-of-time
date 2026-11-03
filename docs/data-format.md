@@ -195,6 +195,14 @@ walks onto one keeps it and its trait bonuses are added to his traits.
 `aiIncomePercent` and `aiGrowthPercent` (+/- percent for AI players). `aiSlotDifficulty`: per AI
 slot level (`easy`, `normal`, `hard`), its `aiIncomePercent` / `aiGrowthPercent` are added.
 
+## balance.json "scouting"
+The `scouting` trait (traits.json): per level `visionPerLevel` more vision tiles and
+`movementPercentPerLevel` percent more daily movement. **Zone of control:** a hostile army on
+the map (neutral monsters, enemy heroes; not in a town, not at sea) attacks a hero who steps
+within `zoneOfControlRadius` tiles of it (any direction). Each `levelsPerZoneStep` Scouting
+levels take one tile off, never below `zoneOfControlMinRadius`. Armies already that close
+where the move starts do not count. All fields optional.
+
 ## balance.json "veterancy"
 Units gain experience in battle: each surviving unit of a side gets
 `killed enemy HP x xpPercent / 100 / surviving units of the side`. A stack keeps the
@@ -240,8 +248,3 @@ is full at the start of every battle and its tier is the spell power. The battle
 At the start of every week one event is drawn (by `weight`, from the game's random numbers).
 `resources` go to (or, negative, are taken from) every player; `growthPercent` changes that week's
 dwelling growth; `unitGrowth` adds units to every dwelling of those units (towns and map).
-
-## Upkeep (balance.json economy `upkeepPercent`, `unpaidMorale`)
-At the start of every week each player pays `upkeepPercent` of the gold cost of all his units.
-Who cannot pay it all gives what he has, and his armies fight with `unpaidMorale` morale that
-week (undead ignore morale). Decision D9.

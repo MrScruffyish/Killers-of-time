@@ -140,6 +140,75 @@ private slots:
         QCOMPARE(armyOf(h).pos, (Pos{15, 0}));
     }
 
+    void unfinishedMoveRemembersTheDestination() {
+        gs.setMap(GameMap(20, 10, "grass"));
+        const HeroId h = makeHero(p1, {0, 0});
+        QVERIFY(moveHero(gs, reg, h, {15, 0}).ok);
+        QCOMPARE(gs.hero(h)->destination, std::optional<Pos>(Pos{15, 0}));
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.hero(h)->destination, std::optional<Pos>(Pos{15, 0}));
+        refreshHeroMovement(gs, reg, p1);
+        QVERIFY(moveHero(gs, reg, h, {15, 0}).arrived);
+        QVERIFY(!gs.hero(h)->destination);
+    }
+
+    // ---- zone of control and scouting
+    void monstersAttackAHeroWhoComesTooClose() {
+        gs.setMap(GameMap(20, 10, "grass"));
+        const HeroId h = makeHero(p1, {0, 0});
+        armyOf(h).addUnits("pikeman", 40, 10);
+        const ArmyId m = gs.addArmy(PlayerId(), {8, 2});
+        gs.army(m)->addUnits("militia", 2, 6);
+        QCOMPARE(zoneOfControlRadius(*gs.hero(h), reg), 2);
+        const MoveResult r = moveHero(gs, reg, h, {12, 0});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY(r.ambushed);
+        QVERIFY(r.attacked);
+        QCOMPARE(r.battles.size(), 1);
+        QCOMPARE(armyOf(h).pos, (Pos{6, 0}));  // stopped two tiles from the monsters
+        QVERIFY(!gs.army(m));                   // and beat them
+        QCOMPARE(gs.hero(h)->destination, std::optional<Pos>(Pos{12, 0}));
+    }
+
+    void walkingAwayFromAnArmyAlreadyInReachIsFree() {
+        const HeroId h = makeHero(p1, {1, 1});
+        const ArmyId m = gs.addArmy(PlayerId(), {2, 2});
+        gs.army(m)->addUnits("militia", 2, 6);
+        const MoveResult r = moveHero(gs, reg, h, {6, 1});
+        QVERIFY(r.ok);
+        QVERIFY(!r.ambushed);
+        QVERIFY(r.arrived);
+    }
+
+    void scoutingShrinksTheZoneAndAddsVisionAndMovement() {
+        gs.setMap(GameMap(20, 10, "grass"));
+        const HeroId h = makeHero(p1, {0, 0});
+        const int before = armyMovementPoints(armyOf(h), gs.hero(h), reg);
+        gs.hero(h)->traits["scouting"] = 2;
+        QCOMPARE(zoneOfControlRadius(*gs.hero(h), reg), 1);
+        QCOMPARE(armyMovementPoints(armyOf(h), gs.hero(h), reg), before + before * 10 / 100);
+        gs.hero(h)->traits["scouting"] = 20;
+        QCOMPARE(zoneOfControlRadius(*gs.hero(h), reg), 1);  // never below the minimum
+        gs.hero(h)->traits["scouting"] = 2;
+        // Two tiles from the monsters is fine now, one is not.
+        const ArmyId m = gs.addArmy(PlayerId(), {8, 2});
+        gs.army(m)->addUnits("militia", 2, 6);
+        MoveResult r = moveHero(gs, reg, h, {6, 0});
+        QVERIFY(r.arrived && !r.ambushed);
+        r = moveHero(gs, reg, h, {7, 0});
+        QVERIFY(!r.ambushed);  // still two away (8,2)-(7,0)
+    }
+
+    void armiesInTownsAndAlliesHaveNoZone() {
+        const HeroId h = makeHero(p1, {0, 0});
+        const HeroId friendHero = makeHero(p1, {3, 2});
+        Q_UNUSED(friendHero);
+        const MoveResult r = moveHero(gs, reg, h, {4, 0});
+        QVERIFY(r.arrived && !r.ambushed);
+    }
+
     void cannotWalkThroughObjects() {
         const HeroId h = makeHero(p1, {0, 0});
         gs.addMine("gold", 1000, {5, 0});

@@ -29,7 +29,36 @@ int armyMovementPoints(const Army& army, const Hero* hero, const ContentRegistry
             }
         }
     }
-    return std::max(points, mb.minimum);
+    points = std::max(points, mb.minimum);
+    if (hero) points += points * hero->trait(QStringLiteral("scouting")) * content.balance().scouting.movementPercentPerLevel / 100;
+    return points;
+}
+
+int zoneOfControlRadius(int scoutingLevel, const ContentRegistry& content) {
+    const ScoutingBalance& sb = content.balance().scouting;
+    return std::max(sb.zoneOfControlMinRadius, sb.zoneOfControlRadius - scoutingLevel / sb.levelsPerZoneStep);
+}
+
+int zoneOfControlRadius(const Hero& hero, const ContentRegistry& content) {
+    return zoneOfControlRadius(hero.trait(QStringLiteral("scouting")), content);
+}
+
+QList<ArmyId> zoneOfControlAt(const GameState& state, const ContentRegistry& content, const Hero& hero, Pos tile) {
+    QList<ArmyId> result;
+    if (hero.inBoat) return result;
+    const int radius = zoneOfControlRadius(hero, content);
+    if (radius <= 0) return result;
+    QSet<Pos> towns;
+    for (const Town& t : state.towns()) towns.insert(t.pos);
+    QSet<ArmyId> atSea;
+    for (const Hero& h : state.heroes())
+        if (h.inBoat) atSea.insert(h.army);
+    for (const Army& a : state.armies()) {
+        if (a.id == hero.army || towns.contains(a.pos) || atSea.contains(a.id) || a.totalUnits() == 0) continue;
+        if (!state.isHostile(a.owner, hero.owner)) continue;
+        if (std::max(std::abs(a.pos.x - tile.x), std::abs(a.pos.y - tile.y)) <= radius) result.append(a.id);
+    }
+    return result;
 }
 
 void refreshHeroMovement(GameState& state, const ContentRegistry& content, PlayerId owner) {
@@ -74,6 +103,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
             army->pos = target;
             hero->inBoat = false;
             hero->movementPoints = 0;
+            hero->destination.reset();
             result.ok = result.arrived = true;
             result.stepsTaken = 1;
             const PlayerId owner = hero->owner;
@@ -135,9 +165,60 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
         return result;
     }
 
-    const int steps = affordableSteps(path, hero->movementPoints);
+    int steps = affordableSteps(path, hero->movementPoints);
     if (steps == 0) {
         result.error = QStringLiteral("not enough movement points");
+        return result;
+    }
+    // Zones of control along the way (armies already in reach at the start do not count).
+    QList<ArmyId> ambushers;
+    if (army->totalUnits() > 0) {
+        const QList<ArmyId> atStart = zoneOfControlAt(state, content, *hero, army->pos);
+        for (int i = 0; i < steps; ++i) {
+            QList<ArmyId> here;
+            for (const ArmyId a : zoneOfControlAt(state, content, *hero, path.steps[i]))
+                if (!atStart.contains(a)) here.append(a);
+            if (here.isEmpty()) continue;
+            bool onlyTheTarget = steps == path.steps.size() && !defenders.isEmpty();
+            for (const ArmyId a : here) onlyTheTarget = onlyTheTarget && defenders.contains(a);
+            if (onlyTheTarget) break;  // the attack below fights them anyway
+            ambushers = here;
+            steps = i + 1;
+            break;
+        }
+    }
+    if (!ambushers.isEmpty()) {
+        result.ok = result.attacked = result.ambushed = true;
+        result.stepsTaken = steps;
+        result.movementSpent = path.cumulativeCost[steps - 1];
+        hero->movementPoints -= result.movementSpent;
+        hero->destination = target;
+        army->pos = path.steps[steps - 1];
+        // The nearest one leads the attack.
+        std::sort(ambushers.begin(), ambushers.end(), [&](ArmyId a, ArmyId b) {
+            const auto d = [&](ArmyId x) {
+                const Pos p = state.army(x)->pos;
+                return std::max(std::abs(p.x - army->pos.x), std::abs(p.y - army->pos.y));
+            };
+            return d(a) < d(b);
+        });
+        PendingAttack attack{hero->id, hero->owner, army->id, state.army(ambushers.first())->pos, ambushers};
+        if (deferBattles) {
+            result.pending = attack;
+            updateExplored(state, content, state.teamOf(attack.owner));
+            return result;
+        }
+        bool won = true;
+        for (const ArmyId d : ambushers) {
+            if (!state.army(d) || !state.army(attack.army)) continue;
+            const BattleReport b = resolveBattle(state, content, attack.army, d);
+            result.battles.append(b);
+            if (!b.attackerWon()) {
+                won = false;
+                break;
+            }
+        }
+        finishAttack(state, content, attack, won, &result);
         return result;
     }
     result.ok = true;
@@ -145,6 +226,8 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     result.movementSpent = path.cumulativeCost[steps - 1];
     const bool reached = (steps == path.steps.size());
     hero->movementPoints -= result.movementSpent;
+    if (reached) hero->destination.reset();
+    else hero->destination = target;
     const PlayerId owner = hero->owner;
     const HeroId heroIdCopy = hero->id;
     const ArmyId armyId = army->id;

@@ -538,6 +538,8 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         ? top.requireObject(QStringLiteral("difficulty")) : QJsonObject();
     const QJsonObject veterancy = root.contains(QStringLiteral("veterancy"))
         ? top.requireObject(QStringLiteral("veterancy")) : QJsonObject();
+    const QJsonObject scouting = root.contains(QStringLiteral("scouting"))
+        ? top.requireObject(QStringLiteral("scouting")) : QJsonObject();
     const QJsonObject aiSlot = root.contains(QStringLiteral("aiSlotDifficulty"))
         ? top.requireObject(QStringLiteral("aiSlotDifficulty")) : QJsonObject();
     top.finish();
@@ -562,6 +564,19 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         }
     };
     readLevels(difficulty, QStringLiteral("difficulty"), &m_balance.difficulty);
+    if (!scouting.isEmpty()) {
+        JsonReader sr(scouting, file + QStringLiteral("/scouting"), &errors);
+        ScoutingBalance sb;
+        sb.visionPerLevel = sr.optionalInt(QStringLiteral("visionPerLevel"), sb.visionPerLevel, 0, 100);
+        sb.movementPercentPerLevel = sr.optionalInt(QStringLiteral("movementPercentPerLevel"), sb.movementPercentPerLevel, 0, 1000);
+        sb.zoneOfControlRadius = sr.optionalInt(QStringLiteral("zoneOfControlRadius"), sb.zoneOfControlRadius, 0, 20);
+        sb.zoneOfControlMinRadius = sr.optionalInt(QStringLiteral("zoneOfControlMinRadius"), sb.zoneOfControlMinRadius, 0, 20);
+        sb.levelsPerZoneStep = sr.optionalInt(QStringLiteral("levelsPerZoneStep"), sb.levelsPerZoneStep, 1, 100);
+        sr.finish();
+        if (sb.zoneOfControlMinRadius > sb.zoneOfControlRadius)
+            sr.addError(QStringLiteral("zoneOfControlMinRadius must not be above zoneOfControlRadius"));
+        if (sr.ok()) m_balance.scouting = sb;
+    }
     if (!veterancy.isEmpty()) {
         JsonReader vr(veterancy, file + QStringLiteral("/veterancy"), &errors);
         VeterancyBalance vb;
@@ -633,8 +648,6 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         const ResourceAmounts start = er.optionalIntMap(QStringLiteral("startingResources"), 0, 1000000000);
         const ResourceAmounts boat = er.optionalIntMap(QStringLiteral("boatCost"), 1, 1000000);
         if (!boat.isEmpty()) eb.boatCost = boat;
-        eb.upkeepPercent = er.optionalInt(QStringLiteral("upkeepPercent"), eb.upkeepPercent, 0, 100);
-        eb.unpaidMorale = er.optionalInt(QStringLiteral("unpaidMorale"), eb.unpaidMorale, -10, 0);
         if (!start.isEmpty()) eb.startingResources = start;
         er.finish();
         if (vr.ok() && er.ok()) {

@@ -407,6 +407,15 @@ QPushButton {
 QPushButton:hover { background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #85603a, stop:1 #5b3d20); }
 QPushButton:pressed { background-color: #3a2614; }
 QPushButton:disabled { color: #8a7b63; border-color: #5e5030; background-color: #3a2c1e; }
+QPushButton#endTurnButton { font-weight: bold; padding: 8px 10px; }
+QPushButton#endTurnButton[ready="true"] {
+    font-size: 12pt; color: #2b1a08; border: 2px solid #fff0b0;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffd75a, stop:1 #c98a12);
+}
+QPushButton#endTurnButton[ready="true"][pulse="true"] {
+    border: 2px solid #ffffff;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #fff09a, stop:1 #e8a820);
+}
 QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QListWidget, QTableWidget {
     background-color: #1d1610; border: 1px solid #7a6235; border-radius: 3px; color: #eadfc8;
     selection-background-color: #8a6a2a;

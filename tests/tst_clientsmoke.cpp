@@ -81,7 +81,7 @@ private slots:
         QApplication::processEvents();
         shot(&w, "3_game");
 
-        // Click a free tile next to the hero: he walks there.
+        // Click a free tile next to the hero: the route is plotted; Enter walks it.
         const ViewHero hero = *game->view().hero(game->selectedHero());
         core::Pos target = hero.pos;
         for (int dy = -1; dy <= 1 && target == hero.pos; ++dy) {
@@ -95,7 +95,14 @@ private slots:
         QVERIFY(target != hero.pos);
         game->mapView()->centerOn(hero.pos);
         QTest::mouseClick(game->mapView()->viewport(), Qt::LeftButton, {}, game->mapView()->tileRect(target).center());
+        QCOMPARE(game->mapView()->route(), std::optional<core::Pos>(target));
+        QVERIFY(game->mapView()->routePlan().found);
+        QApplication::processEvents();
+        QCOMPARE(game->view().hero(hero.id)->pos, hero.pos);  // a single click only plots
+        game->mapView()->setFocus();
+        QTest::keyClick(game->mapView(), Qt::Key_Return);
         QTRY_COMPARE_WITH_TIMEOUT(game->view().hero(hero.id)->pos, target, 5000);
+        QVERIFY(!game->mapView()->route());  // arrived: the route is gone
         QVERIFY(game->view().hero(hero.id)->movementPoints < hero.movementPoints);
         QVERIFY(game->logText().contains("Move"));
 
@@ -164,8 +171,8 @@ private slots:
         QVERIFY(spot.x >= 0);
         gs.army(gs.addArmy(core::PlayerId(), spot))->addUnits("militia", 4, 6);
         game->mapView()->centerOn(spot);
-        QTest::mouseClick(game->mapView()->viewport(), Qt::LeftButton, {}, game->mapView()->tileRect(spot).center());
-        QTRY_VERIFY_WITH_TIMEOUT(game->view().battle.present, 5000);
+        QTest::mouseDClick(game->mapView()->viewport(), Qt::LeftButton, {}, game->mapView()->tileRect(spot).center());
+        QTRY_VERIFY2_WITH_TIMEOUT(game->view().battle.present, qPrintable(game->logText().right(400)), 5000);
         QTRY_VERIFY_WITH_TIMEOUT(game->battleView()->isVisible(), 5000);
         QTRY_VERIFY_WITH_TIMEOUT(game->view().battle.myMove(), 5000);
         QApplication::processEvents();

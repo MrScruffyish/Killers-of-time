@@ -98,18 +98,27 @@ private slots:
         planner.prepare(v, reg, h->id);
         QVERIFY(planner.ready());
         QVERIFY(!planner.reachableToday().isEmpty());
-        // Every tile reachable today is walked to in full by the server too.
-        int checked = 0;
+        // Every tile reachable today is walked to in full by the server too, or the
+        // server stops at the zone of control the planner showed.
+        int checked = 0, ambushes = 0;
         for (const core::Pos t : planner.reachableToday()) {
-            if (checked++ > 12) break;
             core::GameState copy = gs;
             const MovePlan plan = planner.plan(t);
             QVERIFY(plan.found);
             QCOMPARE(plan.affordable, plan.steps.size());
             const core::MoveResult r = core::moveHero(copy, reg, core::HeroId(quint32(h->id)), t);
-            QVERIFY2(r.ok && r.arrived, qPrintable(r.error));
-            QCOMPARE(r.stepsTaken, plan.steps.size());
+            QVERIFY2(r.ok, qPrintable(r.error));
+            if (plan.ambushAt >= 0) {
+                ++ambushes;
+                QVERIFY(r.ambushed);
+                QCOMPARE(r.stepsTaken, plan.ambushAt + 1);
+            } else {
+                QVERIFY(r.arrived && !r.ambushed);
+                QCOMPARE(r.stepsTaken, plan.steps.size());
+            }
+            if (++checked > 40) break;
         }
+        qInfo("checked %d moves, %d of them ambushed", checked, ambushes);
         // Unexplored land is not planned through.
         core::Pos dark{-1, -1};
         for (int i = 0; i < v.tiles.size() && dark.x < 0; ++i)

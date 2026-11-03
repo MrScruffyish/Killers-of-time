@@ -296,24 +296,6 @@ private slots:
         QCOMPARE(battleToJson(walled)["townDefense"].toInt(), 6);
     }
 
-    void unpaidUpkeepLowersMorale() {
-        gs.player(p1)->upkeepUnpaid = true;
-        gs.hero(hero)->traits["morale"] = 0;
-        // -2 morale: with a big enough penalty every militia turn falters.
-        add("militia", 5);
-        gs.army(mine())->stacks.append(UnitStack("skeleton", 5, 6));  // undead do not care
-        Battle b(gs, reg, mine(), monsters("battle_snail", 1), 1);
-        QCOMPARE(b.unit(1)->def->id, QString("militia"));
-        // Morale -2 at 5% per point: a 10% chance to falter, the same Rng seed gives a fixed result;
-        // here only check that the undead stack never falters over many rounds.
-        for (int i = 0; i < 40 && !b.isOver(); ++i) {
-            QList<BattleEvent> ev;
-            b.act(BattleAction{}, &ev);
-            for (const BattleEvent& e : ev)
-                if (e.type == BattleEvent::Type::Falter) QVERIFY(b.unit(e.unit)->def->id != "skeleton");
-        }
-    }
-
     void jsonForTheClient() {
         add("archer", 3);
         Battle b(gs, reg, mine(), monsters("militia", 3), 1);

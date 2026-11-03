@@ -358,6 +358,7 @@ QJsonObject GameSession::moveInfo(const MoveResult& m) const {
     if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
     if (!m.learnedSpells.isEmpty()) info.insert("learnedSpells", QJsonArray::fromStringList(m.learnedSpells));
     if (m.landed) info.insert("landed", true);
+    if (m.ambushed) info.insert("ambushed", true);
     if (!m.foundResources.isEmpty()) info.insert("foundResources", resourcesJson(m.foundResources));
     if (!m.foundArtifacts.isEmpty()) info.insert("foundArtifacts", QJsonArray::fromStringList(m.foundArtifacts));
     if (m.attacked) {

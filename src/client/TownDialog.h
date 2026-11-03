@@ -31,11 +31,14 @@ private:
     void rebuild();
     QString costText(const core::ResourceAmounts& cost) const;
     QString unitName(const QString& id) const;
+    // What a building does, in a few words (from its effects).
+    QString effectsText(const core::BuildingDef& b) const;
 
     const core::ContentRegistry* m_content;
     GameView m_view;
     int m_townId = 0;
     QTabWidget* m_tabs;
+    bool m_onlyBuildable = false;  // remembered in QSettings
 };
 
 }  // namespace kot::client

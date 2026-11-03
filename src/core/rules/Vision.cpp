@@ -24,7 +24,8 @@ QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegist
     for (const Hero& hero : state.heroes()) {
         if (state.teamOf(hero.owner) != team) continue;
         if (const Army* army = state.army(hero.army))
-            reveal(army->pos, hero.trait(QStringLiteral("scouting_radius")));
+            reveal(army->pos, hero.trait(QStringLiteral("scouting_radius")) +
+                              hero.trait(QStringLiteral("scouting")) * content.balance().scouting.visionPerLevel);
     }
     const VisionBalance& vb = content.balance().vision;
     for (const Town& t : state.towns()) {

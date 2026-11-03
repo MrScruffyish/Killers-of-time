@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <QMap>
 #include <QString>
 #include <QStringList>
@@ -23,7 +25,6 @@ struct Player {
     ResourceAmounts resources;
     int incomePercent = 0;   // difficulty bonus: +/- percent of all income
     int growthPercent = 0;   // difficulty bonus: +/- percent dwelling growth in his towns
-    bool upkeepUnpaid = false;  // could not pay this week's upkeep: his armies' morale drops
 };
 
 struct Hero {
@@ -42,6 +43,7 @@ struct Hero {
     QStringList spells;          // the spellbook: spell ids this hero knows
     QStringList artifacts;       // artifacts carried (their trait bonuses are in `traits`)
     bool inBoat = false;         // sails (moves on water only) until he lands
+    std::optional<Pos> destination;  // where the last move was going when movement ran out
 
     int trait(const QString& traitId) const { return traits.value(traitId, 0); }
 };

@@ -79,7 +79,7 @@ private slots:
         for (const TraitDef& t : reg.traits()) counts[static_cast<int>(t.group)]++;
         QCOMPARE(counts[static_cast<int>(TraitGroup::Battle)], 7);
         QCOMPARE(counts[static_cast<int>(TraitGroup::Magic)], 4);
-        QCOMPARE(counts[static_cast<int>(TraitGroup::Explore)], 2);
+        QCOMPARE(counts[static_cast<int>(TraitGroup::Explore)], 3);
         QVERIFY(!reg.trait("spell_points_max")->pickable);
         QVERIFY(reg.trait("luck")->pickable);
 

@@ -17,6 +17,14 @@ class ContentRegistry;
 // the minimum. `hero` may be null (hero-less army).
 int armyMovementPoints(const Army& army, const Hero* hero, const ContentRegistry& content);
 
+// Zone of control: how close (tiles, in any direction) this hero can come to a
+// hostile army on the map before it attacks him (balance.json "scouting").
+int zoneOfControlRadius(const Hero& hero, const ContentRegistry& content);
+int zoneOfControlRadius(int scoutingLevel, const ContentRegistry& content);
+// The hostile field armies (monsters, enemy heroes; not in towns, not at sea)
+// whose zone of control covers `tile` for `hero`. A hero at sea has none.
+QList<ArmyId> zoneOfControlAt(const GameState& state, const ContentRegistry& content, const Hero& hero, Pos tile);
+
 // Gives every hero of `owner` his full daily movement (start of that player's turn).
 void refreshHeroMovement(GameState& state, const ContentRegistry& content, PlayerId owner);
 
@@ -45,6 +53,7 @@ struct MoveResult {
     ResourceAmounts foundResources;  // picked up a treasure
     QStringList foundArtifacts;      // picked up artifacts
     bool landed = false;  // left the boat
+    bool ambushed = false;  // stopped by a zone of control: the armies there attacked (see `battles`)
     std::optional<PendingAttack> pending;  // deferBattles: the battles still to fight
 };
 
@@ -59,6 +68,11 @@ struct MoveResult {
 // he fought from. A friendly army on the target blocks it. The team's explored
 // map is updated after the move. A hero in a boat sails on water only; moving onto
 // the land next to him lands (and ends today's movement).
+// Zone of control: when the hero steps within reach of hostile field armies
+// (zoneOfControlAt; not counting those already in reach where he started) he
+// stops on that tile and fights them (`ambushed`), unless they are the very
+// armies he is attacking anyway. A move that ends short of the target remembers
+// it as the hero's `destination`; arriving (or attacking it) clears it.
 // With `deferBattles` the hero stops next to the target and the battles are left to
 // the caller (`pending`; interactive battles): fight them, then call finishAttack.
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,

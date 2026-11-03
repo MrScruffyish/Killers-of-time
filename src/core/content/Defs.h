@@ -81,8 +81,6 @@ struct EconomyBalance {
     int maxHeroesPerPlayer = 8;
     ResourceAmounts startingResources{{"gold", 10000}};
     ResourceAmounts boatCost{{"gold", 1000}, {"wood", 10}};
-    int upkeepPercent = 10;      // weekly upkeep of every unit: this share of its gold cost
-    int unpaidMorale = -2;       // morale of a player's armies in a week he could not pay
 };
 // Auto-resolved battles (core/battle/AutoBattle.h). Percentages per point of
 // attack minus defense, with caps.
@@ -113,8 +111,21 @@ struct VeterancyBalance {
     QList<QMap<QString, int>> starBonuses{{{"morale", 1}}, {{"initiative", 1}}, {{"battleSpeed", 1}},
                                           {{"attack", 1}}, {{"defense", 1}}};
 };
+// The Scouting trait and zones of control. A hostile army on the map (a monster
+// or an enemy hero, not in a town) attacks a hero who comes within
+// zoneOfControlRadius tiles of it, minus one tile per levelsPerZoneStep levels of
+// Scouting, never below zoneOfControlMinRadius. Scouting also widens vision and
+// adds movement.
+struct ScoutingBalance {
+    int visionPerLevel = 1;
+    int movementPercentPerLevel = 5;
+    int zoneOfControlRadius = 2;
+    int zoneOfControlMinRadius = 1;
+    int levelsPerZoneStep = 2;
+};
 struct Balance {
     MovementBalance movement;
+    ScoutingBalance scouting;
     VisionBalance vision;
     EconomyBalance economy;
     BattleBalance battle;
