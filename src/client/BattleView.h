@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QWidget>
 
@@ -26,6 +27,8 @@ public:
     BattleView(const core::ContentRegistry* content, QWidget* parent = nullptr);
 
     void setBattle(const ViewBattle& battle, const QColor& attacker, const QColor& defender);
+    // Shows what happened (battle events from the server): arrows, blows, spells.
+    void playEvents(const QJsonArray& events);
     // Hex centre on screen, for tests that click.
     QPoint hexCentre(core::Pos hex) const;
     QWidget* field() const;

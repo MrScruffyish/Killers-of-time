@@ -78,3 +78,13 @@ add_library(kot_core STATIC
 )
 target_include_directories(kot_core PUBLIC ${KOT_SRC_DIR})
 target_link_libraries(kot_core PUBLIC Qt6::Core PRIVATE kot_warnings)
+
+# The version (from the project) and the git commit, refreshed at every build.
+set(KOT_BUILDINFO ${CMAKE_BINARY_DIR}/generated/BuildInfo.h)
+add_custom_target(kot_buildinfo
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -DOUTPUT=${KOT_BUILDINFO} -DVERSION=${PROJECT_VERSION}
+            -P ${CMAKE_SOURCE_DIR}/cmake/BuildInfo.cmake
+    BYPRODUCTS ${KOT_BUILDINFO}
+    COMMENT "Build info (version, git commit)")
+add_dependencies(kot_core kot_buildinfo)
+target_include_directories(kot_core PUBLIC ${CMAKE_BINARY_DIR}/generated)

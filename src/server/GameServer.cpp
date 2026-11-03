@@ -162,7 +162,7 @@ void GameServer::handleHello(Client& client, const Message& message) {
     welcome.type = net::msg::welcome;
     welcome.seq = message.seq;
     welcome.body.insert("protocol", net::kProtocolVersion);
-    welcome.body.insert("serverVersion", QString::fromLatin1(core::kGameVersion));
+    welcome.body.insert("serverVersion", QString::fromLatin1(core::versionText()));
     welcome.body.insert("clientId", client.id);
     welcome.body.insert("races", QJsonArray::fromStringList(m_races));
     welcome.body.insert("aiProfiles", QJsonArray::fromStringList(m_aiProfiles));

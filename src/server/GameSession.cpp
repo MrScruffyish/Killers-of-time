@@ -330,7 +330,13 @@ void GameSession::runBattles() {
             ab.battle = std::make_unique<Battle>(m_state, m_content, ab.attack.army, defender, newBattleSeed(m_state));
         }
         Battle& b = *ab.battle;
-        while (!b.isOver() && !humanControls(b.activeUnit()->side)) b.act(chooseBattleAction(b));
+        while (!b.isOver() && !humanControls(b.activeUnit()->side)) {
+            // The computer's actions are kept, so the human sees them happen.
+            QList<BattleEvent> ev;
+            b.act(chooseBattleAction(b), &ev);
+            for (const BattleEvent& e : ev)
+                if (m_aiEvents.size() < 60) m_aiEvents.append(battleEventToJson(e));
+        }
         if (!b.isOver()) return;  // a human's turn in the battle
 
         const BattleReport report = applyBattleResult(m_state, m_content, b);
@@ -409,6 +415,7 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     else return failure("bad_request", "unknown battle action '" + action + "'");
 
     QJsonArray events;
+    m_aiEvents = QJsonArray();
     if (action != "auto") {
         QList<BattleEvent> ev;
         const QString error = b->act(a, &ev);
@@ -416,6 +423,8 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
         for (const BattleEvent& e : ev) events.append(battleEventToJson(e));
     }
     runBattles();
+    for (const QJsonValue& e : m_aiEvents) events.append(e);  // then what the computer did
+    m_aiEvents = QJsonArray();
     QJsonObject info{{"events", events}};
     if (!m_battle) {
         info.insert("battleOver", true);
@@ -457,10 +466,13 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         m_battle = std::make_unique<ActiveBattle>();
         m_battle->attack = *m.pending;
         m_battle->result = m;
+        m_aiEvents = QJsonArray();
         runBattles();
         if (m_battle) {
             QJsonObject info = moveInfo(m);
             info.insert("battleStarted", true);
+            info.insert("events", m_aiEvents);  // the computer may have acted first
+            m_aiEvents = QJsonArray();
             return success(info);
         }
         return success(moveInfo(m_finishedMove));

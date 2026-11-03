@@ -1,6 +1,7 @@
 #include "client/LobbyPage.h"
 
 #include "client/LoadDialog.h"
+#include "core/Version.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
@@ -121,6 +122,9 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     m_status = new QLabel(this);
     m_status->setWordWrap(true);
     outer->addWidget(m_status);
+    m_versions = new QLabel(this);
+    m_versions->setObjectName("versionLabel");
+    outer->addWidget(m_versions);
     outer->addStretch(1);
 
     auto* buttons = new QHBoxLayout();
@@ -193,6 +197,13 @@ void LobbyPage::showError(const QString& text) {
 }
 
 void LobbyPage::rebuild() {
+    // Which builds are talking: the same commit on both sides is the safe case.
+    const QString mine = QString::fromLatin1(core::versionText());
+    const QString server = m_client->serverVersion();
+    m_versions->setText(server.isEmpty() || server == mine
+                            ? tr("<small>Version %1</small>").arg(mine)
+                            : tr("<small><b>Client %1, server %2</b> - different builds; if something goes wrong, use the same build for both</small>")
+                                  .arg(mine, server));
     const net::LobbyState& lobby = m_client->lobby();
     const bool host = m_client->isHost();
     const int me = m_client->clientId();
@@ -351,13 +362,16 @@ void LobbyPage::rebuild() {
         });
         m_grid->addWidget(color, row, 4);
 
-        if (s.kind == SlotKind::Human) {
+        if (s.kind == SlotKind::Human && isHostClient(m_client->lobby(), s.clientId)) {
+            // The host starts the game when the others are ready: no box to tick.
+            auto* host = new QLabel(tr("host"), m_slotHolder);
+            host->setToolTip(tr("The host does not need to be ready: Start is enough"));
+            m_grid->addWidget(host, row, 5);
+        } else if (s.kind == SlotKind::Human) {
             auto* ready = new QCheckBox(m_slotHolder);
             ready->setObjectName(QStringLiteral("ready%1").arg(slot));
             ready->setChecked(s.ready);
             ready->setEnabled(mine);
-            if (isHostClient(m_client->lobby(), s.clientId))
-                ready->setToolTip(tr("The host does not need to be ready: Start is enough"));
             connect(ready, &QCheckBox::clicked, this, [this](bool on) { m_client->setReady(on); });
             m_grid->addWidget(ready, row, 5);
         } else {

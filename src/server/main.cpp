@@ -13,7 +13,7 @@
 int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("kot_server"));
-    QCoreApplication::setApplicationVersion(QString::fromLatin1(kot::core::kGameVersion));
+    QCoreApplication::setApplicationVersion(QString::fromLatin1(kot::core::versionText()));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("Killers of Time - game server"));

@@ -250,8 +250,10 @@ void TownDialog::rebuild() {
         m_tabs->addTab(page, tr("Buildings"));
     }
 
-    // ---- Recruit
-    {
+    // ---- Recruit (only when there is something to recruit)
+    int recruitable = 0;
+    for (const RecruitChoice& rc : town->recruitOptions) recruitable += rc.available;
+    if (recruitable > 0) {
         auto* page = new QWidget();
         auto* layout = new QVBoxLayout(page);
         const ViewArmy* garrison = m_view.army(town->garrison);

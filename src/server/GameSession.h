@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
 #include <QString>
@@ -98,6 +99,7 @@ private:
     int m_battleCounter = 0;
     QHash<core::PlayerId, QJsonObject> m_lastBattle;  // per participant: {id, report}
     QString m_campaignDir;
+    QJsonArray m_aiEvents;  // battle events of the computer's stacks since the last human action
     QString m_campaign;          // campaign being played (empty: none)
     int m_campaignChapter = 0;
     int m_campaignChapters = 0;

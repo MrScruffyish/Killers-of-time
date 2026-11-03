@@ -4,7 +4,7 @@
 > start of the next one.
 
 **Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
-**Current milestone:** first versions of every part of the game are in (M0-M10); version 0.2.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
+**Current milestone:** first versions of every part of the game are in (M0-M10); version 0.3.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
 **Next session should do:** go on with the user's playtest notes. Graphics: more variety (next maybe a nicer minimap, map decorations, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
 
 ## Legend
@@ -172,6 +172,9 @@ and react to; add depth afterwards.
 - [x] Hero portraits by class (helmets, wizard hat, hoods, leaf crown; undead with green eyes) in the hero panel, hero screen and tavern
 - [x] Minimap: bigger, gold frame, markers for towns (keeps), mines, monsters and heroes; the unexplored world is dark drifting clouds on the map
 - [x] Map objects: sawmill (wood), quarry (stone), crystal cave (gems), mines for the rest; dwellings show their unit on a sign
+- [x] Battle actions shown: arrows fly, attackers lunge and the target flashes, spells sparkle (colour by effect), morale/falter/lucky words; the server now also sends what the computer's stacks did
+- [x] Version 0.3.0 from CMakeLists.txt, plus the git commit (generated BuildInfo.h): `--version` on client and server, in the crash log, in the lobby (a warning when client and server are different builds)
+- [x] Lobby: the host has no Ready box ("host"); town: the Recruit tab only shows when something can be recruited
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

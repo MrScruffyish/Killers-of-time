@@ -25,6 +25,7 @@ public:
     bool isHost() const;
     const LobbyState& lobby() const { return m_lobby; }
     const QStringList& races() const { return m_races; }
+    const QString& serverVersion() const { return m_serverVersion; }  // from the welcome
     const QStringList& aiProfiles() const { return m_aiProfiles; }
     // Scenarios the server offers: [{id, name, description, width, height, races}].
     const QJsonArray& scenarios() const { return m_scenarios; }
@@ -76,6 +77,7 @@ private:
     int m_nextSeq = 1;
     LobbyState m_lobby;
     QStringList m_races;
+    QString m_serverVersion;
     QStringList m_aiProfiles;
     QJsonObject m_view;
     QJsonObject m_you;

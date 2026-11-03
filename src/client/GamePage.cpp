@@ -250,6 +250,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
         const QString text = describeResult(p.type, info);
         using sound::Effect;
         if (p.type == net::msg::moveHero) sound::play(info["battleStarted"].toBool() ? Effect::Drums : Effect::Step);
+        if ((p.type == net::msg::battleAction || p.type == net::msg::moveHero) && !info["battleOver"].toBool())
+            m_battleView->playEvents(info["events"].toArray());
         else if (p.type == net::msg::endTurn) sound::play(Effect::Click);
         else if (p.type == net::msg::castSpell) sound::play(Effect::Spell);
         else if (p.type == net::msg::buyAllUnits || p.type == net::msg::recruit || p.type == net::msg::build ||

@@ -61,7 +61,7 @@ void installCrashLog() {
     const QByteArray path = (dir + QStringLiteral("/crash.log")).toLocal8Bit();
     std::strncpy(g_logPath, path.constData(), sizeof g_logPath - 1);
     const QByteArray header = QStringLiteral(" (version %1, started %2)")
-                                  .arg(QString::fromLatin1(core::kGameVersion), QDateTime::currentDateTime().toString(Qt::ISODate))
+                                  .arg(QString::fromLatin1(core::versionText()), QDateTime::currentDateTime().toString(Qt::ISODate))
                                   .toLocal8Bit();
     std::strncpy(g_header, header.constData(), sizeof g_header - 1);
     for (const int sig : {SIGSEGV, SIGABRT, SIGFPE, SIGILL, SIGBUS}) std::signal(sig, onCrash);

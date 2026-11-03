@@ -202,12 +202,10 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList[2].kind, net::SlotKind::Ai, 5000);
         shot(&w, "2_lobby");
 
-        // Ready up: Ann by clicking her checkbox, Bob through the protocol.
-        auto* ready = w.lobbyPage()->findChild<QCheckBox*>("ready0");
-        QVERIFY(ready);
-        QTest::mouseClick(ready, Qt::LeftButton, {}, QPoint(8, ready->height() / 2));  // on the box itself
+        // Ann hosts: she has no Ready box. Bob confirms through the protocol.
+        QVERIFY(!w.lobbyPage()->findChild<QCheckBox*>("ready0"));
         bob.setReady(true);
-        QTRY_VERIFY_WITH_TIMEOUT(w.client().lobby().slotList[0].ready && w.client().lobby().slotList[1].ready, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(w.client().lobby().slotList[1].ready, 5000);
 
         auto* start = w.lobbyPage()->findChild<QPushButton*>("startButton");
         QVERIFY(start && start->isEnabled());

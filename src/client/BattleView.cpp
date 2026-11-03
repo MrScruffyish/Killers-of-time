@@ -2,6 +2,7 @@
 
 #include <QCursor>
 #include <QHBoxLayout>
+#include <QJsonArray>
 #include <QHash>
 #include <QInputDialog>
 #include <QLabel>
@@ -31,13 +32,23 @@ public:
         setMouseTracking(true);
         m_anim.setInterval(16);
         connect(&m_anim, &QTimer::timeout, this, [this]() {
-            const double dt = m_clock.restart() / 1000.0;
+            double dt = m_clock.restart() / 1000.0;
             m_slide = std::min(1.0, m_slide + dt / 0.28);
             for (Floater& f : m_floaters) f.age += dt;
             m_floaters.removeIf([](const Floater& f) { return f.age > 1.2; });
             for (Ghost& g : m_ghosts) g.age += dt;
             m_ghosts.removeIf([](const Ghost& g) { return g.age > 0.7; });
-            if (m_slide >= 1.0 && m_floaters.isEmpty() && m_ghosts.isEmpty()) m_anim.stop();
+            // The action being shown, one after the other.
+            while (!m_fx.isEmpty()) {
+                Fx& f = m_fx.first();
+                if (f.type == "move" && f.age == 0) m_fxPos.insert(f.unit, centre(f.hex));
+                f.age += dt;
+                if (f.age < f.duration) break;
+                dt = f.age - f.duration;
+                m_fx.removeFirst();
+                if (!m_fx.isEmpty()) m_fx.first().age = 0;
+            }
+            if (m_slide >= 1.0 && m_floaters.isEmpty() && m_ghosts.isEmpty() && m_fx.isEmpty()) m_anim.stop();
             update();
         });
     }
@@ -46,6 +57,11 @@ public:
     void setBattleAnimated(const ViewBattle& next) {
         const ViewBattle old = battle;
         battle = next;
+        if (!old.present && next.present && !m_pendingEvents.isEmpty()) {
+            const QJsonArray pending = m_pendingEvents;
+            m_pendingEvents = QJsonArray();
+            queueEvents(pending);
+        }
         if (!old.present || !next.present) return;
         m_slideFrom.clear();
         for (const ViewBattleUnit& u : old.units) {
@@ -67,8 +83,46 @@ public:
             m_anim.start();
         }
     }
-    // Where a stack is drawn now (sliding toward its hex).
+    // Battle events to show (from the server): arrows fly, attackers lunge, spells
+    // sparkle. Positions are taken now, before the new state arrives.
+    void queueEvents(const QJsonArray& events) {
+        if (!battle.present) {  // the battle screen is not there yet: show them when it is
+            for (const QJsonValue& v : events) m_pendingEvents.append(v);
+            return;
+        }
+        for (const ViewBattleUnit& u : battle.units) m_fxPos.insert(u.id, centre(u.hex));
+        for (const QJsonValue& v : events) {
+            const QJsonObject e = v.toObject();
+            Fx f;
+            f.type = e["type"].toString();
+            f.unit = e["unit"].toInt();
+            f.target = e["target"].toInt();
+            f.spell = e["spell"].toString();
+            f.lucky = e["lucky"].toBool();
+            f.hex = {e["x"].toInt(), e["y"].toInt()};
+            f.duration = f.type == "shoot" ? 0.45 : f.type == "attack" || f.type == "retaliate" ? 0.4
+                       : f.type == "cast" ? 0.6 : f.type == "morale" || f.type == "falter" ? 0.7 : f.type == "move" ? 0.05 : 0;
+            if (f.duration > 0) m_fx.append(f);
+        }
+        if (!m_fx.isEmpty()) {
+            m_fx.first().age = 0;
+            m_clock.restart();
+            m_anim.start();
+        }
+    }
+    QPointF fxPos(int id) const {
+        if (const ViewBattleUnit* u = battle.unit(id); u && !m_fxPos.contains(id)) return centre(u->hex);
+        return m_fxPos.value(id);
+    }
+    // Where a stack is drawn now (sliding toward its hex, or lunging at a target).
     QPointF drawnAt(const ViewBattleUnit& u) const {
+        if (!m_fx.isEmpty()) {
+            const Fx& f = m_fx.first();
+            if ((f.type == "attack" || f.type == "retaliate") && f.unit == u.id && m_fxPos.contains(f.target)) {
+                const QPointF from = centre(u.hex), to = fxPos(f.target);
+                return from + (to - from) * (0.35 * std::sin(M_PI * std::clamp(f.age / f.duration, 0.0, 1.0)));
+            }
+        }
         const QPointF to = centre(u.hex);
         const auto it = m_slideFrom.constFind(u.id);
         if (it == m_slideFrom.cend() || m_slide >= 1.0) return to;
@@ -293,6 +347,81 @@ protected:
                 p.drawText(QRectF(b.x() - br * 0.2, b.y() - br, br * 1.1, br * 2), Qt::AlignCenter, QString::number(u.range));
             }
         }
+        // The action being shown.
+        if (!m_fx.isEmpty()) {
+            const Fx& f = m_fx.first();
+            const double t = std::clamp(f.age / f.duration, 0.0, 1.0);
+            const QPointF at = fxPos(f.target ? f.target : f.unit);
+            if (f.type == "shoot") {
+                const QPointF from = fxPos(f.unit), to = fxPos(f.target);
+                const QPointF pos = from + (to - from) * std::min(1.0, t / 0.75);
+                if (t < 0.75) {
+                    const double angle = std::atan2(to.y() - from.y(), to.x() - from.x()) * 180 / M_PI;
+                    p.save();
+                    p.translate(pos);
+                    p.rotate(angle);
+                    p.setPen(QPen(QColor(20, 12, 4), 3, Qt::SolidLine, Qt::RoundCap));
+                    p.drawLine(QPointF(-r * 0.6, 0), QPointF(r * 0.3, 0));
+                    p.setPen(QPen(QColor("#e8d8b0"), 1.6, Qt::SolidLine, Qt::RoundCap));
+                    p.drawLine(QPointF(-r * 0.6, 0), QPointF(r * 0.3, 0));
+                    p.setPen(Qt::NoPen);
+                    p.setBrush(QColor("#d8dce8"));
+                    p.drawPolygon(QPolygonF{QPointF(r * 0.45, 0), QPointF(r * 0.25, -r * 0.1), QPointF(r * 0.25, r * 0.1)});
+                    p.setBrush(QColor("#c03a3a"));
+                    p.drawPolygon(QPolygonF{QPointF(-r * 0.6, 0), QPointF(-r * 0.75, -r * 0.12), QPointF(-r * 0.5, 0), QPointF(-r * 0.75, r * 0.12)});
+                    p.restore();
+                }
+            }
+            if ((f.type == "shoot" && t >= 0.7) || ((f.type == "attack" || f.type == "retaliate") && t >= 0.35 && t <= 0.85)) {
+                // The hit: a bright ring and sparks on the target.
+                const double k = f.type == "shoot" ? (t - 0.7) / 0.3 : (t - 0.35) / 0.5;
+                p.setPen(QPen(QColor(255, 255, 255, int(230 * (1 - k))), 3));
+                p.setBrush(Qt::NoBrush);
+                p.drawEllipse(at, r * (0.6 + 0.5 * k), r * (0.6 + 0.5 * k));
+                p.setPen(QPen(QColor(255, 210, 90, int(255 * (1 - k))), 2));
+                for (int i = 0; i < 6; ++i) {
+                    const double a = i * M_PI / 3 + 0.4;
+                    p.drawLine(at + QPointF(std::cos(a), std::sin(a)) * r * (0.4 + 0.3 * k),
+                               at + QPointF(std::cos(a), std::sin(a)) * r * (0.7 + 0.5 * k));
+                }
+            }
+            if (f.type == "cast") {
+                // Sparkles: hot colours for damage, green for healing, blue for the rest.
+                const core::SpellDef* s = m_content->spell(f.spell);
+                QColor c("#7ab8ff");
+                for (const core::SpellEffect& e : s ? s->effects : QList<core::SpellEffect>()) {
+                    if (e.type == core::SpellEffect::Type::Damage) c = QColor("#ff8a30");
+                    if (e.type == core::SpellEffect::Type::Heal) c = QColor("#7aff8a");
+                }
+                p.setPen(Qt::NoPen);
+                for (int i = 0; i < 10; ++i) {
+                    const double a = i * M_PI / 5 + t * 3;
+                    const double d = r * (0.2 + 0.9 * t);
+                    QColor cc = c;
+                    cc.setAlphaF(1 - t * 0.8);
+                    p.setBrush(cc);
+                    p.drawEllipse(at + QPointF(std::cos(a), std::sin(a)) * d, r * 0.1 * (1.2 - t), r * 0.1 * (1.2 - t));
+                }
+                QRadialGradient g(at, r * (0.4 + 0.6 * t));
+                QColor glow = c;
+                glow.setAlphaF(0.5 * (1 - t));
+                g.setColorAt(0, glow);
+                glow.setAlphaF(0);
+                g.setColorAt(1, glow);
+                p.setBrush(g);
+                p.drawEllipse(at, r * (0.4 + 0.6 * t), r * (0.4 + 0.6 * t));
+            }
+            if (f.type == "morale" || f.type == "falter" || f.lucky) {
+                const QString word = f.type == "morale" ? tr("Morale!") : f.type == "falter" ? tr("Falters...") : tr("Lucky!");
+                QFont wf = p.font();
+                wf.setPixelSize(std::max(12, int(r * 0.6)));
+                wf.setBold(true);
+                p.setFont(wf);
+                const QPointF wp = fxPos(f.unit) - QPointF(QFontMetrics(wf).horizontalAdvance(word) / 2.0, r * (1.0 + t * 0.5));
+                p.setPen(f.type == "falter" ? QColor("#c0c0d0") : QColor("#ffd84a"));
+                p.drawText(wp, word);
+            }
+        }
         // Stacks wiped out fade; losses float up.
         for (const Ghost& g : m_ghosts) {
             const core::UnitDef* def = m_content->unit(g.unit.unit);
@@ -356,6 +485,16 @@ private:
         ViewBattleUnit unit;
         double age;
     };
+    struct Fx {
+        QString type, spell;
+        int unit = 0, target = 0;
+        core::Pos hex;
+        bool lucky = false;
+        double age = 0, duration = 0;
+    };
+    QList<Fx> m_fx;
+    QJsonArray m_pendingEvents;
+    QHash<int, QPointF> m_fxPos;
     const core::ContentRegistry* m_content;
     QTimer m_anim;
     QElapsedTimer m_clock;
@@ -434,6 +573,10 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
 }
 
 QWidget* BattleView::field() const { return m_field; }
+
+void BattleView::playEvents(const QJsonArray& events) {
+    m_field->queueEvents(events);
+}
 
 QPoint BattleView::hexCentre(core::Pos hex) const {
     return m_field->centre(hex).toPoint();
