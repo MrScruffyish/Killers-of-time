@@ -119,6 +119,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     townsLabel->setWordWrap(true);
     side->addWidget(townsLabel);
     m_townList = new QListWidget(this);
+    m_townList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_townList->setTextElideMode(Qt::ElideRight);
     m_townList->setObjectName("townList");
     m_townList->setMaximumHeight(120);
     side->addWidget(m_townList);
@@ -126,7 +128,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_buildAndBuy->setObjectName("buildAndBuyButton");
     m_buyAll = new QPushButton(tr("Buy all units"), this);
     m_buyAll->setObjectName("buyAllButton");
-    m_sendUnits = new QPushButton(tr("Send dwelling units to closest town"), this);
+    m_sendUnits = new QPushButton(tr("Bring dwelling units home"), this);
     m_sendUnits->setObjectName("sendUnitsButton");
     m_save = menu->addAction(tr("Save game..."));
     m_save->setObjectName("saveAction");

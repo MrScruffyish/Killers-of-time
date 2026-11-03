@@ -22,6 +22,8 @@ LoadDialog::LoadDialog(const QJsonArray& games, QWidget* parent) : QDialog(paren
     auto* layout = new QVBoxLayout(this);
     layout->addWidget(new QLabel(tr("Saved games on the server, newest first. This is version %1.").arg(core::kGameVersion), this));
     m_table = new QTableWidget(this);
+    m_table->setShowGrid(false);
+    m_table->setAlternatingRowColors(true);
     m_table->setObjectName("savesTable");
     m_table->setColumnCount(7);
     m_table->setHorizontalHeaderLabels({tr("Name"), tr("Saved"), tr("Day"), tr("Players"), tr("Map"), tr("Version"), tr("Can load?")});

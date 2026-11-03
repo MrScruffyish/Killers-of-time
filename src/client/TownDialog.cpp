@@ -283,6 +283,8 @@ void TownDialog::rebuild() {
         if (m_onlyBuildable) rows.erase(std::remove_if(rows.begin(), rows.end(), [](const Row& r) { return r.rank > 1; }), rows.end());
 
         auto* table = new QTableWidget(page);
+        table->setShowGrid(false);
+        table->setAlternatingRowColors(true);
         table->setObjectName("buildingTable");
         table->setColumnCount(5);
         table->setHorizontalHeaderLabels({tr("Building"), QString(), tr("Cost"), tr("What it does"), tr("Why not")});
@@ -323,6 +325,7 @@ void TownDialog::rebuild() {
             }
         }
         table->resizeColumnsToContents();
+        table->setColumnWidth(1, std::max(table->columnWidth(1), 86));  // room for the styled button
         table->setColumnWidth(0, std::min(table->columnWidth(0), 170));
         table->setColumnWidth(2, std::min(table->columnWidth(2), 150));
         table->setColumnWidth(3, std::min(table->columnWidth(3), 280));
@@ -353,6 +356,8 @@ void TownDialog::rebuild() {
         layout->addWidget(new QLabel(tr("Garrison: %1").arg(stacks.isEmpty() ? tr("empty") : stacks.join(", ")), page));
 
         auto* table = new QTableWidget(page);
+        table->setShowGrid(false);
+        table->setAlternatingRowColors(true);
         table->setObjectName("recruitTable");
         table->setIconSize(QSize(40, 40));
         table->verticalHeader()->setVisible(false);
@@ -389,6 +394,7 @@ void TownDialog::rebuild() {
             ++row;
         }
         table->resizeColumnsToContents();
+        table->setColumnWidth(4, std::max(table->columnWidth(4), 96));  // room for the styled button
         layout->addWidget(table, 1);
         auto* buyAll = new QPushButton(tr("Buy all units here (trading spare resources if needed)"), page);
         buyAll->setObjectName("buyAllHere");

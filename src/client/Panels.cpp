@@ -91,17 +91,29 @@ constexpr int kSlotSize = 50;
 constexpr int kTop = 120;  // where the army slots start
 
 void bar(QPainter& p, const QRect& r, double fraction, const QColor& colour, const QString& text) {
-    p.setPen(QPen(QColor("#7a6235"), 1));
-    p.setBrush(QColor("#1d1610"));
-    p.drawRoundedRect(r, 4, 4);
-    const QRect fill(r.left() + 1, r.top() + 1, int((r.width() - 2) * std::clamp(fraction, 0.0, 1.0)), r.height() - 2);
-    QLinearGradient g(fill.topLeft(), fill.bottomLeft());
-    g.setColorAt(0, colour.lighter(130));
-    g.setColorAt(1, colour.darker(120));
-    p.setPen(Qt::NoPen);
-    p.setBrush(g);
-    if (fill.width() > 0) p.drawRoundedRect(fill, 3, 3);
-    p.setPen(QColor("#f6e7c1"));
+    // A pill: dark sunken track, a glossy fill, the text with a soft shadow.
+    const QRectF track = QRectF(r).adjusted(0.5, 0.5, -0.5, -0.5);
+    const double radius = track.height() / 2;
+    p.setPen(QPen(QColor(122, 98, 53, 150), 1));
+    QLinearGradient sunk(track.topLeft(), track.bottomLeft());
+    sunk.setColorAt(0, QColor("#120d09"));
+    sunk.setColorAt(1, QColor("#2a2016"));
+    p.setBrush(sunk);
+    p.drawRoundedRect(track, radius, radius);
+    const QRectF fill(track.left() + 1.5, track.top() + 1.5, (track.width() - 3) * std::clamp(fraction, 0.0, 1.0), track.height() - 3);
+    if (fill.width() > 1) {
+        QLinearGradient g(fill.topLeft(), fill.bottomLeft());
+        g.setColorAt(0, colour.lighter(150));
+        g.setColorAt(0.45, colour);
+        g.setColorAt(1, colour.darker(130));
+        p.setPen(Qt::NoPen);
+        p.setBrush(g);
+        const double fr = std::min(fill.height() / 2, fill.width() / 2);
+        p.drawRoundedRect(fill, fr, fr);
+    }
+    p.setPen(QColor(0, 0, 0, 150));
+    p.drawText(r.translated(1, 1), Qt::AlignCenter, text);
+    p.setPen(QColor("#fff4dc"));
     p.drawText(r, Qt::AlignCenter, text);
 }
 }  // namespace
@@ -198,9 +210,13 @@ void HeroPanel::paintEvent(QPaintEvent*) {
     const ViewArmy* a = m_view.army(h->army);
     for (int i = 0; i < core::kMaxArmyStacks; ++i) {
         const QRect r = slotRect(i);
-        p.setPen(QPen(QColor("#7a6235"), 1));
-        p.setBrush(QColor(0, 0, 0, 70));
-        p.drawRoundedRect(r, 5, 5);
+        // A soft sunken socket for each place in the army.
+        QRadialGradient socket(QRectF(r).center(), r.width() * 0.7);
+        socket.setColorAt(0, QColor(0, 0, 0, 40));
+        socket.setColorAt(1, QColor(0, 0, 0, 110));
+        p.setPen(QPen(QColor(122, 98, 53, 110), 1));
+        p.setBrush(socket);
+        p.drawRoundedRect(QRectF(r).adjusted(1.5, 1.5, -1.5, -1.5), r.width() * 0.22, r.width() * 0.22);
         if (!a || i >= a->stacks.size()) continue;
         const ViewStack& s = a->stacks[i];
         const core::UnitDef* u = m_content->unit(s.unit);
