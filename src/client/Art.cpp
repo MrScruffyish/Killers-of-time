@@ -61,21 +61,50 @@ QPixmap makeTile(const QString& id, const QColor& dataColour, int s, int variant
     p.setRenderHint(QPainter::Antialiasing, true);
     Dice d(qHash(id) + variant * 7919);
     if (s < 8) return pm;
+    // A fine grain over every tile: tiny lighter and darker flecks, so no ground
+    // is one flat colour (wrapped at the edges, so it has no seams of its own).
+    {
+        Dice g(qHash(id) * 3 + variant * 104729 + 11);
+        const bool water = id == "sea" || id == "river";
+        p.setPen(Qt::NoPen);
+        for (int i = 0; i < 260; ++i) {
+            const double x = g.next() * s, y = g.next() * s, rad = s * (0.006 + 0.01 * g.next());
+            const int shade = int(g.next() * 2);
+            QColor f = shade ? base.lighter(110 + int(g.next() * 12)) : base.darker(110 + int(g.next() * 12));
+            f.setAlpha(water ? 60 : 110);
+            p.setBrush(f);
+            for (const int ox : {-s, 0, s})
+                for (const int oy : {-s, 0, s})
+                    if (x + ox > -rad && x + ox < s + rad && y + oy > -rad && y + oy < s + rad) p.drawEllipse(QPointF(x + ox, y + oy), rad, rad);
+        }
+    }
 
     if (id == "grass") {
-        speckles(p, s, d, base.lighter(115), 5, 0.05);
-        grassTufts(p, s, d, base, 4);
+        speckles(p, s, d, base.lighter(115), 8, 0.04);
+        speckles(p, s, d, base.darker(112), 6, 0.035);
+        grassTufts(p, s, d, base, 5);
+        grassTufts(p, s, d, base.lighter(125), 4);
     } else if (id == "dirt" || id == "road") {
-        speckles(p, s, d, base.darker(120), id == "road" ? 3 : 7, 0.04);
-        speckles(p, s, d, base.lighter(115), 4, 0.03);
+        speckles(p, s, d, base.darker(120), id == "road" ? 4 : 10, 0.035);
+        speckles(p, s, d, base.lighter(115), 6, 0.025);
+        // Small pebbles with a light top.
+        for (int i = 0; i < (id == "road" ? 2 : 5); ++i) {
+            const double x = d.next() * s, y = d.next() * s, rad = s * (0.015 + 0.02 * d.next());
+            p.setPen(QPen(base.darker(150), std::max(1.0, s / 128.0)));
+            p.setBrush(base.lighter(125));
+            p.drawEllipse(QPointF(x, y), rad * 1.3, rad);
+        }
     } else if (id == "sand") {
-        p.setPen(QPen(base.darker(112), std::max(1.0, s / 20.0)));
-        for (int i = 0; i < 3; ++i) {
-            const double y = s * (0.25 + 0.25 * i) + d.next() * s * 0.08;
+        // Short wind ripples here and there, a shadow line under a light one.
+        for (int i = 0; i < 5; ++i) {
+            const double x = d.next() * s * 0.75, y = s * (0.1 + 0.8 * d.next()), len = s * (0.18 + 0.2 * d.next());
             QPainterPath dune;
-            dune.moveTo(0, y);
-            dune.quadTo(s * 0.5, y - s * 0.12, s, y);
+            dune.moveTo(x, y);
+            dune.quadTo(x + len / 2, y - s * 0.05, x + len, y);
+            p.setPen(QPen(base.darker(115), std::max(1.0, s / 40.0), Qt::SolidLine, Qt::RoundCap));
             p.drawPath(dune);
+            p.setPen(QPen(base.lighter(112), std::max(1.0, s / 60.0), Qt::SolidLine, Qt::RoundCap));
+            p.drawPath(dune.translated(0, -s * 0.02));
         }
     } else if (id == "forest") {  // the forest floor; the trees are terrainFeature
         speckles(p, s, d, base.darker(125), 6, 0.07);
@@ -88,11 +117,43 @@ QPixmap makeTile(const QString& id, const QColor& dataColour, int s, int variant
         speckles(p, s, d, base.darker(125), 7, 0.05);
         speckles(p, s, d, base.lighter(125), 6, 0.035);
     } else if (id == "swamp") {
-        speckles(p, s, d, QColor("#3c5a6e"), 3, 0.09);
-        grassTufts(p, s, d, base.lighter(130), 5);
+        // Dark pools with a light rim, reeds between them.
+        for (int i = 0; i < 3; ++i) {
+            const double x = d.next() * s * 0.8 + s * 0.1, y = d.next() * s * 0.8 + s * 0.1, rw = s * (0.08 + 0.06 * d.next());
+            p.setPen(QPen(base.lighter(125), std::max(1.0, s / 90.0)));
+            QRadialGradient pool(QPointF(x, y), rw);
+            pool.setColorAt(0, QColor("#2a4a5e"));
+            pool.setColorAt(1, QColor("#3c5a6e"));
+            p.setBrush(pool);
+            p.drawEllipse(QPointF(x, y), rw, rw * 0.55);
+        }
+        grassTufts(p, s, d, base.lighter(130), 6);
     } else if (id == "snow") {
-        speckles(p, s, d, QColor("#d0dbe6"), 6, 0.05);
+        speckles(p, s, d, QColor("#d0dbe6"), 8, 0.045);
+        // Wind-blown drifts and a few sparkles.
+        p.setPen(QPen(QColor("#c4d0de"), std::max(1.0, s / 40.0), Qt::SolidLine, Qt::RoundCap));
+        for (int i = 0; i < 3; ++i) {
+            const double y = s * (0.2 + 0.3 * i) + d.next() * s * 0.1, x = d.next() * s * 0.5;
+            QPainterPath drift;
+            drift.moveTo(x, y);
+            drift.quadTo(x + s * 0.15, y - s * 0.05, x + s * 0.32, y);
+            p.drawPath(drift);
+        }
+        p.setPen(QPen(QColor(255, 255, 255), std::max(1.0, s / 100.0)));
+        for (int i = 0; i < 5; ++i) {
+            const QPointF c(d.next() * s, d.next() * s);
+            p.drawLine(c - QPointF(s * 0.015, 0), c + QPointF(s * 0.015, 0));
+            p.drawLine(c - QPointF(0, s * 0.015), c + QPointF(0, s * 0.015));
+        }
     } else if (id == "sea" || id == "river") {
+        // Light glints on the water, then a couple of wave crests.
+        p.setPen(Qt::NoPen);
+        for (int i = 0; i < 6; ++i) {
+            QColor glint = base.lighter(150);
+            glint.setAlpha(90);
+            p.setBrush(glint);
+            p.drawEllipse(QPointF(d.next() * s, d.next() * s), s * 0.04, s * 0.012);
+        }
         p.setPen(QPen(base.lighter(135), std::max(1.0, s / 22.0)));
         for (int i = 0; i < 2; ++i) {
             const double x = d.next() * s * 0.6, y = s * (0.3 + 0.4 * i) + d.next() * s * 0.1;
