@@ -43,6 +43,20 @@ private slots:
                 QVERIFY2(QFile::exists(QDir(KOT_DATA_DIR).filePath("scenarios/" + s + ".json")), qPrintable(c.id + ": " + s));
     }
 
+    void theGreatWarStarts() {
+        QTemporaryDir saves;
+        net::LobbyState lobby;
+        lobby.settings.campaign = "great_war";
+        lobby.slotList = {slot(0, false, "Ann", 1), slot(1, true, "Bot", 2)};
+        server::GameSession s(reg);
+        s.setCampaignDir(saves.path());
+        QString error;
+        QVERIFY2(s.start(lobby, &error), qPrintable(error));
+        QCOMPARE(s.state().map().width(), 56);  // mountain_kings
+        QCOMPARE(s.state().player(s.playerOfClient(1))->race, QString("dwarves"));
+        QCOMPARE(s.state().victory().type, VictoryCondition::Type::HoldTown);
+    }
+
     void heroesCarryOver() {
         GameState a(1);
         a.setMap(GameMap(8, 8, "grass"));
