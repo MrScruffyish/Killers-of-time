@@ -62,6 +62,7 @@ private:
     QSet<quint32> m_garrisonTaken;   // hero ids that took the garrison this turn
     QHash<quint32, int> m_moves;     // hero id -> move commands this turn
     QSet<quint32> m_heroDone;        // heroes with nothing more to do this turn
+    QSet<quint32> m_resting;  // heroes that stopped short of their destination today
     QSet<quint32> m_spellCast;       // heroes that considered a movement spell this turn
     QSet<std::uint64_t> m_failedTargets;  // hero/target pairs refused this turn
     std::uint64_t m_lastTarget = 0;

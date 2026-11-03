@@ -48,6 +48,19 @@ struct Hero {
     int trait(const QString& traitId) const { return traits.value(traitId, 0); }
 };
 
+// A town covers 2x2 tiles: its position is the gate (bottom left, where heroes
+// enter), the tiles right of it and above it are its walls (they block walking).
+// Tiles outside the map are left out.
+inline QList<Pos> townTiles(Pos gate, int mapWidth, int mapHeight) {
+    QList<Pos> tiles;
+    for (const Pos p : {gate, Pos{gate.x + 1, gate.y}, Pos{gate.x, gate.y - 1}, Pos{gate.x + 1, gate.y - 1}})
+        if (p.x >= 0 && p.y >= 0 && p.x < mapWidth && p.y < mapHeight) tiles.append(p);
+    return tiles;
+}
+inline bool townCovers(Pos gate, Pos tile) {
+    return (tile.x == gate.x || tile.x == gate.x + 1) && (tile.y == gate.y || tile.y == gate.y - 1);
+}
+
 struct Town {
     TownId id;
     QString name;

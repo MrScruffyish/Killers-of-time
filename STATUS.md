@@ -145,7 +145,16 @@ and react to; add depth afterwards.
 - [x] Routes: a click plots the route (dots, ring at the goal), double click or Enter walks it; a move that runs out of movement keeps its destination for the next day (saved; the AI uses it too)
 - [x] Zone of control: monsters and enemy heroes on the map attack a hero who comes within 2 tiles (shown in orange; the planned path marks where); new Scouting trait: +vision, +movement, smaller zone (balance.json "scouting")
 - [x] End turn button glows when no hero can move; town build tab: buildable first, "only what I can build", What it does, bigger Close
+- [x] Map look: zoom in fixed steps (16-96 px, Ctrl+wheel, + and -, Game menu; remembered), icons drawn once big with an outline and scaled down, rider heroes, castles, resource icons on mines, "few/pack/horde" plates on monsters, town names, faint grid at big zoom
+- [x] Towns cover 2x2 tiles (gate = the town's tile, bottom left; the other three are walls); right click or Shift+click opens your town
+- [x] Mouse pointers: footsteps (white today, red later), crossed swords (attack or ambush), gate (enter), hand (select), blocked; a hover line under the map says what is there
+- [x] Game menu (Save game, icon size, sound) instead of the Save button
 - [ ] Playtesting
+- [ ] **Next version, battle map** (user has more to say about it; collected so far):
+  - Ranges: `range` is in the unit data but not used yet (archers reach the whole field); give units their own ranges, longer for trained/upgraded ones
+  - Shortcuts D (defend) and W (wait)
+  - Show the enemy's range when a ranged stack is selected or hovered; a range mark on ranged units' tokens; unit stats on the battle map
+  - Unit ranks: keep "regular", "advanced" and "elite" versions (e.g. archers) as separate unit types that never merge; town buildings train 0, 1 or more levels
 
 ---
 

@@ -85,6 +85,7 @@ private:
     QHash<int, Pending> m_pending;
 
     QLabel* m_status;
+    QLabel* m_hoverInfo;
     QStackedWidget* m_centre;
     MapView* m_map;
     HeroDialog* m_heroDialog;
@@ -95,7 +96,7 @@ private:
     QList<ViewObject> m_memObjects;
     int m_memoryOwner = -1;
     QPushButton* m_castSpell;
-    QPushButton* m_save;
+    class QAction* m_save;
     BattleView* m_battleView;
     int m_seenBattleId = 0;
     int m_announcedWeek = 0;

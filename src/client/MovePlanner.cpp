@@ -32,7 +32,10 @@ void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& con
             }
             else m_map.setTerrain({x, y}, view.terrainPalette.value(index));
         }
-    for (const ViewTown& t : view.towns) m_blocked.insert(t.pos);
+    for (const ViewTown& t : view.towns)
+        for (const core::Pos p : core::townTiles(t.pos, view.width, view.height)) m_blocked.insert(p);
+    m_townGates.clear();
+    for (const ViewTown& t : view.towns) m_townGates.append(t.pos);
     for (const ViewMine& m : view.mines) m_blocked.insert(m.pos);
     for (const ViewDwelling& d : view.dwellings) m_blocked.insert(d.pos);
     for (const ViewObject& o : view.objects) m_blocked.insert(o.pos);
@@ -72,6 +75,8 @@ void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& con
 
 MovePlan MovePlanner::plan(core::Pos target) const {
     MovePlan plan;
+    for (const core::Pos gate : m_townGates)
+        if (core::townCovers(gate, target)) target = gate;  // walls lead to the gate
     if (!m_heroId || !m_map.inBounds(target) || target == m_from || m_unexplored.contains(target)) return plan;
     const core::MoveCostGrid grid(m_map, *m_content, m_mode, m_terrainPercent);
     const core::PathResult path =

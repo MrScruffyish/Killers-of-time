@@ -203,6 +203,8 @@ struct GameView {
     QList<const ViewTown*> myTowns() const;
     const ViewHero* heroAt(core::Pos p) const;
     const ViewTown* townAt(core::Pos p) const;
+    // The town whose 2x2 tiles include `p` (core::townTiles), or null.
+    const ViewTown* townCovering(core::Pos p) const;
 };
 
 // Parses a `game_started.view` / `game_state` body. Returns false (and says why) if

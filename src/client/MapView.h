@@ -29,7 +29,8 @@ public:
     void setSelectedHero(int heroId);
     void centerOn(core::Pos tile);
     int tileSize() const { return m_tile; }
-    void setTileSize(int pixels);
+    void setTileSize(int pixels);  // snaps to a zoom step
+    void zoomStep(int direction);  // +1 bigger, -1 smaller
     core::Pos tileAt(const QPoint& viewportPos) const;
     // Where a tile is inside the viewport (for tests and overlays).
     QRect tileRect(core::Pos tile) const;
@@ -51,6 +52,9 @@ signals:
     void tileClicked(core::Pos tile);        // left click
     void tileRightClicked(core::Pos tile);   // right click
     void tileDoubleClicked(core::Pos tile);  // left double click
+    void tileShiftClicked(core::Pos tile);   // left click with Shift
+    void zoomChanged(int tileSize);
+    void hoverInfo(const QString& text);     // what is under the mouse, one line
     void scrolled();
 
 protected:
@@ -68,6 +72,7 @@ protected:
 private:
     void updateScrollBars();
     void replan();
+    void updatePointer();
     void drawPlan(QPainter& p, const MovePlan& plan, bool pinned) const;
     QColor ownerColor(int owner) const;
 
@@ -75,7 +80,7 @@ private:
     GameView m_view;
     QList<QColor> m_paletteColors;
     int m_selectedHero = 0;
-    int m_tile = 28;
+    int m_tile = 48;  // one of art::kZoomSteps
     QPoint m_pressPos;
     MovePlanner m_planner;
     MovePlan m_plan;       // under the mouse

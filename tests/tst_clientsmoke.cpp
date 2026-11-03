@@ -89,7 +89,7 @@ private slots:
                 const core::Pos t{hero.pos.x + dx, hero.pos.y + dy};
                 if (t == hero.pos || !game->view().known(t)) continue;
                 const QString terrain = game->view().terrainPalette[game->view().tiles[t.y * game->view().width + t.x]];
-                if (reg.terrainType(terrain)->walkable && !game->view().townAt(t)) { target = t; break; }
+                if (reg.terrainType(terrain)->walkable && !game->view().townCovering(t)) { target = t; break; }
             }
         }
         QVERIFY(target != hero.pos);
@@ -163,7 +163,7 @@ private slots:
                 const core::Pos p{at.x + dx, at.y + dy};
                 bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable;
                 for (const core::Army& a : gs.armies()) free = free && a.pos != p;
-                for (const core::Town& t : gs.towns()) free = free && t.pos != p;
+                free = free && !gs.townCovering(p);
                 for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
                 for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
                 if (free) spot = p;

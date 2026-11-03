@@ -82,6 +82,12 @@ Mine* GameState::mine(MineId id) { return findIn(m_mines, id); }
 const Player* GameState::player(PlayerId id) const { return findIn(m_players, id); }
 const Hero* GameState::hero(HeroId id) const { return findIn(m_heroes, id); }
 const Army* GameState::army(ArmyId id) const { return findIn(m_armies, id); }
+const Town* GameState::townCovering(Pos tile) const {
+    for (const Town& t : m_towns)
+        if (townCovers(t.pos, tile)) return &t;
+    return nullptr;
+}
+
 const Town* GameState::town(TownId id) const { return findIn(m_towns, id); }
 const Mine* GameState::mine(MineId id) const { return findIn(m_mines, id); }
 MapDwelling* GameState::mapDwelling(MapDwellingId id) { return findIn(m_mapDwellings, id); }

@@ -105,7 +105,7 @@ private slots:
                 const core::Pos p{at.x + dx, at.y + dy};
                 bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrain().value(gs.map().terrainAt(p)).walkable;
                 for (const core::Army& a : gs.armies()) free = free && a.pos != p;
-                for (const core::Town& t : gs.towns()) free = free && t.pos != p;
+                free = free && !gs.townCovering(p);
                 for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
                 for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
                 if (free) spot = p;
@@ -170,7 +170,7 @@ private slots:
                                   core::Pos{at.x, at.y - 1}}) {
             bool free = spot.x < 0 && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable;
             for (const core::Army& a : gs.armies()) free = free && a.pos != p;
-            for (const core::Town& t : gs.towns()) free = free && t.pos != p;
+            free = free && !gs.townCovering(p);
             for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
             for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
             if (free) spot = p;
@@ -231,8 +231,9 @@ private slots:
     void movingOwnHero() {
         const core::Hero* h = heroOf(pA);
         const core::Pos start = session->state().army(h->army)->pos;
-        core::Pos target{start.x + 1, start.y};
-        if (!reg.terrainType(session->state().map().terrainAt(target))->walkable) target = {start.x - 1, start.y};
+        // Not right or up: those are the town's walls.
+        core::Pos target{start.x - 1, start.y};
+        if (!reg.terrainType(session->state().map().terrainAt(target))->walkable) target = {start.x, start.y + 1};
         const CommandResult r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", target.x}, {"y", target.y}});
         QVERIFY2(r.ok, qPrintable(r.message));
         QVERIFY(r.info["arrived"].toBool());

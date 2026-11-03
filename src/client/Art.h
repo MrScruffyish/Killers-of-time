@@ -4,6 +4,7 @@
 #include <QPixmap>
 #include <QRectF>
 #include <QString>
+#include <functional>
 
 class QPainter;
 
@@ -18,6 +19,26 @@ namespace art {
 // of copies. The terrain id chooses the pattern, `base` is the data colour.
 const QPixmap& terrainTile(const QString& terrainId, const QColor& base, int size, int variant);
 int variantFor(int x, int y);
+
+// Map zoom: tile sizes in pixels, smallest first, and the default.
+inline constexpr int kZoomSteps[] = {16, 24, 32, 48, 64, 96};
+inline constexpr int kDefaultTile = 48;
+int nextZoom(int tile, int direction);  // the next step up (+1) or down (-1)
+
+// A map icon drawn once at a large master size (with a dark outline so it reads on
+// any terrain), then scaled down smoothly to `size` pixels and cached under `key`.
+const QPixmap& sprite(const QString& key, int size, const std::function<void(QPainter&, const QRectF&)>& draw);
+// The cached sprites of the map objects (size = the tile; a town covers 2x2 tiles).
+const QPixmap& townSprite(const QColor& owner, int size);
+const QPixmap& mineSprite(const QString& resource, const QColor& resourceColor, const QColor& owner, int size);
+const QPixmap& dwellingSprite(const QColor& owner, int size);
+const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size);
+const QPixmap& monsterSprite(int size);
+const QPixmap& chestSprite(const QColor& resource, int size);
+const QPixmap& artifactSprite(int size);
+// Mouse pointers for the adventure map.
+enum class Pointer { Normal, Move, MoveLater, Attack, Enter, Select, Blocked };
+QPixmap pointerImage(Pointer kind);
 
 void drawTown(QPainter& p, const QRectF& r, const QColor& owner);
 void drawMine(QPainter& p, const QRectF& r, const QColor& resource, const QColor& owner);

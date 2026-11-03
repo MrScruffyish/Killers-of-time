@@ -1,5 +1,7 @@
 #include "client/ViewModel.h"
 
+#include "core/model/Entities.h"
+
 #include <QJsonArray>
 
 namespace kot::client {
@@ -85,6 +87,12 @@ const ViewHero* GameView::heroAt(core::Pos p) const {
     for (const ViewHero& h : heroes) if (h.pos == p) return &h;
     return nullptr;
 }
+const ViewTown* GameView::townCovering(core::Pos p) const {
+    for (const ViewTown& t : towns)
+        if (core::townCovers(t.pos, p)) return &t;
+    return nullptr;
+}
+
 const ViewTown* GameView::townAt(core::Pos p) const {
     for (const ViewTown& t : towns) if (t.pos == p) return &t;
     return nullptr;

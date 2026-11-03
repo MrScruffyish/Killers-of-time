@@ -78,6 +78,7 @@ void SimpleAi::beginTurn(const GameState&, const ContentRegistry&, PlayerId) {
     m_spellCast.clear();
     m_failedTargets.clear();
     m_boatTried.clear();
+    m_resting.clear();
 }
 
 void SimpleAi::commandDone(const net::Message& cmd, bool ok) {
@@ -177,7 +178,8 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
         if (h.owner != me || h.movementPoints <= 0 || m_heroDone.contains(h.id.value())) continue;
         if (m_moves.value(h.id.value()) >= kMaxMovesPerHero) continue;
         net::Message move = h.inBoat ? sailMove(state, content, me, h) : heroMove(state, content, me, h);
-        if (move.type.isEmpty() && !h.inBoat) move = boatPlan(state, content, me, h);  // nothing left here
+        if (move.type.isEmpty() && !h.inBoat && !m_resting.contains(h.id.value()))
+            move = boatPlan(state, content, me, h);  // nothing left here
         if (move.type.isEmpty()) {
             m_heroDone.insert(h.id.value());
             continue;
@@ -369,6 +371,11 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
     // Keep going where the hero went yesterday while that is still a target
     // (no flip-flopping between far goals).
     if (hero.destination) {
+        // Could not get further toward it today: rest instead of walking off elsewhere.
+        if (m_failedTargets.contains(key(hid, *hero.destination))) {
+            m_resting.insert(hid);
+            return {};
+        }
         for (const Target& t : targets)
             if (t.pos == *hero.destination) {
                 m_lastTarget = key(hid, t.pos);

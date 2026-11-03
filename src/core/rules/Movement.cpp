@@ -115,12 +115,16 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
         }
     }
 
+    // A town's walls stand for the town: walk to its gate.
+    if (const Town* t = state.townCovering(target)) target = t->pos;
+
     // Things that block walking through a tile.
     QSet<Pos> occupied;
     for (const Army& a : state.armies()) {
         if (a.id != army->id) occupied.insert(a.pos);
     }
-    for (const Town& t : state.towns()) occupied.insert(t.pos);
+    for (const Town& t : state.towns())
+        for (const Pos p : townTiles(t.pos, state.map().width(), state.map().height())) occupied.insert(p);
     for (const Mine& m : state.mines()) occupied.insert(m.pos);
     for (const MapDwelling& d : state.mapDwellings()) occupied.insert(d.pos);
     for (const MapObject& o : state.mapObjects()) occupied.insert(o.pos);

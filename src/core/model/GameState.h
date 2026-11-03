@@ -90,6 +90,8 @@ public:
     const Army* army(ArmyId id) const;
     const Town* town(TownId id) const;
     const Mine* mine(MineId id) const;
+    // The town whose 2x2 tiles include `tile` (see townTiles), or null.
+    const Town* townCovering(Pos tile) const;
 
     // The team a player belongs to (invalid id for unknown/neutral).
     TeamId teamOf(PlayerId id) const;

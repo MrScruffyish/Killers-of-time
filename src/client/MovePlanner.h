@@ -47,6 +47,7 @@ private:
     QSet<core::Pos> m_unexplored;
     QSet<core::Pos> m_today;
     QSet<core::Pos> m_danger;
+    QList<core::Pos> m_townGates;
     QHash<core::Pos, QList<core::Pos>> m_dangerFrom;  // danger tile -> armies whose zone it is in
 };
 

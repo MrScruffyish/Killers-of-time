@@ -1,11 +1,13 @@
 #include "client/MapView.h"
 
-#include <utility>
-
+#include <QCursor>
+#include <QFontMetrics>
+#include <QHash>
 #include <QHelpEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
+#include <QResizeEvent>
 #include <QScrollBar>
 #include <QToolTip>
 #include <QWheelEvent>
@@ -71,7 +73,45 @@ void MapView::mouseMoveEvent(QMouseEvent* event) {
     if (t == m_hover) return;
     m_hover = t;
     m_plan = m_planner.plan(t);
+    updatePointer();
+    QString info = describeTile(t);
+    emit hoverInfo(info.replace('\n', QStringLiteral("  \u00B7  ")));
     viewport()->update();
+}
+
+void MapView::updatePointer() {
+    using art::Pointer;
+    static QHash<int, QCursor> cursors;
+    const auto cursor = [](Pointer kind) {
+        auto it = cursors.find(int(kind));
+        if (it == cursors.end()) {
+            const bool tip = kind == Pointer::Normal || kind == Pointer::Select;
+            it = cursors.insert(int(kind), QCursor(art::pointerImage(kind), tip ? 3 : 16, tip ? 2 : 16));
+        }
+        return it.value();
+    };
+    Pointer kind = Pointer::Normal;
+    const core::Pos t = m_hover;
+    const ViewHero* hero = m_view.heroAt(t);
+    const ViewPlayer* me = m_view.player(m_view.you);
+    const auto hostile = [&](int owner) {
+        const ViewPlayer* o = m_view.player(owner);
+        return owner == 0 || !o || !me || o->team != me->team;
+    };
+    if (hero && hero->owner == m_view.you) {
+        kind = Pointer::Select;
+    } else if (m_view.inBounds(t) && m_view.known(t) && m_view.isMyTurn() && m_planner.ready()) {
+        bool enemy = false;
+        for (const ViewArmy& a : m_view.armies)
+            if (a.pos == t && hostile(a.owner) && (a.hero || !m_view.townAt(t))) enemy = true;
+        const ViewTown* town = m_view.townCovering(t);
+        if (town && hostile(town->owner)) enemy = true;
+        if (!m_plan.found) kind = Pointer::Blocked;
+        else if (enemy || m_plan.ambushAt >= 0) kind = Pointer::Attack;
+        else if (town) kind = Pointer::Enter;
+        else kind = m_plan.affordable == m_plan.steps.size() ? Pointer::Move : Pointer::MoveLater;
+    }
+    viewport()->setCursor(cursor(kind));
 }
 
 void MapView::leaveEvent(QEvent* event) {
@@ -116,8 +156,9 @@ QString MapView::describeTile(core::Pos t) const {
         const core::UnitDef* u = m_content ? m_content->unit(id) : nullptr;
         return u ? u->name : id;
     };
-    if (const ViewTown* town = m_view.townAt(t))
-        lines << tr("Town %1 (%2)").arg(town->name, ownerName(town->owner));
+    if (const ViewTown* town = m_view.townCovering(t))
+        lines << tr("Town %1 (%2)").arg(town->name, ownerName(town->owner))
+              << (town->mine ? tr("Right click or Shift+click: open the town") : tr("Walk to its gate to visit or attack it"));
     for (const ViewMine& m : m_view.mines)
         if (m.pos == t) lines << tr("%1 mine (%2)").arg(m.resource, ownerName(m.owner));
     for (const ViewDwelling& d : m_view.dwellings)
@@ -155,11 +196,22 @@ QString MapView::describeTile(core::Pos t) const {
 }
 
 void MapView::setTileSize(int pixels) {
-    m_tile = std::clamp(pixels, 6, 64);
+    const QPoint centre = viewport()->rect().center();
+    const QPointF world((centre.x() + horizontalScrollBar()->value()) / double(m_tile),
+                        (centre.y() + verticalScrollBar()->value()) / double(m_tile));
+    m_tile = art::nextZoom(std::clamp(pixels, art::kZoomSteps[0], 4096), 0);
     horizontalScrollBar()->setSingleStep(m_tile);
     verticalScrollBar()->setSingleStep(m_tile);
     updateScrollBars();
+    // Keep the same spot in the middle of the view.
+    horizontalScrollBar()->setValue(int(world.x() * m_tile) - centre.x());
+    verticalScrollBar()->setValue(int(world.y() * m_tile) - centre.y());
     viewport()->update();
+    emit zoomChanged(m_tile);
+}
+
+void MapView::zoomStep(int direction) {
+    setTileSize(art::nextZoom(m_tile, direction));
 }
 
 void MapView::updateScrollBars() {
@@ -171,8 +223,14 @@ void MapView::updateScrollBars() {
 }
 
 void MapView::resizeEvent(QResizeEvent* event) {
+    // Keep the same spot in the middle while the window changes size.
+    const QSize old = event->oldSize().isValid() ? event->oldSize() : viewport()->size();
+    const QPointF world((horizontalScrollBar()->value() + old.width() / 2.0) / m_tile,
+                        (verticalScrollBar()->value() + old.height() / 2.0) / m_tile);
     QAbstractScrollArea::resizeEvent(event);
     updateScrollBars();
+    horizontalScrollBar()->setValue(int(world.x() * m_tile - viewport()->width() / 2.0));
+    verticalScrollBar()->setValue(int(world.y() * m_tile - viewport()->height() / 2.0));
 }
 
 void MapView::centerOn(core::Pos tile) {
@@ -245,23 +303,61 @@ void MapView::paintEvent(QPaintEvent*) {
     const auto inner = [&](core::Pos t) { return QRectF(tileRect(t)).adjusted(m, m, -m, -m); };
     const auto ownerOrNeutral = [&](int owner) { return owner ? ownerColor(owner) : QColor("#9a9a9a"); };
 
+    Q_UNUSED(inner);
+    // Sprites are drawn big once and scaled to the zoom step (art::sprite).
+    const auto put = [&](core::Pos t, const QPixmap& pm) { p.drawPixmap(tileRect(t).topLeft(), pm); };
     for (const ViewMine& mine : m_view.mines)
-        if (shown(mine.pos)) art::drawMine(p, inner(mine.pos), resourceColor(mine.resource), ownerOrNeutral(mine.owner));
+        if (shown(mine.pos)) put(mine.pos, art::mineSprite(mine.resource, resourceColor(mine.resource), ownerOrNeutral(mine.owner), m_tile));
     for (const ViewDwelling& d : m_view.dwellings)
-        if (shown(d.pos)) art::drawDwelling(p, inner(d.pos), ownerOrNeutral(d.owner));
+        if (shown(d.pos)) put(d.pos, art::dwellingSprite(ownerOrNeutral(d.owner), m_tile));
     for (const ViewObject& o : m_view.objects) {
         if (!shown(o.pos)) continue;
-        if (o.artifact) art::drawArtifact(p, inner(o.pos));
-        else art::drawChest(p, inner(o.pos), o.resources.isEmpty() ? QColor("#d4a017") : resourceColor(o.resources.firstKey()));
+        if (o.artifact) put(o.pos, art::artifactSprite(m_tile));
+        else put(o.pos, art::chestSprite(o.resources.isEmpty() ? QColor("#d4a017") : resourceColor(o.resources.firstKey()), m_tile));
     }
-    for (const ViewTown& t : m_view.towns)
-        if (shown(t.pos)) art::drawTown(p, QRectF(tileRect(t.pos)).adjusted(-m, -m * 2, m, 0), ownerOrNeutral(t.owner));
-    // Hero-less armies outside towns: neutral monsters (or garrison-less groups).
+    // Towns cover 2x2 tiles: the gate (their position) and the tiles right of it and above it.
+    for (const ViewTown& t : m_view.towns) {
+        if (!shown(t.pos)) continue;
+        const QRect gate = tileRect(t.pos);
+        p.drawPixmap(QPoint(gate.left(), gate.top() - m_tile), art::townSprite(ownerOrNeutral(t.owner), 2 * m_tile));
+        if (m_tile >= 32) {
+            QFont f = p.font();
+            f.setPixelSize(std::max(10, m_tile / 4));
+            f.setBold(true);
+            p.setFont(f);
+            const QRect label(gate.left() - m_tile / 2, gate.bottom() + 1, 3 * m_tile, f.pixelSize() + 6);
+            const int textWidth = QFontMetrics(f).horizontalAdvance(t.name) + 10;
+            const QRect plate(label.center().x() - textWidth / 2 + m_tile / 2, label.top(), textWidth, label.height());
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(20, 12, 4, 190));
+            p.drawRoundedRect(plate, 4, 4);
+            p.setPen(QColor("#f6e7c1"));
+            p.drawText(plate, Qt::AlignCenter, t.name);
+        }
+    }
+    // Hero-less armies outside towns: neutral monsters (or garrison-less groups),
+    // with a word for how many there are.
     for (const ViewArmy& a : m_view.armies) {
-        if (a.hero || !shown(a.pos)) continue;
-        bool inTown = false;
-        for (const ViewTown& t : m_view.towns) inTown = inTown || t.pos == a.pos;
-        if (!inTown) art::drawMonster(p, inner(a.pos));
+        if (a.hero || !shown(a.pos) || m_view.townAt(a.pos)) continue;
+        put(a.pos, art::monsterSprite(m_tile));
+        if (m_tile >= 32) {
+            int count = 0;
+            for (const ViewStack& s : a.stacks) count += s.count;
+            const QString word = count < 5 ? tr("few") : count < 10 ? tr("several") : count < 20 ? tr("pack")
+                                 : count < 50 ? tr("lots") : tr("horde");
+            QFont f = p.font();
+            f.setPixelSize(std::max(9, m_tile / 5));
+            f.setBold(true);
+            p.setFont(f);
+            const QRect r = tileRect(a.pos);
+            const int textWidth = QFontMetrics(f).horizontalAdvance(word) + 8;
+            const QRect plate(r.center().x() - textWidth / 2, r.bottom() - f.pixelSize() - 3, textWidth, f.pixelSize() + 4);
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(110, 20, 20, 220));
+            p.drawRoundedRect(plate, 3, 3);
+            p.setPen(Qt::white);
+            p.drawText(plate, Qt::AlignCenter, word);
+        }
     }
     // Where the selected hero can go today, and the planned path under the mouse.
     if (m_view.isMyTurn() && m_planner.ready()) {
@@ -272,8 +368,22 @@ void MapView::paintEvent(QPaintEvent*) {
         if (m_routePlan.found) drawPlan(p, m_routePlan, true);
         if (m_plan.found && !(m_route && m_plan.steps.last() == *m_route)) drawPlan(p, m_plan, false);
     }
-    for (const ViewHero& h : m_view.heroes)
-        if (shown(h.pos)) art::drawHero(p, inner(h.pos), ownerColor(h.owner), h.id == m_selectedHero, h.inBoat);
+    for (const ViewHero& h : m_view.heroes) {
+        if (!shown(h.pos)) continue;
+        const QRect r = tileRect(h.pos);
+        if (h.id == m_selectedHero) {  // a gold ring on the ground under the selected hero
+            p.setPen(QPen(QColor("#ffd84a"), std::max(2, m_tile / 14)));
+            p.setBrush(QColor(255, 216, 74, 60));
+            p.drawEllipse(QRectF(r).adjusted(m_tile * 0.08, m_tile * 0.68, -m_tile * 0.08, -m_tile * 0.02));
+        }
+        put(h.pos, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile));
+    }
+    // A faint grid at the bigger zoom steps, so the squares are easy to see.
+    if (m_tile >= 48) {
+        p.setPen(QPen(QColor(0, 0, 0, 28), 1));
+        for (int x = x0; x <= x1 + 1; ++x) p.drawLine(tileRect({x, y0}).topLeft(), tileRect({x, y1}).bottomLeft());
+        for (int y = y0; y <= y1 + 1; ++y) p.drawLine(tileRect({x0, y}).topLeft(), tileRect({x1, y}).topRight());
+    }
 }
 
 void MapView::drawPlan(QPainter& p, const MovePlan& plan, bool pinned) const {
@@ -326,13 +436,14 @@ void MapView::mouseReleaseEvent(QMouseEvent* event) {
     if ((event->pos() - m_pressPos).manhattanLength() > 6) return;
     const core::Pos t = tileAt(event->pos());
     if (!m_view.inBounds(t)) return;
-    if (event->button() == Qt::LeftButton) emit tileClicked(t);
+    if (event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier)) emit tileShiftClicked(t);
+    else if (event->button() == Qt::LeftButton) emit tileClicked(t);
     else if (event->button() == Qt::RightButton) emit tileRightClicked(t);
 }
 
 void MapView::wheelEvent(QWheelEvent* event) {
     if (event->modifiers() & Qt::ControlModifier) {
-        setTileSize(m_tile + (event->angleDelta().y() > 0 ? 2 : -2));
+        zoomStep(event->angleDelta().y() > 0 ? 1 : -1);
         event->accept();
     } else {
         QAbstractScrollArea::wheelEvent(event);

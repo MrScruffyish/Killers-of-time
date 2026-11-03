@@ -20,7 +20,7 @@ Top level fields: `formatVersion`, `day`, `nextId`, `currentIndex`, `map`, `rng`
   pendingTraitPicks, movementPoints, army, optional template (tavern hero id). Position lives in the hero's army.
 - **armies**: id, optional owner/hero (absent = neutral / none), x, y, stacks.
   A stack is `{unit, maxHp, totalHp}`; the unit count is derived from `totalHp`.
-- **towns**: id, name, race, optional owner, x, y, buildings, optional garrison army,
+- **towns**: id, name, race, optional owner, x, y (the gate; a town covers x..x+1, y-1..y, the other three tiles are walls), buildings, optional garrison army,
   lastBuildDay, recruitPool (dwelling chain root building id -> units waiting),
   importedUnits (unit id -> units sent here from map dwellings), tavernOffers (hero ids).
 - **mapDwellings**: id, unit, optional owner, x, y, available (units waiting).

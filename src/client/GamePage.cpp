@@ -12,6 +12,12 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QToolButton>
+#include <QMenu>
+#include <QSettings>
+#include <QToolTip>
+#include <QCursor>
+#include <QAction>
 #include <QShortcut>
 #include <QStyle>
 #include <QTimer>
@@ -19,6 +25,7 @@
 #include <QVBoxLayout>
 
 #include "client/BattleView.h"
+#include "client/Art.h"
 #include "client/MapView.h"
 #include "client/MovePlanner.h"
 #include "client/HeroDialog.h"
@@ -33,9 +40,19 @@ namespace kot::client {
 GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* content, QWidget* parent)
     : QWidget(parent), m_client(client), m_content(content) {
     auto* outer = new QVBoxLayout(this);
+    auto* top = new QHBoxLayout();
+    auto* menuButton = new QToolButton(this);
+    menuButton->setObjectName("gameMenuButton");
+    menuButton->setText(tr("\u2630 Game"));
+    menuButton->setPopupMode(QToolButton::InstantPopup);
+    auto* menu = new QMenu(menuButton);
+    menu->setObjectName("gameMenu");
+    menuButton->setMenu(menu);
+    top->addWidget(menuButton);
     m_status = new QLabel(this);
     m_status->setObjectName("statusLabel");
-    outer->addWidget(m_status);
+    top->addWidget(m_status, 1);
+    outer->addLayout(top);
 
     auto* middle = new QHBoxLayout();
     m_centre = new QStackedWidget(this);
@@ -90,10 +107,22 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_buyAll->setObjectName("buyAllButton");
     m_sendUnits = new QPushButton(tr("Send dwelling units to closest town"), this);
     m_sendUnits->setObjectName("sendUnitsButton");
-    m_save = new QPushButton(tr("Save game..."), this);
-    m_save->setObjectName("saveButton");
-    side->addWidget(m_save);
-    connect(m_save, &QPushButton::clicked, this, [this]() {
+    m_save = menu->addAction(tr("Save game..."));
+    m_save->setObjectName("saveAction");
+    menu->addSeparator();
+    QAction* zoomIn = menu->addAction(tr("Bigger map icons\t+"));
+    QAction* zoomOut = menu->addAction(tr("Smaller map icons\t-"));
+    connect(zoomIn, &QAction::triggered, this, [this]() { m_map->zoomStep(1); });
+    connect(zoomOut, &QAction::triggered, this, [this]() { m_map->zoomStep(-1); });
+    QMenu* sizes = menu->addMenu(tr("Map icon size"));
+    for (const int step : art::kZoomSteps)
+        connect(sizes->addAction(tr("%1 pixels").arg(step)), &QAction::triggered, this, [this, step]() { m_map->setTileSize(step); });
+    QAction* mute = menu->addAction(tr("Sound\tM"));
+    mute->setCheckable(true);
+    mute->setChecked(!sound::muted());
+    connect(mute, &QAction::toggled, this, [](bool on) { sound::setMuted(!on); });
+    connect(menu, &QMenu::aboutToShow, this, [mute]() { mute->setChecked(!sound::muted()); });
+    connect(m_save, &QAction::triggered, this, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("Save game"), tr("Name (letters, digits, _ and -):"),
                                                    QLineEdit::Normal, tr("day%1").arg(m_view.day), &ok);
@@ -117,15 +146,29 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_log->setReadOnly(true);
     m_log->setMaximumBlockCount(300);
     m_log->setMaximumHeight(110);
+    m_hoverInfo = new QLabel(this);
+    m_hoverInfo->setObjectName("hoverInfo");
+    m_hoverInfo->setMinimumHeight(22);
+    outer->addWidget(m_hoverInfo);
+    connect(m_map, &MapView::hoverInfo, m_hoverInfo, &QLabel::setText);
     outer->addWidget(m_log);
+    // The map's zoom step is remembered.
+    m_map->setTileSize(QSettings().value(QStringLiteral("map/tileSize"), art::kDefaultTile).toInt());
+    connect(m_map, &MapView::zoomChanged, this, [](int size) { QSettings().setValue(QStringLiteral("map/tileSize"), size); });
 
     m_townDialog = new TownDialog(content, this);
 
     connect(m_map, &MapView::tileClicked, this, &GamePage::onTileClicked);
+    connect(m_map, &MapView::tileShiftClicked, this, [this](core::Pos tile) {
+        const ViewTown* t = m_view.townCovering(tile);
+        if (t && t->mine) m_townDialog->showTown(m_view, t->id);
+        else onTileClicked(tile);
+    });
     connect(m_map, &MapView::tileDoubleClicked, this, [this](core::Pos tile) {
         const ViewHero* at = m_view.heroAt(tile);
         if (at && at->owner == m_view.you) return selectHero(at->id);
         if (!m_selectedHero) return;
+        if (const ViewTown* t = m_view.townCovering(tile)) tile = t->pos;
         m_routes.insert(m_selectedHero, tile);
         m_map->setRoute(tile);
         goAlongRoute();
@@ -144,6 +187,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     shortcut("E", [this]() { if (m_endTurn->isEnabled()) m_endTurn->click(); });
     shortcut("N", [this]() { selectNextHero(); });
     shortcut("Return", [this]() { goAlongRoute(); });
+    shortcut("+", [this]() { m_map->zoomStep(1); });
+    shortcut("=", [this]() { m_map->zoomStep(1); });
+    shortcut("-", [this]() { m_map->zoomStep(-1); });
     shortcut("Enter", [this]() { goAlongRoute(); });
     shortcut("M", [this]() {
         sound::setMuted(!sound::muted());
@@ -530,6 +576,7 @@ void GamePage::onTileClicked(core::Pos tile) {
         return;
     }
     if (!m_selectedHero) return;
+    if (const ViewTown* t = m_view.townCovering(tile)) tile = t->pos;  // walls lead to the gate
     // A click plots the route; double click or Enter walks it.
     m_routes.insert(m_selectedHero, tile);
     m_map->setRoute(tile);
@@ -592,8 +639,11 @@ void GamePage::updateEndTurnHighlight() {
 }
 
 void GamePage::onTileRightClicked(core::Pos tile) {
-    const ViewTown* t = m_view.townAt(tile);
-    if (t && t->mine) m_townDialog->showTown(m_view, t->id);
+    // Your town: open it. Anything else: say what it is right away.
+    const ViewTown* t = m_view.townCovering(tile);
+    if (t && t->mine) return m_townDialog->showTown(m_view, t->id);
+    const QString text = m_map->describeTile(tile);
+    if (!text.isEmpty()) QToolTip::showText(QCursor::pos(), text, m_map);
 }
 
 QString GamePage::describeBattle(const QJsonObject& b) const {
