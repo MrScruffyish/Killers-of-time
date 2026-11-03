@@ -458,6 +458,64 @@ const QPixmap& terrainFeature(const QString& id, const QColor& base, int size, i
     return it.value();
 }
 
+QPainterPath shorePiece(int dir, int variant, int size) {
+    const double s = size, depth = s * 0.24;
+    QPainterPath path;
+    if (dir < 4) {
+        // A band along one side; its inner edge waves but meets the next tile's at `depth`.
+        const int waves = 2 + variant % 2;
+        const double amp = s * 0.07 * ((variant & 2) ? 1 : -1);
+        QPolygonF pts;
+        pts << QPointF(0, 0);
+        for (int i = 0; i <= 16; ++i) {
+            const double t = i / 16.0;
+            pts << QPointF(depth + amp * std::sin(M_PI * waves * t) * (dir % 2 ? -1 : 1), t * s);
+        }
+        pts << QPointF(0, s);
+        path.addPolygon(pts);
+        path.closeSubpath();
+        QTransform turn;  // drawn for the left side, turned about the centre
+        turn.translate(s / 2, s / 2);
+        turn.rotate(90 * dir);
+        turn.translate(-s / 2, -s / 2);
+        return turn.map(path);
+    }
+    // A quarter disc in a corner, joining the bands of the two tiles beside it.
+    static const QPointF corners[] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    const QPointF c = corners[dir - 4] * s;
+    path.addEllipse(c, depth, depth);  // the tile's clip keeps the quarter inside
+    return path;
+}
+
+const QPixmap& shoreUnder(int mask, int variant, int size) {
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1|%2|%3").arg(mask).arg(variant).arg(size);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it.value();
+    QPixmap pm(size, size);
+    pm.fill(Qt::transparent);
+    {
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setClipRect(QRectF(0, 0, size, size));
+        QPainterPath land;
+        for (int d = 0; d < 8; ++d)
+            if (mask & (1 << d)) land = land.united(shorePiece(d, variant, size));
+        const double s = size;
+        // Foam (two lines, the outer one fainter), then the wet sand of the beach.
+        p.setBrush(Qt::NoBrush);
+        p.setPen(QPen(QColor(235, 245, 255, 70), s * 0.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawPath(land);
+        p.setPen(QPen(QColor(250, 252, 255, 190), s * 0.09, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawPath(land);
+        p.setPen(QPen(QColor("#d8c48a"), s * 0.05, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(QColor("#d8c48a"));
+        p.drawPath(land);
+    }
+    it = cache.insert(key, pm);
+    return it.value();
+}
+
 int terrainLayer(const QString& id) {
     static const QHash<QString, int> layers = {{"sea", 0}, {"river", 1}, {"lava", 2}, {"swamp", 3}, {"sand", 4},
                                                {"dirt", 5}, {"road", 6}, {"grass", 7}, {"snow", 8}, {"forest", 9},

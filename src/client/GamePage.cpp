@@ -138,6 +138,10 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     QMenu* sizes = menu->addMenu(tr("Map icon size"));
     for (const int step : art::kZoomSteps)
         connect(sizes->addAction(tr("%1 pixels").arg(step)), &QAction::triggered, this, [this, step]() { m_map->setTileSize(step); });
+    QAction* gridAction = menu->addAction(tr("Show grid (big icons)"));
+    gridAction->setCheckable(true);
+    gridAction->setChecked(m_map->showGrid());
+    connect(gridAction, &QAction::toggled, this, [this](bool on) { m_map->setShowGrid(on); });
     QAction* market = menu->addAction(tr("Market...\tM"));
     connect(market, &QAction::triggered, this, [this]() { openMarket(); });
     QAction* mute = menu->addAction(tr("Sound"));

@@ -70,6 +70,42 @@ private slots:
         QVERIFY(!settingsFile().isEmpty());
     }
 
+    // A small hand-made map with a lake, an island and a river, all in sight: the
+    // coasts, features and edges (saved as 0_coast.png).
+    void coastGallery() {
+        GameView v;
+        v.width = 16;
+        v.height = 12;
+        v.terrainPalette = {"grass", "sea", "sand", "forest", "hills", "mountains", "river", "dirt"};
+        const QStringList rows = {
+            "0000033330000000",
+            "0011110333004400",
+            "0111111100044440",
+            "0111221110005500",
+            "0112222111000500",
+            "0111221111100000",
+            "0011111111600000",
+            "0000111116000777",
+            "0000000006000777",
+            "0003330006000000",
+            "0033333006660000",
+            "0003300000060000",
+        };
+        for (const QString& row : rows)
+            for (const QChar c : row) v.tiles.append(c.digitValue());
+        v.visible = QByteArray(v.width * v.height, '\1');
+        MapView map(&reg);
+        map.resize(16 * 48 + 20, 12 * 48 + 20);
+        map.setTileSize(48);
+        map.setView(v);
+        map.show();
+        QApplication::processEvents();
+        const QPixmap pm = map.viewport()->grab();
+        QVERIFY(!pm.isNull());
+        const QString dir = qEnvironmentVariable("KOT_SCREENSHOT_DIR");
+        if (!dir.isEmpty()) pm.save(QDir(dir).filePath("0_coast.png"));
+    }
+
     void artGallery() {
         const QList<core::UnitDef> units = reg.units().values();
         const int cols = 6, cell = 110;

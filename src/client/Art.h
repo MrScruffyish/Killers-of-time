@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QIcon>
+#include <QPainterPath>
 #include <QPixmap>
 #include <QRectF>
 #include <QList>
@@ -40,6 +41,13 @@ const QPixmap& fogTexture();
 // bottom middle is the tile itself (draw it at the tile's corner minus (size/2,
 // size)). Null for flat terrain. Draw these row by row, top to bottom.
 const QPixmap& terrainFeature(const QString& terrainId, const QColor& base, int size, int variant);
+// Coasts: where a water tile touches land, the land reaches into it with a wavy,
+// sandy, foamy edge. Directions 0-3 are the sides (left, top, right, bottom), 4-7
+// the corners (top-left, top-right, bottom-right, bottom-left); `mask` has bit d set
+// when the land is in direction d. shoreUnder is the foam and beach for a mask;
+// shorePiece is the land's shape from one direction (fill it with the land's tile).
+const QPixmap& shoreUnder(int mask, int variant, int size);
+QPainterPath shorePiece(int direction, int variant, int size);
 // Which of two neighbouring terrains spreads over the other (higher wins).
 int terrainLayer(const QString& terrainId);
 

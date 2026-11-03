@@ -34,6 +34,9 @@ public:
     int tileSize() const { return m_tile; }
     void setTileSize(int pixels);  // snaps to a zoom step
     void zoomStep(int direction);  // +1 bigger, -1 smaller
+    // The faint square grid at the bigger zoom steps (remembered in the settings).
+    bool showGrid() const { return m_showGrid; }
+    void setShowGrid(bool on);
     core::Pos tileAt(const QPoint& viewportPos) const;
     // Where a tile is inside the viewport (for tests and overlays).
     QRect tileRect(core::Pos tile) const;
@@ -112,6 +115,7 @@ private:
     QElapsedTimer m_bannerClock;
     class QTimer* m_bannerTimer = nullptr;
     core::Pos m_hover{-1, -1};
+    bool m_showGrid = true;
 };
 
 }  // namespace kot::client

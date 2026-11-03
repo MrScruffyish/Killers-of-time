@@ -6,6 +6,7 @@
 #include <QHelpEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QSettings>
 #include <QPen>
 #include <QResizeEvent>
 #include <QScrollBar>
@@ -29,6 +30,7 @@ using art::resourceColor;
 MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
     : QAbstractScrollArea(parent), m_content(content) {
     viewport()->setMouseTracking(true);
+    m_showGrid = QSettings().value(QStringLiteral("map/grid"), true).toBool();
     horizontalScrollBar()->setSingleStep(m_tile);
     verticalScrollBar()->setSingleStep(m_tile);
     m_walkTimer = new QTimer(this);
@@ -439,12 +441,46 @@ void MapView::paintEvent(QPaintEvent*) {
                 if (there < 0 || there == here) continue;
                 const QString thereId = m_view.terrainPalette.value(there);
                 if (isWater(here) && !isWater(there)) {
-                    p.drawPixmap(r.topLeft(), art::terrainEdge(Qt::white, side, m_tile, true));
-                } else if (art::terrainLayer(thereId) > art::terrainLayer(hereId) && !isWater(there)) {
+                    // the coast is drawn below
+                } else if (art::terrainLayer(thereId) > art::terrainLayer(hereId) && isWater(there) == isWater(here)) {
                     p.drawPixmap(r.topLeft(), art::terrainEdge(art::groundColor(thereId, m_paletteColors.value(there, Qt::magenta)), side, m_tile, false));
                 }
             }
         }
+    // Coasts: the land reaches into its water neighbours with a wavy beach and foam.
+    if (m_tile >= 12)
+        for (int y = y0; y <= y1; ++y)
+            for (int x = x0; x <= x1; ++x) {
+                const int here = terrainAt(x, y);
+                if (here < 0 || !isWater(here)) continue;
+                static const int ddx[] = {-1, 0, 1, 0, -1, 1, 1, -1}, ddy[] = {0, -1, 0, 1, -1, -1, 1, 1};
+                int mask = 0;
+                int landAt[8];
+                for (int d = 0; d < 8; ++d) {
+                    landAt[d] = terrainAt(x + ddx[d], y + ddy[d]);
+                    if (landAt[d] >= 0 && !isWater(landAt[d])) mask |= 1 << d;
+                }
+                if (!mask) continue;
+                const QRect r = tileRect({x, y});
+                const int variant = art::variantFor(x, y);
+                p.drawPixmap(r.topLeft(), art::shoreUnder(mask, variant, m_tile));
+                p.save();
+                p.setClipRect(r);
+                p.translate(r.topLeft());
+                p.setRenderHint(QPainter::Antialiasing, true);
+                p.setPen(Qt::NoPen);
+                for (int d = 0; d < 8; ++d) {
+                    if (!(mask & (1 << d))) continue;
+                    const int nx = x + ddx[d], ny = y + ddy[d];
+                    const int index = landAt[d];
+                    QBrush brush(art::terrainTile(m_view.terrainPalette.value(index), m_paletteColors.value(index, Qt::magenta), m_tile,
+                                                  art::variantFor(nx, ny)));
+                    brush.setTransform(QTransform::fromTranslate(ddx[d] * m_tile, ddy[d] * m_tile));
+                    p.setBrush(brush);
+                    p.drawPath(art::shorePiece(d, variant, m_tile));
+                }
+                p.restore();
+            }
     // Trees, hills and peaks stand up out of their tiles, back rows first (one
     // row below the screen too, since they reach upwards); never over the unknown.
     QRegion known;
@@ -639,11 +675,17 @@ void MapView::paintEvent(QPaintEvent*) {
         p.drawText(band.adjusted(0, 52, 0, 0), Qt::AlignHCenter | Qt::AlignTop, m_bannerSub);
     }
     // A faint grid at the bigger zoom steps, so the squares are easy to see.
-    if (m_tile >= 48) {
+    if (m_tile >= 48 && m_showGrid) {
         p.setPen(QPen(QColor(0, 0, 0, 28), 1));
         for (int x = x0; x <= x1 + 1; ++x) p.drawLine(tileRect({x, y0}).topLeft(), tileRect({x, y1}).bottomLeft());
         for (int y = y0; y <= y1 + 1; ++y) p.drawLine(tileRect({x0, y}).topLeft(), tileRect({x1, y}).topRight());
     }
+}
+
+void MapView::setShowGrid(bool on) {
+    m_showGrid = on;
+    QSettings().setValue(QStringLiteral("map/grid"), on);
+    viewport()->update();
 }
 
 void MapView::drawPlan(QPainter& p, const MovePlan& plan, bool pinned) const {
