@@ -175,6 +175,8 @@ and react to; add depth afterwards.
 - [x] Battle actions shown: arrows fly, attackers lunge and the target flashes, spells sparkle (colour by effect), morale/falter/lucky words; the server now also sends what the computer's stacks did
 - [x] Version 0.3.0 from CMakeLists.txt, plus the git commit (generated BuildInfo.h): `--version` on client and server, in the crash log, in the lobby (a warning when client and server are different builds)
 - [x] Lobby: the host has no Ready box ("host"); town: the Recruit tab only shows when something can be recruited
+- [x] Battle auto-play: A or the Auto-play button lets the battle AI move your stacks one by one (watchable, stops with A); "Finish automatically" still plays it out at once (`battle_action` `ai`)
+- [x] Level-ups are loud: fanfare and a Level up window with the portrait and "Choose now"; a gold "Level N! Choose a trait" button; End turn asks first when a pick is waiting
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

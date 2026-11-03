@@ -18,6 +18,7 @@
 #include <QToolTip>
 #include <QCursor>
 #include <QAction>
+#include <QDialog>
 #include <QShortcut>
 #include <QStyle>
 #include <QTimer>
@@ -232,7 +233,31 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     connect(m_townList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
         m_townDialog->showTown(m_view, item->data(Qt::UserRole).toInt());
     });
-    connect(m_endTurn, &QPushButton::clicked, this, [this]() { send(net::msg::endTurn, {}, tr("End turn")); });
+    connect(m_endTurn, &QPushButton::clicked, this, [this]() {
+        // A level-up pick not made yet is easy to forget: ask first.
+        QStringList waiting;
+        for (const ViewHero* h : m_view.myHeroes())
+            if (h->pendingTraitPicks > 0) waiting << h->name;
+        if (!waiting.isEmpty()) {
+            QMessageBox box(QMessageBox::Question, tr("Level up"),
+                            tr("%1 can still choose a trait from the level-up. End the turn anyway?").arg(waiting.join(", ")),
+                            QMessageBox::NoButton, this);
+            QPushButton* choose = box.addButton(tr("Choose a trait"), QMessageBox::AcceptRole);
+            box.addButton(tr("End turn"), QMessageBox::DestructiveRole);
+            box.setDefaultButton(choose);
+            box.exec();
+            if (box.clickedButton() == choose) {
+                for (const ViewHero* h : m_view.myHeroes())
+                    if (h->pendingTraitPicks > 0) {
+                        selectHero(h->id);
+                        m_heroDialog->showHero(m_view, h->id);
+                        break;
+                    }
+                return;
+            }
+        }
+        send(net::msg::endTurn, {}, tr("End turn"));
+    });
     connect(m_buildAndBuy, &QPushButton::clicked, this, [this]() {
         send(net::msg::buildThenBuy, {{"useTrade", true}}, tr("Build, then buy units"));
     });
@@ -323,6 +348,7 @@ void GamePage::onViewChanged() {
         if (h) m_map->centerOn(h->pos);
         m_centered = true;
     }
+    announceLevelUps(first);
     updateStatus();
     updateHeroPanel();
     m_townDialog->refresh(m_view);
@@ -374,6 +400,55 @@ void GamePage::showBattle(bool firstView) {
             box->show();
             box->raise();
         }
+    }
+}
+
+void GamePage::announceLevelUps(bool firstView) {
+    // A hero who just gained a level: a fanfare and a window that says so, with
+    // the way to choose the trait right there.
+    for (const ViewHero* h : m_view.myHeroes()) {
+        const int before = m_knownPicks.value(h->id, h->pendingTraitPicks);
+        m_knownPicks.insert(h->id, h->pendingTraitPicks);
+        if (firstView || h->pendingTraitPicks <= before) continue;
+        sound::play(sound::Effect::Fanfare);
+        log(tr("%1 reached level %2: choose a trait!").arg(h->name).arg(h->level));
+        const ViewPlayer* me = m_view.player(m_view.you);
+        auto* box = new QDialog(this);
+        box->setObjectName("levelUpDialog");
+        box->setWindowTitle(tr("Level up"));
+        box->setAttribute(Qt::WA_DeleteOnClose);
+        auto* v = new QVBoxLayout(box);
+        auto* row = new QHBoxLayout();
+        auto* face = new QLabel(box);
+        face->setPixmap(art::portrait(h->classId, me ? QColor(me->color) : QColor("#999999"), h->id, 96));
+        row->addWidget(face);
+        auto* text = new QLabel(tr("<span style='font-size:20pt; font-weight:bold; color:#ffd84a'>Level %1!</span><br>"
+                                   "<b>%2</b> has grown stronger.<br>Choose which trait to improve (%3 to choose).")
+                                    .arg(h->level).arg(h->name.toHtmlEscaped()).arg(h->pendingTraitPicks),
+                                box);
+        text->setTextFormat(Qt::RichText);
+        row->addWidget(text, 1);
+        v->addLayout(row);
+        auto* buttons = new QHBoxLayout();
+        buttons->addStretch(1);
+        auto* later = new QPushButton(tr("Later"), box);
+        auto* now = new QPushButton(tr("Choose now"), box);
+        now->setObjectName("levelUpChooseNow");
+        now->setDefault(true);
+        for (QPushButton* b : {later, now}) {
+            b->setMinimumSize(130, 38);
+            buttons->addWidget(b);
+        }
+        v->addLayout(buttons);
+        const int id = h->id;
+        connect(later, &QPushButton::clicked, box, &QDialog::close);
+        connect(now, &QPushButton::clicked, this, [this, box, id]() {
+            box->close();
+            selectHero(id);
+            m_heroDialog->showHero(m_view, id);
+        });
+        box->show();
+        box->raise();
     }
 }
 
@@ -543,7 +618,7 @@ void GamePage::updateHeroPanel() {
     }
     m_castSpell->setVisible(adventureSpell);
     m_levelUp->setVisible(h->pendingTraitPicks > 0);
-    m_levelUp->setText(tr("Level up: choose a trait (%1)").arg(h->pendingTraitPicks));
+    m_levelUp->setText(tr("\u2605 Level %1! Choose a trait (%2) \u2605").arg(h->level).arg(h->pendingTraitPicks));
 }
 
 void GamePage::castAdventureSpell() {

@@ -41,6 +41,7 @@ private:
     void chooseSpell(bool unitSpell);
     void updateInfo();
     void updateStats();  // the stats panel: hovered stack, else the acting one
+    void autoStep();     // auto-play: the next move when it is your turn
 
     const core::ContentRegistry* m_content;
     ViewBattle m_battle;
@@ -50,6 +51,8 @@ private:
     int m_hoverUnit = 0;
     QPushButton* m_defend;
     QPushButton* m_auto;
+    QPushButton* m_autoPlay;
+    bool m_autoPending = false;
     QPushButton* m_cast;
     QPushButton* m_unitCast;
     bool m_castByUnit = false;

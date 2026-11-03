@@ -893,6 +893,10 @@ QPushButton:hover { background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, st
 QPushButton:pressed { background-color: #3a2614; }
 QPushButton:disabled { color: #8a7b63; border-color: #5e5030; background-color: #3a2c1e; }
 QPushButton#endTurnButton { font-weight: bold; padding: 8px 10px; }
+QPushButton#levelUpButton {
+    font-weight: bold; color: #2b1a08; border: 2px solid #fff0b0;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffe27a, stop:1 #d8a020);
+}
 QPushButton#endTurnButton[ready="true"] {
     font-size: 12pt; color: #2b1a08; border: 2px solid #fff0b0;
     background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffd75a, stop:1 #c98a12);

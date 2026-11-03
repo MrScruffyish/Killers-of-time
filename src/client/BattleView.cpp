@@ -531,7 +531,12 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     auto* buttons = new QHBoxLayout();
     m_defend = new QPushButton(tr("Defend (D)"), this);
     m_defend->setObjectName("defendButton");
-    m_auto = new QPushButton(tr("Auto: let the computer finish this battle"), this);
+    m_auto = new QPushButton(tr("Finish automatically"), this);
+    m_auto->setToolTip(tr("The computer plays your side to the end at once"));
+    m_autoPlay = new QPushButton(tr("Auto-play (A)"), this);
+    m_autoPlay->setObjectName("autoPlayButton");
+    m_autoPlay->setCheckable(true);
+    m_autoPlay->setToolTip(tr("The computer plays your stacks move by move, so you can watch; A or this button stops it"));
     m_auto->setObjectName("autoBattleButton");
     m_cast = new QPushButton(tr("Cast spell..."), this);
     m_cast->setObjectName("castSpellButton");
@@ -545,6 +550,7 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_retreat->setObjectName("retreatButton");
     m_retreat->setToolTip(tr("Give up the battle: your army is lost, your hero escapes"));
     buttons->addWidget(m_retreat);
+    buttons->addWidget(m_autoPlay);
     buttons->addWidget(m_auto);
     buttons->addStretch(1);
     layout->addLayout(buttons);
@@ -556,7 +562,18 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     buttons->insertWidget(1, m_unitCast);
     connect(m_unitCast, &QPushButton::clicked, this, [this]() { chooseSpell(true); });
     connect(m_wait, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "wait"}}); });
-    // Keys: D defend, W wait.
+    connect(m_autoPlay, &QPushButton::toggled, this, [this](bool on) {
+        m_autoPlay->setText(on ? tr("Stop auto-play (A)") : tr("Auto-play (A)"));
+        if (on) autoStep();
+    });
+    // Keys: D defend, W wait, A auto-play on/off.
+    {
+        auto* a = new QShortcut(QKeySequence(Qt::Key_A), this);
+        a->setContext(Qt::WindowShortcut);
+        connect(a, &QShortcut::activated, this, [this]() {
+            if (isVisible()) m_autoPlay->toggle();
+        });
+    }
     for (const auto& [key, button] : {std::pair{Qt::Key_D, m_defend}, std::pair{Qt::Key_W, m_wait}}) {
         auto* s = new QShortcut(QKeySequence(key), this);
         s->setContext(Qt::WindowShortcut);
@@ -589,9 +606,22 @@ void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, con
     m_field->sideColor[1] = defender;
     if (!battle.myMove()) m_castSpell.clear();
     if (!battle.unit(m_hoverUnit)) m_hoverUnit = 0;
+    if (!battle.present && m_autoPlay->isChecked()) m_autoPlay->setChecked(false);  // the battle is over
+    autoStep();
     updateInfo();
     updateStats();
     m_field->update();
+}
+
+void BattleView::autoStep() {
+    // Auto-play: when it is your stack's turn, let the battle AI move it, after a
+    // pause so the last action can be seen.
+    if (!m_autoPlay->isChecked() || !m_battle.myMove() || m_autoPending) return;
+    m_autoPending = true;
+    QTimer::singleShot(650, this, [this]() {
+        m_autoPending = false;
+        if (m_autoPlay->isChecked() && m_battle.myMove()) emit actionRequested({{"action", "ai"}});
+    });
 }
 
 void BattleView::updateStats() {

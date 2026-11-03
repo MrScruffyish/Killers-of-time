@@ -412,6 +412,7 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
         a.spell = spell;
     }
     else if (action == "auto") m_battle->autoSide[active->side] = true;
+    else if (action == "ai") a = chooseBattleAction(*b);  // one move chosen by the battle AI (client auto-play)
     else return failure("bad_request", "unknown battle action '" + action + "'");
 
     QJsonArray events;

@@ -138,7 +138,8 @@ private slots:
             if ((u.toObject()["side"].toInt() == 1) == (spell["target"].toString() == "enemy")) target = u.toObject()["id"].toInt();
         r = doIt(1, net::msg::battleAction, {{"action", "cast"}, {"spell", spell["id"]}, {"target", target}});
         QVERIFY2(r.ok, qPrintable(r.message));
-        QCOMPARE(r.info["events"].toArray().last().toObject()["type"].toString(), QString("cast"));
+        // Your stack's events come first, then what the computer's stacks did.
+        QCOMPARE(r.info["events"].toArray().first().toObject()["type"].toString(), QString("cast"));
         if (session->battleRunning()) {
             const QJsonObject heroAfter = session->viewFor(pA)["battle"].toObject()["hero"].toObject();
             QCOMPARE(heroAfter["spellPoints"].toInt(), spBefore - spell["cost"].toInt());
@@ -147,6 +148,11 @@ private slots:
         if (session->battleRunning()) {  // the spell may already have won it
             r = doIt(1, net::msg::battleAction, {{"action", "defend"}});
             QVERIFY2(r.ok, qPrintable(r.message));
+        }
+        if (session->battleRunning()) {  // one move by the battle AI (the client's auto-play)
+            r = doIt(1, net::msg::battleAction, {{"action", "ai"}});
+            QVERIFY2(r.ok, qPrintable(r.message));
+            QVERIFY(!r.info["events"].toArray().isEmpty() || r.info["battleOver"].toBool());
         }
         if (session->battleRunning()) {
             r = doIt(1, net::msg::battleAction, {{"action", "auto"}});
