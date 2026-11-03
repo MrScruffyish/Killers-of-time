@@ -170,7 +170,7 @@ const QPixmap& terrainTile(const QString& id, const QColor& base, int size, int 
     const QString key = QStringLiteral("%1|%2|%3|%4").arg(id, base.name()).arg(size).arg(variant);
     auto it = cache.find(key);
     if (it == cache.end()) {
-        constexpr int kMaster = 128;
+        constexpr int kMaster = 256;
         QPixmap pm = makeTile(id, base, kMaster, variant);
         if (size != kMaster) pm = pm.scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         it = cache.insert(key, pm);
@@ -428,7 +428,7 @@ const QPixmap& terrainFeature(const QString& id, const QColor& base, int size, i
     auto it = cache.find(key);
     if (it != cache.end()) return it.value();
     // A canvas of 2x2 tiles; the feature's own tile is the bottom middle (s/2..3s/2, s..2s).
-    constexpr int s = 128;
+    constexpr int s = 256;
     QPixmap pm(2 * s, 2 * s);
     pm.fill(Qt::transparent);
     {
@@ -607,7 +607,7 @@ const QPixmap& terrainEdge(const QColor& colour, int side, int size, bool foam) 
     auto it = cache.find(key);
     if (it != cache.end()) return it.value();
     // Drawn for the left side, then turned.
-    constexpr int kMaster = 128;
+    constexpr int kMaster = 256;
     QPixmap pm(kMaster, kMaster);
     pm.fill(Qt::transparent);
     {
@@ -661,13 +661,27 @@ const QPixmap& sprite(const QString& key, int size, const std::function<void(QPa
     const QString full = key + QLatin1Char('|') + QString::number(size);
     auto it = cache.find(full);
     if (it != cache.end()) return it.value();
-    constexpr int kMaster = 256;
+    // Drawn big (more room for detail), then scaled down.
+    constexpr int kMaster = 512;
     QPixmap art(kMaster, kMaster);
     art.fill(Qt::transparent);
     {
         QPainter p(&art);
         p.setRenderHint(QPainter::Antialiasing, true);
         draw(p, QRectF(kMaster * 0.06, kMaster * 0.06, kMaster * 0.88, kMaster * 0.88));
+        // Light from the top left on whatever was drawn: a soft sheen there and
+        // shade towards the bottom right, so flat shapes get some volume.
+        p.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+        QLinearGradient light(0, 0, kMaster, kMaster);
+        light.setColorAt(0.0, QColor(255, 250, 230, 70));
+        light.setColorAt(0.42, QColor(255, 250, 230, 0));
+        light.setColorAt(0.6, QColor(0, 0, 0, 0));
+        light.setColorAt(1.0, QColor(10, 5, 20, 90));
+        p.fillRect(QRect(0, 0, kMaster, kMaster), light);
+        QRadialGradient rim(QPointF(kMaster * 0.38, kMaster * 0.3), kMaster * 0.75);  // a little glow in the middle
+        rim.setColorAt(0, QColor(255, 255, 255, 18));
+        rim.setColorAt(1, QColor(255, 255, 255, 0));
+        p.fillRect(QRect(0, 0, kMaster, kMaster), rim);
     }
     // A dark outline around the shape so it stands out from the terrain.
     QPixmap mask = art;
@@ -680,6 +694,14 @@ const QPixmap& sprite(const QString& key, int size, const std::function<void(QPa
     out.fill(Qt::transparent);
     {
         QPainter p(&out);
+        // A soft shadow, offset down and right, under everything.
+        QPixmap shade = mask;
+        {
+            QPainter sp(&shade);
+            sp.setCompositionMode(QPainter::CompositionMode_SourceIn);
+            sp.fillRect(shade.rect(), QColor(0, 0, 0, 70));
+        }
+        p.drawPixmap(kMaster / 40, kMaster / 32, shade);
         const int w = kMaster / 48;
         for (int dy = -w; dy <= w; dy += w)
             for (int dx = -w; dx <= w; dx += w)

@@ -170,6 +170,20 @@ private slots:
         p.end();
         const QString dir = qEnvironmentVariable("KOT_SCREENSHOT_DIR");
         if (!dir.isEmpty()) sheet.save(QDir(dir).filePath("0_units.png"));
+        // Every unit's picture big, on battle ground (0_units_big.png).
+        {
+            const int big = 128, bcols = 12;
+            QImage bigSheet(bcols * big, int((units.size() + bcols - 1) / bcols) * big, QImage::Format_ARGB32);
+            bigSheet.fill(QColor("#9a8458"));
+            QPainter bp(&bigSheet);
+            for (int i = 0; i < units.size(); ++i) {
+                const QPixmap& pm = art::unitIcon(units[i].id, units[i].rank, big);
+                QVERIFY(!pm.isNull());
+                bp.drawPixmap((i % bcols) * big, (i / bcols) * big, pm);
+            }
+            bp.end();
+            if (!dir.isEmpty()) bigSheet.save(QDir(dir).filePath("0_units_big.png"));
+        }
         // Towns: palisade / walls / citadel, small to big, for each race; and a town scene.
         QImage towns(3 * 4 * 110, 3 * 120 + 190, QImage::Format_ARGB32);
         towns.fill(QColor("#5d8a3a"));
