@@ -103,8 +103,9 @@ ActionResult acceptJoin(GameState& state, const ContentRegistry& content, HeroId
     if (!hero || !monsters) return fail(QStringLiteral("unknown hero or army"));
     if (!wouldJoin(state, content, hero->army, monstersId)) return fail(QStringLiteral("they do not want to join any more"));
     const Army* mine = state.army(hero->army);
-    if (std::max(std::abs(mine->pos.x - monsters->pos.x), std::abs(mine->pos.y - monsters->pos.y)) > 1)
-        return fail(QStringLiteral("the hero is not next to them"));
+    // Next to them, or as close as the move got (an offer from their zone of control).
+    if (std::max(std::abs(mine->pos.x - monsters->pos.x), std::abs(mine->pos.y - monsters->pos.y)) > 3)
+        return fail(QStringLiteral("the hero is not near them"));
     // They come over to the hero's tile and join.
     monsters->owner = hero->owner;
     monsters->pos = mine->pos;
