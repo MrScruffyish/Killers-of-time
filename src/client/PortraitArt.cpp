@@ -20,12 +20,19 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     const QColor ink(25, 16, 8);
     const QPen pen(ink, std::max(1.0, w / 60));
     // Background plate.
-    QRadialGradient bg(QPointF(X(0.5), Y(0.4)), w * 0.6);
-    bg.setColorAt(0, owner.lighter(170));
-    bg.setColorAt(1, owner.darker(160));
+    QRadialGradient bg(QPointF(X(0.4), Y(0.3)), w * 0.75);
+    bg.setColorAt(0, owner.lighter(180));
+    bg.setColorAt(0.55, owner);
+    bg.setColorAt(1, owner.darker(190));
     p.setPen(Qt::NoPen);
     p.setBrush(bg);
     p.drawRoundedRect(r, w * 0.12, w * 0.12);
+    p.setPen(QPen(QColor(255, 255, 255, 40), std::max(1.0, w / 60)));  // faint rays behind the head
+    for (int i = 0; i < 12; ++i) {
+        const double a = M_PI * 2 * i / 12;
+        p.drawLine(QPointF(X(0.5), Y(0.42)), QPointF(X(0.5) + std::cos(a) * w * 0.7, Y(0.42) + std::sin(a) * h * 0.7));
+    }
+    p.setPen(Qt::NoPen);
     const bool undead = classId == "death_knight" || classId == "necromancer";
     const bool orc = classId == "warlord" || classId == "shaman_chief";
     const bool ash = classId == "hellknight" || classId == "pyromancer";
@@ -42,7 +49,10 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     if (classId == "captain") coat = QColor("#1a2a4a");
     if (classId == "tidecaller") coat = QColor("#2a6a8a");
     p.setPen(pen);
-    p.setBrush(coat);
+    QLinearGradient coatShade(QPointF(X(0.1), Y(0.7)), QPointF(X(0.9), Y(1.0)));
+    coatShade.setColorAt(0, coat.lighter(135));
+    coatShade.setColorAt(1, coat.darker(140));
+    p.setBrush(coatShade);
     QPainterPath shoulders;
     shoulders.moveTo(X(0.08), Y(1.0));
     shoulders.quadTo(X(0.12), Y(0.7), X(0.5), Y(0.68));
@@ -54,17 +64,45 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
         p.drawEllipse(QRectF(X(0.06), Y(0.7), w * 0.3, h * 0.2));
         p.drawEllipse(QRectF(X(0.64), Y(0.7), w * 0.3, h * 0.2));
     }
-    // Neck and head.
-    p.setBrush(skin);
+    // Neck (shadowed under the chin), ears and the head, lit from the left.
+    p.setBrush(skin.darker(125));
     p.drawRect(QRectF(X(0.42), Y(0.55), w * 0.16, h * 0.16));
+    p.setBrush(skin.darker(108));
+    p.drawEllipse(QRectF(X(0.27), Y(0.38), w * 0.07, h * 0.11));
+    p.drawEllipse(QRectF(X(0.66), Y(0.38), w * 0.07, h * 0.11));
+    QRadialGradient face(QPointF(X(0.42), Y(0.36)), w * 0.32);
+    face.setColorAt(0, skin.lighter(115));
+    face.setColorAt(0.7, skin);
+    face.setColorAt(1, skin.darker(125));
+    p.setBrush(face);
     p.drawEllipse(QRectF(X(0.3), Y(0.22), w * 0.4, h * 0.42));
-    // Eyes and mouth.
+    // Cheeks, eyes with a glint, brows, a nose and the mouth.
     p.setPen(Qt::NoPen);
-    p.setBrush(undead ? QColor("#60ff90") : ash ? QColor("#ffd040") : ink);
-    p.drawEllipse(QPointF(X(0.42), Y(0.42)), w * 0.025, h * 0.025);
-    p.drawEllipse(QPointF(X(0.58), Y(0.42)), w * 0.025, h * 0.025);
-    p.setPen(QPen(ink, std::max(1.0, w / 80)));
-    p.drawLine(QPointF(X(0.45), Y(0.54)), QPointF(X(0.55), Y(0.54)));
+    if (!undead) {
+        p.setBrush(QColor(220, 80, 60, 45));
+        p.drawEllipse(QPointF(X(0.38), Y(0.49)), w * 0.045, h * 0.03);
+        p.drawEllipse(QPointF(X(0.62), Y(0.49)), w * 0.045, h * 0.03);
+    }
+    const QColor iris = undead ? QColor("#60ff90") : ash ? QColor("#ffd040") : (seed % 3 == 0 ? QColor("#3a6a9a") : seed % 3 == 1 ? QColor("#5a3a1e") : QColor("#3a7a4a"));
+    for (const double ex : {0.415, 0.585}) {
+        p.setBrush(undead || ash ? iris.darker(200) : QColor(250, 248, 240));
+        p.drawEllipse(QPointF(X(ex), Y(0.42)), w * 0.045, h * 0.03);
+        p.setBrush(iris);
+        p.drawEllipse(QPointF(X(ex + 0.005), Y(0.42)), w * 0.025, h * 0.027);
+        p.setBrush(ink);
+        p.drawEllipse(QPointF(X(ex + 0.005), Y(0.42)), w * 0.011, h * 0.012);
+        p.setBrush(QColor(255, 255, 255, 230));
+        p.drawEllipse(QPointF(X(ex + 0.014), Y(0.41)), w * 0.007, h * 0.007);
+    }
+    p.setPen(QPen(ink, std::max(1.0, w / 60), Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(QPointF(X(0.37), Y(0.375)), QPointF(X(0.45), Y(0.365)));  // brows
+    p.drawLine(QPointF(X(0.55), Y(0.365)), QPointF(X(0.63), Y(0.375)));
+    p.setPen(QPen(skin.darker(150), std::max(1.0, w / 90), Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(QPointF(X(0.5), Y(0.43)), QPointF(X(0.485), Y(0.49)));  // the nose
+    p.drawLine(QPointF(X(0.485), Y(0.49)), QPointF(X(0.51), Y(0.495)));
+    p.setPen(QPen(QColor(120, 40, 30), std::max(1.0, w / 70), Qt::SolidLine, Qt::RoundCap));
+    p.setBrush(Qt::NoBrush);
+    p.drawArc(QRectF(X(0.44), Y(0.5), w * 0.12, h * 0.06), 200 * 16, 140 * 16);
     // A beard for some.
     if (classId == "thane" || classId == "runesmith") {  // a great dwarf beard
         p.setPen(pen);
@@ -181,15 +219,42 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     p.restore();
 }
 
+namespace {
+// A gold bevel around a portrait.
+void portraitFrame(QPainter& p, const QRectF& r) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setBrush(Qt::NoBrush);
+    const double w = r.width();
+    p.setPen(QPen(QColor("#5a4010"), w * 0.05));
+    p.drawRoundedRect(r.adjusted(w * 0.025, w * 0.025, -w * 0.025, -w * 0.025), w * 0.11, w * 0.11);
+    QLinearGradient gold(r.topLeft(), r.bottomRight());
+    gold.setColorAt(0, QColor("#fff0a0"));
+    gold.setColorAt(0.5, QColor("#d8a830"));
+    gold.setColorAt(1, QColor("#8a6010"));
+    p.setPen(QPen(QBrush(gold), w * 0.03));
+    p.drawRoundedRect(r.adjusted(w * 0.03, w * 0.03, -w * 0.03, -w * 0.03), w * 0.1, w * 0.1);
+    p.restore();
+}
+}  // namespace
+
 const QPixmap& portrait(const QString& classId, const QColor& owner, int seed, int size) {
     static QHash<QString, QPixmap> cache;
     const QString key = QStringLiteral("%1|%2|%3|%4").arg(classId, owner.name()).arg(seed % 6).arg(size);
     auto it = cache.find(key);
     if (it == cache.end()) {
-        QPixmap master(256, 256);
+        QPixmap master(512, 512);
         master.fill(Qt::transparent);
         QPainter p(&master);
-        drawPortrait(p, QRectF(0, 0, 256, 256), classId, owner, seed);
+        {
+            // Inside the frame, clipped to its rounded shape.
+            QPainterPath clip;
+            clip.addRoundedRect(QRectF(0, 0, 512, 512), 56, 56);
+            p.setClipPath(clip);
+            drawPortrait(p, QRectF(0, 0, 512, 512), classId, owner, seed);
+            p.setClipping(false);
+        }
+        portraitFrame(p, QRectF(0, 0, 512, 512));
         p.end();
         it = cache.insert(key, master.scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
     }
