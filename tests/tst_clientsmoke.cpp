@@ -18,6 +18,7 @@
 #include "client/MainWindow.h"
 #include "client/LobbyPage.h"
 #include "client/MapView.h"
+#include "client/MiniMap.h"
 #include "client/Settings.h"
 #include "client/SpellBook.h"
 #include "client/TownDialog.h"
@@ -104,6 +105,15 @@ private slots:
         QVERIFY(!pm.isNull());
         const QString dir = qEnvironmentVariable("KOT_SCREENSHOT_DIR");
         if (!dir.isEmpty()) pm.save(QDir(dir).filePath("0_coast.png"));
+        // The same map on the minimap, with half of it only remembered.
+        for (int i = 0; i < v.visible.size(); ++i) v.visible[i] = (i % v.width) < 9 ? '\1' : '\0';
+        MiniMap mini(&reg);
+        mini.resize(300, 230);
+        mini.setView(v);
+        mini.setVisibleTiles(QRect(2, 2, 8, 6));
+        mini.show();
+        QApplication::processEvents();
+        if (!dir.isEmpty()) mini.grab().save(QDir(dir).filePath("0_minimap.png"));
     }
 
     void artGallery() {
