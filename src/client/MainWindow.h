@@ -31,8 +31,17 @@ public:
     LobbyPage* lobbyPage() const { return m_lobby; }
     GamePage* gamePage() const { return m_game; }
 
+protected:
+    void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
+
 private:
     void showConnect(const QString& message, bool error);
+    // The setup pages (connect, lobby) and the game keep their own window size:
+    // a maximized game does not make the setup huge next time.
+    void useWindowSize(bool game);
+    bool m_gameSize = false;
+    bool m_sizeRestored = false;
 
     core::ContentRegistry m_content;
     bool m_contentLoaded = false;

@@ -30,7 +30,7 @@ private:
     QTabWidget* m_tabs;
     // Scenario
     QLineEdit* m_name;
-    QSpinBox* m_size;
+    QComboBox* m_size;  // named sizes, data: the side length
     QComboBox* m_type;
     QSpinBox* m_players;
     QVBoxLayout* m_raceBox;

@@ -36,8 +36,7 @@ private:
     const core::ContentRegistry* m_content;
     QWidget* m_slotHolder;
     QGridLayout* m_grid = nullptr;
-    QSpinBox* m_width;
-    QSpinBox* m_height;
+    QComboBox* m_mapSize;  // named sizes (data: the side length); "custom" for other sizes
     QLineEdit* m_seed;
     QComboBox* m_difficulty;
     QComboBox* m_mapType;

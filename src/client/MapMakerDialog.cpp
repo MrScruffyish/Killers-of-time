@@ -56,8 +56,11 @@ MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent) : QDia
     m_name = new QLineEdit(tr("My map"), page);
     m_name->setObjectName("mapName");
     form->addRow(tr("Name"), m_name);
-    m_size = spin(page, 32, 160, 64, 8);
-    m_size->setSuffix(tr(" tiles"));
+    m_size = new QComboBox(page);
+    for (const auto& [name, side] : {std::pair{tr("Small"), 40}, std::pair{tr("Medium"), 64}, std::pair{tr("Large"), 96},
+                                     std::pair{tr("Extra large"), 128}, std::pair{tr("Huge"), 160}})
+        m_size->addItem(tr("%1 (%2x%2)").arg(name).arg(side), side);
+    m_size->setCurrentIndex(1);
     form->addRow(tr("Map size"), m_size);
     m_type = combo(page, {tr("Continent"), tr("Islands (boats needed)")}, 0);
     form->addRow(tr("Land"), m_type);
@@ -172,7 +175,7 @@ QJsonObject MapMakerDialog::params() const {
     static const int monsters[] = {60, 100, 150, 220};
     static const char* goals[] = {"conquest", "capital", "gold", "days"};
     return {{"kind", "scenario"}, {"id", idFrom(m_name->text())}, {"name", m_name->text().trimmed()},
-            {"width", m_size->value()}, {"height", m_size->value()}, {"islands", m_type->currentIndex() == 1},
+            {"width", m_size->currentData().toInt()}, {"height", m_size->currentData().toInt()}, {"islands", m_type->currentIndex() == 1},
             {"races", races}, {"seaLevel", water[m_water->currentIndex()]}, {"mountains", mountains[m_mountains->currentIndex()]},
             {"rivers", rivers[m_rivers->currentIndex()]}, {"roads", m_roads->isChecked()},
             {"monsterPercent", monsters[m_monsters->currentIndex()]}, {"victory", goals[m_goal->currentIndex()]},

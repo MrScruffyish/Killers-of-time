@@ -6,6 +6,7 @@
 #include "core/Version.h"
 #include <QCheckBox>
 #include <QComboBox>
+#include <QSignalBlocker>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -70,15 +71,13 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
 
     auto* settings = new QHBoxLayout();
     settings->addWidget(new QLabel(tr("Map size"), this));
-    m_width = new QSpinBox(this);
-    m_width->setRange(16, 256);
-    m_width->setObjectName("mapWidth");
-    m_height = new QSpinBox(this);
-    m_height->setRange(16, 256);
-    m_height->setObjectName("mapHeight");
-    settings->addWidget(m_width);
-    settings->addWidget(new QLabel(QStringLiteral("x"), this));
-    settings->addWidget(m_height);
+    // A few named sizes: a couple of tiles more or less makes no difference.
+    m_mapSize = new QComboBox(this);
+    m_mapSize->setObjectName("mapSize");
+    for (const auto& [name, side] : {std::pair{tr("Small"), 40}, std::pair{tr("Medium"), 64}, std::pair{tr("Large"), 96},
+                                     std::pair{tr("Extra large"), 128}, std::pair{tr("Huge"), 160}})
+        m_mapSize->addItem(tr("%1 (%2x%2)").arg(name).arg(side), side);
+    settings->addWidget(m_mapSize);
     settings->addSpacing(20);
     settings->addWidget(new QLabel(tr("Seed"), this));
     m_seed = new QLineEdit(this);
@@ -203,11 +202,9 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
         if (dialog.exec() == QDialog::Accepted && !dialog.chosen().isEmpty()) m_client->loadGame(dialog.chosen());
     });
     // Only send what the user really changed (editingFinished also fires when focus just moves away).
-    connect(m_width, &QSpinBox::editingFinished, this, [this]() {
-        if (m_width->value() != m_client->lobby().settings.mapWidth) m_client->setSettings({{"mapWidth", m_width->value()}});
-    });
-    connect(m_height, &QSpinBox::editingFinished, this, [this]() {
-        if (m_height->value() != m_client->lobby().settings.mapHeight) m_client->setSettings({{"mapHeight", m_height->value()}});
+    connect(m_mapSize, &QComboBox::activated, this, [this](int) {
+        const int side = m_mapSize->currentData().toInt();
+        if (side > 0) m_client->setSettings({{"mapWidth", side}, {"mapHeight", side}});
     });
     connect(m_difficulty, &QComboBox::activated, this, [this](int) {
         m_client->setSettings({{"difficulty", m_difficulty->currentData().toString()}});
@@ -256,11 +253,18 @@ void LobbyPage::rebuild() {
     const int me = m_client->clientId();
 
     // Settings (persistent widgets, only their values and enabled state change).
-    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height)}) w->blockSignals(true);
-    m_width->setValue(lobby.settings.mapWidth);
-    m_height->setValue(lobby.settings.mapHeight);
-    m_width->blockSignals(false);
-    m_height->blockSignals(false);
+    {
+        const QSignalBlocker block(m_mapSize);
+        const int custom = m_mapSize->findData(0);
+        if (custom >= 0) m_mapSize->removeItem(custom);
+        const int at = lobby.settings.mapWidth == lobby.settings.mapHeight ? m_mapSize->findData(lobby.settings.mapWidth) : -1;
+        if (at >= 0) {
+            m_mapSize->setCurrentIndex(at);
+        } else {  // set elsewhere (a saved setting, another client): shown as it is
+            m_mapSize->addItem(tr("Custom (%1x%2)").arg(lobby.settings.mapWidth).arg(lobby.settings.mapHeight), 0);
+            m_mapSize->setCurrentIndex(m_mapSize->count() - 1);
+        }
+    }
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
     m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
     m_fog->setChecked(lobby.settings.fogOfWar);
@@ -306,7 +310,7 @@ void LobbyPage::rebuild() {
     m_scenarioInfo->setText(campaignText + info);
     const bool random = scenarioId.isEmpty();
     m_mapType->setCurrentIndex(std::max(0, m_mapType->findData(lobby.settings.mapType)));
-    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed),
+    for (QWidget* w : {static_cast<QWidget*>(m_mapSize), static_cast<QWidget*>(m_seed),
                        static_cast<QWidget*>(m_mapType)})
         w->setEnabled(host && random);
     m_difficulty->setEnabled(host);

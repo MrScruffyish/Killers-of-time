@@ -12,6 +12,8 @@
 #include "client/GamePage.h"
 #include "client/LobbyPage.h"
 #include "client/Settings.h"
+#include <QSettings>
+
 #include "core/Version.h"
 #include "core/data/DataDir.h"
 
@@ -19,8 +21,7 @@ namespace kot::client {
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("%1 %2").arg(QString::fromLatin1(core::kGameName), QString::fromLatin1(core::kGameVersion)));
-    resize(1150, 760);
-    rememberGeometry(this, QStringLiteral("mainWindow"));  // size, position, maximized
+    resize(1100, 740);
 
     m_pages = new QStackedWidget(this);
     setCentralWidget(m_pages);
@@ -28,6 +29,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     m_lobby = new LobbyPage(&m_client, &m_content, this);
     m_pages->addWidget(m_connect);
     m_pages->addWidget(m_lobby);
+    connect(m_pages, &QStackedWidget::currentChanged, this, [this]() { useWindowSize(m_pages->currentWidget() == m_game); });
 
     QString contentMessage;
     const QString dataDir = core::findDataDirectory();
@@ -82,6 +84,36 @@ MainWindow::~MainWindow() {
     if (m_serverProcess.state() != QProcess::NotRunning) {
         m_serverProcess.terminate();
         m_serverProcess.waitForFinished(1500);
+    }
+}
+
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
+    if (m_sizeRestored) return;
+    m_sizeRestored = true;
+    const QByteArray g = QSettings().value(QStringLiteral("geometry/setupWindow")).toByteArray();
+    if (!g.isEmpty()) restoreGeometry(g);
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    QSettings().setValue(m_gameSize ? QStringLiteral("geometry/gameWindow") : QStringLiteral("geometry/setupWindow"), saveGeometry());
+    QMainWindow::closeEvent(event);
+}
+
+void MainWindow::useWindowSize(bool game) {
+    if (game == m_gameSize || !m_sizeRestored) {
+        m_gameSize = game;
+        return;
+    }
+    QSettings().setValue(m_gameSize ? QStringLiteral("geometry/gameWindow") : QStringLiteral("geometry/setupWindow"), saveGeometry());
+    m_gameSize = game;
+    QByteArray g = QSettings().value(game ? QStringLiteral("geometry/gameWindow") : QStringLiteral("geometry/setupWindow")).toByteArray();
+    if (game && g.isEmpty()) g = QSettings().value(QStringLiteral("geometry/mainWindow")).toByteArray();  // from older versions
+    if (!g.isEmpty()) {
+        restoreGeometry(g);
+    } else if (!game) {  // the setup: a normal window, not maximized
+        showNormal();
+        resize(1100, 740);
     }
 }
 
