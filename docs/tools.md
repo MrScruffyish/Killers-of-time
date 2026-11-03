@@ -34,6 +34,7 @@ kot_balance races [--csv]                      a week of each race's dwellings: 
 kot_balance duel <unitA> <unitB> [--gold n] [--runs n]
 kot_balance duels [--tier n] [--gold n] [--runs n] [--csv]
 kot_balance weeks [--weeks n] [--budget gold] [--runs n] [--csv]
+kot_balance replay <save.json> <attackerArmy> <defenderArmy> [--runs n]
 ```
 - Power is a rough fighting value: HP x average damage x (1 + 5% per attack + defense
   point), weighted up for ranged, flying, double attack and no retaliation.
@@ -49,6 +50,10 @@ kot_balance weeks [--weeks n] [--budget gold] [--runs n] [--csv]
   only that much gold a week (times its `incomePercent`) and buys the best units first,
   as a player would. Prints the armies, every pair of races and each race's average wins.
   Equal-gold duels miss a race that is cheap but grows slowly; this does not.
+- Replay: a battle out of a saved game (army ids from the save; a town's garrison army
+  for a siege), fought `--runs` times by the battle AI for both sides with the heroes,
+  walls and towers. Prints how often the attacker wins and the average losses. For
+  playtest questions like "should this battle have been lost?".
 
 ## kot_balance_gui: tweaking
 

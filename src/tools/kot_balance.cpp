@@ -4,6 +4,8 @@
 //   kot_balance races  [--csv]                   weekly power and cost per race
 //   kot_balance duel A B [--gold 5000] [--runs 200]   equal-cost armies fight it out
 //   kot_balance duels  [--tier n] [--gold 5000] [--runs 100] [--csv]   every pair of a tier
+//   kot_balance replay <save.json> <attackerArmyId> <defenderArmyId> [--runs 50]   a battle from a saved
+//                      game, fought by the battle AI with heroes, walls and all (for playtest questions)
 //   kot_balance weeks  [--weeks 2] [--budget gold/week] [--runs 20] [--csv]   race against race, each with its
 //                      weeks of growth (and, with a budget, only what that gold buys, best units first)
 //
@@ -13,12 +15,17 @@
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
+#include <QFile>
 #include <QHash>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 
+#include "core/battle/AutoBattle.h"
 #include "core/content/ContentChecks.h"
+#include "core/model/GameState.h"
 #include "core/content/ContentRegistry.h"
 #include "core/data/DataDir.h"
 #include "tools/BalanceCalc.h"
@@ -119,6 +126,46 @@ int weeksReport(const ContentRegistry& c, int weeks, int runs, int budget, bool 
     return 0;
 }
 
+// A battle out of a saved game, fought many times by the battle AI for both sides.
+int replayReport(const ContentRegistry& content, const QString& path, int attacker, int defender, int runs) {
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        std::fprintf(stderr, "kot_balance: cannot read %s\n", qPrintable(path));
+        return 1;
+    }
+    GameState saved;
+    QStringList errors;
+    if (!GameState::fromJson(QJsonDocument::fromJson(f.readAll()).object(), content, &saved, &errors)) {
+        std::fprintf(stderr, "kot_balance: not a saved game: %s\n", qPrintable(errors.join("; ")));
+        return 1;
+    }
+    const ArmyId a(static_cast<quint32>(attacker)), d(static_cast<quint32>(defender));
+    if (!saved.army(a) || !saved.army(d)) {
+        std::fprintf(stderr, "kot_balance: no army %d or %d in the save\n", attacker, defender);
+        return 1;
+    }
+    int won = 0, rounds = 0;
+    QMap<QString, int> lostA, lostD;
+    for (int i = 0; i < runs; ++i) {
+        GameState gs = saved;
+        gs.rng().reseed(1000 + i);
+        const BattleReport r = resolveBattle(gs, content, a, d);
+        won += r.attackerWon();
+        rounds += r.rounds;
+        for (auto it = r.attacker.losses.begin(); it != r.attacker.losses.end(); ++it) lostA[it.key()] += it.value();
+        for (auto it = r.defender.losses.begin(); it != r.defender.losses.end(); ++it) lostD[it.key()] += it.value();
+    }
+    std::printf("attacker won %d of %d (%.0f%%), %.1f rounds on average\n", won, runs, 100.0 * won / runs, double(rounds) / runs);
+    const auto show = [&](const char* who, const QMap<QString, int>& lost) {
+        std::printf("%s loses on average:", who);
+        for (auto it = lost.begin(); it != lost.end(); ++it) std::printf(" %s %.1f", qPrintable(it.key()), double(it.value()) / runs);
+        std::printf("\n");
+    };
+    show("attacker", lostA);
+    show("defender", lostD);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("kot_balance"));
@@ -129,7 +176,8 @@ int main(int argc, char** argv) {
         "  kot_balance races [--csv]\n"
         "  kot_balance duel <unitA> <unitB> [--gold n] [--runs n]\n"
         "  kot_balance duels [--tier n] [--gold n] [--runs n] [--csv]\n"
-        "  kot_balance weeks [--weeks n] [--runs n] [--csv]"));
+        "  kot_balance weeks [--weeks n] [--runs n] [--csv]\n"
+        "  kot_balance replay <save.json> <attackerArmy> <defenderArmy> [--runs n]"));
     parser.addHelpOption();
     parser.addPositionalArgument(QStringLiteral("report"), QStringLiteral("units, races, duel, duels or weeks"));
     QCommandLineOption dataOption(QStringList{"d", "data"}, QStringLiteral("Game data directory."), QStringLiteral("dir"));
@@ -160,6 +208,8 @@ int main(int argc, char** argv) {
     if (what == QLatin1String("units")) return unitsReport(content, parser.value(raceOption), csv);
     if (what == QLatin1String("races")) return racesReport(content, csv);
     if (what == QLatin1String("duel") && args.size() == 3) return duelReport(content, args[1], args[2], gold, runs);
+    if (what == QLatin1String("replay") && args.size() == 4)
+        return replayReport(content, args[1], args[2].toInt(), args[3].toInt(), parser.isSet(runsOption) ? runs : 50);
     if (what == QLatin1String("weeks"))
         return weeksReport(content, std::clamp(parser.value(weeksOption).toInt(), 1, 52), parser.isSet(runsOption) ? runs : 20,
                            std::max(0, parser.value(budgetOption).toInt()), csv);
