@@ -93,12 +93,13 @@ When the game is over every command is refused with code `game_over`.
 | Type | Fields | `info` on success |
 |---|---|---|
 | `end_turn` | | `day`, `newDay`. AI players then play their turns on the server (with these same commands); players who left are skipped. |
-| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled`; `foundResources`, `foundArtifacts`, `learnedSpells` when that happened; `ambushed: true` when a zone of control stopped the hero and the armies there attacked; `spotted: true` when he stopped because a hostile army came into sight that was not visible when he set out. A move that runs out of movement keeps the target as the hero's `destination` (own heroes in the view: `destination: [x, y]`) |
+| `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled`; `foundResources`, `foundArtifacts`, `learnedSpells` when that happened; `ambushed: true` when a zone of control stopped the hero and the armies there attacked; `spotted: true` when he stopped because a hostile army came into sight that was not visible when he set out; `joinOffer` (`army`, `hero`, `units`: `unit`, `count`) when much weaker neutral monsters (balance `battle.joinStrengthRatio`) would rather join him: the hero stopped next to them, answer with `answer_join` (computer players always accept: `joined`). A move that runs out of movement keeps the target as the hero's `destination` (own heroes in the view: `destination: [x, y]`) |
 | `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
 | `recruit` | `town`, `unit`, `count`, `army`? | |
 | `recruit_at_dwelling` | `dwelling`, `count`, `army` | |
 | `hire_hero` | `town`, `hero` (template id), `useTrade`? | `hero` (id) |
 | `trade` | `give`, `amount`, `get` | |
+| `answer_join` | `answer`: `accept`, `fight` or `leave` | answers a `joinOffer` from the last `move_hero`: `joined`, `left`, or (fight) the attack like `move_hero` (`battleStarted`, ...). Any other command drops the offer |
 | `move_units` | `from`, `to`, `stack`, `count`; or `all: true` instead of `stack`/`count` (every stack that fits) | with `all`: `moved` (units), `left` (units that did not fit) |
 | `pick_trait` | `hero`, `trait` | |
 | `cast_spell` | `hero`, `spell` | an adventure-map spell (costs spell points) |

@@ -67,6 +67,7 @@ private:
     bool anyHeroCanMove() const;
     void updateEndTurnHighlight();
     void announceLevelUps(bool firstView);
+    void offerToJoin(const QJsonObject& offer);  // monsters offering to join: accept / fight / leave
     QString unitName(const QString& id) const;
     void announceEnd();
     void rememberObjects(GameView* view);

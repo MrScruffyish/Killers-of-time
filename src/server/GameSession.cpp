@@ -1,5 +1,6 @@
 #include "server/GameSession.h"
 
+#include "core/rules/ArmyRules.h"
 #include "core/rules/Vision.h"
 
 #include <QDir>
@@ -460,6 +461,38 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         info.insert("newDay", t.newDay);
         return success(info);
     }
+    if (cmd.type == net::msg::answerJoin) {
+        const QString answer = r.requireString("answer");
+        r.finish();
+        if (!r.ok()) return bad();
+        const JoinOffer offer = m_joinOffer;
+        m_joinOffer = {};
+        if (!offer.army.isValid() || offer.player != player) return failure("failed", "nobody offered to join");
+        if (answer == "accept") {
+            const ActionResult a = acceptJoin(m_state, m_content, offer.hero, offer.army);
+            if (!a.ok) return failure("failed", a.error);
+            return success({{"joined", true}});
+        }
+        if (answer == "leave") return success({{"left", true}});
+        if (answer != "fight") return failure("bad_request", "answer: accept, fight or leave");
+        // Fight them after all: the hero attacks from where he stands.
+        const Hero* h = m_state.hero(offer.hero);
+        const Army* monsters = m_state.army(offer.army);
+        if (!h || !monsters) return failure("failed", "they are gone");
+        m_battle = std::make_unique<ActiveBattle>();
+        m_battle->attack = PendingAttack{offer.hero, player, h->army, monsters->pos, {offer.army}};
+        m_battle->result.ok = true;
+        m_battle->result.attacked = true;
+        m_aiEvents = QJsonArray();
+        runBattles();
+        if (m_battle) {
+            QJsonObject info{{"battleStarted", true}, {"events", m_aiEvents}};
+            m_aiEvents = QJsonArray();
+            return success(info);
+        }
+        return success(moveInfo(m_finishedMove));
+    }
+    m_joinOffer = {};  // any other command declines a standing offer
     if (cmd.type == net::msg::moveHero) {
         const HeroId hero(id32("hero"));
         const int x = r.requireInt("x", 0, 100000), y = r.requireInt("y", 0, 100000);
@@ -467,8 +500,25 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         if (!r.ok()) return bad();
         const Hero* h = m_state.hero(hero);
         if (!h || h->owner != player) return failure("failed", "that is not your hero");
-        const MoveResult m = moveHero(m_state, m_content, hero, Pos{x, y}, MoveMode::Foot, true);
+        const MoveResult m = moveHero(m_state, m_content, hero, Pos{x, y}, MoveMode::Foot, true, true);
         if (!m.ok) return failure("failed", m.error);
+        if (m.joinOffer.isValid()) {
+            // Much weaker monsters offer to join. The computer always takes them;
+            // a human answers with answer_join.
+            if (m_state.player(player)->controller == Player::Controller::Ai) {
+                acceptJoin(m_state, m_content, hero, m.joinOffer);
+                QJsonObject info = moveInfo(m);
+                info.insert("joined", true);
+                return success(info);
+            }
+            m_joinOffer = {player, hero, m.joinOffer};
+            QJsonObject info = moveInfo(m);
+            QJsonArray units;
+            for (const UnitStack& s : m_state.army(m.joinOffer)->stacks)
+                units.append(QJsonObject{{"unit", s.unitTypeId()}, {"count", s.count()}});
+            info.insert("joinOffer", QJsonObject{{"army", toInt(m.joinOffer.value())}, {"hero", toInt(hero.value())}, {"units", units}});
+            return success(info);
+        }
         if (!m.pending) return success(moveInfo(m));
         m_battle = std::make_unique<ActiveBattle>();
         m_battle->attack = *m.pending;

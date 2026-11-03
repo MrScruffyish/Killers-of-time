@@ -313,6 +313,10 @@ private slots:
         gs.army(gs.addArmy(core::PlayerId(), spot))->addUnits("militia", 4, 6);
         game->mapView()->centerOn(spot);
         QTest::mouseDClick(game->mapView()->viewport(), Qt::LeftButton, {}, game->mapView()->tileRect(spot).center());
+        // 4 militia would rather join; Ann fights them anyway.
+        QTRY_VERIFY_WITH_TIMEOUT(game->findChild<QPushButton*>("joinFight") != nullptr, 5000);
+        shot(game->findChild<QWidget*>("joinOfferDialog"), "6c_join_offer");
+        QTest::mouseClick(game->findChild<QPushButton*>("joinFight"), Qt::LeftButton);
         QTRY_VERIFY2_WITH_TIMEOUT(game->view().battle.present, qPrintable(game->logText().right(400)), 5000);
         QTRY_VERIFY_WITH_TIMEOUT(game->battleView()->isVisible(), 5000);
         QTRY_VERIFY_WITH_TIMEOUT(game->view().battle.myMove(), 5000);

@@ -30,6 +30,7 @@ inline const QString recruitAtDwelling = QStringLiteral("recruit_at_dwelling");
 inline const QString hireHero = QStringLiteral("hire_hero");
 inline const QString trade = QStringLiteral("trade");
 inline const QString moveUnits = QStringLiteral("move_units");
+inline const QString answerJoin = QStringLiteral("answer_join");  // accept / fight / leave monsters offering to join
 inline const QString pickTrait = QStringLiteral("pick_trait");
 inline const QString buyAllUnits = QStringLiteral("buy_all_units");
 inline const QString autoBuild = QStringLiteral("auto_build");

@@ -55,6 +55,7 @@ struct MoveResult {
     bool landed = false;  // left the boat
     bool ambushed = false;  // stopped by a zone of control: the armies there attacked (see `battles`)
     bool spotted = false;   // stopped because a hostile army came into sight (destination kept)
+    ArmyId joinOffer;       // much weaker neutral monsters next to the hero offer to join (no battle yet)
     std::optional<PendingAttack> pending;  // deferBattles: the battles still to fight
 };
 
@@ -77,10 +78,13 @@ struct MoveResult {
 // Spotting: when a hostile field army that the team could not see at the start
 // comes into the hero's sight, he stops right there (`spotted`), so the player
 // sees the danger before walking into its zone of control.
+// Joining: instead of attacking (or ambushing) a single neutral monster army that
+// wouldJoin (ArmyRules.h), the hero stops next to it and `joinOffer` is set; the
+// caller then lets the player accept (acceptJoin) or fight. Only with `offerJoins`.
 // With `deferBattles` the hero stops next to the target and the battles are left to
 // the caller (`pending`; interactive battles): fight them, then call finishAttack.
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,
-                    MoveMode mode = MoveMode::Foot, bool deferBattles = false);
+                    MoveMode mode = MoveMode::Foot, bool deferBattles = false, bool offerJoins = false);
 
 // After the battles of an attack: enters a won town, captures what is on the
 // target and updates the explored map. `won` = every battle was won.

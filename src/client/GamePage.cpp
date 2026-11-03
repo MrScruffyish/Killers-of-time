@@ -288,7 +288,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
         const QString text = describeResult(p.type, info);
         using sound::Effect;
         if (p.type == net::msg::moveHero) sound::play(info["battleStarted"].toBool() ? Effect::Drums : Effect::Step);
-        if ((p.type == net::msg::battleAction || p.type == net::msg::moveHero) && !info["battleOver"].toBool())
+        if (p.type == net::msg::moveHero && info.contains("joinOffer")) offerToJoin(info["joinOffer"].toObject());
+        if ((p.type == net::msg::battleAction || p.type == net::msg::moveHero || p.type == net::msg::answerJoin) &&
+            !info["battleOver"].toBool())
             m_battleView->playEvents(info["events"].toArray());
         else if (p.type == net::msg::endTurn) sound::play(Effect::Click);
         else if (p.type == net::msg::castSpell) sound::play(Effect::Spell);
@@ -415,6 +417,55 @@ void GamePage::showBattle(bool firstView) {
             box->raise();
         }
     }
+}
+
+void GamePage::offerToJoin(const QJsonObject& offer) {
+    // Much weaker monsters would rather join than fight: the player decides.
+    QStringList who;
+    for (const QJsonValue& v : offer["units"].toArray()) {
+        const QJsonObject u = v.toObject();
+        who << QStringLiteral("%1 %2").arg(u["count"].toInt()).arg(unitName(u["unit"].toString()));
+    }
+    auto* box = new QDialog(this);
+    box->setObjectName("joinOfferDialog");
+    box->setWindowTitle(tr("They want to join you"));
+    box->setAttribute(Qt::WA_DeleteOnClose);
+    auto* v = new QVBoxLayout(box);
+    auto* row = new QHBoxLayout();
+    for (const QJsonValue& u : offer["units"].toArray()) {
+        const core::UnitDef* def = m_content->unit(u.toObject()["unit"].toString());
+        auto* icon = new QLabel(box);
+        icon->setPixmap(art::unitIcon(u.toObject()["unit"].toString(), def ? def->rank : 0, 72));
+        row->addWidget(icon);
+    }
+    auto* text = new QLabel(tr("<b>%1</b> are impressed by your army<br>and offer to join you.").arg(who.join(", ")), box);
+    text->setTextFormat(Qt::RichText);
+    row->addWidget(text, 1);
+    v->addLayout(row);
+    auto* buttons = new QHBoxLayout();
+    buttons->addStretch(1);
+    const auto answer = [this, box](const QString& a, const QString& what) {
+        return [this, box, a, what]() {
+            box->close();
+            send(net::msg::answerJoin, {{"answer", a}}, what);
+        };
+    };
+    auto* accept = new QPushButton(tr("Welcome them"), box);
+    accept->setObjectName("joinAccept");
+    accept->setDefault(true);
+    auto* fight = new QPushButton(tr("Fight"), box);
+    fight->setObjectName("joinFight");
+    auto* leave = new QPushButton(tr("Leave them"), box);
+    for (QPushButton* b : {accept, fight, leave}) {
+        b->setMinimumSize(120, 38);
+        buttons->addWidget(b);
+    }
+    v->addLayout(buttons);
+    connect(accept, &QPushButton::clicked, this, answer("accept", tr("They join you")));
+    connect(fight, &QPushButton::clicked, this, answer("fight", tr("Attack them")));
+    connect(leave, &QPushButton::clicked, this, answer("leave", tr("Leave them be")));
+    box->show();
+    box->raise();
 }
 
 void GamePage::announceLevelUps(bool firstView) {
@@ -818,6 +869,10 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
 }
 
 QString GamePage::describeResult(const QString& type, const QJsonObject& info) const {
+    if (type == net::msg::moveHero && info.contains("joinOffer")) return tr("monsters offer to join you");
+    if (type == net::msg::answerJoin && info["joined"].toBool()) return tr("they joined your army");
+    if (type == net::msg::answerJoin && info["left"].toBool()) return tr("you leave them be");
+    if (type == net::msg::moveHero && info["joined"].toBool()) return tr("monsters joined");
     if (type == net::msg::moveHero && info["ambushed"].toBool() && info["battleStarted"].toBool())
         return tr("you came too close: they attack! (zone of control)");
     if (type == net::msg::moveHero && info["battleStarted"].toBool()) return tr("a battle begins!");

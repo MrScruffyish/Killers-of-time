@@ -640,6 +640,7 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         bb.luckPercentPerPoint = br.optionalInt(QStringLiteral("luckPercentPerPoint"), bb.luckPercentPerPoint, 0, 100);
         bb.hpPercentPerTraitLevel = br.optionalInt(QStringLiteral("hpPercentPerTraitLevel"), bb.hpPercentPerTraitLevel, 0, 100);
         bb.obstacles = br.optionalInt(QStringLiteral("obstacles"), bb.obstacles, 0, 30);
+        bb.joinStrengthRatio = br.optionalInt(QStringLiteral("joinStrengthRatio"), bb.joinStrengthRatio, 0, 1000);
         br.finish();
         if (br.ok()) m_balance.battle = bb;
     }

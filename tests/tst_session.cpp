@@ -116,6 +116,11 @@ private slots:
 
         CommandResult r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
         QVERIFY2(r.ok, qPrintable(r.message));
+        // 3 militia are far weaker: they offer to join first. Ann wants a fight.
+        QVERIFY(r.info.contains("joinOffer"));
+        QCOMPARE(r.info["joinOffer"].toObject()["units"].toArray().first().toObject()["count"].toInt(), 3);
+        r = doIt(1, net::msg::answerJoin, {{"answer", "fight"}});
+        QVERIFY2(r.ok, qPrintable(r.message));
         QVERIFY(r.info["battleStarted"].toBool());
         QVERIFY(session->battleRunning());
         const QJsonObject view = session->viewFor(pA);
@@ -164,6 +169,39 @@ private slots:
         QVERIFY(!gs.army(monsters));  // 3 militia stand no chance
         QVERIFY(session->viewFor(pA).contains("lastBattle"));
         QVERIFY(doIt(1, net::msg::endTurn).ok);  // the game goes on
+    }
+
+    void weakMonstersOfferToJoin() {
+        core::GameState& gs = session->state();
+        const core::Hero* h = heroOf(pA);
+        const core::Pos at = gs.army(h->army)->pos;
+        core::Pos spot{-1, -1};
+        for (const core::Pos p : {core::Pos{at.x - 1, at.y + 1}, core::Pos{at.x - 1, at.y}, core::Pos{at.x, at.y + 1}}) {
+            bool free = spot.x < 0 && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable && !gs.townCovering(p);
+            for (const core::Army& a : gs.armies()) free = free && a.pos != p;
+            for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
+            for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
+            if (free) spot = p;
+        }
+        QVERIFY(spot.x >= 0);
+        const core::ArmyId monsters = gs.addArmy(core::PlayerId(), spot);
+        gs.army(monsters)->addUnits("militia", 2, 6);
+        const int before = gs.army(h->army)->totalUnits();
+        CommandResult r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
+        QVERIFY2(r.ok, qPrintable(r.message));
+        QVERIFY(r.info.contains("joinOffer"));
+        QVERIFY(!session->battleRunning());
+        // Leave them: nothing happens. Another command also drops the offer.
+        QVERIFY(doIt(1, net::msg::answerJoin, {{"answer", "leave"}}).ok);
+        QVERIFY(gs.army(monsters));
+        QCOMPARE(doIt(1, net::msg::answerJoin, {{"answer", "accept"}}).code, QString("failed"));  // no offer now
+        // Ask again (from where he stands) and welcome them.
+        r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
+        QVERIFY(r.info.contains("joinOffer"));
+        r = doIt(1, net::msg::answerJoin, {{"answer", "accept"}});
+        QVERIFY2(r.ok, qPrintable(r.message));
+        QVERIFY(!gs.army(monsters));
+        QCOMPARE(gs.army(h->army)->totalUnits(), before + 2);
     }
 
     void bothHumansPlayTheirOwnStacks() {

@@ -179,6 +179,7 @@ and react to; add depth afterwards.
 - [x] Level-ups are loud: fanfare and a Level up window with the portrait and "Choose now"; a gold "Level N! Choose a trait" button; End turn asks first when a pick is waiting
 - [x] T cycles through your towns (the map looks there), O opens one; a click in the town list centres the map; treasures stay on screen until the walking hero reaches them; auto-play is off at the start of every battle; buildings ruled out by a rival are not listed
 - [x] Fog of war is a lobby option (on by default); off: everyone sees the whole map from the start (saved as `fogOfWar: false`)
+- [x] Weak monsters offer to join: neutral armies at least `joinStrengthRatio` (5) times weaker than the hero's army that fit into it stop him with an offer (welcome them / fight / leave them); computer players always welcome them
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

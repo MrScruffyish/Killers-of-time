@@ -7,6 +7,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/battle/AutoBattle.h"
 #include "core/magic/Spells.h"
+#include "core/rules/ArmyRules.h"
 #include "core/rules/Vision.h"
 
 namespace kot::core {
@@ -70,7 +71,7 @@ void refreshHeroMovement(GameState& state, const ContentRegistry& content, Playe
 }
 
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,
-                    MoveMode mode, bool deferBattles) {
+                    MoveMode mode, bool deferBattles, bool offerJoins) {
     MoveResult result;
     Hero* hero = state.hero(heroId);
     Army* army = hero ? state.army(hero->army) : nullptr;
@@ -213,6 +214,30 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
             break;
         }
     }
+    // Much weaker monsters would rather join: stop next to them and ask.
+    const auto offerJoin = [&](ArmyId monsters, int stopAfter) {
+        result.ok = true;
+        result.stepsTaken = stopAfter;
+        result.movementSpent = stopAfter > 0 ? path.cumulativeCost[stopAfter - 1] : 0;
+        hero->movementPoints -= result.movementSpent;
+        if (stopAfter > 0) army->pos = path.steps[stopAfter - 1];
+        hero->destination.reset();
+        result.joinOffer = monsters;
+        updateExplored(state, content, state.teamOf(hero->owner));
+        return result;
+    };
+    if (offerJoins && ambushers.size() == 1 && wouldJoin(state, content, army->id, ambushers.first())) {
+        // Walk on until right next to them.
+        int stop = steps;
+        const Pos m = state.army(ambushers.first())->pos;
+        for (int i = steps - 1; i < path.steps.size(); ++i) {
+            stop = i + 1;
+            if (std::max(std::abs(path.steps[i].x - m.x), std::abs(path.steps[i].y - m.y)) <= 1 || path.steps[i] == target) break;
+        }
+        stop = std::min(stop, affordableSteps(path, hero->movementPoints));
+        if (stop > 0 && path.steps[stop - 1] == m) --stop;  // never onto them
+        return offerJoin(ambushers.first(), stop);
+    }
     if (!ambushers.isEmpty()) {
         result.ok = result.attacked = result.ambushed = true;
         result.stepsTaken = steps;
@@ -258,6 +283,10 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     const HeroId heroIdCopy = hero->id;
     const ArmyId armyId = army->id;
 
+    if (offerJoins && reached && defenders.size() == 1 && !targetTown && wouldJoin(state, content, army->id, defenders.first())) {
+        hero->movementPoints += result.movementSpent;  // offerJoin charges the walk itself
+        return offerJoin(defenders.first(), steps - 1);
+    }
     if (reached && !defenders.isEmpty()) {
         // Attacking costs the last step; the attacker fights from the tile before.
         if (steps >= 2) army->pos = path.steps[steps - 2];

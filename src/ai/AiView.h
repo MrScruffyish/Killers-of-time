@@ -3,6 +3,7 @@
 #include <QByteArray>
 
 #include "core/model/GameState.h"
+#include "core/rules/ArmyRules.h"
 
 namespace kot::core { class ContentRegistry; }
 
@@ -27,7 +28,7 @@ private:
 };
 
 // Rough fighting strength of an army (units' HP x average damage x attack bonus),
-// used to decide whether an attack is worth it.
-double armyStrength(const core::GameState& state, const core::ContentRegistry& content, const core::Army& army);
+// armyStrength: core/rules/ArmyRules.h
+using core::armyStrength;
 
 }  // namespace kot::ai

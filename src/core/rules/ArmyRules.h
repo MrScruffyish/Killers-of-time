@@ -6,6 +6,8 @@
 
 namespace kot::core {
 
+class ContentRegistry;
+
 struct ActionResult {
     bool ok = false;
     QString error;
@@ -22,5 +24,15 @@ ActionResult moveUnits(GameState& state, ArmyId from, ArmyId to, int stackIndex,
 // what does not fit stays. `moved` (optional) gets the number of units moved.
 // Fails only when the armies cannot exchange at all or nothing could move.
 ActionResult moveAllUnits(GameState& state, ArmyId from, ArmyId to, int* moved = nullptr);
+
+// A rough fighting value: per unit HP x average damage x (1 + 5% per attack and
+// defense point), times 5% per point of the hero's Attack and Defense.
+double armyStrength(const GameState& state, const ContentRegistry& content, const Army& army);
+
+// Neutral monsters (no owner, no hero) that are at least joinStrengthRatio times
+// weaker than the hero's army and all fit into it would rather join than fight.
+bool wouldJoin(const GameState& state, const ContentRegistry& content, ArmyId heroArmy, ArmyId monsters);
+// The monsters join the hero's army (for free) and leave the map.
+ActionResult acceptJoin(GameState& state, const ContentRegistry& content, HeroId hero, ArmyId monsters);
 
 }  // namespace kot::core

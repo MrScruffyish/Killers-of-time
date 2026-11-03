@@ -95,6 +95,9 @@ struct BattleBalance {
     int luckPercentPerPoint = 5;     // chance per hero Luck point: double damage
     int hpPercentPerTraitLevel = 5;  // hero Hit Points trait: +% max HP of his units
     int obstacles = 4;               // rocks on the battle field
+    // Neutral monsters this many times weaker than the hero's army offer to join
+    // him instead of fighting (0 = never).
+    int joinStrengthRatio = 5;
 };
 // The overall difficulty level of a game (lobby setting) and the per-AI slot level.
 struct DifficultyLevel {

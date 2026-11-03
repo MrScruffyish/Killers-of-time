@@ -1,5 +1,10 @@
 #include "core/rules/ArmyRules.h"
 
+#include <algorithm>
+#include <cstdlib>
+
+#include "core/content/ContentRegistry.h"
+
 namespace kot::core {
 
 namespace {
@@ -60,6 +65,52 @@ ActionResult moveAllUnits(GameState& state, ArmyId fromId, ArmyId toId, int* mov
     ActionResult ok;
     ok.ok = true;
     return ok;
+}
+
+double armyStrength(const GameState& state, const ContentRegistry& content, const Army& army) {
+    const Hero* hero = state.hero(army.hero);
+    const int bonus = hero ? hero->trait(QStringLiteral("attack")) + hero->trait(QStringLiteral("defense")) : 0;
+    double total = 0;
+    for (const UnitStack& s : army.stacks) {
+        const UnitDef* u = content.unit(s.unitTypeId());
+        if (!u) continue;
+        total += s.count() * u->maxHp * (u->damageMin + u->damageMax) / 2.0 * (1.0 + 0.05 * (u->attack + u->defense));
+    }
+    return total * (1.0 + 0.05 * bonus);
+}
+
+bool wouldJoin(const GameState& state, const ContentRegistry& content, ArmyId heroArmy, ArmyId monstersId) {
+    const int ratio = content.balance().battle.joinStrengthRatio;
+    const Army* mine = state.army(heroArmy);
+    const Army* monsters = state.army(monstersId);
+    if (ratio <= 0 || !mine || !monsters || monsters->owner.isValid() || monsters->hasHero() || monsters->totalUnits() == 0) return false;
+    for (const Town& t : state.towns())
+        if (t.garrison == monstersId) return false;
+    if (armyStrength(state, content, *mine) < ratio * armyStrength(state, content, *monsters)) return false;
+    // Every stack must find a place: joining a stack of the same unit or a free slot.
+    int freeSlots = kMaxArmyStacks - static_cast<int>(mine->stacks.size());
+    for (const UnitStack& s : monsters->stacks) {
+        bool merges = false;
+        for (const UnitStack& own : mine->stacks) merges = merges || own.unitTypeId() == s.unitTypeId();
+        if (!merges && --freeSlots < 0) return false;
+    }
+    return true;
+}
+
+ActionResult acceptJoin(GameState& state, const ContentRegistry& content, HeroId heroId, ArmyId monstersId) {
+    const Hero* hero = state.hero(heroId);
+    Army* monsters = state.army(monstersId);
+    if (!hero || !monsters) return fail(QStringLiteral("unknown hero or army"));
+    if (!wouldJoin(state, content, hero->army, monstersId)) return fail(QStringLiteral("they do not want to join any more"));
+    const Army* mine = state.army(hero->army);
+    if (std::max(std::abs(mine->pos.x - monsters->pos.x), std::abs(mine->pos.y - monsters->pos.y)) > 1)
+        return fail(QStringLiteral("the hero is not next to them"));
+    // They come over to the hero's tile and join.
+    monsters->owner = hero->owner;
+    monsters->pos = mine->pos;
+    const ActionResult r = moveAllUnits(state, monstersId, hero->army);
+    if (r.ok && state.army(monstersId) && state.army(monstersId)->totalUnits() == 0) state.armies().remove(monstersId);
+    return r;
 }
 
 }  // namespace kot::core

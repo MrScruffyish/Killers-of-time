@@ -1,5 +1,7 @@
 #include "ai/AiView.h"
 
+#include "core/rules/ArmyRules.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/Vision.h"
 
@@ -38,17 +40,5 @@ bool AiView::isFrontier(Pos p) const {
     return false;
 }
 
-double armyStrength(const GameState& state, const ContentRegistry& content, const Army& army) {
-    const Hero* hero = state.hero(army.hero);
-    const int bonus = hero ? hero->trait(QStringLiteral("attack")) + hero->trait(QStringLiteral("defense")) : 0;
-    double total = 0;
-    for (const UnitStack& s : army.stacks) {
-        const UnitDef* u = content.unit(s.unitTypeId());
-        if (!u) continue;
-        const double perUnit = u->maxHp * (u->damageMin + u->damageMax) / 2.0 * (1.0 + 0.05 * (u->attack + u->defense));
-        total += s.count() * perUnit;
-    }
-    return total * (1.0 + 0.05 * bonus);
-}
 
 }  // namespace kot::ai
