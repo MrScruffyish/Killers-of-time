@@ -136,7 +136,12 @@ void HeroDialog::rebuild() {
                 text += tr(" &nbsp; <i>att %1 def %2 dmg %3-%4 hp %5 speed %6%7</i>")
                             .arg(u->attack).arg(u->defense).arg(u->damageMin).arg(u->damageMax).arg(u->maxHp).arg(u->battleSpeed)
                             .arg(u->abilities.isEmpty() ? QString() : ", " + u->abilities.join(", "));
-            al->addWidget(new QLabel(text, armyBox));
+            auto* row = new QHBoxLayout();
+            auto* icon = new QLabel(armyBox);
+            icon->setPixmap(art::unitIcon(s.unit, u ? u->rank : 0, 40));
+            row->addWidget(icon);
+            row->addWidget(new QLabel(text, armyBox), 1);
+            al->addLayout(row);
         }
         if (a->stacks.isEmpty()) al->addWidget(new QLabel(tr("No units. Visit a town to take some along."), armyBox));
     }

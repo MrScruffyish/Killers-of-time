@@ -1,5 +1,6 @@
 #include "client/LobbyPage.h"
 
+#include "client/Art.h"
 #include "client/LoadDialog.h"
 #include "core/Version.h"
 #include <QCheckBox>
@@ -365,9 +366,12 @@ void LobbyPage::rebuild() {
         if (!s.occupied()) continue;
 
         auto* race = new QComboBox(m_slotHolder);
+        race->setIconSize(QSize(24, 24));
         for (const QString& id : m_client->races()) {
             const core::RaceDef* def = m_content && m_content->races().contains(id) ? &m_content->race(id) : nullptr;
-            race->addItem(def ? def->name : id, id);
+            // A face for the race: one of its typical units.
+            static const QMap<QString, QString> face = {{"humans", "cavalier"}, {"sylvan", "elf_archer"}, {"undead", "skeleton"}};
+            race->addItem(QIcon(art::unitIcon(face.value(id, id), 0, 32)), def ? def->name : id, id);
             if (def) race->setItemData(race->count() - 1, def->description, Qt::ToolTipRole);
         }
         race->setCurrentIndex(std::max(0, race->findData(s.race)));

@@ -275,6 +275,9 @@ void TownDialog::rebuild() {
 
         auto* table = new QTableWidget(page);
         table->setObjectName("recruitTable");
+        table->setIconSize(QSize(40, 40));
+        table->verticalHeader()->setVisible(false);
+        table->verticalHeader()->setDefaultSectionSize(48);
         table->setColumnCount(5);
         table->setHorizontalHeaderLabels({tr("Unit"), tr("Available"), tr("Cost each"), tr("Count"), QString()});
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -282,7 +285,11 @@ void TownDialog::rebuild() {
         int row = 0;
         for (const RecruitChoice& rc : town->recruitOptions) {
             const core::UnitDef* u = m_content->unit(rc.unit);
-            table->setItem(row, 0, new QTableWidgetItem(unitName(rc.unit)));
+            auto* unitItem = new QTableWidgetItem(QIcon(art::unitIcon(rc.unit, u ? u->rank : 0, 40)), unitName(rc.unit));
+            if (u) unitItem->setToolTip(tr("Attack %1, Defense %2, Damage %3-%4, %5 HP, Speed %6%7")
+                                            .arg(u->attack).arg(u->defense).arg(u->damageMin).arg(u->damageMax).arg(u->maxHp).arg(u->battleSpeed)
+                                            .arg(u->range > 0 ? tr(", shoots (range %1)").arg(u->range) : QString()));
+            table->setItem(row, 0, unitItem);
             table->setItem(row, 1, new QTableWidgetItem(QString::number(rc.available)));
             table->setItem(row, 2, new QTableWidgetItem(u ? costText(u->cost) : QString()));
             auto* count = new QSpinBox();
