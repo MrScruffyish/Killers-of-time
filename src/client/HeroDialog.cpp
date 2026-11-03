@@ -1,6 +1,8 @@
 #include "client/HeroDialog.h"
 
 #include <QGridLayout>
+#include <QScreen>
+#include <functional>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -18,16 +20,18 @@
 namespace kot::client {
 
 HeroDialog::HeroDialog(const core::ContentRegistry* content, QWidget* parent) : QDialog(parent), m_content(content) {
-    rememberGeometry(this, QStringLiteral("heroDialog"));
+    rememberGeometry(this, QStringLiteral("heroDialog2"));  // "2": wider since the gear view
     setObjectName("heroDialog");
-    resize(620, 560);
+    // Wide: the hero's traits, army and spells on the left, his gear on the right.
+    const QRect screen = parent && parent->screen() ? parent->screen()->availableGeometry() : QRect(0, 0, 1280, 800);
+    resize(std::min(1180, screen.width() - 40), std::min(800, screen.height() - 60));
     auto* layout = new QVBoxLayout(this);
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
     layout->addWidget(scroll);
     m_body = new QWidget(scroll);
     scroll->setWidget(m_body);
-    auto* bodyLayout = new QVBoxLayout(m_body);
+    auto* bodyLayout = new QHBoxLayout(m_body);
     bodyLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);  // never squeeze the rows
 }
 
@@ -50,13 +54,22 @@ void HeroDialog::rebuild() {
         hide();
         return;
     }
-    // Start over: drop the old contents.
+    // Start over: drop the old contents (and the column layouts).
     QLayout* layout = m_body->layout();
-    while (QLayoutItem* item = layout->takeAt(0)) {
-        if (QWidget* w = item->widget()) w->deleteLater();
-        delete item;
-    }
-    auto* v = static_cast<QVBoxLayout*>(layout);
+    const std::function<void(QLayout*)> clear = [&](QLayout* l) {
+        while (QLayoutItem* item = l->takeAt(0)) {
+            if (QWidget* w = item->widget()) w->deleteLater();
+            if (QLayout* inner = item->layout()) clear(inner);
+            delete item;
+        }
+    };
+    clear(layout);
+    auto* columns = static_cast<QHBoxLayout*>(layout);
+    auto* v = new QVBoxLayout();
+    auto* right = new QVBoxLayout();
+    columns->addLayout(v, 1);
+    columns->addSpacing(12);
+    columns->addLayout(right, 0);
     const core::HeroClassDef* cls = m_content->heroClass(h->classId);
     setWindowTitle(tr("%1, %2").arg(h->name, cls ? cls->name : h->classId));
 
@@ -181,7 +194,8 @@ void HeroDialog::rebuild() {
     artl->addWidget(gear, 0, Qt::AlignHCenter);
     if (h->artifacts.isEmpty() && h->backpack.isEmpty())
         artl->addWidget(new QLabel(tr("None yet. Artifacts lie on the map, often guarded."), artBox));
-    v->addWidget(artBox);
+    right->addWidget(artBox);
+    right->addStretch(1);
     v->addStretch(1);
 }
 

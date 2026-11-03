@@ -10,16 +10,15 @@
 #include <QPainter>
 #include <QSet>
 #include <QPushButton>
-#include <QScrollArea>
 #include <QShortcut>
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <functional>
 
 #include "client/Art.h"
-#include "client/BuildTree.h"
 #include "client/Settings.h"
 #include "core/content/ContentRegistry.h"
 
@@ -270,7 +269,7 @@ void TownDialog::rebuild() {
         struct Row {
             QString id;
             QString status;
-            int rank;  // 0 now, 1 after a trade, 2 blocked, 3 built
+            int rank;  // 0 now, 1 after a trade, 2 blocked otherwise, 2 + n: n buildings missing first
         };
         QList<Row> rows;
         // Left out: buildings that can never come here any more because a rival
@@ -283,11 +282,55 @@ void TownDialog::rebuild() {
             }
             return false;
         };
+        // How many buildings are still missing before this one: 0 = none, 1 = one
+        // needed building can be built first, 2 = that one needs another, ...
+        QHash<QString, int> stepsMemo;
+        const std::function<int(const QString&, int)> stepsTo = [&](const QString& id, int guard) -> int {
+            if (town->buildings.contains(id) || guard > 20) return 0;
+            if (stepsMemo.contains(id)) return stepsMemo.value(id);
+            const core::BuildingDef* b = m_content->building(id);
+            int steps = 0;
+            if (b) {
+                QStringList needs = b->requiredBuildings;
+                if (!b->upgradeOf.isEmpty()) needs << b->upgradeOf;
+                for (const QString& n : needs)
+                    if (!town->buildings.contains(n)) steps = std::max(steps, stepsTo(n, guard + 1) + 1);
+            }
+            stepsMemo.insert(id, steps);
+            return steps;
+        };
+        QHash<QString, QString> whyOf;
+        for (const BuildOption& o : town->buildOptions) whyOf.insert(o.id, o.why);
+        const auto missingNow = [&](const QString& id) {
+            QStringList out;
+            const core::BuildingDef* b = m_content->building(id);
+            if (!b) return out;
+            QStringList needs = b->requiredBuildings;
+            if (!b->upgradeOf.isEmpty()) needs << b->upgradeOf;
+            for (const QString& n : needs)
+                if (!town->buildings.contains(n)) out << n;
+            return out;
+        };
         for (const BuildOption& o : town->buildOptions) {
-            if (ruledOut(o.id)) continue;
-            const int rank = o.why.isEmpty() ? 0 : o.why.startsWith("not enough") ? 1 : 2;
-            const bool todayReason = o.why.contains(QStringLiteral("today"));  // said once above
-            rows.append({o.id, todayReason ? QString() : o.why, rank});
+            if (ruledOut(o.id) || town->buildings.contains(o.id)) continue;  // built ones are listed above
+            const int steps = stepsTo(o.id, 0);
+            int rank = o.why.isEmpty() ? 0 : o.why.startsWith("not enough") ? 1 : 2;
+            QString status = o.why;
+            if (steps > 0) {
+                // What to build first, and whether that can be done now.
+                QStringList parts;
+                for (const QString& n : missingNow(o.id)) {
+                    const QString w = whyOf.value(n, QStringLiteral("?"));
+                    parts << (w.isEmpty() ? tr("%1 (can build now)").arg(name(n))
+                              : w.startsWith("not enough") ? tr("%1 (after a trade)").arg(name(n)) : name(n));
+                }
+                status = steps == 1 ? tr("First build %1").arg(parts.join(tr(" and ")))
+                                    : tr("%1 steps away: first %2").arg(steps).arg(parts.join(tr(" and ")));
+                rank = 2 + steps;  // nearer ones first
+            } else if (o.why.contains(QStringLiteral("today"))) {
+                status = QString();  // said once above
+            }
+            rows.append({o.id, status, rank});
         }
         std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) { return a.rank < b.rank; });
         if (m_onlyBuildable) rows.erase(std::remove_if(rows.begin(), rows.end(), [](const Row& r) { return r.rank > 1; }), rows.end());
@@ -297,7 +340,7 @@ void TownDialog::rebuild() {
         table->setAlternatingRowColors(true);
         table->setObjectName("buildingTable");
         table->setColumnCount(5);
-        table->setHorizontalHeaderLabels({tr("Building"), QString(), tr("Cost"), tr("What it does"), tr("Why not")});
+        table->setHorizontalHeaderLabels({tr("Building"), QString(), tr("Cost"), tr("What it does"), tr("What first / why not")});
         table->horizontalHeader()->setStretchLastSection(true);
         table->verticalHeader()->setVisible(false);
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -312,14 +355,14 @@ void TownDialog::rebuild() {
             if (r.rank == 0) nameItem->setForeground(QColor("#ffe27a"));
             if (r.rank >= 2) nameItem->setForeground(QColor("#9a8a70"));
             table->setItem(row, 0, nameItem);
-            table->setItem(row, 2, new QTableWidgetItem(r.rank == 3 || !b ? QString() : costText(b->cost)));
+            table->setItem(row, 2, new QTableWidgetItem(!b ? QString() : costText(b->cost)));
             auto* what = new QTableWidgetItem(b ? effectsText(*b) : QString());
             what->setToolTip(what->text());
             table->setItem(row, 3, what);
             // Only blocked rows say why (a button already says it can be built).
             auto* why = new QTableWidgetItem(r.rank == 0 ? QString() : r.status);
             why->setToolTip(why->text());
-            if (r.rank == 3) why->setForeground(QColor("#8fbf6a"));
+            if (r.rank == 3) why->setForeground(QColor("#d8c890"));  // one step: worth a look
             table->setItem(row, 4, why);
             if (r.rank <= 1) {
                 const bool trade = r.rank == 1;
@@ -348,45 +391,6 @@ void TownDialog::rebuild() {
         if (!any && !builtToday) layout->addWidget(new QLabel(tr("Nothing can be built here right now."), page));
         m_tabs->addTab(page, art::buttonIcon("build"), tr("Buildings"));
 
-        // ---- The same as a picture: what needs what.
-        QList<BuildTree::Node> nodes;
-        QHash<QString, QString> whyNot;
-        for (const BuildOption& o : town->buildOptions) whyNot.insert(o.id, o.why);
-        for (const core::BuildingDef& b : m_content->buildings()) {
-            if (!b.fitsRace(town->race) || ruledOut(b.id)) continue;
-            BuildTree::Node nd;
-            nd.id = b.id;
-            nd.name = b.name;
-            nd.needs = b.requiredBuildings;
-            if (!b.upgradeOf.isEmpty() && !nd.needs.contains(b.upgradeOf)) nd.needs << b.upgradeOf;
-            const QString why = whyNot.value(b.id);
-            if (town->buildings.contains(b.id)) nd.state = BuildTree::State::Built;
-            else if (whyNot.contains(b.id) && why.isEmpty()) nd.state = BuildTree::State::Now;
-            else if (why.startsWith("not enough")) nd.state = BuildTree::State::Trade;
-            else nd.state = BuildTree::State::Blocked;
-            QStringList needNames;
-            for (const QString& r : nd.needs) needNames << name(r).toHtmlEscaped();
-            QString tip = QStringLiteral("<b>%1</b>").arg(b.name.toHtmlEscaped());
-            if (nd.state != BuildTree::State::Built) tip += QStringLiteral("<br>%1").arg(costText(b.cost).toHtmlEscaped());
-            const QString does = effectsText(b);
-            if (!does.isEmpty()) tip += QStringLiteral("<br>%1").arg(does.toHtmlEscaped());
-            if (!needNames.isEmpty()) tip += tr("<br><i>Needs:</i> %1").arg(needNames.join(", "));
-            if (nd.state == BuildTree::State::Built) tip += tr("<br><span style='color:#9acf72'>Built.</span>");
-            else if (!why.isEmpty()) tip += QStringLiteral("<br><span style='color:#e8a040'>%1</span>").arg(why.toHtmlEscaped());
-            nd.tooltip = tip;
-            nodes << nd;
-        }
-        auto* tree = new BuildTree();
-        tree->setNodes(nodes, myTurn && !builtToday);
-        connect(tree, &BuildTree::buildRequested, this, [=, this](const QString& id, bool trade) {
-            send("build", {{"town", tid}, {"building", id}, {"useTrade", trade}}, tr("Build %1").arg(name(id)));
-        });
-        auto* scroll = new QScrollArea();
-        scroll->setObjectName("buildTreeScroll");
-        scroll->setWidget(tree);
-        scroll->setWidgetResizable(false);
-        scroll->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
-        m_tabs->addTab(scroll, art::buttonIcon("market"), tr("Building tree"));
     }
 
     // ---- Recruit (only when there is something to recruit)

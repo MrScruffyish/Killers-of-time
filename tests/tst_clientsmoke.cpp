@@ -22,7 +22,6 @@
 #include "client/Settings.h"
 #include "client/SpellBook.h"
 #include "client/TownDialog.h"
-#include "client/BuildTree.h"
 #include "client/EquipmentView.h"
 #include "client/Toast.h"
 #include "core/content/ContentRegistry.h"
@@ -431,19 +430,6 @@ private slots:
         QVERIFY(!game->townDialog()->findChild<QPushButton*>("townNextButton")->isEnabled());
         QApplication::processEvents();
         shot(game->townDialog(), "4_town_buildings");
-        {
-            auto* tabs = game->townDialog()->findChild<QTabWidget*>();
-            auto* tree = game->townDialog()->findChild<BuildTree*>("buildTree");
-            QVERIFY(tree);
-            QVERIFY(!tree->nodeRect("barracks").isEmpty());
-            QVERIFY(!tree->nodeRect("town_hall").isEmpty());
-            QVERIFY(tree->nodeRect("town_hall").left() > tree->nodeRect("village_hall").left() ||
-                    tree->nodeRect("village_hall").isEmpty());  // what it needs stands to the left
-            tabs->setCurrentWidget(game->townDialog()->findChild<QWidget*>("buildTreeScroll"));
-            QApplication::processEvents();
-            shot(game->townDialog(), "4b_town_tree");
-            tabs->setCurrentIndex(0);
-        }
         auto* build = game->townDialog()->findChild<QPushButton*>("build_barracks");
         QVERIFY(build && build->isEnabled());
         QTest::mouseClick(build, Qt::LeftButton);
