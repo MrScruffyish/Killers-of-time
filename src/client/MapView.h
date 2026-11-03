@@ -43,6 +43,8 @@ public:
     // The visible part of the map, in tiles (for the minimap).
     QRect visibleTiles() const;
     const MovePlan& plan() const { return m_plan; }
+    // A big title that fades out over the map ("Day 5", "Week 2").
+    void showBanner(const QString& title, const QString& subtitle);
     // The plotted route of the selected hero (single click sets it; shown until
     // cleared). Without one the path under the mouse is previewed.
     void setRoute(std::optional<core::Pos> target);
@@ -104,6 +106,9 @@ private:
     QHash<int, Walk> m_walks;
     class QTimer* m_walkTimer;
     QElapsedTimer m_walkClock;
+    QString m_bannerTitle, m_bannerSub;
+    QElapsedTimer m_bannerClock;
+    class QTimer* m_bannerTimer = nullptr;
     core::Pos m_hover{-1, -1};
 };
 

@@ -381,7 +381,12 @@ void GamePage::onViewChanged() {
     m_townDialog->refresh(m_view);
     if (m_market && m_market->isVisible()) m_market->setView(m_view);
     m_heroDialog->refresh(m_view);
-    if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
+    if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) {
+        log(tr("Day %1: your turn.").arg(m_view.day));
+        const int weekDay = (m_view.day - 1) % 7 + 1;
+        m_map->showBanner(weekDay == 1 ? tr("Week %1").arg((m_view.day - 1) / 7 + 1) : tr("Day %1").arg(m_view.day),
+                          weekDay == 1 && !m_view.weekEventName.isEmpty() ? m_view.weekEventName : tr("day %1 of the week").arg(weekDay));
+    }
     if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1.").arg(m_view.victory));
     // A new week brings its event.
     const int week = (m_view.day - 1) / 7 + 1;

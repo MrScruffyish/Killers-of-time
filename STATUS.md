@@ -184,6 +184,7 @@ and react to; add depth afterwards.
 - [x] Hot-seat: lobby slot kind "Human on this computer" (named by the host, always ready); one connection plays several players, the server acts for the one whose turn it is (or whose stack acts in a battle); the client covers the game with a "Pass to <name>" screen between them; map memory per player
 - [x] More content: 36 units (each race up to tier 5: humans swordsman/crusader, monk, cavalier, angel; sylvan dryad, centaur, ancient treant, green dragon; undead ghoul, lich, spectre, vampire, dread knight; neutral wolf, harpy, troll, ogre), 40 buildings (their dwellings, Mage Academy level 4), 21 spells (ice bolt, bless, rock fall, barkskin, thorn storm, weakness, drain life, chain lightning, wind step), pictures for all
 - [x] AI: saves up for a boat when its island is done (and buys missing wood), lands only on real islands it has not left before
+- [x] Graphics: map decorations (flowers, bushes, stones, cacti, reeds, mushrooms, sea rocks), health bars on hurt battle stacks, a title picture on the start screen (castle at dusk, version), a big Host button, a Day/Week banner at the start of each day
 - [ ] Balance (later, user): ranges favour the elves' archers; the new tier 3-5 units are first guesses (kot_balance races: humans 62.7k, sylvan 41.8k, undead 79.1k week power)
 
 ---

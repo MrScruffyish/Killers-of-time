@@ -215,6 +215,97 @@ const QPixmap& terrainTile(const QString& id, const QColor& base, int size, int 
     return it.value();
 }
 
+int decorationAt(int x, int y) {
+    const quint32 h = (quint32(x) * 2654435761u) ^ (quint32(y) * 40503u + 0x9e37u);
+    return (h >> 9) % 6 == 0 ? int((h >> 13) % 4) : -1;
+}
+
+const QPixmap& decoration(const QString& id, int variant, int size) {
+    static const QPixmap none;
+    const auto draw = [&](QPainter& p, const QRectF& r) {
+        const double w = r.width(), h = r.height();
+        const auto X = [&](double f) { return r.left() + w * f; };
+        const auto Y = [&](double f) { return r.top() + h * f; };
+        const QPen ink(QColor(30, 22, 12), std::max(1.0, w / 60));
+        Dice d(qHash(id) + variant * 31);
+        const double ox = 0.15 + d.next() * 0.5, oy = 0.35 + d.next() * 0.4;  // where in the tile
+        const auto stone = [&](double x, double y, double s, const QColor& c) {
+            p.setPen(ink);
+            p.setBrush(c);
+            p.drawEllipse(QRectF(X(x), Y(y), w * s, h * s * 0.7));
+            p.setPen(Qt::NoPen);
+            p.setBrush(c.lighter(130));
+            p.drawEllipse(QRectF(X(x + s * 0.2), Y(y + s * 0.1), w * s * 0.35, h * s * 0.2));
+        };
+        if (id == "grass" || id == "road") {
+            if (variant % 2 == 0) {  // flowers
+                for (int i = 0; i < 4; ++i) {
+                    const double x = ox + d.next() * 0.3, y = oy + d.next() * 0.2;
+                    p.setPen(QPen(QColor("#3e6a2a"), std::max(1.0, w / 50)));
+                    p.drawLine(QPointF(X(x), Y(y)), QPointF(X(x), Y(y + 0.1)));
+                    p.setPen(Qt::NoPen);
+                    p.setBrush(i % 3 == 0 ? QColor("#ffe060") : i % 3 == 1 ? QColor("#ff8ab0") : QColor("#f4f4ff"));
+                    p.drawEllipse(QPointF(X(x), Y(y)), w * 0.035, w * 0.035);
+                }
+            } else if (variant == 1) {  // a bush
+                p.setPen(ink);
+                p.setBrush(QColor("#4a8a3a"));
+                p.drawEllipse(QRectF(X(ox), Y(oy), w * 0.3, h * 0.22));
+                p.setBrush(QColor("#5aa04a"));
+                p.drawEllipse(QRectF(X(ox + 0.06), Y(oy - 0.06), w * 0.18, h * 0.16));
+            } else {
+                stone(ox, oy, 0.18, QColor("#9a968c"));
+            }
+        } else if (id == "dirt" || id == "hills") {
+            stone(ox, oy, 0.2, QColor("#a8987a"));
+            if (variant > 1) stone(ox + 0.18, oy + 0.08, 0.12, QColor("#8a7a60"));
+        } else if (id == "sand") {
+            if (variant % 2) {  // a cactus
+                p.setPen(ink);
+                p.setBrush(QColor("#5a9a4a"));
+                p.drawRoundedRect(QRectF(X(ox + 0.1), Y(oy - 0.2), w * 0.08, h * 0.32), w * 0.04, w * 0.04);
+                p.drawRoundedRect(QRectF(X(ox), Y(oy - 0.08), w * 0.06, h * 0.14), w * 0.03, w * 0.03);
+                p.drawRoundedRect(QRectF(X(ox + 0.2), Y(oy - 0.14), w * 0.06, h * 0.12), w * 0.03, w * 0.03);
+            } else {
+                stone(ox, oy, 0.16, QColor("#d8c08a"));
+            }
+        } else if (id == "snow") {
+            stone(ox, oy, 0.2, QColor("#c8ccd8"));
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor("#ffffff"));
+            p.drawEllipse(QRectF(X(ox + 0.03), Y(oy - 0.01), w * 0.14, h * 0.06));
+        } else if (id == "swamp") {
+            p.setPen(QPen(QColor("#6a8a3a"), std::max(1.0, w / 40)));
+            for (int i = 0; i < 4; ++i) {
+                const double x = ox + i * 0.06;
+                p.drawLine(QPointF(X(x), Y(oy + 0.12)), QPointF(X(x - 0.03 + d.next() * 0.06), Y(oy - 0.1)));
+            }
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor("#6a4a28"));
+            p.drawRoundedRect(QRectF(X(ox + 0.05), Y(oy - 0.14), w * 0.04, h * 0.08), w * 0.02, w * 0.02);  // a cattail
+        } else if (id == "forest") {
+            p.setPen(ink);  // mushrooms
+            for (int i = 0; i < 2; ++i) {
+                const double x = ox + i * 0.12, y = oy + i * 0.06;
+                p.setBrush(QColor("#f0e8d8"));
+                p.drawRect(QRectF(X(x + 0.025), Y(y), w * 0.03, h * 0.07));
+                p.setBrush(i ? QColor("#c03a2a") : QColor("#a87a4a"));
+                p.drawChord(QRectF(X(x), Y(y - 0.05), w * 0.08, h * 0.1), 0, 180 * 16);
+            }
+        } else if (id == "sea") {
+            if (variant == 3) {  // a rock in the waves
+                stone(ox, oy, 0.18, QColor("#6a6a70"));
+                p.setPen(QPen(QColor(255, 255, 255, 150), std::max(1.0, w / 50)));
+                p.setBrush(Qt::NoBrush);
+                p.drawArc(QRectF(X(ox - 0.04), Y(oy + 0.04), w * 0.26, h * 0.12), 200 * 16, 140 * 16);
+            }
+        }
+    };
+    static const QStringList kinds = {"grass", "road", "dirt", "hills", "sand", "snow", "swamp", "forest", "sea"};
+    if (!kinds.contains(id) || (id == "sea" && variant != 3)) return none;
+    return sprite(QStringLiteral("decor|%1|%2").arg(id).arg(variant), size, draw);
+}
+
 const QPixmap& fogTexture() {
     static QPixmap tex;
     if (!tex.isNull()) return tex;

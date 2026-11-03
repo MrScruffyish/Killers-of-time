@@ -389,6 +389,17 @@ protected:
             const QPointF c = drawnAt(u);
             art::drawUnitToken(p, c, r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars, active, target,
                                u.unit, def ? def->rank : 0);
+            if (u.maxHp > 0 && u.frontHp > 0 && u.frontHp < u.maxHp) {
+                // The front unit is hurt: a small health bar under the token.
+                const QRectF bar(c.x() - r * 0.6, c.y() + r * 0.86, r * 1.2, std::max(3.0, r * 0.12));
+                p.setPen(QPen(QColor(20, 12, 4), 1));
+                p.setBrush(QColor(40, 20, 20));
+                p.drawRect(bar);
+                const double f = double(u.frontHp) / u.maxHp;
+                p.setPen(Qt::NoPen);
+                p.setBrush(f > 0.5 ? QColor("#5ac85a") : f > 0.25 ? QColor("#e0b030") : QColor("#e04030"));
+                p.drawRect(QRectF(bar.left() + 1, bar.top() + 1, (bar.width() - 2) * f, bar.height() - 2));
+            }
             if (u.range > 0) {
                 // A bow badge with the range in hexes (grey when out of arrows).
                 const QPointF b(c.x() + r * 0.62, c.y() - r * 0.55);

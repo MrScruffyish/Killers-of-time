@@ -24,6 +24,11 @@ int variantFor(int x, int y);
 // tile from one side (0 left, 1 top, 2 right, 3 bottom), slightly wavy; `foam`
 // draws a light surf line instead (water next to land).
 const QPixmap& terrainEdge(const QColor& colour, int side, int size, bool foam);
+// A small decoration for a map tile (flowers, stones, a bush, reeds, a cactus,
+// mushrooms...) chosen by the terrain and `variant`; null pixmap = nothing here.
+// decorationAt says whether (and which) a tile gets one (about one tile in six).
+const QPixmap& decoration(const QString& terrainId, int variant, int size);
+int decorationAt(int x, int y);  // -1 = none, else a variant
 // The unexplored world: dark drifting clouds, a seamless texture to tile with a
 // brush (align its origin with the map so it scrolls along).
 const QPixmap& fogTexture();

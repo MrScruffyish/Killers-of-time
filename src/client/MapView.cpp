@@ -9,6 +9,7 @@
 #include <QPen>
 #include <QResizeEvent>
 #include <QScrollBar>
+#include <QSet>
 #include <QTimer>
 #include <QTransform>
 #include <QToolTip>
@@ -19,6 +20,7 @@
 
 #include "client/Art.h"
 #include "core/content/ContentRegistry.h"
+#include "core/model/Entities.h"
 
 namespace kot::client {
 
@@ -98,6 +100,25 @@ void MapView::replan() {
     if (m_content) m_planner.prepare(m_view, *m_content, m_selectedHero);
     m_plan = m_planner.plan(m_hover);
     m_routePlan = m_route ? m_planner.plan(*m_route) : MovePlan();
+    viewport()->update();
+}
+
+void MapView::showBanner(const QString& title, const QString& subtitle) {
+    m_bannerTitle = title;
+    m_bannerSub = subtitle;
+    m_bannerClock.start();
+    if (!m_bannerTimer) {
+        m_bannerTimer = new QTimer(this);
+        m_bannerTimer->setInterval(33);
+        connect(m_bannerTimer, &QTimer::timeout, this, [this]() {
+            if (m_bannerClock.elapsed() > 2600) {
+                m_bannerTimer->stop();
+                m_bannerTitle.clear();
+            }
+            viewport()->update();
+        });
+    }
+    m_bannerTimer->start();
     viewport()->update();
 }
 
@@ -363,6 +384,24 @@ void MapView::paintEvent(QPaintEvent*) {
                                                        m_tile, art::variantFor(x, y)));
         }
     }
+    // Small decorations on free tiles (not under objects).
+    if (m_tile >= 24) {
+        QSet<core::Pos> taken;
+        for (const ViewTown& t : m_view.towns)
+            for (const core::Pos p2 : core::townTiles(t.pos, m_view.width, m_view.height)) taken.insert(p2);
+        for (const ViewMine& m2 : m_view.mines) taken.insert(m2.pos);
+        for (const ViewDwelling& d : m_view.dwellings) taken.insert(d.pos);
+        for (const ViewObject& o : m_view.objects) taken.insert(o.pos);
+        for (const ViewArmy& a : m_view.armies) taken.insert(a.pos);
+        for (int y = y0; y <= y1; ++y)
+            for (int x = x0; x <= x1; ++x) {
+                const int index = m_view.tiles[y * m_view.width + x];
+                const int variant = art::decorationAt(x, y);
+                if (index < 0 || variant < 0 || taken.contains({x, y})) continue;
+                const QPixmap pm = art::decoration(m_view.terrainPalette.value(index), variant, m_tile);
+                if (!pm.isNull()) p.drawPixmap(tileRect({x, y}).topLeft(), pm);
+            }
+    }
     // Soft edges where terrains meet (the higher layer spreads over the lower one),
     // surf where water meets land; then the fog over remembered tiles.
     const auto terrainAt = [&](int x, int y) {
@@ -516,6 +555,29 @@ void MapView::paintEvent(QPaintEvent*) {
             continue;
         }
         put(h.pos, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile));
+    }
+    // The day banner: in, hold, fade out.
+    if (!m_bannerTitle.isEmpty()) {
+        const double t = m_bannerClock.elapsed() / 1000.0;
+        const double alpha = t < 0.3 ? t / 0.3 : t > 1.8 ? std::max(0.0, 1 - (t - 1.8) / 0.8) : 1.0;
+        const QRectF band(0, viewport()->height() * 0.12, viewport()->width(), 90);
+        QLinearGradient g(band.topLeft(), band.topRight());
+        g.setColorAt(0, QColor(20, 12, 4, 0));
+        g.setColorAt(0.25, QColor(20, 12, 4, int(190 * alpha)));
+        g.setColorAt(0.75, QColor(20, 12, 4, int(190 * alpha)));
+        g.setColorAt(1, QColor(20, 12, 4, 0));
+        p.fillRect(band, g);
+        QFont f = p.font();
+        f.setPixelSize(40);
+        f.setBold(true);
+        p.setFont(f);
+        p.setPen(QColor(255, 226, 122, int(255 * alpha)));
+        p.drawText(band.adjusted(0, 4, 0, -34), Qt::AlignCenter, m_bannerTitle);
+        f.setPixelSize(16);
+        f.setBold(false);
+        p.setFont(f);
+        p.setPen(QColor(240, 225, 195, int(230 * alpha)));
+        p.drawText(band.adjusted(0, 52, 0, 0), Qt::AlignHCenter | Qt::AlignTop, m_bannerSub);
     }
     // A faint grid at the bigger zoom steps, so the squares are easy to see.
     if (m_tile >= 48) {
