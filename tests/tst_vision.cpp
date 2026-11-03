@@ -96,6 +96,13 @@ private slots:
         QVERIFY(!seen(v, 30, {3, 20}));
     }
 
+    void watchtowerSeesFarther() {
+        const TownId t = gs.addTown("T", "humans", {10, 10}, p1);
+        QVERIFY(!seen(visibleTiles(gs, t1, reg), 30, {18, 10}));  // town radius 5
+        gs.town(t)->buildings << "village_hall" << "watchtower";
+        QVERIFY(seen(visibleTiles(gs, t1, reg), 30, {18, 10}));   // +4
+    }
+
     void exploredMemoryStaysAfterLeaving() {
         const HeroId h = createHero(gs, reg, p1, "H", "knight", {5, 5});
         gs.hero(h)->traits["scouting_radius"] = 3;

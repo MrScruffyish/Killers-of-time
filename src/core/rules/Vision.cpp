@@ -36,7 +36,13 @@ QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegist
     }
     const VisionBalance& vb = content.balance().vision;
     for (const Town& t : state.towns()) {
-        if (t.owner.isValid() && state.teamOf(t.owner) == team) reveal(t.pos, vb.townRadius);
+        if (!t.owner.isValid() || state.teamOf(t.owner) != team) continue;
+        int radius = vb.townRadius;  // watchtowers see farther
+        for (const QString& id : t.buildings)
+            if (const BuildingDef* b = content.building(id))
+                for (const BuildingEffect& e : b->effects)
+                    if (e.type == BuildingEffect::Type::Vision) radius += e.amount;
+        reveal(t.pos, radius);
     }
     for (const Mine& m : state.mines()) {
         if (m.owner.isValid() && state.teamOf(m.owner) == team) reveal(m.pos, vb.mineRadius);

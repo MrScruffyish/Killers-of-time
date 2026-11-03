@@ -313,6 +313,9 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
             } else if (type == QLatin1String("defense")) {
                 e.type = BuildingEffect::Type::Defense;
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 100);
+            } else if (type == QLatin1String("vision")) {
+                e.type = BuildingEffect::Type::Vision;
+                e.amount = er.requireInt(QStringLiteral("amount"), 1, 50);
             } else if (type == QLatin1String("growth")) {
                 e.type = BuildingEffect::Type::Growth;
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 500);
@@ -320,7 +323,7 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
                 e.type = BuildingEffect::Type::MageGuild;
                 e.amount = er.requireInt(QStringLiteral("level"), 1, 10);
             } else if (!type.isEmpty()) {
-                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income, tavern, mageGuild, defense, market, shipyard or growth)").arg(type));
+                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income, tavern, mageGuild, defense, market, shipyard, growth or vision)").arg(type));
             }
             er.finish();
             if (er.ok()) d.effects.append(e);

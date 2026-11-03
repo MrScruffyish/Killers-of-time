@@ -159,7 +159,8 @@ struct BuildingEffect {
         Defense,   // the town's defenders get +`amount` defense in battle (walls)
         Market,    // its owner trades at +`amount` percent better rates (less fee)
         Shipyard,  // heroes in the town can buy a boat (coastal towns only)
-        Growth     // the town's dwellings grow `amount` percent more each week
+        Growth,    // the town's dwellings grow `amount` percent more each week
+        Vision     // the town sees `amount` tiles farther
     };
     Type type = Type::Income;
     QString unit;

@@ -113,6 +113,7 @@ QString TownDialog::effectsText(const core::BuildingDef& b) const {
         case T::Market: parts << tr("Trade resources at %1% better rates").arg(e.amount); break;
         case T::Shipyard: parts << tr("Buy boats (coastal towns)"); break;
         case T::Growth: parts << tr("Every dwelling here grows %1% more each week").arg(e.amount); break;
+        case T::Vision: parts << tr("The town sees %1 tiles farther").arg(e.amount); break;
         }
     }
     return parts.isEmpty() ? tr("Needed for other buildings") : parts.join("; ");
@@ -149,9 +150,13 @@ void TownDialog::drawScene(const ViewTown& town) {
                 if (id == QLatin1String("village_hall") || id == QLatin1String("town_hall") || id == QLatin1String("city_hall")) {
                     sb.kind = K::Hall;
                     sb.level = id == QLatin1String("city_hall") ? 2 : id == QLatin1String("town_hall") ? 1 : 0;
+                } else if (sb.kind == K::Other) {
+                    sb.kind = K::Workshop;  // a resource building: a workshop with a heap of what it makes
+                    sb.unit = e.resource;
                 }
                 break;
             case core::BuildingEffect::Type::Growth: sb.kind = K::Granary; break;
+            case core::BuildingEffect::Type::Vision: sb.kind = K::Watchtower; break;
             }
         }
         scene.append(sb);

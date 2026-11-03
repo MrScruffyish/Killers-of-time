@@ -240,6 +240,29 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
             }
             break;
         }
+        case SceneBuilding::Kind::Watchtower: {  // a slim stone tower with a lookout platform
+            const QRectF t(cx - unit * 0.12, base - unit * 1.35, unit * 0.24, unit * 1.35);
+            p.setBrush(pal.stone);
+            p.drawRect(t);
+            p.setBrush(pal.wood);
+            p.drawRect(QRectF(t.left() - unit * 0.1, t.top() - unit * 0.08, t.width() + unit * 0.2, unit * 0.1));
+            p.drawLine(QPointF(t.left() - unit * 0.08, t.top() - unit * 0.08), QPointF(t.left() - unit * 0.08, t.top() - unit * 0.3));
+            p.drawLine(QPointF(t.right() + unit * 0.08, t.top() - unit * 0.08), QPointF(t.right() + unit * 0.08, t.top() - unit * 0.3));
+            p.setBrush(roof);
+            p.drawPolygon(QPolygonF{QPointF(t.left() - unit * 0.14, t.top() - unit * 0.3), QPointF(t.center().x(), t.top() - unit * 0.55),
+                                    QPointF(t.right() + unit * 0.14, t.top() - unit * 0.3)});
+            p.setBrush(QColor("#2a1a10"));
+            p.drawRect(QRectF(t.center().x() - unit * 0.03, t.top() + unit * 0.3, unit * 0.06, unit * 0.16));
+            break;
+        }
+        case SceneBuilding::Kind::Workshop: {  // a workshop with a heap of its resource
+            house(p, QRectF(cx - unit * 0.32, base - unit * 0.55, unit * 0.5, unit * 0.55), pal, roof.darker(118));
+            p.setBrush(resourceColor(b.unit));
+            p.drawChord(QRectF(cx + unit * 0.12, base - unit * 0.2, unit * 0.34, unit * 0.4), 0, 180 * 16);
+            p.setBrush(QColor("#6a6a6a"));
+            p.drawRect(QRectF(cx - unit * 0.22, base - unit * 0.78, unit * 0.08, unit * 0.2));  // a chimney
+            break;
+        }
         case SceneBuilding::Kind::Granary: {  // a barn with a round silo and grain sacks
             const QRectF barn(cx - unit * 0.42, base - unit * 0.6, unit * 0.6, unit * 0.6);
             p.setBrush(QColor("#a8402a"));
