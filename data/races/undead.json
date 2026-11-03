@@ -10,5 +10,8 @@
   "spellSchools": [
     "dark",
     "earth"
-  ]
+  ],
+  "raiseDeadUnit": "skeleton",
+  "raiseDeadPercent": 15,
+  "ability": "Raise the dead: after a won battle, skeletons rise from the fallen (15% of the enemy HP killed)."
 }

@@ -21,6 +21,7 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
         const Army* army = state.army(ids[side]);
         if (!army) continue;
         m_owner[side] = army->owner;
+        if (const Player* pl = state.player(army->owner)) m_schoolPercent[side] = content.race(pl->race).spellSchoolPercent;
         m_hero[side] = army->hero;
         if (const Hero* h = state.hero(army->hero)) {
             m_attackBonus[side] = h->trait(QStringLiteral("attack"));
@@ -71,6 +72,9 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
                     for (const BuildingEffect& e : def->effects)
                         if (e.type == BuildingEffect::Type::Defense) m_townDefense += e.amount;
         }
+        // Dwarves: their walls hold better.
+        if (m_townDefense > 0)
+            if (const Player* pl = state.player(d->owner)) m_townDefense += content.race(pl->race).wallDefenseBonus;
         m_defenseBonus[1] += m_townDefense;
         // The walls on the field: one level per defense building.
         for (const Town& t : state.towns()) {
@@ -497,7 +501,8 @@ void Battle::applySpell(const SpellDef& spell, int power, BattleUnit& t, int sid
         const int strength = effectStrength(effect, power);
         switch (effect.type) {
         case SpellEffect::Type::Damage: {
-            const UnitStack::DamageResult r = t.stack.applyDamage(std::max(0, strength));
+            const int percent = side >= 0 && side < 2 ? m_schoolPercent[side].value(spell.school, 100) : 100;  // ashborn: fire burns hotter
+            const UnitStack::DamageResult r = t.stack.applyDamage(std::max(0, strength * percent / 100));
             e.damage += r.damageDealt;
             e.killed += r.unitsKilled;
             break;

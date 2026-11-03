@@ -7,7 +7,9 @@
 namespace kot::core {
 
 int heroVisionRadius(const Hero& hero, const ContentRegistry& content) {
-    return hero.trait(QStringLiteral("scouting_radius")) + hero.trait(QStringLiteral("scouting")) * content.balance().scouting.visionPerLevel;
+    const HeroClassDef* cls = content.heroClass(hero.classId);
+    const int race = cls ? content.race(cls->race).visionBonus : 0;  // sylvan: keen eyes
+    return hero.trait(QStringLiteral("scouting_radius")) + hero.trait(QStringLiteral("scouting")) * content.balance().scouting.visionPerLevel + race;
 }
 
 QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegistry& content) {

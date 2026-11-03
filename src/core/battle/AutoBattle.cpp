@@ -67,6 +67,23 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         report.experience = killedHp[loser] * content.balance().battle.experiencePerHp;
         report.levelsGained = addExperience(*h, content, report.experience);
     }
+    // The winner's race ability: the undead raise some of the fallen, orcs loot gold.
+    if (Player* pl = state.player(battle.owner(winner))) {
+        const RaceDef& race = content.race(pl->race);
+        if (race.battleLootPercent > 0) {
+            report.lootGold = killedHp[loser] * race.battleLootPercent / 100;
+            pl->resources[QStringLiteral("gold")] += report.lootGold;
+        }
+        const UnitDef* raised = race.raiseDeadPercent > 0 ? content.unit(race.raiseDeadUnit) : nullptr;
+        Army* army = state.army(battle.army(winner));
+        if (raised && army) {
+            const int count = killedHp[loser] * race.raiseDeadPercent / 100 / std::max(1, raised->maxHp);
+            if (count > 0 && army->addUnits(raised->id, count, raised->maxHp)) {
+                report.raisedUnit = raised->id;
+                report.raisedCount = count;
+            }
+        }
+    }
     Army* lost = state.army(battle.army(loser));
     if (!lost) return report;
     if (battle.surrendered(loser)) {  // he paid: hero and army stay
@@ -168,6 +185,8 @@ QJsonObject battleReportToJson(const BattleReport& report) {
     o.insert("levelsGained", report.levelsGained);
     o.insert("loserHeroKilled", report.loserHeroKilled);
     if (report.retreated) o.insert("retreated", true);
+    if (report.raisedCount > 0) o.insert("raised", QJsonObject{{"unit", report.raisedUnit}, {"count", report.raisedCount}});
+    if (report.lootGold > 0) o.insert("lootGold", report.lootGold);
     if (!report.retreatedTo.isEmpty()) o.insert("retreatedTo", report.retreatedTo);
     if (report.surrendered) {
         o.insert("surrendered", true);

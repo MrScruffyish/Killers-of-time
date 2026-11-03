@@ -5,6 +5,8 @@
 #include "core/battle/BattleAi.h"
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/Trade.h"
+#include "core/rules/Vision.h"
 
 using namespace kot::core;
 
@@ -400,6 +402,55 @@ private slots:
         QCOMPARE(r.retreatedTo, QString("Near"));
         QCOMPARE(gs.army(mine())->pos, (Pos{5, 3}));
         QCOMPARE(gs.hero(hero)->movementPoints, 0);
+    }
+
+    void raceAbilitiesAfterABattle() {
+        // Undead raise skeletons, orcs take gold: both from the enemy HP killed.
+        for (const QString race : {"undead", "orcs", "humans"}) {
+            init();
+            gs.player(p1)->race = race;
+            add("bone_dragon", 4);
+            const ArmyId m = monsters("militia", 30);
+            const int gold = gs.player(p1)->resources.value("gold");
+            const BattleReport r = resolveBattle(gs, reg, mine(), m);
+            QVERIFY(r.attackerWon());
+            const int killedHp = 30 * reg.unit("militia")->maxHp;
+            if (race == "undead") {
+                QCOMPARE(r.raisedUnit, QString("skeleton"));
+                QCOMPARE(r.raisedCount, killedHp * 15 / 100 / reg.unit("skeleton")->maxHp);
+                bool has = false;
+                for (const UnitStack& st : gs.army(mine())->stacks) has = has || st.unitTypeId() == "skeleton";
+                QVERIFY(has);
+            } else if (race == "orcs") {
+                QCOMPARE(r.lootGold, killedHp * 30 / 100);
+                QCOMPARE(gs.player(p1)->resources.value("gold"), gold + r.lootGold);
+            } else {
+                QCOMPARE(r.raisedCount, 0);
+                QCOMPARE(r.lootGold, 0);
+            }
+        }
+    }
+
+    void raceAbilitiesEverywhereElse() {
+        // Humans trade better, sylvan heroes see farther, dwarven walls hold better.
+        gs.player(p1)->race = "orcs";
+        const int plain = tradeEfficiency(gs, reg, p1);
+        gs.player(p1)->race = "humans";
+        QCOMPARE(tradeEfficiency(gs, reg, p1), plain + 10);
+        Hero elf;
+        elf.classId = "ranger";
+        Hero knight;
+        knight.classId = "knight";
+        if (reg.heroClass("ranger") && reg.heroClass("ranger")->race == "sylvan")
+            QCOMPARE(heroVisionRadius(elf, reg), heroVisionRadius(knight, reg) + 2);
+        const TownId t = gs.addTown("Hold", "dwarves", {2, 2}, p1);
+        gs.town(t)->buildings << "village_hall" << "fort";
+        gs.army(gs.town(t)->garrison)->addUnits("pikeman", 5, 10);
+        add("militia", 5);
+        gs.player(p1)->race = "humans";
+        const int human = Battle(gs, reg, mine(), gs.town(t)->garrison, 1).townDefense();
+        gs.player(p1)->race = "dwarves";
+        QCOMPARE(Battle(gs, reg, mine(), gs.town(t)->garrison, 1).townDefense(), human + 4);
     }
 
     void townWallsHelpTheDefender() {

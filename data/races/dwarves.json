@@ -11,5 +11,7 @@
   "spellSchools": [
     "earth",
     "water"
-  ]
+  ],
+  "wallDefenseBonus": 4,
+  "ability": "Stout walls: +4 defense for the defenders of their walled towns."
 }

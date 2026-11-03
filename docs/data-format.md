@@ -166,6 +166,13 @@ that level, when they start their turn there or walk in). Hero classes may have
 | incomePercent | base gold of the race's towns (`townDailyGold`), +/- percent |
 | terrainCostPercent | terrain id -> percent of the move cost, for heroes whose class has this race |
 | spellSchools | schools its mage guilds teach (empty = all) |
+| ability | one line telling the player the race's own ability (shown in the lobby) |
+| raiseDeadUnit, raiseDeadPercent | after a won battle this unit rises from the fallen: that percent of the enemy HP killed, in units of its HP (needs room in the army) |
+| battleLootPercent | gold after a won battle: that percent of the enemy HP killed |
+| tradeBonus | more percent of the fair value when trading |
+| wallDefenseBonus | extra defense for the defenders of its walled towns (towns with a `defense` building) |
+| visionBonus | its heroes see this many tiles farther |
+| spellSchoolPercent | school -> damage percent of the side's spells (100 = normal) |
 
 Units, buildings and hero classes name their race. When the folder exists, every hero class's
 race needs a file. A building without `race` can be built by every race (tavern, village hall,

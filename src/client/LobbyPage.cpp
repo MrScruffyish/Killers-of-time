@@ -404,7 +404,10 @@ void LobbyPage::rebuild() {
                                                          {"dwarves", "dwarf_warrior"}, {"orcs", "orc_warrior"},
                                                          {"ashborn", "imp"}, {"tidefolk", "triton"}};
             race->addItem(QIcon(art::unitIcon(face.value(id, id), 0, 32)), def ? def->name : id, id);
-            if (def) race->setItemData(race->count() - 1, def->description, Qt::ToolTipRole);
+            if (def)
+                race->setItemData(race->count() - 1,
+                                  def->abilityText.isEmpty() ? def->description : QStringLiteral("%1\n%2").arg(def->description, def->abilityText),
+                                  Qt::ToolTipRole);
         }
         race->setCurrentIndex(std::max(0, race->findData(s.race)));
         race->setEnabled(canEdit);

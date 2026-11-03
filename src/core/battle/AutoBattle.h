@@ -28,6 +28,9 @@ struct BattleReport {
     bool retreated = false;   // the loser fled: army lost, hero alive
     QString retreatedTo;      // the town he fled to (the nearest own town without a hero), empty = stayed
     bool surrendered = false; // the loser surrendered: paid surrenderGold to the winner, kept hero and army
+    QString raisedUnit;       // the winner's race raised the fallen (undead) ...
+    int raisedCount = 0;      // ... this many joined his army
+    int lootGold = 0;         // the winner's race took this much gold (orcs)
     int surrenderGold = 0;
 
     bool attackerWon() const { return outcome == Outcome::AttackerWon; }

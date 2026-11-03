@@ -210,6 +210,7 @@ private:
     bool m_defenderInTown = false;
     QList<Pos> m_obstacles;
     int m_townDefense = 0;
+    QMap<QString, int> m_schoolPercent[2];  // the side's race: spell damage per school
     int m_wallLevel = 0;
     QMap<Pos, int> m_wallHp;
     Pos m_gate{-1, -1};

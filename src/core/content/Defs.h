@@ -179,6 +179,15 @@ struct RaceDef {
     int incomePercent = 0;   // base gold of the race's towns, +/- percent
     QMap<QString, int> terrainCostPercent;  // terrain id -> move cost percent for the race's heroes
     QStringList spellSchools;  // schools its mage guilds teach (empty = all)
+    // The race's own ability (all optional, see data-format.md):
+    QString raiseDeadUnit;        // after a won battle, this unit rises from the fallen enemies ...
+    int raiseDeadPercent = 0;     // ... this percent of the enemy HP killed
+    int battleLootPercent = 0;    // gold after a won battle: this percent of the enemy HP killed
+    int tradeBonus = 0;           // more percent of the fair value when trading
+    int wallDefenseBonus = 0;     // extra defense for its walled towns' defenders
+    int visionBonus = 0;          // its heroes see this much farther
+    QMap<QString, int> spellSchoolPercent;  // school -> damage percent of its heroes' spells (100 = normal)
+    QString abilityText;          // one line for the player
 };
 
 // A building a town of `race` can build (empty race = every race). All `requires` must be built, none

@@ -397,6 +397,14 @@ void ContentRegistry::loadRaces(const QString& dir, QStringList& errors) {
         d.incomePercent = r.optionalInt(QStringLiteral("incomePercent"), 0, -90, 500);
         d.terrainCostPercent = r.optionalIntMap(QStringLiteral("terrainCostPercent"), 10, 1000);
         d.spellSchools = r.optionalStringList(QStringLiteral("spellSchools"));
+        d.raiseDeadUnit = r.optionalString(QStringLiteral("raiseDeadUnit"));
+        d.raiseDeadPercent = r.optionalInt(QStringLiteral("raiseDeadPercent"), 0, 0, 100);
+        d.battleLootPercent = r.optionalInt(QStringLiteral("battleLootPercent"), 0, 0, 1000);
+        d.tradeBonus = r.optionalInt(QStringLiteral("tradeBonus"), 0, 0, 50);
+        d.wallDefenseBonus = r.optionalInt(QStringLiteral("wallDefenseBonus"), 0, 0, 50);
+        d.visionBonus = r.optionalInt(QStringLiteral("visionBonus"), 0, 0, 10);
+        d.spellSchoolPercent = r.optionalIntMap(QStringLiteral("spellSchoolPercent"), 10, 500);
+        d.abilityText = r.optionalString(QStringLiteral("ability"));
         r.finish();
         if (d.id != info.completeBaseName())
             r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));

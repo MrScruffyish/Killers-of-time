@@ -6,5 +6,7 @@
     "air",
     "water",
     "earth"
-  ]
+  ],
+  "tradeBonus": 10,
+  "ability": "Good traders: 10% more at the market."
 }

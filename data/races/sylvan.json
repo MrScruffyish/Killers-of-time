@@ -10,5 +10,7 @@
     "nature",
     "water",
     "air"
-  ]
+  ],
+  "visionBonus": 2,
+  "ability": "Keen eyes: their heroes see 2 tiles farther."
 }

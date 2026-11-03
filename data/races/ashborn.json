@@ -11,5 +11,9 @@
   "spellSchools": [
     "fire",
     "dark"
-  ]
+  ],
+  "spellSchoolPercent": {
+    "fire": 130
+  },
+  "ability": "Fire born: their fire spells do 30% more damage."
 }

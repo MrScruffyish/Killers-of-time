@@ -24,6 +24,7 @@ private slots:
     void init() {
         gs = GameState(1);
         p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
+        gs.player(p1)->race = "orcs";  // a race without a trade bonus (humans get +10%): plain trade numbers
         town = gs.addTown("Home", "humans", {3, 3}, p1);
     }
 

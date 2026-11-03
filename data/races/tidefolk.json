@@ -6,10 +6,13 @@
   "incomePercent": 0,
   "terrainCostPercent": {
     "sand": 60,
-    "swamp": 70
+    "swamp": 70,
+    "sea": 60,
+    "river": 60
   },
   "spellSchools": [
     "water",
     "nature"
-  ]
+  ],
+  "ability": "Seafarers: their heroes sail much farther (sea costs 60%)."
 }

@@ -11,5 +11,7 @@
   "spellSchools": [
     "air",
     "dark"
-  ]
+  ],
+  "battleLootPercent": 30,
+  "ability": "Plunder: gold after every won battle (30% of the enemy HP killed)."
 }

@@ -28,6 +28,7 @@ int tradeEfficiency(const GameState& state, const ContentRegistry& content, Play
                 for (const BuildingEffect& e : def->effects)
                     if (e.type == BuildingEffect::Type::Market) percent += e.amount;
     }
+    if (const Player* p = state.player(player)) percent += content.race(p->race).tradeBonus;  // humans: good traders
     return std::min(percent, 95);
 }
 

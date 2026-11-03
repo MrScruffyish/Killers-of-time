@@ -158,7 +158,7 @@ Battle reports (`battles` entries, and `lastBattle.report` in the view of both p
   "attacker": { "owner": 3, "hero": 7, "losses": { "pikeman": 2 } },
   "defender": { "owner": 0, "hero": 0, "losses": { "militia": 5 } } }
 ```
-Owner/hero 0 = neutral / none. After a retreat: `retreated: true`, and `retreatedTo` (town name) when
+Owner/hero 0 = neutral / none. A winner whose race has the ability gets `raised` (`unit`, `count`: undead raise the fallen) or `lootGold` (orcs). After a retreat: `retreated: true`, and `retreatedTo` (town name) when
 the hero fled to the nearest own town without a hero (he has no movement left that day).
 Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.
 Saving is refused while a battle runs. A human who disconnects during a battle is replaced by the

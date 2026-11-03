@@ -140,6 +140,12 @@ BattleResultDialog::BattleResultDialog(const core::ContentRegistry* content, con
     if (m_outcome == Outcome::Victory && b["experience"].toInt() > 0) lines << tr("+%1 experience").arg(b["experience"].toInt());
     if (m_outcome == Outcome::Victory && b["levelsGained"].toInt() > 0) lines << tr("<b>Level up!</b>");
     if (b["loserHeroKilled"].toBool()) lines << (m_outcome == Outcome::Victory ? tr("The enemy hero fell.") : tr("<b>Your hero fell.</b>"));
+    if (b.contains("raised")) {
+        const QJsonObject r = b["raised"].toObject();
+        const core::UnitDef* u = content ? content->unit(r["unit"].toString()) : nullptr;
+        lines << tr("%1 %2 rose from the fallen and joined the winner.").arg(r["count"].toInt()).arg(u ? u->name : r["unit"].toString());
+    }
+    if (b.contains("lootGold")) lines << tr("The winner plundered %1 gold.").arg(b["lootGold"].toInt());
     if (b["retreated"].toBool())
         lines << (m_outcome == Outcome::Victory ? tr("The enemy fled.")
                   : b.contains("retreatedTo") ? tr("Your hero escaped to %1 (without his army).").arg(b["retreatedTo"].toString())

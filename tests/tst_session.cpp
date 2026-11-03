@@ -365,7 +365,7 @@ private slots:
 
     void tradeAndBuildWithTrade() {
         QVERIFY(doIt(1, net::msg::trade, {{"give", "gold"}, {"amount", 1000}, {"get", "wood"}}).ok);
-        QCOMPARE(session->state().player(pA)->resources.value("wood"), 28);
+        QCOMPARE(session->state().player(pA)->resources.value("wood"), 29);  // humans trade 10% better
         session->state().player(pA)->resources["wood"] = 0;
         const core::Town* town = townOf(pA);
         const CommandResult r = doIt(1, net::msg::build, {{"town", id(town->id)}, {"building", "barracks"}, {"useTrade", true}});
