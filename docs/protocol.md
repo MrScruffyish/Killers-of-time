@@ -148,7 +148,7 @@ once by the battle AI and `move_hero` returns the reports.
 
 | Type | Fields | `info` on success |
 |---|---|---|
-| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `wait` (act again at the end of the round, once), `retreat` (a side with a hero, not a town's defenders: army lost, hero escapes), `surrender` (against another player: pay `surrenderCost` gold, keep hero and army; the view sends `surrenderCost` when possible), `unit_cast` (`spell`, `target`: the active stack's own spell, uses its turn), `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end), `ai` (the battle AI makes this one move for your stack: the client's auto-play, which can be stopped), `build_engine` (attacker in a siege: pay balance `siege.engineCost` for a catapult; does not use the turn), `shoot` with `x`, `y` (the catapult: a wall segment) | `events` (list; also `tower` (fromX, fromY, target, damage), `wall_hit` (x, y, damage, fell), `engine`; first your stack's, then what the computer's stacks did until your next turn: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
+| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `wait` (act again at the end of the round, once), `retreat` (a side with a hero, not a town's defenders: army lost, hero escapes to the nearest own town), `surrender` (against another player: pay `surrenderCost` gold, keep hero and army; the view sends `surrenderCost` when possible), `unit_cast` (`spell`, `target`: the active stack's own spell, uses its turn), `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end), `ai` (the battle AI makes this one move for your stack: the client's auto-play, which can be stopped), `build_engine` (attacker in a siege: pay balance `siege.engineCost` for a catapult; does not use the turn), `shoot` with `x`, `y` (the catapult: a wall segment) | `events` (list; also `tower` (fromX, fromY, target, damage), `wall_hit` (x, y, damage, fell), `engine`; first your stack's, then what the computer's stacks did until your next turn: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
 
 Battle reports (`battles` entries, and `lastBattle.report` in the view of both participants,
 `lastBattle.id` grows with every battle):
@@ -158,7 +158,9 @@ Battle reports (`battles` entries, and `lastBattle.report` in the view of both p
   "attacker": { "owner": 3, "hero": 7, "losses": { "pikeman": 2 } },
   "defender": { "owner": 0, "hero": 0, "losses": { "militia": 5 } } }
 ```
-Owner/hero 0 = neutral / none. Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.
+Owner/hero 0 = neutral / none. After a retreat: `retreated: true`, and `retreatedTo` (town name) when
+the hero fled to the nearest own town without a hero (he has no movement left that day).
+Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.
 Saving is refused while a battle runs. A human who disconnects during a battle is replaced by the
 battle AI.
 

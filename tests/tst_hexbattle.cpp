@@ -382,6 +382,24 @@ private slots:
         QVERIFY(!r.loserHeroKilled);
         QVERIFY(gs.hero(hero));
         QVERIFY(gs.army(mine())->stacks.isEmpty());
+        QVERIFY(r.retreatedTo.isEmpty());  // no town of his: he stays
+    }
+
+    void aRetreatingHeroFleesToTheNearestTown() {
+        add("militia", 5);
+        gs.addTown("Far", "humans", {14, 14}, p1);
+        gs.addTown("Near", "humans", {5, 3}, p1);
+        const TownId taken = gs.addTown("Nearest", "humans", {2, 2}, p1);
+        createHero(gs, reg, p1, "Other", "knight", gs.town(taken)->pos);  // a hero already stands there
+        Battle b(gs, reg, mine(), monsters("bone_dragon", 3), 1);
+        BattleAction retreat;
+        retreat.type = BattleAction::Type::Retreat;
+        while (b.activeUnit()->side != 0) b.act(defend());
+        QVERIFY(b.act(retreat).isEmpty());
+        const BattleReport r = applyBattleResult(gs, reg, b);
+        QCOMPARE(r.retreatedTo, QString("Near"));
+        QCOMPARE(gs.army(mine())->pos, (Pos{5, 3}));
+        QCOMPARE(gs.hero(hero)->movementPoints, 0);
     }
 
     void townWallsHelpTheDefender() {

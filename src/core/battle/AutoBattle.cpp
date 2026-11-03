@@ -87,6 +87,29 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         }
         lost->stacks.clear();
         report.retreated = true;
+        // He flees to the nearest own town with no hero in it, and rests there today.
+        const Town* best = nullptr;
+        int bestDist = 0;
+        for (const Town& t : state.towns()) {
+            if (t.owner != lost->owner || t.pos == lost->pos) continue;
+            bool taken = false;
+            for (const Army& a : state.armies()) taken = taken || (a.id != lost->id && a.hasHero() && a.pos == t.pos);
+            if (taken) continue;
+            const int d = std::abs(t.pos.x - lost->pos.x) + std::abs(t.pos.y - lost->pos.y);
+            if (!best || d < bestDist) {
+                best = &t;
+                bestDist = d;
+            }
+        }
+        if (best) {
+            lost->pos = best->pos;
+            report.retreatedTo = best->name;
+            if (Hero* h = state.hero(lost->hero)) {
+                h->movementPoints = 0;
+                h->destination.reset();
+                h->inBoat = false;
+            }
+        }
         return report;
     }
     bool isGarrison = false;
@@ -145,6 +168,7 @@ QJsonObject battleReportToJson(const BattleReport& report) {
     o.insert("levelsGained", report.levelsGained);
     o.insert("loserHeroKilled", report.loserHeroKilled);
     if (report.retreated) o.insert("retreated", true);
+    if (!report.retreatedTo.isEmpty()) o.insert("retreatedTo", report.retreatedTo);
     if (report.surrendered) {
         o.insert("surrendered", true);
         o.insert("surrenderGold", report.surrenderGold);

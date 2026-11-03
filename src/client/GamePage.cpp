@@ -971,7 +971,9 @@ QString GamePage::describeBattle(const QJsonObject& b) const {
     if (won && b["experience"].toInt() > 0) text += tr(", %1 experience").arg(b["experience"].toInt());
     if (won && b["levelsGained"].toInt() > 0) text += tr(", level up!");
     if (b["loserHeroKilled"].toBool()) text += won ? tr(", the enemy hero fell") : tr(", your hero fell");
-    if (b["retreated"].toBool()) text += won ? tr(", the enemy fled") : tr(", your hero escaped");
+    if (b["retreated"].toBool())
+        text += won ? tr(", the enemy fled")
+                    : b.contains("retreatedTo") ? tr(", your hero escaped to %1").arg(b["retreatedTo"].toString()) : tr(", your hero escaped");
     if (b["surrendered"].toBool())
         text += won ? tr(", the enemy surrendered and paid %1 gold").arg(b["surrenderGold"].toInt())
                     : tr(", you surrendered and paid %1 gold").arg(b["surrenderGold"].toInt());
