@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-03 (session 17, Claude Code)
-**Current milestone:** first versions of every part of the game are in (M0-M10), plus content tools, scenarios, campaigns, art, sound and packaging. Now: playtesting and polish
-**Next session should do:** react to the user's playtest (balance with kot_balance_gui, bugs, feel). Open ideas: surrender/sieges, a smarter battle AI, real art
+**Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
+**Current milestone:** first versions of every part of the game are in (M0-M10); version 0.2.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
+**Next session should do:** go on with the user's playtest notes. Graphics: terrain transitions, battle backgrounds by terrain, more variety. Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -201,6 +201,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 18:** Playtest round with the user: upkeep removed; routes (click plots, double click/Enter walks, destination remembered); zone of control and the Scouting trait; spotting stops a hero when an unseen enemy appears; 2x2 towns; zoom steps and sprite art; pointers; Game menu; versioned saves with conversion and a load list; autosaves and campaign chapter saves; hero panel, resource bar, 10 army slots; battle ranges, unit ranks (regular/advanced/elite), battle stats panel, D/W keys, battle pointers; unit pictures; market (M); settings file; sound through one output (PulseAudio crash fixed), crash log; battle result window; towns drawn by race, size and walls, town picture (42 test programs).
 - **Session 17:** Moved to Claude Code (CLAUDE.md added). Long autonomous run: battle depth, map content, AI, difficulty, client polish, tools (kot_graph, kot_balance(_gui), kot_mapgen, kot_editor), scenarios, campaigns, veterancy, art, sound, packaging, hero screen, weekly events, boats and islands (41 test programs). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple). Three races.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
