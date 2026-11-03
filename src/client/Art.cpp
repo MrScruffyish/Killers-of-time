@@ -1107,109 +1107,178 @@ void drawTown(QPainter& p, const QRectF& r, const QColor& owner) {
 }
 
 void drawMine(QPainter& p, const QRectF& r, const QColor& resource, const QColor& owner) {
+    // A rocky hill with a timbered entrance, rails and a cart of what it gives.
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
     shadow(p, r);
     const double w = r.width(), h = r.height();
-    p.setPen(QPen(QColor("#2b2b2b"), std::max(1.0, w / 18)));
-    p.setBrush(QColor("#7a6a55"));  // rock heap
-    p.drawChord(QRectF(r.left() + w * 0.05, r.top() + h * 0.25, w * 0.9, h * 1.2), 0, 180 * 16);
-    p.setBrush(QColor("#1d1610"));  // entrance
-    p.drawChord(QRectF(r.left() + w * 0.33, r.top() + h * 0.5, w * 0.34, h * 0.7), 0, 180 * 16);
-    p.setBrush(resource);  // the resource it gives
-    p.drawEllipse(QRectF(r.left() + w * 0.66, r.top() + h * 0.08, w * 0.28, h * 0.28));
-    p.setPen(QPen(owner, std::max(1.5, w / 10)));  // owner flag
-    p.drawLine(QPointF(r.left() + w * 0.15, r.top() + h * 0.55), QPointF(r.left() + w * 0.15, r.top() + h * 0.05));
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#2b2218"), std::max(1.0, w / 40));
+    p.setPen(ink);
+    QPainterPath hill;
+    hill.moveTo(X(0.02), Y(0.9));
+    hill.cubicTo(X(0.04), Y(0.5), X(0.2), Y(0.22), X(0.42), Y(0.2));
+    hill.lineTo(X(0.5), Y(0.12));
+    hill.lineTo(X(0.58), Y(0.22));
+    hill.cubicTo(X(0.8), Y(0.24), X(0.96), Y(0.5), X(0.98), Y(0.9));
+    hill.closeSubpath();
+    QLinearGradient rock(QPointF(X(0.1), Y(0.15)), QPointF(X(0.9), Y(0.9)));
+    rock.setColorAt(0, QColor("#a89a84"));
+    rock.setColorAt(1, QColor("#5e5240"));
+    p.setBrush(rock);
+    p.drawPath(hill);
+    p.setPen(QPen(QColor("#4a4030"), std::max(1.0, w / 70)));  // cracks and ledges
+    p.drawLine(QPointF(X(0.2), Y(0.5)), QPointF(X(0.32), Y(0.44)));
+    p.drawLine(QPointF(X(0.7), Y(0.4)), QPointF(X(0.82), Y(0.5)));
+    p.drawLine(QPointF(X(0.62), Y(0.3)), QPointF(X(0.68), Y(0.36)));
     p.setPen(Qt::NoPen);
+    p.setBrush(QColor(90, 130, 60, 160));  // a little grass on top
+    p.drawEllipse(QRectF(X(0.36), Y(0.18), w * 0.12, h * 0.05));
+    // The entrance: dark, framed with timber.
+    p.setPen(ink);
+    p.setBrush(QColor("#140e08"));
+    p.drawChord(QRectF(X(0.32), Y(0.48), w * 0.36, h * 0.8), 0, 180 * 16);
+    p.setBrush(QColor("#8a5a2b"));
+    p.drawRect(QRectF(X(0.3), Y(0.5), w * 0.06, h * 0.4));
+    p.drawRect(QRectF(X(0.64), Y(0.5), w * 0.06, h * 0.4));
+    p.drawRect(QRectF(X(0.28), Y(0.46), w * 0.44, h * 0.06));
+    // Rails leading out and a cart full of the resource.
+    p.setPen(QPen(QColor("#5a5a60"), std::max(1.0, w / 50)));
+    p.drawLine(QPointF(X(0.44), Y(0.88)), QPointF(X(0.62), Y(0.98)));
+    p.drawLine(QPointF(X(0.54), Y(0.88)), QPointF(X(0.76), Y(0.98)));
+    p.setPen(ink);
+    p.setBrush(resource);
+    p.drawChord(QRectF(X(0.66), Y(0.66), w * 0.28, h * 0.16), 0, 180 * 16);
+    p.setBrush(QColor("#6a5a48"));
+    p.drawPolygon(QPolygonF{QPointF(X(0.64), Y(0.74)), QPointF(X(0.96), Y(0.74)), QPointF(X(0.92), Y(0.88)), QPointF(X(0.68), Y(0.88))});
+    p.setBrush(QColor("#2a2a2a"));
+    p.drawEllipse(QRectF(X(0.68), Y(0.86), w * 0.08, h * 0.08));
+    p.drawEllipse(QRectF(X(0.84), Y(0.86), w * 0.08, h * 0.08));
+    // The owner's flag on the hilltop.
+    p.setPen(QPen(QColor("#3b2a17"), std::max(1.5, w / 30)));
+    p.drawLine(QPointF(X(0.5), Y(0.14)), QPointF(X(0.5), Y(-0.06)));
+    p.setPen(ink);
     p.setBrush(owner);
-    p.drawRect(QRectF(r.left() + w * 0.15, r.top() + h * 0.05, w * 0.22, h * 0.15));
+    p.drawPolygon(QPolygonF{QPointF(X(0.5), Y(-0.06)), QPointF(X(0.72), Y(-0.01)), QPointF(X(0.5), Y(0.05))});
     p.restore();
 }
 
 void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner) {
+    // A timbered cottage with a thatched roof in the owner's colour and a chimney.
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
     shadow(p, r);
     const double w = r.width(), h = r.height();
-    p.setPen(QPen(QColor("#3a2a18"), std::max(1.0, w / 18)));
-    p.setBrush(QColor("#a8864f"));  // hut
-    p.drawRect(QRectF(r.left() + w * 0.2, r.top() + h * 0.5, w * 0.6, h * 0.4));
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#3a2a18"), std::max(1.0, w / 40));
+    p.setPen(ink);
+    p.setBrush(QColor("#8a8478"));  // the chimney
+    p.drawRect(QRectF(X(0.62), Y(0.16), w * 0.1, h * 0.24));
+    QLinearGradient plaster(QPointF(X(0.18), Y(0.5)), QPointF(X(0.82), Y(0.9)));
+    plaster.setColorAt(0, QColor("#efe2c4"));
+    plaster.setColorAt(1, QColor("#b8a888"));
+    p.setBrush(plaster);
+    p.drawRect(QRectF(X(0.18), Y(0.5), w * 0.64, h * 0.4));
+    p.setPen(QPen(QColor("#5a3a20"), std::max(1.5, w / 30)));  // timbers
+    p.drawLine(QPointF(X(0.18), Y(0.62)), QPointF(X(0.82), Y(0.62)));
+    p.drawLine(QPointF(X(0.32), Y(0.5)), QPointF(X(0.32), Y(0.9)));
+    p.drawLine(QPointF(X(0.68), Y(0.5)), QPointF(X(0.68), Y(0.9)));
+    p.drawLine(QPointF(X(0.18), Y(0.5)), QPointF(X(0.32), Y(0.62)));
+    p.drawLine(QPointF(X(0.82), Y(0.5)), QPointF(X(0.68), Y(0.62)));
+    p.setPen(ink);
     QPainterPath roof;
-    roof.moveTo(r.left() + w * 0.1, r.top() + h * 0.52);
-    roof.lineTo(r.center().x(), r.top() + h * 0.12);
-    roof.lineTo(r.right() - w * 0.1, r.top() + h * 0.52);
+    roof.moveTo(X(0.08), Y(0.54));
+    roof.quadTo(X(0.3), Y(0.3), X(0.5), Y(0.12));
+    roof.quadTo(X(0.7), Y(0.3), X(0.92), Y(0.54));
     roof.closeSubpath();
-    p.setBrush(owner);
+    QLinearGradient thatch(QPointF(X(0.2), Y(0.12)), QPointF(X(0.8), Y(0.54)));
+    thatch.setColorAt(0, owner.lighter(140));
+    thatch.setColorAt(1, owner.darker(140));
+    p.setBrush(thatch);
     p.drawPath(roof);
-    p.setBrush(QColor("#2a1d10"));
-    p.drawRect(QRectF(r.center().x() - w * 0.08, r.top() + h * 0.65, w * 0.16, h * 0.25));
+    p.setPen(QPen(owner.darker(170), std::max(1.0, w / 70)));  // straw strokes
+    for (int i = 0; i < 7; ++i) {
+        const double sx = 0.18 + i * 0.1;
+        p.drawLine(QPointF(X(sx), Y(0.5)), QPointF(X(sx + (0.5 - sx) * 0.3), Y(0.36)));
+    }
+    p.setPen(ink);
+    p.setBrush(QColor("#2a1d10"));  // the door, a window with light
+    p.drawRoundedRect(QRectF(X(0.44), Y(0.68), w * 0.13, h * 0.22), w * 0.04, w * 0.04);
+    p.setBrush(QColor("#ffd27a"));
+    p.drawRect(QRectF(X(0.22), Y(0.68), w * 0.08, h * 0.08));
+    p.drawRect(QRectF(X(0.7), Y(0.68), w * 0.08, h * 0.08));
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(220, 220, 220, 150));  // smoke
+    p.drawEllipse(QRectF(X(0.62), Y(0.04), w * 0.1, h * 0.08));
+    p.drawEllipse(QRectF(X(0.7), Y(-0.04), w * 0.12, h * 0.09));
     p.restore();
 }
 
 void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat) {
-    // A rider on a horse with a banner in the owner's colour (or in a boat).
+    // A knight on a horse with a banner in the owner's colour, or in a boat.
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
     const double w = r.width(), h = r.height();
     const auto X = [&](double f) { return r.left() + w * f; };
     const auto Y = [&](double f) { return r.top() + h * f; };
-    const QPen pen(QColor("#20150a"), std::max(1.0, w / 40));
+    const QPen pen(QColor("#20150a"), std::max(1.0, w / 50));
     if (selected) {
         p.setPen(QPen(QColor("#ffd84a"), std::max(2.0, w / 14)));
         p.setBrush(QColor(255, 216, 74, 60));
         p.drawEllipse(QRectF(X(0.04), Y(0.76), w * 0.92, h * 0.22));
     }
-    p.setPen(pen);
-    if (inBoat) {
-        QPainterPath hull;
-        hull.moveTo(X(0.0), Y(0.66));
-        hull.lineTo(X(1.0), Y(0.66));
-        hull.lineTo(X(0.82), Y(0.98));
-        hull.lineTo(X(0.18), Y(0.98));
-        hull.closeSubpath();
-        p.setBrush(QColor("#8a5a2b"));
-        p.drawPath(hull);
-    } else {
-        if (!selected) {
-            p.setPen(Qt::NoPen);
-            p.setBrush(QColor(0, 0, 0, 70));
-            p.drawEllipse(QRectF(X(0.12), Y(0.84), w * 0.76, h * 0.14));
-            p.setPen(pen);
-        }
-        // Horse: legs, body, neck and head.
-        const QColor horse("#8a6038");
-        p.setPen(QPen(horse.darker(170), std::max(1.5, w / 22), Qt::SolidLine, Qt::RoundCap));
-        for (const double fx : {0.3, 0.38, 0.66, 0.74}) p.drawLine(QPointF(X(fx), Y(0.66)), QPointF(X(fx + (fx < 0.5 ? -0.03 : 0.03)), Y(0.9)));
-        p.setPen(pen);
-        p.setBrush(horse);
-        p.drawEllipse(QRectF(X(0.22), Y(0.5), w * 0.6, h * 0.24));
-        QPainterPath neck;
-        neck.moveTo(X(0.7), Y(0.56));
-        neck.lineTo(X(0.84), Y(0.34));
-        neck.lineTo(X(0.96), Y(0.42));
-        neck.lineTo(X(0.82), Y(0.62));
-        neck.closeSubpath();
-        p.drawPath(neck);
-        p.setBrush(horse.darker(150));  // tail
-        p.drawEllipse(QRectF(X(0.14), Y(0.52), w * 0.12, h * 0.2));
-        // Saddle cloth in the owner's colour.
-        p.setBrush(owner);
-        p.drawRect(QRectF(X(0.4), Y(0.5), w * 0.22, h * 0.16));
+    if (!inBoat) {
+        drawHeroRider(p, r, owner);
+        p.restore();
+        return;
     }
-    // Rider: body, head and helmet.
-    p.setBrush(owner.darker(115));
-    p.drawRoundedRect(QRectF(X(0.42), Y(0.28), w * 0.18, h * 0.26), w * 0.05, w * 0.05);
-    p.setBrush(QColor("#f0c8a0"));
-    p.drawEllipse(QRectF(X(0.44), Y(0.14), w * 0.14, h * 0.14));
-    p.setBrush(QColor("#b8b8c8"));
-    p.drawChord(QRectF(X(0.43), Y(0.12), w * 0.16, h * 0.12), 0, 180 * 16);
-    // Lance with a pennant.
-    p.setPen(QPen(QColor("#3b2a17"), std::max(1.5, w / 28)));
-    p.drawLine(QPointF(X(0.36), Y(0.7)), QPointF(X(0.36), Y(0.0)));
+    // The boat: a planked hull, a mast with a sail bearing the owner's colour.
+    p.setPen(pen);
+    QPainterPath hull;
+    hull.moveTo(X(0.02), Y(0.62));
+    hull.lineTo(X(0.98), Y(0.6));
+    hull.cubicTo(X(0.92), Y(0.86), X(0.8), Y(0.96), X(0.6), Y(0.96));
+    hull.lineTo(X(0.32), Y(0.96));
+    hull.cubicTo(X(0.16), Y(0.96), X(0.06), Y(0.84), X(0.02), Y(0.62));
+    QLinearGradient wood(QPointF(X(0), Y(0.6)), QPointF(X(0), Y(0.96)));
+    wood.setColorAt(0, QColor("#a8743c"));
+    wood.setColorAt(1, QColor("#5a3818"));
+    p.setBrush(wood);
+    p.drawPath(hull);
+    p.setPen(QPen(QColor("#4a2c10"), std::max(1.0, w / 80)));
+    for (const double py : {0.7, 0.78, 0.86}) p.drawLine(QPointF(X(0.08), Y(py)), QPointF(X(0.92), Y(py - 0.01)));
     p.setPen(pen);
     p.setBrush(owner);
-    p.drawPolygon(QPolygonF{QPointF(X(0.37), Y(0.01)), QPointF(X(0.06), Y(0.08)), QPointF(X(0.2), Y(0.12)), QPointF(X(0.06), Y(0.18)),
-                            QPointF(X(0.37), Y(0.2))});
+    p.drawRect(QRectF(X(0.04), Y(0.6), w * 0.92, h * 0.04));  // a painted rail
+    p.setPen(QPen(QColor("#3b2a17"), std::max(1.5, w / 30)));
+    p.drawLine(QPointF(X(0.5), Y(0.62)), QPointF(X(0.5), Y(0.02)));
+    p.setPen(pen);
+    QPainterPath sail;
+    sail.moveTo(X(0.52), Y(0.06));
+    sail.cubicTo(X(0.8), Y(0.12), X(0.86), Y(0.36), X(0.84), Y(0.54));
+    sail.lineTo(X(0.52), Y(0.54));
+    sail.closeSubpath();
+    QLinearGradient cloth(QPointF(X(0.52), Y(0.06)), QPointF(X(0.86), Y(0.54)));
+    cloth.setColorAt(0, QColor("#fbf6e8"));
+    cloth.setColorAt(1, QColor("#d8ccb0"));
+    p.setBrush(cloth);
+    p.drawPath(sail);
+    p.setBrush(owner);
+    p.drawEllipse(QRectF(X(0.6), Y(0.24), w * 0.14, h * 0.14));
+    p.drawPolygon(QPolygonF{QPointF(X(0.5), Y(0.02)), QPointF(X(0.3), Y(0.06)), QPointF(X(0.5), Y(0.1))});  // a pennant
+    // The hero aboard.
+    p.setBrush(QColor("#c8ccd8"));
+    p.drawRoundedRect(QRectF(X(0.26), Y(0.44), w * 0.14, h * 0.18), w * 0.04, w * 0.04);
+    p.setBrush(QColor("#f0c8a0"));
+    p.drawEllipse(QRectF(X(0.27), Y(0.32), w * 0.12, h * 0.12));
+    p.setBrush(QColor("#c8ccd8"));
+    p.drawChord(QRectF(X(0.265), Y(0.3), w * 0.13, h * 0.1), 0, 180 * 16);
+    // Water at the waterline.
+    p.setPen(QPen(QColor(255, 255, 255, 180), std::max(1.0, w / 40), Qt::SolidLine, Qt::RoundCap));
+    p.setBrush(Qt::NoBrush);
+    for (const double wx : {0.06, 0.4, 0.74}) p.drawArc(QRectF(X(wx), Y(0.9), w * 0.2, h * 0.08), 0, 180 * 16);
     p.restore();
 }
 
@@ -1239,40 +1308,102 @@ void drawMonster(QPainter& p, const QRectF& r) {
 }
 
 void drawChest(QPainter& p, const QRectF& r, const QColor& resource) {
+    // A banded wooden chest, lid open, its treasure glinting.
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
     shadow(p, r);
     const double w = r.width(), h = r.height();
-    const QRectF box(r.left() + w * 0.15, r.top() + h * 0.4, w * 0.7, h * 0.45);
-    p.setPen(QPen(QColor("#3a2410"), std::max(1.0, w / 16)));
-    p.setBrush(QColor("#8a5a2b"));
-    p.drawRect(box);
-    p.setBrush(resource);  // what is inside, spilling out
-    p.drawChord(QRectF(box.left(), box.top() - h * 0.22, box.width(), h * 0.44), 0, 180 * 16);
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#3a2410"), std::max(1.0, w / 36));
+    p.setPen(ink);
+    // The open lid behind.
+    QLinearGradient lidWood(QPointF(X(0.2), Y(0.12)), QPointF(X(0.2), Y(0.42)));
+    lidWood.setColorAt(0, QColor("#6a4220"));
+    lidWood.setColorAt(1, QColor("#9a6a34"));
+    p.setBrush(lidWood);
+    p.drawPolygon(QPolygonF{QPointF(X(0.16), Y(0.44)), QPointF(X(0.22), Y(0.14)), QPointF(X(0.78), Y(0.14)), QPointF(X(0.84), Y(0.44))});
+    // The treasure heaped up.
+    QRadialGradient heap(QPointF(X(0.45), Y(0.38)), w * 0.4);
+    heap.setColorAt(0, resource.lighter(150));
+    heap.setColorAt(1, resource.darker(120));
+    p.setBrush(heap);
+    p.drawChord(QRectF(X(0.16), Y(0.28), w * 0.68, h * 0.34), 0, 180 * 16);
+    p.setPen(QPen(resource.darker(150), std::max(1.0, w / 80)));
+    for (int i = 0; i < 6; ++i) {  // coins or pieces
+        const double cx = 0.24 + i * 0.1, cy = 0.38 + (i % 2) * 0.04;
+        p.setBrush(resource.lighter(120 + (i % 3) * 15));
+        p.drawEllipse(QRectF(X(cx), Y(cy), w * 0.08, h * 0.05));
+    }
+    // The box: planks, iron bands, a lock.
+    p.setPen(ink);
+    QLinearGradient wood(QPointF(X(0.14), Y(0.44)), QPointF(X(0.86), Y(0.88)));
+    wood.setColorAt(0, QColor("#a87440"));
+    wood.setColorAt(1, QColor("#5a3818"));
+    p.setBrush(wood);
+    p.drawRect(QRectF(X(0.14), Y(0.44), w * 0.72, h * 0.42));
+    p.setPen(QPen(QColor("#4a2c10"), std::max(1.0, w / 90)));
+    p.drawLine(QPointF(X(0.14), Y(0.58)), QPointF(X(0.86), Y(0.58)));
+    p.drawLine(QPointF(X(0.14), Y(0.72)), QPointF(X(0.86), Y(0.72)));
+    p.setPen(ink);
+    p.setBrush(QColor("#6a6a72"));
+    for (const double bx : {0.2, 0.74}) p.drawRect(QRectF(X(bx), Y(0.44), w * 0.06, h * 0.42));
     p.setBrush(QColor("#d4a017"));
-    p.drawRect(QRectF(box.center().x() - w * 0.05, box.top(), w * 0.1, h * 0.14));
+    p.drawRoundedRect(QRectF(X(0.45), Y(0.5), w * 0.1, h * 0.12), w * 0.02, w * 0.02);
+    p.setBrush(QColor("#2a1a08"));
+    p.drawEllipse(QRectF(X(0.485), Y(0.54), w * 0.03, h * 0.04));
+    // A glint.
+    p.setPen(QPen(QColor(255, 255, 240, 230), std::max(1.0, w / 50), Qt::SolidLine, Qt::RoundCap));
+    const QPointF g(X(0.66), Y(0.3));
+    p.drawLine(g - QPointF(w * 0.06, 0), g + QPointF(w * 0.06, 0));
+    p.drawLine(g - QPointF(0, h * 0.06), g + QPointF(0, h * 0.06));
     p.restore();
 }
 
 void drawArtifact(QPainter& p, const QRectF& r) {
+    // A relic on a small stone plinth: a golden, gem-set amulet in a glow.
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
-    const QPointF c = r.center();
-    QRadialGradient glow(c, r.width() * 0.55);
-    glow.setColorAt(0, QColor(255, 235, 140, 200));
-    glow.setColorAt(1, QColor(255, 235, 140, 0));
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#2a1a08"), std::max(1.0, w / 40));
     p.setPen(Qt::NoPen);
+    QRadialGradient glow(QPointF(X(0.5), Y(0.42)), w * 0.5);
+    glow.setColorAt(0, QColor(255, 235, 140, 190));
+    glow.setColorAt(1, QColor(255, 235, 140, 0));
     p.setBrush(glow);
-    p.drawEllipse(c, r.width() * 0.55, r.height() * 0.55);
-    QPolygonF star;
-    for (int i = 0; i < 10; ++i) {
-        const double a = M_PI / 5 * i - M_PI / 2;
-        const double rad = (i % 2 ? 0.18 : 0.42) * r.width();
-        star << QPointF(c.x() + rad * std::cos(a), c.y() + rad * std::sin(a));
+    p.drawEllipse(QPointF(X(0.5), Y(0.42)), w * 0.5, h * 0.46);
+    p.setPen(ink);
+    QLinearGradient stone(QPointF(X(0.3), Y(0.7)), QPointF(X(0.7), Y(0.95)));
+    stone.setColorAt(0, QColor("#b0aca4"));
+    stone.setColorAt(1, QColor("#6a665e"));
+    p.setBrush(stone);
+    p.drawRect(QRectF(X(0.32), Y(0.72), w * 0.36, h * 0.2));
+    p.drawRect(QRectF(X(0.26), Y(0.88), w * 0.48, h * 0.08));
+    // The chain, the golden frame and its gem.
+    p.setPen(QPen(QColor("#c89a20"), std::max(1.0, w / 50)));
+    p.setBrush(Qt::NoBrush);
+    p.drawArc(QRectF(X(0.34), Y(0.08), w * 0.32, h * 0.4), 20 * 16, 140 * 16);
+    p.setPen(ink);
+    QRadialGradient gold(QPointF(X(0.44), Y(0.36)), w * 0.24);
+    gold.setColorAt(0, QColor("#fff0a0"));
+    gold.setColorAt(1, QColor("#c08a10"));
+    p.setBrush(gold);
+    QPolygonF frame;
+    for (int i = 0; i < 16; ++i) {
+        const double a = M_PI / 8 * i - M_PI / 2, rad = (i % 2 ? 0.17 : 0.22) * w;
+        frame << QPointF(X(0.5) + rad * std::cos(a), Y(0.46) + rad * std::sin(a));
     }
-    p.setPen(QPen(QColor("#4a1a6a"), std::max(1.0, r.width() / 18)));
-    p.setBrush(QColor("#c070f0"));
-    p.drawPolygon(star);
+    p.drawPolygon(frame);
+    QRadialGradient gem(QPointF(X(0.47), Y(0.43)), w * 0.12);
+    gem.setColorAt(0, QColor("#f0c0ff"));
+    gem.setColorAt(1, QColor("#7a20b0"));
+    p.setBrush(gem);
+    p.drawEllipse(QPointF(X(0.5), Y(0.46)), w * 0.1, h * 0.1);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(255, 255, 255, 220));
+    p.drawEllipse(QPointF(X(0.47), Y(0.43)), w * 0.03, h * 0.03);
     p.restore();
 }
 

@@ -1592,6 +1592,56 @@ void kraken(Canvas& c) {
 
 }  // namespace
 
+void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    Canvas c{p, r};
+    horseBody(c, QColor("#8a6038"), true);
+    c.pen(kInk, 0.02);
+    // A saddle cloth and a cape in the owner's colour.
+    c.p.setBrush(lit(c, 0.3, 0.46, 0.34, 0.2, owner));
+    c.poly({{0.3, 0.47}, {0.62, 0.47}, {0.6, 0.66}, {0.32, 0.66}});
+    c.p.setBrush(QColor("#e8c04a"));
+    c.p.drawRect(c.box(0.3, 0.62, 0.3, 0.025));
+    QPainterPath cape;
+    cape.moveTo(c.at(0.42, 0.24));
+    cape.cubicTo(c.at(0.3, 0.3), c.at(0.24, 0.42), c.at(0.22, 0.54));
+    cape.lineTo(c.at(0.4, 0.5));
+    cape.closeSubpath();
+    c.p.setBrush(lit(c, 0.22, 0.24, 0.2, 0.3, owner.darker(110)));
+    c.p.drawPath(cape);
+    // The rider: leg, armoured body, arm, head with a crested helmet.
+    c.p.setBrush(lit(c, 0.43, 0.44, 0.07, 0.2, QColor("#4a3020")));
+    c.p.drawRoundedRect(c.box(0.43, 0.44, 0.07, 0.2), c.s(0.03), c.s(0.03));
+    c.p.setBrush(lit(c, 0.37, 0.22, 0.2, 0.26, kSteel, 135, 130));
+    c.p.drawRoundedRect(c.box(0.37, 0.22, 0.2, 0.26), c.s(0.06), c.s(0.06));
+    c.p.setBrush(owner);  // a tabard
+    c.poly({{0.41, 0.26}, {0.53, 0.26}, {0.52, 0.46}, {0.42, 0.46}});
+    c.p.setBrush(lit(c, 0.38, 0.06, 0.18, 0.18, kSkin, 115, 120));
+    c.p.drawEllipse(c.box(0.39, 0.07, 0.16, 0.17));
+    faceDetails(c, 0.48, 0.16, 0.15);
+    c.p.setBrush(lit(c, 0.38, 0.04, 0.18, 0.1, kSteel, 135, 130));
+    c.p.drawChord(c.box(0.38, 0.04, 0.18, 0.14), 0, 180 * 16);
+    c.p.setBrush(owner);
+    c.poly({{0.44, 0.05}, {0.47, -0.04}, {0.5, 0.05}});
+    // The banner on a pole.
+    c.pen(kWood.darker(130), 0.03);
+    c.line(0.62, 0.62, 0.66, -0.02);
+    c.pen(kInk, 0.015);
+    QPainterPath flag;
+    flag.moveTo(c.at(0.66, 0.0));
+    flag.cubicTo(c.at(0.78, -0.03), c.at(0.86, 0.04), c.at(0.98, 0.01));
+    flag.lineTo(c.at(0.94, 0.1));
+    flag.lineTo(c.at(0.98, 0.19));
+    flag.cubicTo(c.at(0.86, 0.22), c.at(0.78, 0.15), c.at(0.655, 0.18));
+    flag.closeSubpath();
+    c.p.setBrush(lit(c, 0.66, -0.03, 0.32, 0.22, owner, 140, 130));
+    c.p.drawPath(flag);
+    c.p.setBrush(QColor("#ffd84a"));
+    c.p.drawEllipse(c.box(0.76, 0.05, 0.06, 0.06));
+    p.restore();
+}
+
 void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
