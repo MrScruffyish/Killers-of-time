@@ -51,9 +51,14 @@ void drawMonster(QPainter& p, const QRectF& r);
 void drawChest(QPainter& p, const QRectF& r, const QColor& resource);
 void drawArtifact(QPainter& p, const QRectF& r);
 
-// A battle stack token: a round shield in the side's colour with the unit name and count.
+// A picture of the unit (UnitArt.cpp; chosen by unit id, rank 0 regular .. 2 elite).
+void drawUnitIcon(QPainter& p, const QRectF& r, const QString& unitId, int rank);
+const QPixmap& unitIcon(const QString& unitId, int rank, int size);
+
+// A battle stack token: a round shield in the side's colour with the unit's picture
+// (or its name, when `unitId` is empty), the count, stars and rank chevrons.
 void drawUnitToken(QPainter& p, const QPointF& centre, double radius, const QColor& side, const QString& name,
-                   int count, int stars, bool active, bool target);
+                   int count, int stars, bool active, bool target, const QString& unitId = QString(), int rank = 0);
 
 // The look of the whole client (a dark wood-and-gold style sheet).
 QString styleSheet();

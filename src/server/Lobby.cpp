@@ -300,7 +300,8 @@ LobbyResult Lobby::checkStart(int actorId) const {
         teams.insert(s.team);
         if (s.kind == SlotKind::Human) {
             ++humans;
-            if (!s.ready)
+            // The host starts the game, which is ready enough; the others confirm.
+            if (!s.ready && s.clientId != actorId)
                 return LobbyResult::failure("not_ready", s.name + " is not ready");
         }
     }

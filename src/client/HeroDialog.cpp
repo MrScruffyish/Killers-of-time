@@ -9,11 +9,13 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
+#include "client/Settings.h"
 #include "core/content/ContentRegistry.h"
 
 namespace kot::client {
 
 HeroDialog::HeroDialog(const core::ContentRegistry* content, QWidget* parent) : QDialog(parent), m_content(content) {
+    rememberGeometry(this, QStringLiteral("heroDialog"));
     setObjectName("heroDialog");
     resize(620, 560);
     auto* layout = new QVBoxLayout(this);

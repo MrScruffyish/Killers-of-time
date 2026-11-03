@@ -40,9 +40,19 @@ Log filtering example: `QT_LOGGING_RULES="kot.*.debug=true" ./build/bin/kot_serv
 ## Playing
 
 Build everything, then run `kot_client` (from `<build dir>/bin`, so it finds `kot_server` and the
-`data/` folder). Click "Host a game on this computer", set up the slots, tick Ready, Start.
+`data/` folder). Click "Host a game on this computer", then "Play against the computer" (or set
+up the slots and Start; the host needs no Ready, other humans do).
 Other players join with the server address. Right-click your town on the map to open it.
 `KOT_DATA_DIR=/path/to/data` tells the programs where the game data is if it is not found.
+
+- **Settings** (window and dialog sizes, last server and name, map zoom, sound, view choices) are
+  kept in `~/.config/KillersOfTime/client.conf`; delete it to start fresh.
+- **Sound**: the checkbox on the start screen, M or the Game menu. Off closes the audio output;
+  `kot_client --no-sound` (or `KOT_NO_SOUND=1`) never opens it.
+- **Crashes**: the client prints a backtrace and appends it to
+  `~/.local/share/KillersOfTime/crash.log`; please send that file. Use a **Debug** build (Qt Creator:
+  the Debug build configuration, or the command line above) so it shows function names and lines;
+  for a full stack, `coredumpctl gdb kot_client` and then `bt`.
 
 ## Layout
 

@@ -1,6 +1,9 @@
 #include <QCheckBox>
 #include <QDir>
 #include <QLabel>
+#include <QPainter>
+#include <QSettings>
+#include <QTemporaryDir>
 #include <QPushButton>
 #include <QTabWidget>
 #include <QtTest>
@@ -12,6 +15,7 @@
 #include "client/MainWindow.h"
 #include "client/LobbyPage.h"
 #include "client/MapView.h"
+#include "client/Settings.h"
 #include "client/TownDialog.h"
 #include "core/content/ContentRegistry.h"
 #include "net/LobbyClient.h"
@@ -33,10 +37,60 @@ class TstClientSmoke : public QObject {
 
 private slots:
     void initTestCase() {
+        // Settings go to a throwaway folder, not the player's own config.
+        static QTemporaryDir config;
+        QSettings::setDefaultFormat(QSettings::NativeFormat);
+        QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope, config.path());
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
         qputenv("KOT_DATA_DIR", KOT_DATA_DIR);
         qApp->setStyleSheet(art::styleSheet());  // the real look
+    }
+
+    // Every unit's picture as a battle token, plus the map sprites: drawn without
+    // errors; saved as a contact sheet when KOT_SCREENSHOT_DIR is set.
+    void windowSizesAreRemembered() {
+        {
+            QWidget w;
+            rememberGeometry(&w, "testWindow");
+            w.show();
+            w.resize(640, 410);
+            QApplication::processEvents();
+            w.hide();
+        }
+        QWidget again;
+        rememberGeometry(&again, "testWindow");
+        again.show();
+        QApplication::processEvents();
+        QCOMPARE(again.size(), QSize(640, 410));
+        QVERIFY(!settingsFile().isEmpty());
+    }
+
+    void artGallery() {
+        const QList<core::UnitDef> units = reg.units().values();
+        const int cols = 6, cell = 110;
+        QImage sheet(cols * cell, ((units.size() + cols - 1) / cols + 1) * cell, QImage::Format_ARGB32);
+        sheet.fill(QColor("#2b2118"));
+        QPainter p(&sheet);
+        for (int i = 0; i < units.size(); ++i) {
+            const QPointF c((i % cols) * cell + cell / 2.0, (i / cols) * cell + cell / 2.0 - 8);
+            art::drawUnitToken(p, c, 40, i % 2 ? QColor("#6e5a86") : QColor("#d62728"), units[i].name, 25, i % 4, false, false,
+                               units[i].id, units[i].rank);
+            p.setPen(Qt::white);
+            p.drawText(QRectF(c.x() - cell / 2.0, c.y() + 42, cell, 16), Qt::AlignCenter, units[i].name);
+        }
+        const int y = ((units.size() + cols - 1) / cols) * cell + 10;
+        int x = 10;
+        for (const QPixmap& pm : {art::townSprite(QColor("#d62728"), 96), art::heroSprite(QColor("#1f77b4"), false, 64),
+                                  art::mineSprite("gold", art::resourceColor("gold"), QColor("#999999"), 64),
+                                  art::chestSprite(art::resourceColor("wood"), 64), art::artifactSprite(64)}) {
+            QVERIFY(!pm.isNull());
+            p.drawPixmap(x, y, pm);
+            x += pm.width() + 12;
+        }
+        p.end();
+        const QString dir = qEnvironmentVariable("KOT_SCREENSHOT_DIR");
+        if (!dir.isEmpty()) sheet.save(QDir(dir).filePath("0_units.png"));
     }
 
     void playThroughTheClient() {

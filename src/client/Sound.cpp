@@ -1,5 +1,6 @@
 #include "client/Sound.h"
 
+#include <QSettings>
 #include <QByteArray>
 #include <QDir>
 #include <QFile>
@@ -10,7 +11,11 @@
 #include <cstdint>
 
 #ifdef KOT_HAVE_SOUND
-#include <QSoundEffect>
+#include <QAudioFormat>
+#include <QAudioSink>
+#include <QIODevice>
+#include <QMediaDevices>
+#include <QMutex>
 #endif
 
 namespace kot::client::sound {
@@ -18,7 +23,11 @@ namespace kot::client::sound {
 namespace {
 
 constexpr int kRate = 22050;
-bool g_muted = false;
+// Muted or not is remembered in the settings; read on first use.
+bool& mutedFlag() {
+    static bool flag = QSettings().value(QStringLiteral("sound/muted"), false).toBool();
+    return flag;
+}
 
 // Mono 16-bit samples -> a WAV file.
 QByteArray wav(const QList<float>& samples) {
@@ -128,34 +137,124 @@ bool wanted() {
 
 QByteArray effectWav(Effect e) { return wav(make(e)); }
 
+static bool s_disabled = false;  // --no-sound
+
 bool available() {
 #ifdef KOT_HAVE_SOUND
-    return wanted();
+    return !s_disabled && wanted();
 #else
     return false;
 #endif
 }
 
-void setMuted(bool m) { g_muted = m; }
-bool muted() { return g_muted; }
+void closeOutputIfOpen();
+void setMuted(bool m) {
+    mutedFlag() = m;
+    QSettings().setValue(QStringLiteral("sound/muted"), m);
+    if (m) closeOutputIfOpen();
+}
+bool muted() { return mutedFlag(); }
+
+#ifdef KOT_HAVE_SOUND
+namespace {
+
+// All effects go through one audio output that stays open, fed by this mixer:
+// overlapping effects are added together. (Qt 6.4's QSoundEffect opened a
+// PulseAudio stream per effect and could abort in pa_stream_writable_size when
+// two played right after each other.)
+class Mixer : public QIODevice {
+public:
+    Mixer() { open(QIODevice::ReadOnly); }
+    void add(const QList<float>& samples, float volume) {
+        QMutexLocker lock(&m_mutex);
+        if (m_voices.size() >= 8) m_voices.removeFirst();  // never pile up
+        Voice v;
+        v.samples.reserve(samples.size());
+        for (const float x : samples) v.samples.append(x * volume);
+        m_voices.append(v);
+    }
+    bool isSequential() const override { return true; }
+    qint64 bytesAvailable() const override { return 4096 + QIODevice::bytesAvailable(); }
+
+protected:
+    qint64 readData(char* data, qint64 maxSize) override {
+        QMutexLocker lock(&m_mutex);
+        const qint64 frames = maxSize / 2;
+        auto* out = reinterpret_cast<qint16*>(data);
+        for (qint64 i = 0; i < frames; ++i) {
+            float mix = 0;
+            for (Voice& v : m_voices)
+                if (v.pos < v.samples.size()) mix += v.samples[v.pos++];
+            out[i] = static_cast<qint16>(std::clamp(mix, -1.0f, 1.0f) * 30000);
+        }
+        m_voices.removeIf([](const Voice& v) { return v.pos >= v.samples.size(); });
+        return frames * 2;
+    }
+    qint64 writeData(const char*, qint64) override { return -1; }
+
+private:
+    struct Voice {
+        QList<float> samples;
+        qsizetype pos = 0;
+    };
+    QMutex m_mutex;
+    QList<Voice> m_voices;
+};
+
+Mixer* g_mixer = nullptr;
+QAudioSink* g_sink = nullptr;
+bool g_tried = false;
+
+// Sound off closes the audio output altogether (nothing is opened while off).
+void closeOutput() {
+    if (g_sink) {
+        g_sink->stop();
+        delete g_sink;
+        g_sink = nullptr;
+    }
+    delete g_mixer;
+    g_mixer = nullptr;
+    g_tried = false;
+}
+
+Mixer* mixer() {
+    Mixer*& m = g_mixer;
+    if (g_tried) return m;
+    g_tried = true;
+    QAudioFormat format;
+    format.setSampleRate(kRate);
+    format.setChannelCount(1);
+    format.setSampleFormat(QAudioFormat::Int16);
+    const QAudioDevice device = QMediaDevices::defaultAudioOutput();
+    if (device.isNull() || !device.isFormatSupported(format)) return nullptr;
+    m = new Mixer();
+    g_sink = new QAudioSink(device, format, qApp);
+    g_sink->setBufferSize(kRate / 10 * 2);  // about 0.1 s: short delay
+    g_sink->start(m);
+    return m;
+}
+
+}  // namespace
+#endif
+
+void closeOutputIfOpen() {
+#ifdef KOT_HAVE_SOUND
+    closeOutput();
+#endif
+}
+
+void disableForThisRun() {
+    s_disabled = true;
+    closeOutputIfOpen();
+}
 
 void play(Effect e) {
 #ifdef KOT_HAVE_SOUND
-    if (g_muted || !available()) return;
-    static QHash<int, QSoundEffect*> effects;
-    QSoundEffect*& fx = effects[int(e)];
-    if (!fx) {
-        const QString dir = QDir::temp().filePath(QStringLiteral("kot_sound"));
-        QDir().mkpath(dir);
-        const QString path = QDir(dir).filePath(QStringLiteral("fx%1.wav").arg(int(e)));
-        QFile f(path);
-        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) f.write(effectWav(e));
-        f.close();
-        fx = new QSoundEffect(qApp);
-        fx->setSource(QUrl::fromLocalFile(path));
-        fx->setVolume(0.6);
-    }
-    fx->play();
+    if (mutedFlag() || !available()) return;
+    static QHash<int, QList<float>> cache;
+    auto it = cache.find(int(e));
+    if (it == cache.end()) it = cache.insert(int(e), make(e));
+    if (Mixer* m = mixer()) m->add(it.value(), 0.6f);
 #else
     (void)e;
 #endif

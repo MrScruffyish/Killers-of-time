@@ -11,6 +11,7 @@
 #include "client/ConnectPage.h"
 #include "client/GamePage.h"
 #include "client/LobbyPage.h"
+#include "client/Settings.h"
 #include "core/Version.h"
 #include "core/data/DataDir.h"
 
@@ -19,6 +20,7 @@ namespace kot::client {
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("%1 %2").arg(QString::fromLatin1(core::kGameName), QString::fromLatin1(core::kGameVersion)));
     resize(1150, 760);
+    rememberGeometry(this, QStringLiteral("mainWindow"));  // size, position, maximized
 
     m_pages = new QStackedWidget(this);
     setCentralWidget(m_pages);

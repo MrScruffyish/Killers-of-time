@@ -12,6 +12,7 @@
 #include <QVBoxLayout>
 #include <algorithm>
 
+#include "client/Settings.h"
 #include "core/content/ContentRegistry.h"
 
 namespace kot::client {
@@ -19,6 +20,7 @@ namespace kot::client {
 TownDialog::TownDialog(const core::ContentRegistry* content, QWidget* parent)
     : QDialog(parent), m_content(content) {
     setObjectName("townDialog");
+    rememberGeometry(this, QStringLiteral("townDialog"));
     resize(900, 560);
     auto* layout = new QVBoxLayout(this);
     m_tabs = new QTabWidget(this);

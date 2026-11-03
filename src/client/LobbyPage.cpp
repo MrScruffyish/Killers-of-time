@@ -23,6 +23,14 @@
 
 namespace kot::client {
 
+namespace {
+bool isHostClient(const net::LobbyState& lobby, int clientId) {
+    for (const net::LobbyMember& m : lobby.members)
+        if (m.clientId == clientId) return m.isHost;
+    return false;
+}
+}  // namespace
+
 using net::SlotInfo;
 using net::SlotKind;
 
@@ -123,13 +131,30 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     buttons->addWidget(m_load);
     m_start = new QPushButton(tr("Start game"), this);
     m_start->setObjectName("startButton");
+    m_quick = new QPushButton(tr("Play against the computer"), this);
+    m_quick->setObjectName("quickStartButton");
+    m_quick->setToolTip(tr("Adds a computer opponent if there is none, then starts"));
     buttons->addWidget(leave);
     buttons->addStretch(1);
+    buttons->addWidget(m_quick);
     buttons->addWidget(m_start);
     outer->addLayout(buttons);
 
     connect(leave, &QPushButton::clicked, this, &LobbyPage::leaveRequested);
     connect(m_start, &QPushButton::clicked, this, [this]() { m_client->startGame(); });
+    connect(m_quick, &QPushButton::clicked, this, [this]() {
+        // One human against the computer: the host needs no Ready, only an opponent.
+        const net::LobbyState& lobby = m_client->lobby();
+        bool opponent = false;
+        for (const net::SlotInfo& s : lobby.slotList) opponent = opponent || (s.occupied() && s.clientId != m_client->clientId());
+        if (!opponent)
+            for (const net::SlotInfo& s : lobby.slotList)
+                if (s.kind == net::SlotKind::Open) {
+                    m_client->setSlot(s.index, {{"kind", "ai"}});
+                    break;
+                }
+        m_client->startGame();
+    });
     connect(m_load, &QPushButton::clicked, this, [this]() { m_listSavesSeq = m_client->listSaves(); });
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
         if (replyTo == 0 || replyTo != m_listSavesSeq) return;
@@ -227,6 +252,7 @@ void LobbyPage::rebuild() {
     m_difficulty->setEnabled(host);
     m_autosaves->setEnabled(host);
     m_start->setEnabled(host);
+    m_quick->setVisible(host);
     m_load->setEnabled(host);
     m_start->setToolTip(host ? QString() : tr("Only the host can start the game"));
 
@@ -330,6 +356,8 @@ void LobbyPage::rebuild() {
             ready->setObjectName(QStringLiteral("ready%1").arg(slot));
             ready->setChecked(s.ready);
             ready->setEnabled(mine);
+            if (isHostClient(m_client->lobby(), s.clientId))
+                ready->setToolTip(tr("The host does not need to be ready: Start is enough"));
             connect(ready, &QCheckBox::clicked, this, [this](bool on) { m_client->setReady(on); });
             m_grid->addWidget(ready, row, 5);
         } else {

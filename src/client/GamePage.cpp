@@ -29,6 +29,7 @@
 #include "client/MapView.h"
 #include "client/MovePlanner.h"
 #include "client/Panels.h"
+#include "client/Settings.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
 #include "client/Sound.h"
@@ -124,6 +125,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     mute->setChecked(!sound::muted());
     connect(mute, &QAction::toggled, this, [](bool on) { sound::setMuted(!on); });
     connect(menu, &QMenu::aboutToShow, this, [mute]() { mute->setChecked(!sound::muted()); });
+    menu->addSeparator();
+    QAction* where = menu->addAction(tr("Settings are saved in %1").arg(settingsFile()));
+    where->setEnabled(false);
     connect(m_save, &QAction::triggered, this, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("Save game"), tr("Name (letters, digits, _ and -):"),
@@ -346,7 +350,7 @@ void GamePage::onViewChanged() {
 void GamePage::showBattle(bool firstView) {
     const auto colourOf = [this](int owner) {
         const ViewPlayer* p = m_view.player(owner);
-        return p ? QColor(p->color) : QColor("#8b1a1a");  // neutral monsters
+        return p ? QColor(p->color) : QColor("#6e5a86");  // neutral monsters: a dusky violet
     };
     if (m_view.battle.present) {
         m_battleView->setBattle(m_view.battle, colourOf(m_view.battle.sideOwner[0]), colourOf(m_view.battle.sideOwner[1]));

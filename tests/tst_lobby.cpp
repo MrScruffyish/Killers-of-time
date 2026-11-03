@@ -227,6 +227,18 @@ private slots:
         QVERIFY(lobby.start(1).message.contains("two teams"));
     }
 
+    void theHostNeedNotBeReady() {
+        lobby.addMember(1, "Ann");
+        lobby.editSlot(1, 1, {{"kind", "ai"}});
+        QVERIFY(!slot(0).ready);
+        QVERIFY2(lobby.checkStart(1).ok, qPrintable(lobby.checkStart(1).message));
+        // Another human still has to confirm.
+        lobby.addMember(2, "Bob");
+        QCOMPARE(lobby.checkStart(1).code, QString("not_ready"));
+        lobby.setReady(2, true);
+        QVERIFY(lobby.checkStart(1).ok);
+    }
+
     void needsTwoPlayers() {
         lobby.addMember(1, "Ann");
         lobby.setReady(1, true);

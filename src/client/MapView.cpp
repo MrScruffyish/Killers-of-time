@@ -331,7 +331,16 @@ void MapView::paintEvent(QPaintEvent*) {
     // with a word for how many there are.
     for (const ViewArmy& a : m_view.armies) {
         if (a.hero || !shown(a.pos) || m_view.townAt(a.pos)) continue;
-        put(a.pos, art::monsterSprite(m_tile));
+        if (!a.stacks.isEmpty()) {
+            const core::UnitDef* u = m_content ? m_content->unit(a.stacks.first().unit) : nullptr;
+            const QRect r = tileRect(a.pos);
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(0, 0, 0, 70));
+            p.drawEllipse(QRectF(r).adjusted(m_tile * 0.12, m_tile * 0.72, -m_tile * 0.12, -m_tile * 0.04));
+            p.drawPixmap(r.topLeft(), art::unitIcon(a.stacks.first().unit, u ? u->rank : 0, m_tile));
+        } else {
+            put(a.pos, art::monsterSprite(m_tile));
+        }
         if (m_tile >= 32) {
             int count = 0;
             for (const ViewStack& s : a.stacks) count += s.count;

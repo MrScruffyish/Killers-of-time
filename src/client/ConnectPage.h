@@ -20,6 +20,7 @@ signals:
     void hostRequested(quint16 port, const QString& name);
 
 private:
+    void remember();  // name, server and port go to the settings
     QLineEdit* m_name;
     QLineEdit* m_host;
     QSpinBox* m_port;

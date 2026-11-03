@@ -41,6 +41,7 @@ private:
     QComboBox* m_difficulty;
     QComboBox* m_mapType;
     QSpinBox* m_autosaves;
+    QPushButton* m_quick;
     QComboBox* m_scenario;
     QLabel* m_scenarioInfo;
     QPushButton* m_start;

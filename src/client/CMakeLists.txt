@@ -22,6 +22,11 @@ add_library(kot_client_lib STATIC
     LoadDialog.cpp
     Panels.h
     Panels.cpp
+    UnitArt.cpp
+    Settings.h
+    Settings.cpp
+    CrashLog.h
+    CrashLog.cpp
     TownDialog.h
     TownDialog.cpp
     HeroDialog.h
@@ -41,4 +46,6 @@ if(Qt6Multimedia_FOUND)
 endif()
 
 add_executable(kot_client main.cpp)
+# Function names in crash backtraces (client/CrashLog.h).
+set_target_properties(kot_client PROPERTIES ENABLE_EXPORTS ON)
 target_link_libraries(kot_client PRIVATE kot_client_lib kot_warnings)

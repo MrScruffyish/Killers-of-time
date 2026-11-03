@@ -11,6 +11,8 @@ enum class Effect { Click, Step, Clash, Spell, Coins, Bell, Drums, Fanfare, Defe
 
 void play(Effect effect);
 void setMuted(bool muted);
+// No sound at all for this run (--no-sound); the audio output is never opened.
+void disableForThisRun();
 bool muted();
 bool available();
 // The generated sound as a WAV file (16-bit mono, 22050 Hz), for tests.

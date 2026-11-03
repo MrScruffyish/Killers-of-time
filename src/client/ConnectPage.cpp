@@ -2,11 +2,14 @@
 
 #include <QFormLayout>
 #include <QLabel>
+#include <QCheckBox>
 #include <QLineEdit>
+#include <QSettings>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QVBoxLayout>
 
+#include "client/Sound.h"
 #include "core/Version.h"
 #include "net/Protocol.h"
 
@@ -29,9 +32,21 @@ ConnectPage::ConnectPage(QWidget* parent) : QWidget(parent) {
     m_port->setObjectName("portEdit");
     m_port->setRange(1, 65535);
     m_port->setValue(net::kDefaultPort);
+    // The last name, server and port are remembered.
+    QSettings settings;
+    m_name->setText(settings.value(QStringLiteral("connect/name"), m_name->text()).toString());
+    m_host->setText(settings.value(QStringLiteral("connect/host"), m_host->text()).toString());
+    m_port->setValue(settings.value(QStringLiteral("connect/port"), m_port->value()).toInt());
     form->addRow(tr("Your name"), m_name);
     form->addRow(tr("Server"), m_host);
     form->addRow(tr("Port"), m_port);
+    auto* soundBox = new QCheckBox(tr("Sound effects (M in the game)"), this);
+    soundBox->setObjectName("soundCheck");
+    soundBox->setChecked(!sound::muted());
+    soundBox->setEnabled(sound::available());
+    if (!sound::available()) soundBox->setToolTip(tr("No sound in this build or this run"));
+    connect(soundBox, &QCheckBox::toggled, this, [](bool on) { sound::setMuted(!on); });
+    form->addRow(QString(), soundBox);
     auto* formHolder = new QWidget(this);
     formHolder->setLayout(form);
     formHolder->setMaximumWidth(420);
@@ -55,9 +70,11 @@ ConnectPage::ConnectPage(QWidget* parent) : QWidget(parent) {
     outer->addStretch(2);
 
     connect(join, &QPushButton::clicked, this, [this]() {
+        remember();
         emit joinRequested(m_host->text().trimmed(), static_cast<quint16>(m_port->value()), m_name->text().trimmed());
     });
     connect(host, &QPushButton::clicked, this, [this]() {
+        remember();
         emit hostRequested(static_cast<quint16>(m_port->value()), m_name->text().trimmed());
     });
 }
@@ -65,6 +82,13 @@ ConnectPage::ConnectPage(QWidget* parent) : QWidget(parent) {
 void ConnectPage::showMessage(const QString& text, bool error) {
     m_message->setStyleSheet(error ? "color: #c00000;" : "color: #404040;");
     m_message->setText(text);
+}
+
+void ConnectPage::remember() {
+    QSettings settings;
+    settings.setValue(QStringLiteral("connect/name"), m_name->text().trimmed());
+    settings.setValue(QStringLiteral("connect/host"), m_host->text().trimmed());
+    settings.setValue(QStringLiteral("connect/port"), m_port->value());
 }
 
 }  // namespace kot::client

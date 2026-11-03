@@ -594,7 +594,7 @@ void drawArtifact(QPainter& p, const QRectF& r) {
 }
 
 void drawUnitToken(QPainter& p, const QPointF& c, double rad, const QColor& side, const QString& name, int count,
-                   int stars, bool active, bool target) {
+                   int stars, bool active, bool target, const QString& unitId, int rank) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(Qt::NoPen);
@@ -609,15 +609,29 @@ void drawUnitToken(QPainter& p, const QPointF& c, double rad, const QColor& side
     p.setPen(QPen(QColor(255, 255, 255, 90), 1));
     p.setBrush(Qt::NoBrush);
     p.drawEllipse(c, rad * 0.8, rad * 0.8);
+    if (!unitId.isEmpty()) {
+        // The unit's picture inside the shield.
+        const int size = std::max(8, int(rad * 1.5));
+        p.drawPixmap(QPointF(c.x() - size / 2.0, c.y() - rad * 0.92), unitIcon(unitId, rank, size));
+    }
     if (rad >= 10) {
         QFont f = p.font();
         f.setPixelSize(std::max(7, int(rad * 0.36)));
         f.setBold(true);
         p.setFont(f);
-        p.setPen(Qt::white);
-        p.drawText(QRectF(c.x() - rad, c.y() - rad * 0.7, 2 * rad, rad * 0.8), Qt::AlignCenter, name.left(8));
+        if (unitId.isEmpty()) {
+            p.setPen(Qt::white);
+            p.drawText(QRectF(c.x() - rad, c.y() - rad * 0.7, 2 * rad, rad * 0.8), Qt::AlignCenter, name.left(8));
+        }
+        // Rank chevrons (advanced one, elite two) on the left.
+        p.setPen(QPen(QColor("#ffd84a"), std::max(1.5, rad / 9)));
+        for (int i = 0; i < rank; ++i) {
+            const double y = c.y() + rad * (0.05 - 0.22 * i);
+            p.drawLine(QPointF(c.x() - rad * 0.92, y - rad * 0.1), QPointF(c.x() - rad * 0.78, y));
+            p.drawLine(QPointF(c.x() - rad * 0.78, y), QPointF(c.x() - rad * 0.64, y - rad * 0.1));
+        }
         // The count on a small plate.
-        const QRectF plate(c.x() - rad * 0.55, c.y() + rad * 0.15, rad * 1.1, rad * 0.55);
+        const QRectF plate(c.x() - rad * 0.55, c.y() + rad * 0.42, rad * 1.1, rad * 0.5);
         p.setPen(QPen(QColor("#20180c"), 1));
         p.setBrush(QColor("#f1e4c0"));
         p.drawRoundedRect(plate, 3, 3);

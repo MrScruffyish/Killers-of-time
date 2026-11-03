@@ -155,6 +155,10 @@ and react to; add depth afterwards.
 - [ ] Playtesting
 - [x] Battle map: ranges are real (unit `range` in hexes + the hero's Attack Range; out of range cannot be shot, the AI walks into range), hovering a shooter shows its range (red for enemies, blue for yours), bow badges with the range on ranged tokens, a stats panel (hovered or acting stack), keys D (defend) and W (wait)
 - [x] Unit ranks: regular / advanced / elite from the upgradesTo chain (separate units, never merge); humans: Archer (range 5) -> Advanced Archer (6, Archery School) -> Elite Archer (7, Archery Academy); elf archers 6, marksmen 8
+- [x] Unit pictures drawn in code (one per unit kind: spearmen, archers by rank, elves, skeletons, zombie, wraith, bone dragon, eagle, snail, treant, unicorn, woodsman) on battle tokens, army slots and map monsters; rank chevrons; neutral monsters violet in battle
+- [x] Lobby: the host needs no Ready; "Play against the computer" adds an AI opponent and starts
+- [x] Client settings file (~/.config/KillersOfTime/client.conf): window/dialog geometry, last server and name, zoom, sound, view choices
+- [x] Sound: one audio output with an own mixer instead of QSoundEffect (fixes a PulseAudio abort when effects overlapped, e.g. archers shooting twice); sound off closes the output; --no-sound; crash backtraces to ~/.local/share/KillersOfTime/crash.log
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

@@ -9,12 +9,14 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
+#include "client/Settings.h"
 #include "core/Version.h"
 
 namespace kot::client {
 
 LoadDialog::LoadDialog(const QJsonArray& games, QWidget* parent) : QDialog(parent), m_games(games) {
     setObjectName("loadDialog");
+    rememberGeometry(this, QStringLiteral("loadDialog"));
     setWindowTitle(tr("Load a saved game"));
     resize(860, 440);
     auto* layout = new QVBoxLayout(this);

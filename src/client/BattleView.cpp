@@ -128,7 +128,8 @@ protected:
             const bool target = mine && u.side != battle.yourSide && (battle.shootable.contains(u.id) || battle.attackable.contains(u.id));
             const core::UnitDef* def = m_content->unit(u.unit);
             const QPointF c = centre(u.hex);
-            art::drawUnitToken(p, c, r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars, active, target);
+            art::drawUnitToken(p, c, r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars, active, target,
+                               u.unit, def ? def->rank : 0);
             if (u.range > 0) {
                 // A bow badge with the range in hexes (grey when out of arrows).
                 const QPointF b(c.x() + r * 0.62, c.y() - r * 0.55);

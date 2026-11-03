@@ -205,7 +205,7 @@ void HeroPanel::paintEvent(QPaintEvent*) {
         const ViewStack& s = a->stacks[i];
         const core::UnitDef* u = m_content->unit(s.unit);
         art::drawUnitToken(p, QRectF(r).center(), r.width() * 0.46, owner ? QColor(owner->color) : QColor("#999999"),
-                           u ? u->name : s.unit, s.count, s.stars, false, false);
+                           u ? u->name : s.unit, s.count, s.stars, false, false, s.unit, u ? u->rank : 0);
     }
 }
 
