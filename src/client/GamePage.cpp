@@ -141,6 +141,12 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     });
     m_endTurn = new QPushButton(tr("End turn"), this);
     m_endTurn->setObjectName("endTurnButton");
+    m_buildAndBuy->setIcon(art::buttonIcon("build"));
+    m_buyAll->setIcon(art::buttonIcon("buy"));
+    m_sendUnits->setIcon(art::buttonIcon("wagon"));
+    m_endTurn->setIcon(art::buttonIcon("end"));
+    m_castSpell->setIcon(art::buttonIcon("spell"));
+    for (QPushButton* b : {m_buildAndBuy, m_buyAll, m_sendUnits, m_endTurn, m_castSpell}) b->setIconSize(QSize(22, 22));
     side->addWidget(m_buildAndBuy);
     side->addWidget(m_buyAll);
     side->addWidget(m_sendUnits);

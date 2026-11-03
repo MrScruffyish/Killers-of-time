@@ -201,13 +201,21 @@ public:
 
     double radius() const {
         const int w = std::max(1, battle.width), h = std::max(1, battle.height);
-        const double byWidth = (width() - 8) / (std::sqrt(3.0) * (w + 0.5));
-        const double byHeight = (height() - 8) / (1.5 * (h - 1) + 2.0);
+        const double byWidth = (width() - 40) / (std::sqrt(3.0) * (w + 0.5));
+        const double byHeight = (height() - 40) / (1.5 * (h - 1) + 2.0);
         return std::max(4.0, std::min(byWidth, byHeight));
+    }
+    // The field is centred in the widget.
+    QPointF origin() const {
+        const double r = radius();
+        const int w = std::max(1, battle.width), h = std::max(1, battle.height);
+        const double fw = std::sqrt(3.0) * r * (w + 0.5), fh = 1.5 * r * (h - 1) + 2 * r;
+        return {std::max(4.0, (width() - fw) / 2), std::max(4.0, (height() - fh) / 2)};
     }
     QPointF centre(core::Pos p) const {
         const double r = radius();
-        return {4 + std::sqrt(3.0) * r * (p.x + 0.5 + 0.5 * (p.y & 1)), 4 + r + 1.5 * r * p.y};
+        const QPointF o = origin();
+        return {o.x() + std::sqrt(3.0) * r * (p.x + 0.5 + 0.5 * (p.y & 1)), o.y() + r + 1.5 * r * p.y};
     }
     core::Pos hexAt(QPointF pt) const {
         core::Pos best{-1, -1};
@@ -228,6 +236,20 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter p(this);
         p.fillRect(rect(), QColor("#1f1810"));
+        if (battle.present) {
+            // A wooden frame around the field.
+            const double r0 = radius();
+            const QPointF o = origin();
+            const QRectF field(o.x() - r0 * 0.4, o.y() - r0 * 0.4, std::sqrt(3.0) * r0 * (battle.width + 0.5) + r0 * 0.8,
+                               1.5 * r0 * (battle.height - 1) + 2 * r0 + r0 * 0.8);
+            p.setRenderHint(QPainter::Antialiasing, true);
+            p.setPen(QPen(QColor("#c9a24a"), 2));
+            p.setBrush(QColor("#3a2a18"));
+            p.drawRoundedRect(field.adjusted(-6, -6, 6, 6), 10, 10);
+            p.setPen(QPen(QColor(0, 0, 0, 120), 4));
+            p.setBrush(Qt::NoBrush);
+            p.drawRoundedRect(field.adjusted(-1, -1, 1, 1), 6, 6);
+        }
         if (!battle.present) return;
         p.setRenderHint(QPainter::Antialiasing, true);
         const double r = radius();
@@ -649,6 +671,14 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_engine->setObjectName("buildEngineButton");
     m_engine->setToolTip(tr("A catapult for this battle: it breaks the town's walls, and is gone afterwards"));
     connect(m_engine, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "build_engine"}}); });
+    m_engine->setIcon(art::buttonIcon("catapult"));
+    m_defend->setIcon(art::buttonIcon("defend"));
+    m_wait->setIcon(art::buttonIcon("wait"));
+    m_retreat->setIcon(art::buttonIcon("retreat"));
+    m_auto->setIcon(art::buttonIcon("auto"));
+    m_autoPlay->setIcon(art::buttonIcon("auto"));
+    m_cast->setIcon(art::buttonIcon("spell"));
+    for (QPushButton* b : {m_engine, m_defend, m_wait, m_retreat, m_auto, m_autoPlay, m_cast}) b->setIconSize(QSize(22, 22));
     buttons->addWidget(m_engine);
     buttons->addWidget(m_autoPlay);
     buttons->addWidget(m_auto);
@@ -659,6 +689,8 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     connect(m_cast, &QPushButton::clicked, this, [this]() { chooseSpell(false); });
     m_unitCast = new QPushButton(tr("Stack's spell..."), this);
     m_unitCast->setObjectName("unitCastButton");
+    m_unitCast->setIcon(art::buttonIcon("spell"));
+    m_unitCast->setIconSize(QSize(22, 22));
     buttons->insertWidget(1, m_unitCast);
     connect(m_unitCast, &QPushButton::clicked, this, [this]() { chooseSpell(true); });
     connect(m_wait, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "wait"}}); });

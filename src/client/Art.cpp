@@ -570,6 +570,103 @@ const QPixmap& resourceIcon(const QString& id, int size) {
     return sprite(QStringLiteral("res|") + id, size, [&](QPainter& p, const QRectF& r) { drawResourceIcon(p, r, id, resourceColor(id)); });
 }
 
+QIcon buttonIcon(const QString& name) {
+    static QHash<QString, QIcon> cache;
+    if (cache.contains(name)) return cache.value(name);
+    constexpr int s = 48;
+    QPixmap pm(s, s);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    const QPen ink(QColor(25, 16, 8), 2.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    p.setPen(ink);
+    const QColor gold("#ffd84a"), wood("#a0703a"), steel("#d8dce8");
+    if (name == "build") {  // a hammer
+        p.setBrush(wood);
+        p.drawPolygon(QPolygonF{QPointF(10, 40), QPointF(14, 44), QPointF(32, 24), QPointF(28, 20)});
+        p.setBrush(steel);
+        p.drawPolygon(QPolygonF{QPointF(22, 10), QPointF(34, 6), QPointF(42, 18), QPointF(32, 26), QPointF(26, 20)});
+    } else if (name == "buy") {  // a stack of coins
+        p.setBrush(gold);
+        for (int i = 0; i < 3; ++i) p.drawEllipse(QRectF(8 + i * 3, 30 - i * 9, 30, 12));
+    } else if (name == "wagon") {
+        p.setBrush(wood);
+        p.drawRect(QRectF(6, 16, 34, 16));
+        p.setBrush(QColor("#5a3a18"));
+        p.drawEllipse(QPointF(14, 36), 6, 6);
+        p.drawEllipse(QPointF(34, 36), 6, 6);
+    } else if (name == "end" || name == "wait") {  // an hourglass
+        p.setBrush(wood);
+        p.drawRect(QRectF(10, 4, 28, 5));
+        p.drawRect(QRectF(10, 39, 28, 5));
+        p.setBrush(QColor("#e8e0c8"));
+        p.drawPolygon(QPolygonF{QPointF(13, 9), QPointF(35, 9), QPointF(24, 24), QPointF(35, 39), QPointF(13, 39), QPointF(24, 24)});
+        p.setPen(Qt::NoPen);
+        p.setBrush(gold);
+        p.drawPolygon(QPolygonF{QPointF(17, 37), QPointF(31, 37), QPointF(24, 29)});
+    } else if (name == "spell") {  // a wand with a star
+        p.setBrush(wood);
+        p.drawPolygon(QPolygonF{QPointF(8, 42), QPointF(11, 45), QPointF(30, 22), QPointF(27, 19)});
+        QPolygonF star;
+        for (int i = 0; i < 10; ++i) {
+            const double a = M_PI / 5 * i - M_PI / 2, rad = i % 2 ? 5 : 12;
+            star << QPointF(34 + rad * std::cos(a), 14 + rad * std::sin(a));
+        }
+        p.setBrush(QColor("#9ad0ff"));
+        p.drawPolygon(star);
+    } else if (name == "market") {  // scales
+        p.drawLine(QPointF(24, 6), QPointF(24, 40));
+        p.drawLine(QPointF(8, 14), QPointF(40, 14));
+        p.drawLine(QPointF(14, 42), QPointF(34, 42));
+        p.setBrush(gold);
+        p.drawChord(QRectF(2, 18, 16, 14), 180 * 16, 180 * 16);
+        p.drawChord(QRectF(30, 18, 16, 14), 180 * 16, 180 * 16);
+    } else if (name == "defend") {  // a shield
+        p.setBrush(QColor("#3a64b0"));
+        QPainterPath sh;
+        sh.moveTo(24, 4);
+        sh.lineTo(40, 10);
+        sh.quadTo(40, 34, 24, 44);
+        sh.quadTo(8, 34, 8, 10);
+        sh.closeSubpath();
+        p.drawPath(sh);
+        p.setPen(QPen(gold, 3));
+        p.drawLine(QPointF(24, 10), QPointF(24, 38));
+        p.drawLine(QPointF(13, 20), QPointF(35, 20));
+    } else if (name == "auto") {  // a gear
+        p.setBrush(steel);
+        QPolygonF gear;
+        for (int i = 0; i < 16; ++i) {
+            const double a = M_PI / 8 * i, rad = i % 2 ? 16 : 21;
+            gear << QPointF(24 + rad * std::cos(a), 24 + rad * std::sin(a));
+        }
+        p.drawPolygon(gear);
+        p.setBrush(QColor("#2b2118"));
+        p.drawEllipse(QPointF(24, 24), 6, 6);
+    } else if (name == "retreat") {  // a white flag
+        p.drawLine(QPointF(12, 44), QPointF(12, 4));
+        p.setBrush(QColor("#f4f0e8"));
+        p.drawPolygon(QPolygonF{QPointF(12, 6), QPointF(40, 10), QPointF(34, 18), QPointF(40, 26), QPointF(12, 24)});
+    } else if (name == "catapult") {
+        drawUnitIcon(p, QRectF(2, 2, 44, 44), QStringLiteral("catapult"), 0);
+    } else if (name == "town") {
+        drawTown(p, QRectF(2, 6, 44, 40), QColor("#c03a3a"));
+    } else if (name == "army") {
+        drawUnitIcon(p, QRectF(4, 2, 40, 44), QStringLiteral("pikeman"), 0);
+    } else if (name == "tavern") {  // a mug
+        p.setBrush(QColor("#d8a020"));
+        p.drawRoundedRect(QRectF(10, 14, 22, 28), 4, 4);
+        p.setBrush(Qt::NoBrush);
+        p.drawArc(QRectF(26, 20, 14, 14), -90 * 16, 180 * 16);
+        p.setBrush(QColor("#f8f4e8"));
+        p.drawEllipse(QRectF(8, 8, 26, 10));
+    }
+    p.end();
+    const QIcon icon(pm);
+    cache.insert(name, icon);
+    return icon;
+}
+
 QPixmap pointerImage(Pointer kind) {
     QPixmap pm(32, 32);
     pm.fill(Qt::transparent);

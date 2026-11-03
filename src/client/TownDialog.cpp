@@ -258,7 +258,7 @@ void TownDialog::rebuild() {
                 if (o.why.contains("today")) why = tr("Nothing more can be built here today (one building per day).");
             layout->addWidget(new QLabel(why, page));
         }
-        m_tabs->addTab(page, tr("Buildings"));
+        m_tabs->addTab(page, art::buttonIcon("build"), tr("Buildings"));
     }
 
     // ---- Recruit (only when there is something to recruit)
@@ -327,7 +327,7 @@ void TownDialog::rebuild() {
             });
             layout->addWidget(give);
         }
-        m_tabs->addTab(page, tr("Recruit"));
+        m_tabs->addTab(page, art::buttonIcon("army"), tr("Recruit"));
     }
 
     // ---- Tavern
@@ -369,7 +369,7 @@ void TownDialog::rebuild() {
             layout->addLayout(row);
         }
         layout->addStretch(1);
-        m_tabs->addTab(page, tr("Tavern"));
+        m_tabs->addTab(page, art::buttonIcon("tavern"), tr("Tavern"));
     }
 
     // ---- Armies: the garrison and a hero visiting the town
@@ -445,7 +445,7 @@ void TownDialog::rebuild() {
             section(tr("%1's army").arg(visitor->name), heroArmy, garrison, tr("the garrison"));
         }
         layout->addStretch(1);
-        m_tabs->addTab(page, tr("Armies"));
+        m_tabs->addTab(page, art::buttonIcon("defend"), tr("Armies"));
     }
 
     m_tabs->setCurrentIndex(std::min(keep, m_tabs->count() - 1));

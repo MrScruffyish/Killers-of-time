@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QColor>
+#include <QIcon>
 #include <QPixmap>
 #include <QRectF>
 #include <QList>
@@ -77,6 +78,9 @@ const QPixmap& resourceIcon(const QString& id, int size);
 // `seed` (the hero id) varies the face a little.
 void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QColor& owner, int seed);
 const QPixmap& portrait(const QString& classId, const QColor& owner, int seed, int size);
+// Small icons for buttons and tabs: "build", "buy", "wagon", "end", "spell",
+// "market", "defend", "wait", "auto", "retreat", "catapult", "town", "army", "tavern".
+QIcon buttonIcon(const QString& name);
 // Mouse pointers for the adventure map.
 enum class Pointer { Normal, Move, MoveLater, Attack, Enter, Select, Blocked, MoveAttack, Shoot };
 QPixmap pointerImage(Pointer kind);
