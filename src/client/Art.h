@@ -60,6 +60,7 @@ struct SceneBuilding {
 void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QList<SceneBuilding>& buildings);
 const QPixmap& mineSprite(const QString& resource, const QColor& resourceColor, const QColor& owner, int size);
 const QPixmap& dwellingSprite(const QColor& owner, int size);
+const QPixmap& dwellingSprite(const QColor& owner, const QString& unitId, int size);  // with the unit on a sign
 const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size);
 const QPixmap& monsterSprite(int size);
 const QPixmap& chestSprite(const QColor& resource, int size);

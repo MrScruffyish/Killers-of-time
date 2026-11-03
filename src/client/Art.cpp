@@ -343,8 +343,97 @@ const QPixmap& sprite(const QString& key, int size, const std::function<void(QPa
 const QPixmap& townSprite(const QColor& owner, int size) {
     return sprite(QStringLiteral("town|") + owner.name(), size, [&](QPainter& p, const QRectF& r) { drawTown(p, r, owner); });
 }
+namespace {
+void ownerFlag(QPainter& p, const QRectF& r, const QColor& owner) {
+    const double w = r.width(), h = r.height();
+    p.setPen(QPen(QColor("#2b2b2b"), std::max(1.5, w / 12)));
+    p.drawLine(QPointF(r.left() + w * 0.12, r.top() + h * 0.6), QPointF(r.left() + w * 0.12, r.top() + h * 0.04));
+    p.setPen(QPen(QColor("#2b2b2b"), std::max(1.0, w / 30)));
+    p.setBrush(owner);
+    p.drawRect(QRectF(r.left() + w * 0.12, r.top() + h * 0.04, w * 0.24, h * 0.16));
+}
+
+// A sawmill: a log house with a big saw wheel and a pile of logs.
+void drawSawmill(QPainter& p, const QRectF& r, const QColor& owner) {
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    p.setPen(QPen(QColor(30, 20, 8), std::max(1.0, w / 30)));
+    p.setBrush(QColor("#8a5a2b"));
+    p.drawRect(QRectF(X(0.2), Y(0.42), w * 0.5, h * 0.48));
+    p.setBrush(QColor("#6a4020"));
+    p.drawPolygon(QPolygonF{QPointF(X(0.14), Y(0.44)), QPointF(X(0.45), Y(0.18)), QPointF(X(0.76), Y(0.44))});
+    p.setPen(QPen(QColor("#5a3a18"), std::max(1.0, w / 60)));
+    for (double y = 0.52; y < 0.9; y += 0.09) p.drawLine(QPointF(X(0.2), Y(y)), QPointF(X(0.7), Y(y)));
+    p.setPen(QPen(QColor(30, 20, 8), std::max(1.0, w / 30)));
+    p.setBrush(QColor("#d8dce8"));  // the saw wheel with teeth
+    QPolygonF saw;
+    for (int i = 0; i < 24; ++i) {
+        const double a = M_PI * 2 * i / 24, rad = (i % 2 ? 0.16 : 0.2) * w;
+        saw << QPointF(X(0.78) + std::cos(a) * rad, Y(0.62) + std::sin(a) * rad);
+    }
+    p.drawPolygon(saw);
+    p.setBrush(QColor("#808898"));
+    p.drawEllipse(QPointF(X(0.78), Y(0.62)), w * 0.04, w * 0.04);
+    p.setBrush(QColor("#a87a4a"));  // logs
+    for (int i = 0; i < 3; ++i) p.drawEllipse(QRectF(X(0.0 + 0.1 * i), Y(0.8 - 0.06 * (i % 2)), w * 0.13, h * 0.13));
+    ownerFlag(p, r, owner);
+}
+
+// A quarry: a cut rock face with blocks and a pickaxe.
+void drawQuarry(QPainter& p, const QRectF& r, const QColor& owner) {
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    p.setPen(QPen(QColor(30, 30, 30), std::max(1.0, w / 30)));
+    p.setBrush(QColor("#9a968c"));
+    p.drawPolygon(QPolygonF{QPointF(X(0.05), Y(0.9)), QPointF(X(0.2), Y(0.3)), QPointF(X(0.55), Y(0.15)), QPointF(X(0.9), Y(0.35)),
+                            QPointF(X(0.98), Y(0.9))});
+    p.setBrush(QColor("#c8c4bc"));  // the cut face
+    p.drawPolygon(QPolygonF{QPointF(X(0.3), Y(0.9)), QPointF(X(0.35), Y(0.42)), QPointF(X(0.7), Y(0.42)), QPointF(X(0.75), Y(0.9))});
+    p.setPen(QPen(QColor(90, 88, 80), std::max(1.0, w / 60)));
+    for (double y = 0.55; y < 0.9; y += 0.12) p.drawLine(QPointF(X(0.33), Y(y)), QPointF(X(0.73), Y(y)));
+    p.setPen(QPen(QColor(30, 30, 30), std::max(1.0, w / 30)));
+    p.setBrush(QColor("#b0aca4"));
+    p.drawRect(QRectF(X(0.76), Y(0.74), w * 0.18, h * 0.14));
+    p.drawRect(QRectF(X(0.8), Y(0.6), w * 0.14, h * 0.14));
+    p.setPen(QPen(QColor("#6a4a28"), std::max(1.5, w / 20)));  // pickaxe
+    p.drawLine(QPointF(X(0.12), Y(0.86)), QPointF(X(0.28), Y(0.6)));
+    p.setPen(QPen(QColor("#808898"), std::max(1.5, w / 22)));
+    p.drawLine(QPointF(X(0.18), Y(0.56)), QPointF(X(0.36), Y(0.66)));
+    ownerFlag(p, r, owner);
+}
+
+// A crystal cave: a dark cave mouth with glowing crystals.
+void drawCrystalCave(QPainter& p, const QRectF& r, const QColor& crystal, const QColor& owner) {
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    p.setPen(QPen(QColor(30, 20, 30), std::max(1.0, w / 30)));
+    p.setBrush(QColor("#6a5a70"));
+    p.drawChord(QRectF(X(0.05), Y(0.25), w * 0.9, h * 1.2), 0, 180 * 16);
+    p.setBrush(QColor("#140c18"));
+    p.drawChord(QRectF(X(0.3), Y(0.5), w * 0.4, h * 0.8), 0, 180 * 16);
+    QRadialGradient glow(QPointF(X(0.5), Y(0.75)), w * 0.3);
+    glow.setColorAt(0, QColor(crystal.red(), crystal.green(), crystal.blue(), 150));
+    glow.setColorAt(1, QColor(crystal.red(), crystal.green(), crystal.blue(), 0));
+    p.setPen(Qt::NoPen);
+    p.setBrush(glow);
+    p.drawEllipse(QPointF(X(0.5), Y(0.75)), w * 0.3, h * 0.2);
+    p.setPen(QPen(QColor(40, 10, 40), std::max(1.0, w / 40)));
+    for (const auto& [x, s] : {std::pair{0.62, 1.0}, std::pair{0.78, 0.8}, std::pair{0.88, 0.6}}) {
+        p.setBrush(crystal.lighter(115));
+        p.drawPolygon(QPolygonF{QPointF(X(x - 0.05 * s), Y(0.9)), QPointF(X(x), Y(0.9 - 0.4 * s)), QPointF(X(x + 0.05 * s), Y(0.9))});
+    }
+    ownerFlag(p, r, owner);
+}
+}  // namespace
+
 const QPixmap& mineSprite(const QString& resource, const QColor& resourceColor, const QColor& owner, int size) {
     return sprite(QStringLiteral("mine|%1|%2").arg(resource, owner.name()), size, [&](QPainter& p, const QRectF& r) {
+        if (resource == "wood") return drawSawmill(p, r, owner);
+        if (resource == "stone") return drawQuarry(p, r, owner);
+        if (resource == "gems") return drawCrystalCave(p, r, resourceColor, owner);
         drawMine(p, r, resourceColor, owner);
         drawResourceIcon(p, QRectF(r.left() + r.width() * 0.58, r.top() - r.height() * 0.02, r.width() * 0.42, r.height() * 0.42),
                          resource, resourceColor);
@@ -352,6 +441,17 @@ const QPixmap& mineSprite(const QString& resource, const QColor& resourceColor, 
 }
 const QPixmap& dwellingSprite(const QColor& owner, int size) {
     return sprite(QStringLiteral("dwelling|") + owner.name(), size, [&](QPainter& p, const QRectF& r) { drawDwelling(p, r, owner); });
+}
+const QPixmap& dwellingSprite(const QColor& owner, const QString& unitId, int size) {
+    return sprite(QStringLiteral("dwelling|%1|%2").arg(owner.name(), unitId), size, [&](QPainter& p, const QRectF& r) {
+        drawDwelling(p, r.adjusted(0, r.height() * 0.08, -r.width() * 0.2, 0), owner);
+        // A round sign with the unit that lives there.
+        const QRectF sign(r.left() + r.width() * 0.52, r.top(), r.width() * 0.48, r.height() * 0.48);
+        p.setPen(QPen(QColor(30, 20, 8), std::max(1.0, r.width() / 40)));
+        p.setBrush(QColor(240, 228, 192));
+        p.drawEllipse(sign);
+        drawUnitIcon(p, sign.adjusted(sign.width() * 0.08, sign.height() * 0.06, -sign.width() * 0.08, -sign.height() * 0.06), unitId, 0);
+    });
 }
 const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size) {
     return sprite(QStringLiteral("hero|%1|%2").arg(owner.name()).arg(inBoat), size,

@@ -171,6 +171,7 @@ and react to; add depth afterwards.
 - [x] Animation: heroes walk their route tile by tile on the map; in battle stacks slide to their new hex, losses float up as red -N, wiped-out stacks fade
 - [x] Hero portraits by class (helmets, wizard hat, hoods, leaf crown; undead with green eyes) in the hero panel, hero screen and tavern
 - [x] Minimap: bigger, gold frame, markers for towns (keeps), mines, monsters and heroes; the unexplored world is dark drifting clouds on the map
+- [x] Map objects: sawmill (wood), quarry (stone), crystal cave (gems), mines for the rest; dwellings show their unit on a sign
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

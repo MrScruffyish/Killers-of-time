@@ -420,7 +420,7 @@ void MapView::paintEvent(QPaintEvent*) {
     for (const ViewMine& mine : m_view.mines)
         if (shown(mine.pos)) put(mine.pos, art::mineSprite(mine.resource, resourceColor(mine.resource), ownerOrNeutral(mine.owner), m_tile));
     for (const ViewDwelling& d : m_view.dwellings)
-        if (shown(d.pos)) put(d.pos, art::dwellingSprite(ownerOrNeutral(d.owner), m_tile));
+        if (shown(d.pos)) put(d.pos, art::dwellingSprite(ownerOrNeutral(d.owner), d.unit, m_tile));
     for (const ViewObject& o : m_view.objects) {
         if (!shown(o.pos)) continue;
         if (o.artifact) put(o.pos, art::artifactSprite(m_tile));

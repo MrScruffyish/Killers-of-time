@@ -85,6 +85,10 @@ private slots:
         int x = 10;
         for (const QPixmap& pm : {art::townSprite(QColor("#d62728"), 96), art::heroSprite(QColor("#1f77b4"), false, 64),
                                   art::mineSprite("gold", art::resourceColor("gold"), QColor("#999999"), 64),
+                                  art::mineSprite("wood", art::resourceColor("wood"), QColor("#d62728"), 64),
+                                  art::mineSprite("stone", art::resourceColor("stone"), QColor("#999999"), 64),
+                                  art::mineSprite("gems", art::resourceColor("gems"), QColor("#1f77b4"), 64),
+                                  art::dwellingSprite(QColor("#999999"), "unicorn", 64),
                                   art::chestSprite(art::resourceColor("wood"), 64), art::artifactSprite(64)}) {
             QVERIFY(!pm.isNull());
             p.drawPixmap(x, y, pm);
