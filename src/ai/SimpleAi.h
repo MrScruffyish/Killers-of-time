@@ -14,7 +14,8 @@ namespace kot::ai {
 //  3. build, then buy units in all towns (trading as needed),
 //  4. hire heroes while rich enough (more as the game goes on),
 //  5. heroes in an own town take the garrison along, unless the town is threatened,
-//  6. movement spells, then every hero goes for the best target:
+//  6. movement spells, then every hero goes for the best target (heroes with nothing
+//     left on their island buy a boat at a shipyard and sail to other shores):
 //     value / distance over defending a threatened town, picking up reinforcements,
 //     enemy and neutral things it can take (towns, mines, artifacts, treasures,
 //     dwellings, weaker armies; never into a clearly stronger army) and exploring,
@@ -48,6 +49,10 @@ public:
 private:
     net::Message heroMove(const core::GameState& state, const core::ContentRegistry& content,
                           core::PlayerId me, const core::Hero& hero);
+    net::Message boatPlan(const core::GameState& state, const core::ContentRegistry& content, core::PlayerId me,
+                          const core::Hero& hero);
+    net::Message sailMove(const core::GameState& state, const core::ContentRegistry& content, core::PlayerId me,
+                          const core::Hero& hero);
 
     core::Rng m_rng;
     AiPersonality m_p;
@@ -60,6 +65,8 @@ private:
     QSet<quint32> m_spellCast;       // heroes that considered a movement spell this turn
     QSet<std::uint64_t> m_failedTargets;  // hero/target pairs refused this turn
     std::uint64_t m_lastTarget = 0;
+    QSet<quint32> m_boatTried;                // heroes that bought a boat this turn
+    QHash<quint32, QSet<core::Pos>> m_homeLand;  // the island a hero sailed from
 };
 
 }  // namespace kot::ai

@@ -74,6 +74,16 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     m_seed->setMaximumWidth(160);
     settings->addWidget(m_seed);
     settings->addSpacing(20);
+    settings->addWidget(new QLabel(tr("Type"), this));
+    m_mapType = new QComboBox(this);
+    m_mapType->setObjectName("mapType");
+    m_mapType->addItem(tr("Continent"), QStringLiteral("continent"));
+    m_mapType->addItem(tr("Islands (boats needed)"), QStringLiteral("islands"));
+    settings->addWidget(m_mapType);
+    connect(m_mapType, &QComboBox::activated, this, [this](int) {
+        m_client->setSettings({{"mapType", m_mapType->currentData().toString()}});
+    });
+    settings->addSpacing(20);
     settings->addWidget(new QLabel(tr("Difficulty"), this));
     m_difficulty = new QComboBox(this);
     m_difficulty->setObjectName("difficulty");
@@ -195,7 +205,9 @@ void LobbyPage::rebuild() {
     }
     m_scenarioInfo->setText(campaignText + info);
     const bool random = scenarioId.isEmpty();
-    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed)})
+    m_mapType->setCurrentIndex(std::max(0, m_mapType->findData(lobby.settings.mapType)));
+    for (QWidget* w : {static_cast<QWidget*>(m_width), static_cast<QWidget*>(m_height), static_cast<QWidget*>(m_seed),
+                       static_cast<QWidget*>(m_mapType)})
         w->setEnabled(host && random);
     m_difficulty->setEnabled(host);
     m_start->setEnabled(host);

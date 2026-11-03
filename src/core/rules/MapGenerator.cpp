@@ -143,6 +143,38 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
         }
     }
 
+    // Islands: wavy sea channels (3 tiles wide) cut the land into a grid of pieces.
+    if (p.islands > 1) {
+        int cols = 1, rows = 1;
+        while (cols * rows < p.islands) (cols <= rows ? cols : rows) += 1;
+        const double phase = double(p.seed % 1000) / 1000.0 * 6.28;
+        for (int i = 1; i < cols; ++i)
+            for (int y = 0; y < h; ++y) {
+                const int cx = w * i / cols + int(2.0 * std::sin(y * 0.25 + phase + i));
+                for (int x = cx - 1; x <= cx + 1; ++x)
+                    if (x >= 0 && x < w) tiles[y * w + x] = QStringLiteral("sea");
+            }
+        for (int j = 1; j < rows; ++j)
+            for (int x = 0; x < w; ++x) {
+                const int cy = h * j / rows + int(2.0 * std::sin(x * 0.25 + phase + 2 * j));
+                for (int y = cy - 1; y <= cy + 1; ++y)
+                    if (y >= 0 && y < h) tiles[y * w + x] = QStringLiteral("sea");
+            }
+        // Rivers that ran into a channel end at the sea; fix shores to sand next to the new sea.
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                QString& t = tiles[y * w + x];
+                if (t == QLatin1String("sea") || t == QLatin1String("river") || t == QLatin1String("mountains")) continue;
+                bool shore = false;
+                for (int dy = -1; dy <= 1 && !shore; ++dy)
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        const int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && ny >= 0 && nx < w && ny < h && tiles[ny * w + nx] == QLatin1String("sea")) shore = true;
+                    }
+                if (shore && (t == QLatin1String("grass") || t == QLatin1String("dirt"))) t = QStringLiteral("sand");
+            }
+    }
+
     *out = GameMap::fromTiles(w, h, std::move(tiles));
     return true;
 }

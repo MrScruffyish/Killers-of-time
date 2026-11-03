@@ -39,6 +39,7 @@ private:
     QSpinBox* m_height;
     QLineEdit* m_seed;
     QComboBox* m_difficulty;
+    QComboBox* m_mapType;
     QComboBox* m_scenario;
     QLabel* m_scenarioInfo;
     QPushButton* m_start;

@@ -9,7 +9,8 @@ namespace kot::core {
 
 class ContentRegistry;
 
-// The water tile next to `p` a boat can be put on (sailable, nobody there), if any.
+// The nearest water tile (within two tiles of `p`) a boat can be put on (sailable,
+// nobody there), if any.
 std::optional<Pos> freeWaterNext(const GameState& state, const ContentRegistry& content, Pos p);
 bool hasShipyard(const Town& town, const ContentRegistry& content);
 

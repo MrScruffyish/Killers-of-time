@@ -2,6 +2,8 @@
 
 #include "core/content/ContentRegistry.h"
 #include "core/rules/Boats.h"
+#include "core/rules/GameSetup.h"
+#include "core/rules/Pathfinding.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Movement.h"
 #include "core/rules/TownRules.h"
@@ -74,6 +76,23 @@ private slots:
         QVERIFY(!gs.hero(hero)->inBoat);
         QCOMPARE(gs.hero(hero)->movementPoints, 0);
         QCOMPARE(gs.army(gs.hero(hero)->army)->pos, (Pos{4, 2}));
+    }
+
+    void islandMapsSeparateThePlayers() {
+        GameSetupParams params;
+        params.seed = 5;
+        params.islands = true;
+        params.players = {{"A", false, {}, "humans", 1, "#ff0000"}, {"B", false, {}, "undead", 2, "#00ff00"}};
+        GameState g;
+        QString error;
+        QVERIFY2(createGame(reg, params, &g, nullptr, &error), qPrintable(error));
+        QList<Pos> capitals;
+        for (const Town& t : g.towns())
+            if (t.owner.isValid()) capitals << t.pos;
+        QCOMPARE(capitals.size(), 2);
+        const MoveCostGrid grid(g.map(), reg, MoveMode::Foot);
+        QVERIFY(!findPath(grid, capitals[0], capitals[1]).found);  // only by sea
+        for (const Pos c : capitals) QVERIFY(freeWaterNext(g, reg, c).has_value());  // a shipyard is possible
     }
 
     void boatIsSaved() {

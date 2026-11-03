@@ -8,8 +8,11 @@
 namespace kot::core {
 
 std::optional<Pos> freeWaterNext(const GameState& state, const ContentRegistry& content, Pos p) {
-    for (int dy = -1; dy <= 1; ++dy)
-        for (int dx = -1; dx <= 1; ++dx) {
+    // The nearest free water within two tiles.
+    for (int ring = 1; ring <= 2; ++ring)
+    for (int dy = -ring; dy <= ring; ++dy)
+        for (int dx = -ring; dx <= ring; ++dx) {
+            if (std::max(std::abs(dx), std::abs(dy)) != ring) continue;
             const Pos n{p.x + dx, p.y + dy};
             if ((!dx && !dy) || !state.map().inBounds(n)) continue;
             const TerrainDef* t = content.terrainType(state.map().terrainAt(n));

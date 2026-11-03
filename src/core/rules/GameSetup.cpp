@@ -48,6 +48,23 @@ QList<Pos> largestLandRegion(const GameMap& map, const MoveCostGrid& grid) {
     return best;
 }
 
+// Every walkable piece of land with at least `minSize` tiles, biggest first.
+QList<QList<Pos>> landRegions(const GameMap& map, const MoveCostGrid& grid, int minSize) {
+    QSet<Pos> seen;
+    QList<QList<Pos>> regions;
+    for (int y = 0; y < map.height(); ++y)
+        for (int x = 0; x < map.width(); ++x) {
+            const Pos p{x, y};
+            if (grid.cost(p) < 0 || seen.contains(p)) continue;
+            QList<Pos> tiles = reachableTiles(grid, p, 1000000000).keys();
+            for (const Pos& t : tiles) seen.insert(t);
+            std::sort(tiles.begin(), tiles.end());
+            if (tiles.size() >= minSize) regions.append(tiles);
+        }
+    std::stable_sort(regions.begin(), regions.end(), [](const QList<Pos>& a, const QList<Pos>& b) { return a.size() > b.size(); });
+    return regions;
+}
+
 bool roomAround(const MoveCostGrid& grid, Pos p) {
     for (int dy = -1; dy <= 1; ++dy)
         for (int dx = -1; dx <= 1; ++dx) {
@@ -72,6 +89,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     mapParams.width = params.mapWidth;
     mapParams.height = params.mapHeight;
     mapParams.seed = params.seed;
+    if (params.islands) mapParams.islands = static_cast<int>(params.players.size());
     GameMap map;
     QString mapError;
     if (!generateMap(content, mapParams, &map, &mapError)) return fail(error, mapError);
@@ -79,19 +97,48 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     GameState gs(params.seed ^ 0xA5A5A5A5A5A5A5A5ULL);
     gs.setMap(map);
     const MoveCostGrid grid(gs.map(), content, MoveMode::Foot);
-    const QList<Pos> land = largestLandRegion(gs.map(), grid);
+    const int count = static_cast<int>(params.players.size());
+    // Islands: all the bigger land pieces, one start on each of the biggest.
+    QList<QList<Pos>> regions = params.islands ? landRegions(gs.map(), grid, 30) : QList<QList<Pos>>{largestLandRegion(gs.map(), grid)};
+    if (params.islands && regions.size() < count)
+        return fail(error, QStringLiteral("the islands map has only %1 islands for %2 players").arg(regions.size()).arg(count));
+    QList<Pos> land;
+    for (const QList<Pos>& r : regions) land << r;
+    std::sort(land.begin(), land.end());
 
-    // Start positions: spread out over land that has room around it.
+    // Start positions: spread out over land that has room around it (on islands: near
+    // the shore of the player's own island, so a shipyard can be built).
+    const auto nearWater = [&](Pos p) {
+        for (int dy = -2; dy <= 2; ++dy)
+            for (int dx = -2; dx <= 2; ++dx) {
+                const Pos n{p.x + dx, p.y + dy};
+                if (grid.inBounds(n) && content.terrainType(gs.map().terrainAt(n)) &&
+                    content.terrainType(gs.map().terrainAt(n))->sailable)
+                    return true;
+            }
+        return false;
+    };
     QList<Pos> candidates;
     for (const Pos& p : land) {
         if (p.x >= 2 && p.y >= 2 && p.x < map.width() - 2 && p.y < map.height() - 2 && roomAround(grid, p))
             candidates.append(p);
     }
-    const int count = static_cast<int>(params.players.size());
     if (candidates.size() < count) return fail(error, QStringLiteral("this map has too little land for %1 players").arg(count));
     QList<Pos> starts;
-    starts.append(candidates[gs.rng().nextInt(0, static_cast<int>(candidates.size()) - 1)]);
-    while (starts.size() < count) {
+    if (params.islands) {
+        for (int i = 0; i < count; ++i) {
+            QList<Pos> own;
+            for (const Pos& p : regions[i])
+                if (p.x >= 2 && p.y >= 2 && p.x < map.width() - 2 && p.y < map.height() - 2 && roomAround(grid, p) && nearWater(p))
+                    own.append(p);
+            if (own.isEmpty()) return fail(error, QStringLiteral("an island has no room for a town"));
+            std::sort(own.begin(), own.end());
+            starts.append(own[gs.rng().nextInt(0, static_cast<int>(own.size()) - 1)]);
+        }
+    } else {
+        starts.append(candidates[gs.rng().nextInt(0, static_cast<int>(candidates.size()) - 1)]);
+    }
+    while (starts.size() < count) {  // (continent maps)
         Pos best = candidates.first();
         int bestDistance = -1;
         for (int i = 0; i < 300; ++i) {

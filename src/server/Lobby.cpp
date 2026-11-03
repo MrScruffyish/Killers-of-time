@@ -253,6 +253,10 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
                 return LobbyResult::failure("invalid_value", "scenario: unknown scenario");
             s.scenario = v.toString();
             if (!s.scenario.isEmpty()) s.campaign.clear();
+        } else if (key == "mapType") {
+            if (v.toString() != "continent" && v.toString() != "islands")
+                return LobbyResult::failure("invalid_value", "mapType: continent or islands");
+            s.mapType = v.toString();
         } else if (key == "campaign") {
             if (!v.isString() || (!v.toString().isEmpty() && !m_campaignIds.contains(v.toString())))
                 return LobbyResult::failure("invalid_value", "campaign: unknown campaign");
@@ -269,7 +273,7 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
     }
     const bool changed = s.mapWidth != m_state.settings.mapWidth || s.mapHeight != m_state.settings.mapHeight ||
                          s.seed != m_state.settings.seed || s.scenario != m_state.settings.scenario ||
-                         s.campaign != m_state.settings.campaign;
+                         s.campaign != m_state.settings.campaign || s.mapType != m_state.settings.mapType;
     m_state.settings = s;
     if (changed) {
         for (SlotInfo& slot : m_state.slotList) {

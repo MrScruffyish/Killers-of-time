@@ -50,6 +50,7 @@ struct LobbySettings {
     QString difficulty = QStringLiteral("normal");  // easy, normal, hard, expert (balance.json)
     QString scenario;  // scenario id (data/scenarios), empty = a random map
     QString campaign;  // campaign id (data/campaigns): its next chapter is played
+    QString mapType = QStringLiteral("continent");  // random maps: continent or islands
 };
 
 // Everything a client needs to show the game setup screen.

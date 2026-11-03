@@ -88,6 +88,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     params.mapHeight = lobby.settings.mapHeight;
     params.seed = lobby.settings.seed;
     params.difficulty = lobby.settings.difficulty;
+    params.islands = lobby.settings.mapType == QLatin1String("islands");
     QList<const net::SlotInfo*> occupiedSlots;
     for (const net::SlotInfo& s : lobby.slotList) {
         if (!s.occupied()) continue;

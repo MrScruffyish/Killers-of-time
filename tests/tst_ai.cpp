@@ -122,6 +122,37 @@ private slots:
         }
     }
 
+    void aisSailOnIslandMaps() {
+        net::LobbyState lobby;
+        lobby.settings.seed = 31;
+        lobby.settings.mapType = "islands";
+        lobby.settings.mapWidth = lobby.settings.mapHeight = 48;
+        net::SlotInfo human;
+        human.index = 0; human.kind = net::SlotKind::Human; human.clientId = 1; human.name = "Ann";
+        human.race = "humans"; human.team = 1; human.color = "#d62728"; human.ready = true;
+        lobby.slotList.append(human);
+        for (int i = 1; i <= 2; ++i) {
+            net::SlotInfo ai;
+            ai.index = i; ai.kind = net::SlotKind::Ai; ai.name = QString("Bot%1").arg(i); ai.race = i == 1 ? "undead" : "sylvan";
+            ai.team = 1 + i; ai.color = i == 1 ? "#2ca02c" : "#1f77b4"; ai.ready = true; ai.aiProfile = "explorer";
+            lobby.slotList.append(ai);
+        }
+        GameSession s(reg);
+        QString error;
+        QVERIFY2(s.start(lobby, &error), qPrintable(error));
+        int sailingDays = 0;
+        for (int day = 0; day < 60; ++day) {
+            playDays(s, 1);
+            for (const core::Hero& h : s.state().heroes())
+                if (h.inBoat && s.state().player(h.owner)->controller == core::Player::Controller::Ai) {
+                    ++sailingDays;
+                    break;
+                }
+        }
+        qInfo() << "days with an AI hero at sea:" << sailingDays << "day" << s.state().day();
+        QVERIFY2(sailingDays > 0, "an AI should take to the sea when its island is done");
+    }
+
     void deterministic() {
         auto a = startGame(3);
         auto b = startGame(3);

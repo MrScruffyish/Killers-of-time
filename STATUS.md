@@ -139,9 +139,10 @@ and react to; add depth afterwards.
 - [x] Packaging: install rules, desktop entries, icon, CPack DEB/TGZ (`cpack -G DEB`)
 - [x] Random maps have neutral towns with garrisons to conquer
 - [x] Boats: Shipyard (coastal towns), buy a boat, sail on water, land next to the shore (ends the day's movement); hull drawn under the hero. Tests: `tst_boats` (41 test programs)
+- [x] Island maps (lobby map type; sea channels, one island per player, starts near the shore) and the AI uses boats when its island is done
 - [x] Weekly events (`events.json`: resources for everyone, growth changes, extra units; announced in the client)
 - [x] Hero screen (H): experience bar, traits by group with + buttons for level-up picks, army with stats and stars, spellbook and artifacts with descriptions
-- [ ] Playtesting; next ideas: upkeep (D9), AI using boats, island maps in the generator
+- [ ] Playtesting; next ideas: upkeep (D9)
 
 ---
 

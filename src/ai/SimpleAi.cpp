@@ -7,6 +7,7 @@
 #include "ai/AiView.h"
 #include "core/content/ContentRegistry.h"
 #include "core/magic/Spells.h"
+#include "core/rules/Boats.h"
 #include "net/Protocol.h"
 
 namespace kot::ai {
@@ -74,6 +75,7 @@ void SimpleAi::beginTurn(const GameState&, const ContentRegistry&, PlayerId) {
     m_heroDone.clear();
     m_spellCast.clear();
     m_failedTargets.clear();
+    m_boatTried.clear();
 }
 
 void SimpleAi::commandDone(const net::Message& cmd, bool ok) {
@@ -172,7 +174,8 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
     for (const Hero& h : state.heroes()) {
         if (h.owner != me || h.movementPoints <= 0 || m_heroDone.contains(h.id.value())) continue;
         if (m_moves.value(h.id.value()) >= kMaxMovesPerHero) continue;
-        const net::Message move = heroMove(state, content, me, h);
+        net::Message move = h.inBoat ? sailMove(state, content, me, h) : heroMove(state, content, me, h);
+        if (move.type.isEmpty() && !h.inBoat) move = boatPlan(state, content, me, h);  // nothing left here
         if (move.type.isEmpty()) {
             m_heroDone.insert(h.id.value());
             continue;
@@ -183,6 +186,100 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
 
     // 7. Done.
     return command(net::msg::endTurn);
+}
+
+// The land a hero can walk to from `from` (8 directions, walkable tiles).
+static QSet<Pos> walkableRegion(const GameState& state, const ContentRegistry& content, Pos from) {
+    QSet<Pos> seen{from};
+    QList<Pos> todo{from};
+    while (!todo.isEmpty()) {
+        const Pos p = todo.takeLast();
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                const Pos n{p.x + dx, p.y + dy};
+                if (seen.contains(n) || !state.map().inBounds(n)) continue;
+                const TerrainDef* t = content.terrainType(state.map().terrainAt(n));
+                if (!t || !t->walkable) continue;
+                seen.insert(n);
+                todo.append(n);
+            }
+    }
+    return seen;
+}
+
+// Nothing more to do on this island: buy a boat in a town with a shipyard (or go there).
+net::Message SimpleAi::boatPlan(const GameState& state, const ContentRegistry& content, PlayerId me, const Hero& hero) {
+    const Army* army = state.army(hero.army);
+    if (!army || army->totalUnits() == 0 || m_boatTried.contains(hero.id.value())) return {};
+    const Player* player = state.player(me);
+    const ResourceAmounts& cost = content.balance().economy.boatCost;
+    for (auto it = cost.begin(); it != cost.end(); ++it)
+        if (player->resources.value(it.key()) < it.value()) return {};
+    for (const Town& t : state.towns()) {
+        if (t.owner != me || !hasShipyard(t, content) || !freeWaterNext(state, content, t.pos)) continue;
+        if (t.pos == army->pos) {
+            m_boatTried.insert(hero.id.value());
+            m_homeLand[hero.id.value()] = walkableRegion(state, content, t.pos);
+            return command(net::msg::buyBoat, {{"hero", toInt(hero.id.value())}});
+        }
+        if (!m_failedTargets.contains(key(hero.id.value(), t.pos))) {
+            m_lastTarget = key(hero.id.value(), t.pos);
+            return command(net::msg::moveHero, {{"hero", toInt(hero.id.value())}, {"x", t.pos.x}, {"y", t.pos.y}});
+        }
+    }
+    return {};
+}
+
+// In a boat: land on known shore away from home, else sail to the edge of the known sea.
+net::Message SimpleAi::sailMove(const GameState& state, const ContentRegistry& content, PlayerId me, const Hero& hero) {
+    const Army* army = state.army(hero.army);
+    if (!army) return {};
+    const AiView view(state, content, me);
+    const QSet<Pos> home = m_homeLand.value(hero.id.value());
+    const auto sailable = [&](Pos p) {
+        const TerrainDef* t = state.map().inBounds(p) ? content.terrainType(state.map().terrainAt(p)) : nullptr;
+        return t && t->sailable;
+    };
+    const auto walkable = [&](Pos p) {
+        const TerrainDef* t = state.map().inBounds(p) ? content.terrainType(state.map().terrainAt(p)) : nullptr;
+        return t && t->walkable && !t->sailable;
+    };
+    const Pos at = army->pos;
+    // Land right here if foreign shore is next to us.
+    for (int dy = -1; dy <= 1; ++dy)
+        for (int dx = -1; dx <= 1; ++dx) {
+            const Pos n{at.x + dx, at.y + dy};
+            if ((dx || dy) && walkable(n) && !home.contains(n) && view.explored(n) && !m_failedTargets.contains(key(hero.id.value(), n))) {
+                bool free = true;
+                for (const Army& a : state.armies()) free = free && a.pos != n;
+                if (!free) continue;
+                m_lastTarget = key(hero.id.value(), n);
+                return command(net::msg::moveHero, {{"hero", toInt(hero.id.value())}, {"x", n.x}, {"y", n.y}});
+            }
+        }
+    // Else the nearest known water next to foreign shore, or next to the unknown.
+    Pos best{-1, -1};
+    int bestDistance = 1 << 30;
+    for (int y = 0; y < state.map().height(); ++y)
+        for (int x = 0; x < state.map().width(); ++x) {
+            const Pos p{x, y};
+            if (!sailable(p) || !view.explored(p) || p == at || m_failedTargets.contains(key(hero.id.value(), p))) continue;
+            bool good = false;
+            for (int dy = -1; dy <= 1 && !good; ++dy)
+                for (int dx = -1; dx <= 1; ++dx) {
+                    const Pos n{x + dx, y + dy};
+                    if (!state.map().inBounds(n)) continue;
+                    if ((walkable(n) && !home.contains(n) && view.explored(n)) || !view.explored(n)) good = true;
+                }
+            const int d = std::max(std::abs(x - at.x), std::abs(y - at.y));
+            if (good && d < bestDistance) {
+                bestDistance = d;
+                best = p;
+            }
+        }
+    if (best.x < 0) return {};
+    m_lastTarget = key(hero.id.value(), best);
+    return command(net::msg::moveHero, {{"hero", toInt(hero.id.value())}, {"x", best.x}, {"y", best.y}});
 }
 
 net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& content, PlayerId me,
@@ -198,8 +295,10 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         double value;
     };
     QList<Target> targets;
+    // Only what can be walked to: things on other islands need a boat (boatPlan).
+    const QSet<Pos> island = walkableRegion(state, content, army->pos);
     const auto add = [&](Pos p, double value) {
-        if (p != army->pos && !m_failedTargets.contains(key(hid, p))) targets.append({p, value});
+        if (p != army->pos && island.contains(p) && !m_failedTargets.contains(key(hid, p))) targets.append({p, value});
     };
 
     QSet<ArmyId> garrisons;

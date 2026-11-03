@@ -24,6 +24,7 @@ struct GameSetupParams {
     int mapHeight = 64;
     quint64 seed = 1;
     QString difficulty = QStringLiteral("normal");  // overall level, see balance.json
+    bool islands = false;  // one island per player, boats needed to meet
     QList<PlayerSetup> players;
 };
 
