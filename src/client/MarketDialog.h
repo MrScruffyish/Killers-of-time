@@ -5,7 +5,7 @@
 #include "client/ViewModel.h"
 
 class QListWidget;
-class QSpinBox;
+class QSlider;
 class QLabel;
 class QPushButton;
 
@@ -33,7 +33,8 @@ private:
     GameView m_view;
     QListWidget* m_give;
     QListWidget* m_get;
-    QSpinBox* m_amount;
+    QSlider* m_amount;      // 0 .. what you have of the given resource
+    QLabel* m_amountLabel;
     QLabel* m_preview;
     QLabel* m_rate;
     QPushButton* m_trade;

@@ -5,7 +5,8 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
-#include <QSpinBox>
+#include <QSignalBlocker>
+#include <QSlider>
 #include <QVBoxLayout>
 
 #include "client/Art.h"
@@ -37,14 +38,20 @@ MarketDialog::MarketDialog(const core::ContentRegistry* content, QWidget* parent
     column(tr("Get"), &m_get, "marketGet");
     layout->addLayout(lists, 1);
     auto* row = new QHBoxLayout();
-    row->addWidget(new QLabel(tr("Amount to give"), this));
-    m_amount = new QSpinBox(this);
+    row->addWidget(new QLabel(tr("Give"), this));
+    m_amount = new QSlider(Qt::Horizontal, this);
     m_amount->setObjectName("marketAmount");
-    m_amount->setRange(1, 1000000);
-    row->addWidget(m_amount);
+    m_amount->setRange(0, 0);
+    m_amount->setMinimumWidth(240);
+    row->addWidget(m_amount, 1);
+    m_amountLabel = new QLabel(this);
+    m_amountLabel->setMinimumWidth(70);
+    m_amountLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    row->addWidget(m_amountLabel);
+    auto* half = new QPushButton(tr("Half"), this);
     auto* all = new QPushButton(tr("All"), this);
+    row->addWidget(half);
     row->addWidget(all);
-    row->addStretch(1);
     layout->addLayout(row);
     m_preview = new QLabel(this);
     m_preview->setObjectName("marketPreview");
@@ -60,10 +67,19 @@ MarketDialog::MarketDialog(const core::ContentRegistry* content, QWidget* parent
     }
     layout->addLayout(buttons);
     connect(close, &QPushButton::clicked, this, &QDialog::close);
-    connect(all, &QPushButton::clicked, this, [this]() { m_amount->setValue(m_view.resources.value(chosen(m_give))); });
-    connect(m_give, &QListWidget::currentRowChanged, this, &MarketDialog::refreshPreview);
+    connect(all, &QPushButton::clicked, this, [this]() { m_amount->setValue(m_amount->maximum()); });
+    connect(half, &QPushButton::clicked, this, [this]() { m_amount->setValue(m_amount->maximum() / 2); });
+    connect(m_give, &QListWidget::currentRowChanged, this, [this]() {
+        // The slider runs from nothing to all you have of it; start at half.
+        const int have = m_view.resources.value(chosen(m_give));
+        const QSignalBlocker block(m_amount);
+        m_amount->setRange(0, std::max(0, have));
+        m_amount->setPageStep(std::max(1, have / 10));
+        m_amount->setValue(have / 2);
+        refreshPreview();
+    });
     connect(m_get, &QListWidget::currentRowChanged, this, &MarketDialog::refreshPreview);
-    connect(m_amount, &QSpinBox::valueChanged, this, &MarketDialog::refreshPreview);
+    connect(m_amount, &QSlider::valueChanged, this, &MarketDialog::refreshPreview);
     connect(m_trade, &QPushButton::clicked, this, [this]() {
         const QString give = chosen(m_give), get = chosen(m_get);
         emit commandRequested("trade", {{"give", give}, {"amount", m_amount->value()}, {"get", get}},
@@ -95,6 +111,14 @@ void MarketDialog::setView(const GameView& view) {
         list->setCurrentRow(std::min(fallback, list->count() - 1));
     };
     select(m_give, give, 1);
+    {
+        const int have = view.resources.value(chosen(m_give));
+        const QSignalBlocker block(m_amount);
+        const int keep = m_amount->value();
+        m_amount->setRange(0, std::max(0, have));
+        m_amount->setPageStep(std::max(1, have / 10));
+        m_amount->setValue(std::min(keep, have));
+    }
     select(m_get, get, 0);
     m_rate->setText(tr("You get <b>%1%</b> of the fair value (more with Marketplaces in your towns).").arg(view.tradePercent));
     refreshPreview();
@@ -104,10 +128,13 @@ void MarketDialog::refreshPreview() {
     const QString give = chosen(m_give), get = chosen(m_get);
     const int have = m_view.resources.value(give);
     const int amount = m_amount->value();
+    m_amountLabel->setText(QStringLiteral("<b>%1</b> / %2").arg(amount).arg(have));
     const int yield = give.isEmpty() || get.isEmpty() || give == get ? 0
                       : core::tradeYield(*m_content, give, amount, get, m_view.tradePercent);
     QString why;
     if (give == get) why = tr("Choose two different resources.");
+    else if (have <= 0) why = tr("You have no %1 to give.").arg(give);
+    else if (amount <= 0) why = tr("Slide to choose how much to give.");
     else if (amount > have) why = tr("You only have %1 %2.").arg(have).arg(give);
     else if (yield <= 0) why = tr("Too little to get anything back; give more.");
     else if (!m_view.isMyTurn()) why = tr("Trading is possible on your turn.");
