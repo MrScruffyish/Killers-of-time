@@ -22,6 +22,7 @@
 #include "client/Settings.h"
 #include "client/SpellBook.h"
 #include "client/TownDialog.h"
+#include "client/BuildTree.h"
 #include "core/content/ContentRegistry.h"
 #include "net/LobbyClient.h"
 #include "server/GameServer.h"
@@ -400,6 +401,19 @@ private slots:
         QVERIFY(!game->townDialog()->findChild<QPushButton*>("townNextButton")->isEnabled());
         QApplication::processEvents();
         shot(game->townDialog(), "4_town_buildings");
+        {
+            auto* tabs = game->townDialog()->findChild<QTabWidget*>();
+            auto* tree = game->townDialog()->findChild<BuildTree*>("buildTree");
+            QVERIFY(tree);
+            QVERIFY(!tree->nodeRect("barracks").isEmpty());
+            QVERIFY(!tree->nodeRect("town_hall").isEmpty());
+            QVERIFY(tree->nodeRect("town_hall").left() > tree->nodeRect("village_hall").left() ||
+                    tree->nodeRect("village_hall").isEmpty());  // what it needs stands to the left
+            tabs->setCurrentWidget(game->townDialog()->findChild<QWidget*>("buildTreeScroll"));
+            QApplication::processEvents();
+            shot(game->townDialog(), "4b_town_tree");
+            tabs->setCurrentIndex(0);
+        }
         auto* build = game->townDialog()->findChild<QPushButton*>("build_barracks");
         QVERIFY(build && build->isEnabled());
         QTest::mouseClick(build, Qt::LeftButton);
@@ -407,7 +421,11 @@ private slots:
         // The only town has built today: "Build, then buy" is off until tomorrow.
         QTRY_VERIFY_WITH_TIMEOUT(!game->findChild<QPushButton*>("buildAndBuyButton")->isEnabled(), 3000);
         QTRY_VERIFY_WITH_TIMEOUT(game->townDialog()->findChild<QPushButton*>("recruit_militia") != nullptr, 5000);
-        game->townDialog()->findChild<QTabWidget*>()->setCurrentIndex(1);
+        {
+            auto* tabs = game->townDialog()->findChild<QTabWidget*>();
+            for (int i = 0; i < tabs->count(); ++i)
+                if (tabs->tabText(i) == "Recruit") tabs->setCurrentIndex(i);
+        }
         QApplication::processEvents();
         shot(game->townDialog(), "5_town_recruit");
         auto* recruit = game->townDialog()->findChild<QPushButton*>("recruit_militia");

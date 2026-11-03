@@ -10,6 +10,7 @@
 #include <QPainter>
 #include <QSet>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QShortcut>
 #include <QSpinBox>
 #include <QTabWidget>
@@ -18,6 +19,7 @@
 #include <algorithm>
 
 #include "client/Art.h"
+#include "client/BuildTree.h"
 #include "client/Settings.h"
 #include "core/content/ContentRegistry.h"
 
@@ -345,6 +347,46 @@ void TownDialog::rebuild() {
         for (const Row& r : rows) any = any || r.rank <= 1;
         if (!any && !builtToday) layout->addWidget(new QLabel(tr("Nothing can be built here right now."), page));
         m_tabs->addTab(page, art::buttonIcon("build"), tr("Buildings"));
+
+        // ---- The same as a picture: what needs what.
+        QList<BuildTree::Node> nodes;
+        QHash<QString, QString> whyNot;
+        for (const BuildOption& o : town->buildOptions) whyNot.insert(o.id, o.why);
+        for (const core::BuildingDef& b : m_content->buildings()) {
+            if (!b.fitsRace(town->race) || ruledOut(b.id)) continue;
+            BuildTree::Node nd;
+            nd.id = b.id;
+            nd.name = b.name;
+            nd.needs = b.requiredBuildings;
+            if (!b.upgradeOf.isEmpty() && !nd.needs.contains(b.upgradeOf)) nd.needs << b.upgradeOf;
+            const QString why = whyNot.value(b.id);
+            if (town->buildings.contains(b.id)) nd.state = BuildTree::State::Built;
+            else if (whyNot.contains(b.id) && why.isEmpty()) nd.state = BuildTree::State::Now;
+            else if (why.startsWith("not enough")) nd.state = BuildTree::State::Trade;
+            else nd.state = BuildTree::State::Blocked;
+            QStringList needNames;
+            for (const QString& r : nd.needs) needNames << name(r).toHtmlEscaped();
+            QString tip = QStringLiteral("<b>%1</b>").arg(b.name.toHtmlEscaped());
+            if (nd.state != BuildTree::State::Built) tip += QStringLiteral("<br>%1").arg(costText(b.cost).toHtmlEscaped());
+            const QString does = effectsText(b);
+            if (!does.isEmpty()) tip += QStringLiteral("<br>%1").arg(does.toHtmlEscaped());
+            if (!needNames.isEmpty()) tip += tr("<br><i>Needs:</i> %1").arg(needNames.join(", "));
+            if (nd.state == BuildTree::State::Built) tip += tr("<br><span style='color:#9acf72'>Built.</span>");
+            else if (!why.isEmpty()) tip += QStringLiteral("<br><span style='color:#e8a040'>%1</span>").arg(why.toHtmlEscaped());
+            nd.tooltip = tip;
+            nodes << nd;
+        }
+        auto* tree = new BuildTree();
+        tree->setNodes(nodes, myTurn && !builtToday);
+        connect(tree, &BuildTree::buildRequested, this, [=, this](const QString& id, bool trade) {
+            send("build", {{"town", tid}, {"building", id}, {"useTrade", trade}}, tr("Build %1").arg(name(id)));
+        });
+        auto* scroll = new QScrollArea();
+        scroll->setObjectName("buildTreeScroll");
+        scroll->setWidget(tree);
+        scroll->setWidgetResizable(false);
+        scroll->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+        m_tabs->addTab(scroll, art::buttonIcon("market"), tr("Building tree"));
     }
 
     // ---- Recruit (only when there is something to recruit)

@@ -7,6 +7,7 @@ add_library(kot_client_lib STATIC
     Art.h
     Art.cpp
     IconArt.cpp
+    BuildTree.cpp
     Sound.h
     Sound.cpp
     MovePlanner.h
@@ -27,6 +28,7 @@ add_library(kot_client_lib STATIC
     TownArt.cpp
     PortraitArt.cpp
     SpellBook.h
+    BuildTree.h
     SpellBook.cpp
     MapMakerDialog.h
     MapMakerDialog.cpp
