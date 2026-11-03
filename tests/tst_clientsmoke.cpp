@@ -93,6 +93,25 @@ private slots:
         p.end();
         const QString dir = qEnvironmentVariable("KOT_SCREENSHOT_DIR");
         if (!dir.isEmpty()) sheet.save(QDir(dir).filePath("0_units.png"));
+        // Towns: palisade / walls / citadel, small to big, for each race; and a town scene.
+        QImage towns(3 * 4 * 110, 3 * 120 + 190, QImage::Format_ARGB32);
+        towns.fill(QColor("#5d8a3a"));
+        QPainter tp(&towns);
+        int row = 0;
+        for (const QString race : {"humans", "undead", "sylvan"}) {
+            for (int walls = 0; walls <= 2; ++walls)
+                for (int stage = 0; stage < 4; ++stage)
+                    tp.drawPixmap((walls * 4 + stage) * 110, row * 120,
+                                  art::townSprite(art::TownLook{QColor("#1f77b4"), race, walls, stage * 3 + (walls ? 1 : 0)}, 104));
+            ++row;
+        }
+        using K = art::SceneBuilding::Kind;
+        art::drawTownScene(tp, QRectF(0, 3 * 120 + 10, towns.width(), 170), art::TownLook{QColor("#d62728"), "humans", 2, 12},
+                           {{K::Hall, 0, {}}, {K::Tavern, 0, {}}, {K::Dwelling, 1, "pikeman"}, {K::Dwelling, 2, "archer_elite"},
+                            {K::MageGuild, 2, {}}, {K::Market, 0, {}}, {K::Shipyard, 0, {}}, {K::Walls, 0, {}}, {K::Walls, 0, {}},
+                            {K::Dwelling, 0, "armoured_eagle"}});
+        tp.end();
+        if (!dir.isEmpty()) towns.save(QDir(dir).filePath("0_towns.png"));
         // A lost battle as the result window shows it.
         const QJsonObject report{{"outcome", "defender"}, {"rounds", 4}, {"loserHeroKilled", true},
                                  {"attacker", QJsonObject{{"owner", 1}, {"losses", QJsonObject{{"archer", 12}, {"militia", 20}}}}},

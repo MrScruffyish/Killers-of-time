@@ -5,6 +5,8 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QPainter>
+#include <QSet>
 #include <QPushButton>
 #include <QShortcut>
 #include <QSpinBox>
@@ -13,6 +15,7 @@
 #include <QVBoxLayout>
 #include <algorithm>
 
+#include "client/Art.h"
 #include "client/Settings.h"
 #include "core/content/ContentRegistry.h"
 
@@ -24,6 +27,11 @@ TownDialog::TownDialog(const core::ContentRegistry* content, QWidget* parent)
     rememberGeometry(this, QStringLiteral("townDialog"));
     resize(900, 560);
     auto* layout = new QVBoxLayout(this);
+    m_scene = new QLabel(this);
+    m_scene->setObjectName("townScene");
+    m_scene->setMinimumHeight(170);
+    m_scene->setAlignment(Qt::AlignCenter);
+    layout->addWidget(m_scene);
     m_tabs = new QTabWidget(this);
     layout->addWidget(m_tabs, 1);
     auto* bottom = new QHBoxLayout();
@@ -78,6 +86,49 @@ QString TownDialog::effectsText(const core::BuildingDef& b) const {
     return parts.isEmpty() ? tr("Needed for other buildings") : parts.join("; ");
 }
 
+void TownDialog::drawScene(const ViewTown& town) {
+    // The town as a picture: one figure per building (the top of each upgrade
+    // chain), the walls in front. It fills up as the town grows.
+    using K = art::SceneBuilding::Kind;
+    QSet<QString> replaced;
+    for (const QString& id : town.buildings)
+        if (const core::BuildingDef* b = m_content->building(id); b && !b->upgradeOf.isEmpty()) replaced.insert(b->upgradeOf);
+    QList<art::SceneBuilding> scene;
+    for (const QString& id : town.buildings) {
+        const core::BuildingDef* b = m_content->building(id);
+        if (!b || replaced.contains(id)) continue;
+        art::SceneBuilding sb;
+        for (const core::BuildingEffect& e : b->effects) {
+            switch (e.type) {
+            case core::BuildingEffect::Type::Dwelling:
+                sb.kind = K::Dwelling;
+                sb.unit = e.unit;
+                if (const core::UnitDef* u = m_content->unit(e.unit)) sb.level = u->rank;
+                break;
+            case core::BuildingEffect::Type::MageGuild: sb.kind = K::MageGuild; sb.level = e.amount; break;
+            case core::BuildingEffect::Type::Tavern: sb.kind = K::Tavern; break;
+            case core::BuildingEffect::Type::Market: sb.kind = K::Market; break;
+            case core::BuildingEffect::Type::Shipyard: sb.kind = K::Shipyard; break;
+            case core::BuildingEffect::Type::Defense: sb.kind = K::Walls; break;
+            case core::BuildingEffect::Type::Income:
+                if (id == QLatin1String("village_hall")) sb.kind = K::Hall;
+                break;
+            }
+        }
+        scene.append(sb);
+    }
+    const ViewPlayer* owner = m_view.player(town.owner);
+    const int w = std::max(600, width() - 30), h = 170;
+    QPixmap pm(w, h);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    art::drawTownScene(p, QRectF(0, 0, w, h), art::TownLook{owner ? QColor(owner->color) : QColor("#999999"), town.race, town.walls, town.size}, scene);
+    p.end();
+    m_scene->setPixmap(pm);
+    m_scene->setToolTip(tr("%1: %2 buildings%3").arg(town.name).arg(town.buildings.size())
+                            .arg(town.walls >= 2 ? tr(", a citadel") : town.walls == 1 ? tr(", stone walls") : tr(", a palisade")));
+}
+
 void TownDialog::showTown(const GameView& view, int townId) {
     m_townId = townId;
     m_tabs->setCurrentIndex(0);
@@ -99,6 +150,7 @@ void TownDialog::rebuild() {
     }
     const bool myTurn = m_view.isMyTurn();
     setWindowTitle(tr("%1 (%2)").arg(town->name, town->race));
+    drawScene(*town);
     const int keep = m_tabs->currentIndex();
     while (m_tabs->count() > 0) {
         QWidget* old = m_tabs->widget(0);

@@ -6,6 +6,7 @@
 #include "client/ViewModel.h"
 
 class QTabWidget;
+class QLabel;
 
 namespace kot::core { class ContentRegistry; }
 
@@ -29,6 +30,7 @@ signals:
 
 private:
     void rebuild();
+    void drawScene(const ViewTown& town);
     QString costText(const core::ResourceAmounts& cost) const;
     QString unitName(const QString& id) const;
     // What a building does, in a few words (from its effects).
@@ -38,6 +40,7 @@ private:
     GameView m_view;
     int m_townId = 0;
     QTabWidget* m_tabs;
+    QLabel* m_scene;
     bool m_onlyBuildable = false;  // remembered in QSettings
 };
 

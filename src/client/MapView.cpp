@@ -362,7 +362,8 @@ void MapView::paintEvent(QPaintEvent*) {
     for (const ViewTown& t : m_view.towns) {
         if (!shown(t.pos)) continue;
         const QRect gate = tileRect(t.pos);
-        p.drawPixmap(QPoint(gate.left(), gate.top() - m_tile), art::townSprite(ownerOrNeutral(t.owner), 2 * m_tile));
+        p.drawPixmap(QPoint(gate.left(), gate.top() - m_tile),
+                     art::townSprite(art::TownLook{ownerOrNeutral(t.owner), t.race, t.walls, t.size}, 2 * m_tile));
         if (m_tile >= 32) {
             QFont f = p.font();
             f.setPixelSize(std::max(10, m_tile / 4));

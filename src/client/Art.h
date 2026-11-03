@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QPixmap>
 #include <QRectF>
+#include <QList>
 #include <QString>
 #include <functional>
 
@@ -30,6 +31,24 @@ int nextZoom(int tile, int direction);  // the next step up (+1) or down (-1)
 const QPixmap& sprite(const QString& key, int size, const std::function<void(QPainter&, const QRectF&)>& draw);
 // The cached sprites of the map objects (size = the tile; a town covers 2x2 tiles).
 const QPixmap& townSprite(const QColor& owner, int size);
+// What a town looks like from outside (TownArt.cpp): its race's stone and roofs,
+// how big it is (number of buildings) and its walls (0 palisade, 1 stone, 2 citadel).
+struct TownLook {
+    QColor owner;
+    QString race;
+    int walls = 0;
+    int size = 0;
+};
+void drawTownIcon(QPainter& p, const QRectF& r, const TownLook& look);
+const QPixmap& townSprite(const TownLook& look, int size);
+// The picture on the town screen: one figure per building, walls in front.
+struct SceneBuilding {
+    enum class Kind { Hall, MageGuild, Dwelling, Tavern, Market, Other, Shipyard, Walls };
+    Kind kind = Kind::Other;
+    int level = 0;   // dwellings: unit rank (taller when trained), mage guild: its level
+    QString unit;    // dwellings: the unit
+};
+void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QList<SceneBuilding>& buildings);
 const QPixmap& mineSprite(const QString& resource, const QColor& resourceColor, const QColor& owner, int size);
 const QPixmap& dwellingSprite(const QColor& owner, int size);
 const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size);

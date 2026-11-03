@@ -173,6 +173,14 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
         o.insert("owner", id(t.owner.value()));
         o.insert("x", t.pos.x);
         o.insert("y", t.pos.y);
+        // What anyone who sees the town can tell: how many walls (buildings with a
+        // defense effect) and how big it is (buildings).
+        int walls = 0;
+        for (const QString& b : t.buildings)
+            if (const BuildingDef* def = content.building(b))
+                for (const BuildingEffect& e : def->effects) walls += e.type == BuildingEffect::Type::Defense;
+        o.insert("walls", walls);
+        o.insert("size", static_cast<int>(t.buildings.size()));
         if (own) {
             o.insert("garrison", id(t.garrison.value()));
             o.insert("buildings", QJsonArray::fromStringList(t.buildings));

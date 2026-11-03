@@ -77,6 +77,8 @@ struct RecruitChoice {
 struct ViewTown {
     int id = 0;
     int lastBuildDay = 0;  // own towns: the day something was built (one building per day)
+    int walls = 0;         // buildings with a defense effect (fort, citadel), seen from outside
+    int size = 0;          // number of buildings
     QString name;
     QString race;
     int owner = 0;

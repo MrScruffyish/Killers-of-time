@@ -79,7 +79,8 @@ Failed commands answer with `error` (`replyTo` names the request). Codes: `not_y
 The server only sends what the player may know: `day`, `currentPlayer`, `you`, own `resources`, `income` (per day) and `tradePercent` (what trading gives, percent of the fair value)
 (private), `players` (name, team, colour, race, isAi), `map`, `heroes`, `armies`, `towns`,
 `mines`, `mapDwellings`, `mapObjects` (in sight: `id`, `kind` treasure/artifact, `x`, `y`, `resources` or `artifact`), `gameOver` (bool) and `winnerTeam` (when over; 0 = nobody). Each
-Own heroes have `movementPoints` and `movementMax` (a full day). Each
+Own heroes have `movementPoints` and `movementMax` (a full day).
+Towns in sight have `walls` (buildings with a defense effect) and `size` (buildings), so the map can draw them. Each
 player has `eliminated` (no towns and no heroes left: out of the game, turns skipped).
 When the game is over every command is refused with code `game_over`.
 - `map`: `width`, `height`, `terrainPalette`, `tiles` (palette index per tile, row-major, **-1 =

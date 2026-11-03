@@ -23,6 +23,7 @@ add_library(kot_client_lib STATIC
     Panels.h
     Panels.cpp
     UnitArt.cpp
+    TownArt.cpp
     Settings.h
     Settings.cpp
     CrashLog.h
