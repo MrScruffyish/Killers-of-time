@@ -94,6 +94,7 @@ QJsonObject LobbyState::toJson() const {
     st.insert("campaign", settings.campaign);
     st.insert("mapType", settings.mapType);
     st.insert("autosaves", settings.autosaves);
+    st.insert("fogOfWar", settings.fogOfWar);
     root.insert("settings", st);
     root.insert("started", started);
     return root;
@@ -146,6 +147,7 @@ bool LobbyState::fromJson(const QJsonObject& json, LobbyState* out, QStringList*
     s.settings.campaign = sr.optionalString("campaign");
     s.settings.mapType = sr.optionalString("mapType", QStringLiteral("continent"));
     s.settings.autosaves = sr.optionalInt("autosaves", 5, 0, 100);
+    s.settings.fogOfWar = sr.optionalBool("fogOfWar", true);
     sr.finish();
     bool ok = false;
     s.settings.seed = seedText.toULongLong(&ok);

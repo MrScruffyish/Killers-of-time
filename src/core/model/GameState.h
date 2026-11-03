@@ -56,6 +56,9 @@ public:
     void setWeekEvent(const QString& id) { m_weekEvent = id; }
     void setVictory(const VictoryCondition& v) { m_victory = v; }
     void setDifficulty(const QString& d) { m_difficulty = d; }
+    // Off: everybody sees the whole map all the time (Vision.h).
+    bool fogOfWar() const { return m_fogOfWar; }
+    void setFogOfWar(bool on) { m_fogOfWar = on; }
     void setDay(int day) { m_day = day; }
 
     GameMap& map() { return m_map; }
@@ -144,6 +147,7 @@ private:
 
     int m_day = 1;
     QString m_difficulty = QStringLiteral("normal");
+    bool m_fogOfWar = true;
     VictoryCondition m_victory;
     QString m_weekEvent;
     GameMap m_map;

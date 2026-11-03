@@ -168,6 +168,6 @@ Stacks in views and battle units may have `stars` (0..5, veterancy).
 The game view has `victory` (a short text: what wins this game).
 The game view has `weekEvent` (`id`, `name`, `description`) when an event is on.
 Lobby settings also have `mapType` (`continent` or `islands`: one island per player, boats needed; random maps only)
-and `autosaves` (0-100, default 5): the server saves `autosave_dayNNNN` at the start of every day and keeps
+`fogOfWar` (default true; false: every player sees the whole map from the start) and `autosaves` (0-100, default 5): the server saves `autosave_dayNNNN` at the start of every day and keeps
 that many (0 = no autosaves). A campaign chapter is also saved as `campaign_<id>_chapter<N>_start` when it starts
 (never removed). Both show in `list_saves`.

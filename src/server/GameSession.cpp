@@ -1,5 +1,7 @@
 #include "server/GameSession.h"
 
+#include "core/rules/Vision.h"
+
 #include <QDir>
 #include <QJsonArray>
 #include <climits>
@@ -136,6 +138,10 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
         if (!startScenario(scenario, m_content, params, &m_state, &ids, error)) return false;
     } else if (!createGame(m_content, params, &m_state, &ids, error)) {
         return false;
+    }
+    if (!lobby.settings.fogOfWar) {  // everybody sees everything from the start
+        m_state.setFogOfWar(false);
+        for (const Player& p : m_state.players()) updateExplored(m_state, m_content, p.team);
     }
     if (!m_campaign.isEmpty()) {
         // The first human player's heroes continue the campaign.

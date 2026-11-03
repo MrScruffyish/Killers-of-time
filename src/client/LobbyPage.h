@@ -5,6 +5,7 @@
 #include "net/LobbyClient.h"
 
 class QGridLayout;
+class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
@@ -42,6 +43,7 @@ private:
     QComboBox* m_mapType;
     QSpinBox* m_autosaves;
     QPushButton* m_quick;
+    QCheckBox* m_fog;
     QLabel* m_versions;
     QComboBox* m_scenario;
     QLabel* m_scenarioInfo;

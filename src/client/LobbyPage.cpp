@@ -106,6 +106,12 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     }
     settings->addWidget(m_difficulty);
     settings->addSpacing(20);
+    m_fog = new QCheckBox(tr("Fog of war"), this);
+    m_fog->setObjectName("fogOfWar");
+    m_fog->setToolTip(tr("On: you only see what your heroes and towns see. Off: everyone sees the whole map"));
+    settings->addWidget(m_fog);
+    connect(m_fog, &QCheckBox::clicked, this, [this](bool on) { m_client->setSettings({{"fogOfWar", on}}); });
+    settings->addSpacing(20);
     settings->addWidget(new QLabel(tr("Autosaves"), this));
     m_autosaves = new QSpinBox(this);
     m_autosaves->setObjectName("autosaves");
@@ -216,6 +222,7 @@ void LobbyPage::rebuild() {
     m_height->blockSignals(false);
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
     m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
+    m_fog->setChecked(lobby.settings.fogOfWar);
     if (!m_autosaves->hasFocus()) {
         m_autosaves->blockSignals(true);
         m_autosaves->setValue(lobby.settings.autosaves);
@@ -262,6 +269,7 @@ void LobbyPage::rebuild() {
         w->setEnabled(host && random);
     m_difficulty->setEnabled(host);
     m_autosaves->setEnabled(host);
+    m_fog->setEnabled(host);
     m_start->setEnabled(host);
     m_quick->setVisible(host);
     m_load->setEnabled(host);

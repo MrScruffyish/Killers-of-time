@@ -13,7 +13,8 @@ enum class Visibility { Unexplored, Explored, Visible };
 // Tiles the team can see right now (one byte per tile, row-major, 1 = visible).
 // Sources: heroes (radius = Scouting Radius trait), and towns and mines owned
 // by any player of the team (radius from balance.json). Teammates share vision.
-// Note: terrain that blocks vision is not taken into account yet.
+// Note: terrain that blocks vision is not taken into account yet. Without fog of
+// war (GameState::fogOfWar) every tile is visible to everyone.
 QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegistry& content);
 
 // How far a hero sees: Scouting Radius plus the Scouting trait's bonus.

@@ -41,6 +41,20 @@ private slots:
         QVERIFY(!seen(v, 30, {19, 15}));
     }
 
+    void withoutFogOfWarEverythingIsSeen() {
+        createHero(gs, reg, p1, "H", "knight", {2, 2});
+        gs.setFogOfWar(false);
+        const QByteArray v = visibleTiles(gs, t2, reg);  // even a team with nothing at all
+        QCOMPARE(v.count(char(1)), 30 * 30);
+        updateExplored(gs, reg, t2);
+        QCOMPARE(gs.exploredMap(t2).count(char(1)), 30 * 30);
+        // Saved and loaded.
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QVERIFY(!loaded.fogOfWar());
+    }
+
     void biggerRadiusSeesMore() {
         const HeroId h = createHero(gs, reg, p1, "H", "knight", {15, 15});
         gs.hero(h)->traits["scouting_radius"] = 6;

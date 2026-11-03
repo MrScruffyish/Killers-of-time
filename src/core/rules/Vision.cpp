@@ -12,6 +12,7 @@ int heroVisionRadius(const Hero& hero, const ContentRegistry& content) {
 
 QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegistry& content) {
     const GameMap& map = state.map();
+    if (!state.fogOfWar()) return QByteArray(static_cast<qsizetype>(map.width()) * map.height(), 1);  // no fog: all in sight
     QByteArray visible(static_cast<qsizetype>(map.width()) * map.height(), 0);
 
     const auto reveal = [&](Pos center, int radius) {
