@@ -107,7 +107,16 @@ private:
         QList<core::Pos> steps;
         double progress = 0;  // steps done, with the fraction of the current one
         QList<ViewObject> pickups;  // treasures taken at the end, drawn until he arrives
+        double slowness = 1.0;      // from the speed setting: 2 slow, 1 normal, 0.5 fast
     };
+
+public:
+    // How heroes walk on the map, kept in QSettings: your own and everybody else's.
+    enum class WalkSpeed { Slow = 0, Normal = 1, Fast = 2, Instant = 3 };
+    static WalkSpeed walkSpeed(bool own);
+    static void setWalkSpeed(bool own, WalkSpeed speed);
+
+private:
     QHash<int, Walk> m_walks;
     class QTimer* m_walkTimer;
     QElapsedTimer m_walkClock;

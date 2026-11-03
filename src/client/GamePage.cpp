@@ -14,6 +14,7 @@
 #include <QPushButton>
 #include <QToolButton>
 #include <QMenu>
+#include <QActionGroup>
 #include <QSettings>
 #include <QToolTip>
 #include <QCursor>
@@ -149,6 +150,21 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     gridAction->setCheckable(true);
     gridAction->setChecked(m_map->showGrid());
     connect(gridAction, &QAction::toggled, this, [this](bool on) { m_map->setShowGrid(on); });
+    // How fast heroes walk on the map: yours and everybody else's (Instant: no walk).
+    for (const bool own : {true, false}) {
+        QMenu* speedMenu = menu->addMenu(own ? tr("Your heroes move") : tr("Other heroes move"));
+        speedMenu->setObjectName(own ? "ownSpeedMenu" : "otherSpeedMenu");
+        auto* group = new QActionGroup(speedMenu);
+        using S = MapView::WalkSpeed;
+        for (const auto& [speed, label] : {std::pair{S::Slow, tr("Slow")}, std::pair{S::Normal, tr("Normal")}, std::pair{S::Fast, tr("Fast")},
+                                           std::pair{S::Instant, own ? tr("Instant") : tr("Instant (do not show)")}}) {
+            QAction* a = speedMenu->addAction(label);
+            a->setCheckable(true);
+            a->setChecked(MapView::walkSpeed(own) == speed);
+            group->addAction(a);
+            connect(a, &QAction::triggered, this, [own, speed]() { MapView::setWalkSpeed(own, speed); });
+        }
+    }
     QAction* market = menu->addAction(tr("Market...\tM"));
     connect(market, &QAction::triggered, this, [this]() { openMarket(); });
     QAction* mute = menu->addAction(tr("Sound"));

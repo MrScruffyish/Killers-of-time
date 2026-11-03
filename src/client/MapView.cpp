@@ -39,7 +39,7 @@ MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
         const double dt = m_walkClock.restart() / 1000.0;
         for (auto it = m_walks.begin(); it != m_walks.end();) {
             Walk& w = it.value();
-            const double perStep = std::min(0.09, 1.2 / std::max<qsizetype>(1, w.steps.size() - 1));
+            const double perStep = std::min(0.09, 1.2 / std::max<qsizetype>(1, w.steps.size() - 1)) * w.slowness;
             w.progress += dt / perStep;
             if (w.progress >= w.steps.size() - 1) it = m_walks.erase(it);
             else ++it;
@@ -68,7 +68,9 @@ void MapView::setView(const GameView& view) {
             if (h.id == m_selectedHero && end >= 0) steps.append(route.steps.mid(0, end + 1));
             else steps.append(h.pos);
             if (std::max(std::abs(h.pos.x - before->pos.x), std::abs(h.pos.y - before->pos.y)) > 30) continue;  // a jump
-            Walk walk{steps, 0.0, {}};
+            const WalkSpeed speed = walkSpeed(h.owner == view.you);
+            if (speed == WalkSpeed::Instant) continue;
+            Walk walk{steps, 0.0, {}, speed == WalkSpeed::Slow ? 2.2 : speed == WalkSpeed::Fast ? 0.45 : 1.0};
             // What the hero picks up at the end stays on the map until he gets there.
             for (const ViewObject& o : m_view.objects) {
                 bool still = false;
@@ -91,6 +93,15 @@ void MapView::setView(const GameView& view) {
     replan();
     updateScrollBars();
     viewport()->update();
+}
+
+MapView::WalkSpeed MapView::walkSpeed(bool own) {
+    const int v = QSettings().value(own ? QStringLiteral("map/ownWalkSpeed") : QStringLiteral("map/otherWalkSpeed"), 1).toInt();
+    return WalkSpeed(std::clamp(v, 0, 3));
+}
+
+void MapView::setWalkSpeed(bool own, WalkSpeed speed) {
+    QSettings().setValue(own ? QStringLiteral("map/ownWalkSpeed") : QStringLiteral("map/otherWalkSpeed"), int(speed));
 }
 
 void MapView::setSelectedHero(int heroId) {
