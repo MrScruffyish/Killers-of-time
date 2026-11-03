@@ -943,3 +943,410 @@ QIcon buttonIcon(const QString& name) {
 }
 
 }  // namespace kot::client::art
+
+// --- artifacts ---------------------------------------------------------------
+
+namespace kot::client::art {
+
+namespace {
+
+void drawBlade(QPainter& p, const QRectF& r, bool great) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    const QColor steel = great ? QColor("#e0c8f0") : QColor("#c8d0dc");
+    p.save();
+    p.translate(r.center());
+    p.rotate(-45);
+    p.translate(-r.center());
+    const QPolygonF blade{P(0.46, 0.62), P(0.46, 0.12), P(0.5, 0.02), P(0.54, 0.12), P(0.54, 0.62)};
+    p.setPen(inkPen(pw));
+    QLinearGradient g(P(0.46, 0), P(0.54, 0));
+    g.setColorAt(0, steel.lighter(130));
+    g.setColorAt(0.5, steel);
+    g.setColorAt(1, steel.darker(150));
+    p.setBrush(g);
+    p.drawPolygon(blade);
+    p.setPen(QPen(steel.darker(170), pw * 0.6));
+    p.drawLine(P(0.5, 0.1), P(0.5, 0.6));
+    p.setPen(inkPen(pw));
+    const QRectF guard(P(0.3, 0.62), P(0.7, 0.68));
+    p.setBrush(shine(guard, QColor("#d8a838")));
+    p.drawRoundedRect(guard, pw * 2, pw * 2);
+    const QRectF grip(P(0.465, 0.68), P(0.535, 0.88));
+    p.setBrush(shine(grip, great ? QColor("#5a1a2a") : QColor("#6a4020")));
+    p.drawRect(grip);
+    p.setBrush(ball(P(0.5, 0.91), r.width() * 0.05, QColor("#d8a838")));
+    p.drawEllipse(P(0.5, 0.91), r.width() * 0.05, r.width() * 0.05);
+    if (great) {
+        p.setBrush(ball(P(0.5, 0.65), r.width() * 0.035, QColor("#d02030")));
+        p.drawEllipse(P(0.5, 0.65), r.width() * 0.035, r.width() * 0.035);
+    }
+    p.restore();
+}
+
+void drawAxe(QPainter& p, const QRectF& r) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    p.setPen(inkPen(pw * 3, QColor("#3a2410")));
+    p.drawLine(P(0.25, 0.92), P(0.66, 0.12));
+    p.setPen(QPen(QColor("#8a5a2c"), pw * 1.6, Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(P(0.25, 0.92), P(0.66, 0.12));
+    QPainterPath head;
+    head.moveTo(P(0.56, 0.2));
+    head.cubicTo(P(0.7, 0.02), P(0.96, 0.12), P(0.94, 0.3));
+    head.cubicTo(P(0.88, 0.42), P(0.74, 0.46), P(0.62, 0.36));
+    head.closeSubpath();
+    p.setPen(inkPen(pw));
+    p.setBrush(shine(head.boundingRect(), QColor("#b8c0cc")));
+    p.drawPath(head);
+    p.setPen(QPen(QColor(255, 255, 255, 200), pw, Qt::SolidLine, Qt::RoundCap));
+    p.drawArc(QRectF(P(0.7, 0.1), P(0.95, 0.4)), 20 * 16, 70 * 16);
+    p.setPen(inkPen(pw));
+    p.setBrush(shine(QRectF(P(0.55, 0.22), P(0.68, 0.32)), QColor("#d8a838")));
+    p.drawEllipse(QRectF(P(0.56, 0.2), P(0.68, 0.32)));
+}
+
+void drawStaff(QPainter& p, const QRectF& r, const QColor& gem) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    p.setPen(inkPen(pw * 3, QColor("#3a2410")));
+    p.drawLine(P(0.3, 0.95), P(0.62, 0.26));
+    p.setPen(QPen(QColor("#9a6a3a"), pw * 1.6, Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(P(0.3, 0.95), P(0.62, 0.26));
+    QRadialGradient halo(P(0.66, 0.18), r.width() * 0.25);
+    halo.setColorAt(0, QColor(gem.red(), gem.green(), gem.blue(), 170));
+    halo.setColorAt(1, QColor(gem.red(), gem.green(), gem.blue(), 0));
+    p.setPen(Qt::NoPen);
+    p.setBrush(halo);
+    p.drawEllipse(P(0.66, 0.18), r.width() * 0.25, r.width() * 0.25);
+    p.setPen(inkPen(pw, QColor("#5a3a10")));
+    p.setBrush(Qt::NoBrush);
+    p.drawArc(QRectF(P(0.52, 0.06), P(0.8, 0.34)), 200 * 16, 220 * 16);
+    p.setPen(inkPen(pw));
+    p.setBrush(ball(P(0.66, 0.19), r.width() * 0.09, gem));
+    p.drawEllipse(P(0.66, 0.19), r.width() * 0.09, r.width() * 0.09);
+    glint(p, P(0.63, 0.15), r.width() * 0.05);
+}
+
+void drawShield(QPainter& p, const QRectF& r, bool tall) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 40;
+    QPainterPath sh;
+    if (tall) {
+        sh.moveTo(P(0.2, 0.06));
+        sh.lineTo(P(0.8, 0.06));
+        sh.lineTo(P(0.8, 0.7));
+        sh.quadTo(P(0.8, 0.86), P(0.5, 0.96));
+        sh.quadTo(P(0.2, 0.86), P(0.2, 0.7));
+        sh.closeSubpath();
+    } else {
+        sh.addEllipse(QRectF(P(0.1, 0.1), P(0.9, 0.9)));
+    }
+    p.setPen(inkPen(pw));
+    p.setBrush(shine(sh.boundingRect(), tall ? QColor("#8a96a8") : QColor("#9a6a38")));
+    p.drawPath(sh);
+    p.setPen(QPen(tall ? QColor("#4a5468") : QColor("#5a3a18"), pw * 0.7));
+    p.setBrush(Qt::NoBrush);
+    if (tall) {
+        p.drawPath(QTransform().translate(r.center().x(), r.center().y()).scale(0.82, 0.86).translate(-r.center().x(), -r.center().y()).map(sh));
+        p.setPen(inkPen(pw * 2.5, QColor("#c8a030")));
+        p.drawLine(P(0.5, 0.16), P(0.5, 0.82));
+        p.drawLine(P(0.3, 0.38), P(0.7, 0.38));
+    } else {
+        for (const double x : {0.32, 0.5, 0.68}) p.drawLine(P(x, 0.13), P(x, 0.87));  // planks
+        p.setPen(inkPen(pw * 1.4, QColor("#5a5a62")));
+        p.drawEllipse(QRectF(P(0.13, 0.13), P(0.87, 0.87)));
+        p.setPen(inkPen(pw));
+        p.setBrush(ball(P(0.5, 0.5), r.width() * 0.12, QColor("#a8b0bc")));
+        p.drawEllipse(P(0.5, 0.5), r.width() * 0.12, r.width() * 0.12);
+    }
+    glint(p, P(0.32, 0.26), r.width() * 0.07);
+}
+
+void drawHeadgear(QPainter& p, const QRectF& r, const QString& id) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 42;
+    p.setPen(inkPen(pw));
+    if (id.contains("crown")) {
+        const QColor gold("#f0c030");
+        const QPolygonF crown{P(0.12, 0.78), P(0.1, 0.3), P(0.3, 0.52), P(0.5, 0.18), P(0.7, 0.52), P(0.9, 0.3), P(0.88, 0.78)};
+        p.setBrush(shine(crown.boundingRect(), gold));
+        p.drawPolygon(crown);
+        const QRectF band(P(0.1, 0.66), P(0.9, 0.82));
+        p.setBrush(shine(band, gold.darker(110)));
+        p.drawRect(band);
+        int k = 0;
+        for (const double x : {0.25, 0.5, 0.75}) {
+            const QColor gem = k++ == 1 ? QColor("#d02030") : id.contains("command") ? QColor("#2a8ae0") : QColor("#2aa060");
+            p.setBrush(ball(P(x, 0.74), r.width() * 0.05, gem));
+            p.drawEllipse(P(x, 0.74), r.width() * 0.05, r.width() * 0.05);
+        }
+        for (const QPointF tip : {P(0.1, 0.3), P(0.5, 0.18), P(0.9, 0.3)}) {
+            p.setBrush(ball(tip, r.width() * 0.04, gold.lighter(120)));
+            p.drawEllipse(tip, r.width() * 0.04, r.width() * 0.04);
+        }
+        glint(p, P(0.34, 0.6), r.width() * 0.06);
+    } else if (id.contains("hat")) {
+        QPainterPath hat;
+        hat.moveTo(P(0.3, 0.74));
+        hat.cubicTo(P(0.4, 0.5), P(0.5, 0.2), P(0.78, 0.04));
+        hat.cubicTo(P(0.66, 0.3), P(0.68, 0.52), P(0.72, 0.74));
+        hat.closeSubpath();
+        p.setBrush(shine(hat.boundingRect(), QColor("#3a3aa0")));
+        p.drawPath(hat);
+        p.setBrush(shine(QRectF(P(0.06, 0.68), P(0.94, 0.88)), QColor("#2e2e88")));
+        p.drawEllipse(QRectF(P(0.06, 0.68), P(0.94, 0.88)));
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#ffe27a"));
+        for (const QPointF s : {P(0.5, 0.5), P(0.58, 0.32), P(0.45, 0.64)}) glint(p, s, r.width() * 0.05);
+    } else if (id.contains("eye")) {  // a circlet with an eye stone
+        p.setBrush(Qt::NoBrush);
+        p.setPen(inkPen(pw * 4, QColor("#3a2a10")));
+        p.drawArc(QRectF(P(0.1, 0.3), P(0.9, 0.8)), 0, 180 * 16);
+        p.setPen(inkPen(pw * 2.4, QColor("#d8b048")));
+        p.drawArc(QRectF(P(0.1, 0.3), P(0.9, 0.8)), 0, 180 * 16);
+        p.setPen(inkPen(pw));
+        p.setBrush(QColor("#f4f0e0"));
+        p.drawEllipse(QRectF(P(0.32, 0.2), P(0.68, 0.42)));
+        p.setBrush(ball(P(0.5, 0.31), r.width() * 0.08, QColor("#d8a020")));
+        p.drawEllipse(P(0.5, 0.31), r.width() * 0.08, r.width() * 0.08);
+        p.setBrush(Qt::black);
+        p.drawEllipse(P(0.5, 0.31), r.width() * 0.025, r.width() * 0.06);
+    } else {  // a helm with a nose guard
+        QPainterPath helm;
+        helm.moveTo(P(0.16, 0.8));
+        helm.cubicTo(P(0.12, 0.2), P(0.88, 0.2), P(0.84, 0.8));
+        helm.closeSubpath();
+        p.setBrush(shine(helm.boundingRect(), QColor("#a8b0bc")));
+        p.drawPath(helm);
+        p.setBrush(shine(QRectF(P(0.14, 0.66), P(0.86, 0.8)), QColor("#8a6a3a")));
+        p.drawRect(QRectF(P(0.14, 0.66), P(0.86, 0.8)));
+        p.setBrush(QColor("#8a929e"));
+        p.drawRect(QRectF(P(0.46, 0.5), P(0.54, 0.94)));
+        p.setPen(inkPen(pw * 0.6, QColor("#4a5260")));
+        p.drawLine(P(0.5, 0.26), P(0.5, 0.5));
+        glint(p, P(0.34, 0.4), r.width() * 0.07);
+    }
+}
+
+void drawNecklace(QPainter& p, const QRectF& r, const QColor& gem) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    p.setPen(QPen(QColor("#d8b048"), pw * 1.6, Qt::DotLine, Qt::RoundCap));
+    p.setBrush(Qt::NoBrush);
+    p.drawArc(QRectF(P(0.16, -0.1), P(0.84, 0.66)), 180 * 16, 180 * 16);
+    const QPointF c = P(0.5, 0.68);
+    const double rad = r.width() * 0.2;
+    p.setPen(inkPen(pw));
+    p.setBrush(ball(c, rad * 1.2, QColor("#d8a838")));
+    p.drawEllipse(c, rad * 1.2, rad * 1.25);
+    p.setBrush(ball(c, rad * 0.85, gem));
+    p.drawEllipse(c, rad * 0.85, rad * 0.9);
+    glint(p, c - QPointF(rad * 0.35, rad * 0.4), rad * 0.4);
+}
+
+void drawArmour(QPainter& p, const QRectF& r, bool scales) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    const QPolygonF shirt{P(0.3, 0.1),  P(0.42, 0.16), P(0.58, 0.16), P(0.7, 0.1), P(0.94, 0.26), P(0.84, 0.46),
+                          P(0.74, 0.4), P(0.76, 0.92), P(0.24, 0.92), P(0.26, 0.4), P(0.16, 0.46), P(0.06, 0.26)};
+    const QColor c = scales ? QColor("#3a8a5a") : QColor("#a8b0bc");
+    p.setPen(inkPen(pw));
+    p.setBrush(shine(shirt.boundingRect(), c));
+    p.drawPolygon(shirt);
+    p.save();
+    QPainterPath clip;
+    clip.addPolygon(shirt);
+    p.setClipPath(clip);
+    p.setPen(QPen(c.darker(170), pw * 0.6));
+    p.setBrush(Qt::NoBrush);
+    const double step = r.width() * 0.07;
+    for (int row = 0; row * step < r.height(); ++row)
+        for (double x = r.left() + (row % 2) * step / 2; x < r.right(); x += step)
+            p.drawArc(QRectF(x, r.top() + row * step * 0.7, step, step), 180 * 16, 180 * 16);
+    p.restore();
+    p.setPen(inkPen(pw));
+    p.setBrush(Qt::NoBrush);
+    p.drawPolygon(shirt);
+    p.setBrush(shine(QRectF(P(0.26, 0.66), P(0.74, 0.72)), QColor("#6a4020")));
+    p.drawRect(QRectF(P(0.25, 0.66), P(0.75, 0.72)));
+    glint(p, P(0.36, 0.3), r.width() * 0.07);
+}
+
+void drawBoots(QPainter& p, const QRectF& r, bool winged) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    for (const double dx : {0.0, 0.26}) {
+        QPainterPath boot;
+        boot.moveTo(P(0.18 + dx, 0.2));
+        boot.lineTo(P(0.42 + dx, 0.2));
+        boot.lineTo(P(0.44 + dx, 0.7));
+        boot.cubicTo(P(0.62 + dx, 0.72), P(0.7 + dx, 0.78), P(0.68 + dx, 0.88));
+        boot.lineTo(P(0.18 + dx, 0.88));
+        boot.closeSubpath();
+        p.setPen(inkPen(pw));
+        p.setBrush(shine(boot.boundingRect(), QColor("#7a4a22")));
+        p.drawPath(boot);
+        p.setBrush(QColor("#4a2a10"));
+        p.drawRect(QRectF(P(0.17 + dx, 0.84), P(0.69 + dx, 0.9)));
+        p.setBrush(shine(QRectF(P(0.16 + dx, 0.16), P(0.44 + dx, 0.26)), QColor("#a06a38")));
+        p.drawRoundedRect(QRectF(P(0.16 + dx, 0.16), P(0.44 + dx, 0.26)), pw, pw);
+        if (winged) {
+            QPainterPath wing;
+            const QPointF w0 = P(0.42 + dx, 0.36);
+            wing.moveTo(w0);
+            wing.cubicTo(w0 + QPointF(r.width() * 0.1, -r.height() * 0.24), w0 + QPointF(r.width() * 0.28, -r.height() * 0.22),
+                         w0 + QPointF(r.width() * 0.3, -r.height() * 0.12));
+            wing.cubicTo(w0 + QPointF(r.width() * 0.2, -r.height() * 0.06), w0 + QPointF(r.width() * 0.12, 0), w0 + QPointF(0, r.height() * 0.06));
+            p.setBrush(shine(wing.boundingRect(), QColor("#f4f0e8")));
+            p.drawPath(wing);
+        }
+    }
+}
+
+void drawRing(QPainter& p, const QRectF& r, const QColor& gem) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    p.setPen(inkPen(pw * 6, QColor("#3a2a10")));
+    p.setBrush(Qt::NoBrush);
+    p.drawEllipse(QRectF(P(0.22, 0.36), P(0.78, 0.9)));
+    QConicalGradient band(P(0.5, 0.63), 120);
+    band.setColorAt(0, QColor("#fff0a0"));
+    band.setColorAt(0.5, QColor("#a87a18"));
+    band.setColorAt(1, QColor("#fff0a0"));
+    p.setPen(QPen(QBrush(band), pw * 3.6));
+    p.drawEllipse(QRectF(P(0.22, 0.36), P(0.78, 0.9)));
+    p.setPen(inkPen(pw));
+    p.setBrush(shine(QRectF(P(0.38, 0.28), P(0.62, 0.42)), QColor("#d8a838")));
+    p.drawRoundedRect(QRectF(P(0.37, 0.28), P(0.63, 0.42)), pw * 2, pw * 2);
+    drawGem(p, QRectF(P(0.33, 0.06), P(0.67, 0.36)), gem);
+}
+
+void drawMiscArtifact(QPainter& p, const QRectF& r, const QString& id) {
+    const auto P = [&](double x, double y) { return QPointF(r.left() + r.width() * x, r.top() + r.height() * y); };
+    const double pw = r.width() / 45;
+    p.setPen(inkPen(pw));
+    if (id.contains("spyglass")) {
+        p.save();
+        p.translate(r.center());
+        p.rotate(-30);
+        p.translate(-r.center());
+        const QRectF parts[] = {QRectF(P(0.06, 0.4), P(0.36, 0.6)), QRectF(P(0.34, 0.42), P(0.64, 0.58)), QRectF(P(0.62, 0.44), P(0.94, 0.56))};
+        const QColor cols[] = {QColor("#8a5a2c"), QColor("#d8a838"), QColor("#8a5a2c")};
+        for (int i = 0; i < 3; ++i) {
+            QLinearGradient g(parts[i].topLeft(), parts[i].bottomLeft());
+            g.setColorAt(0, cols[i].lighter(140));
+            g.setColorAt(1, cols[i].darker(150));
+            p.setBrush(g);
+            p.drawRoundedRect(parts[i], pw, pw);
+        }
+        p.setBrush(QColor(180, 220, 255));
+        p.drawEllipse(QRectF(P(0.03, 0.39), P(0.09, 0.61)));
+        p.restore();
+    } else if (id.contains("clover")) {
+        for (int i = 0; i < 4; ++i) {
+            const double a = M_PI / 2 * i + M_PI / 4;
+            const QPointF c = P(0.5, 0.42) + QPointF(std::cos(a), std::sin(a)) * r.width() * 0.17;
+            p.setBrush(ball(c, r.width() * 0.18, QColor("#3aa040")));
+            p.drawEllipse(c, r.width() * 0.17, r.width() * 0.17);
+        }
+        p.setPen(inkPen(pw * 2, QColor("#2a6a20")));
+        p.drawLine(P(0.5, 0.45), P(0.6, 0.94));
+    } else if (id.contains("banner") || id.contains("standard")) {
+        p.setPen(inkPen(pw * 2.4, QColor("#3a2410")));
+        p.drawLine(P(0.22, 0.96), P(0.22, 0.04));
+        p.setPen(inkPen(pw));
+        QPainterPath flag;
+        flag.moveTo(P(0.22, 0.1));
+        flag.cubicTo(P(0.5, 0.04), P(0.6, 0.16), P(0.86, 0.1));
+        flag.lineTo(P(0.86, 0.56));
+        flag.lineTo(P(0.68, 0.48));
+        flag.lineTo(P(0.54, 0.62));
+        flag.cubicTo(P(0.44, 0.56), P(0.32, 0.6), P(0.22, 0.58));
+        flag.closeSubpath();
+        p.setBrush(shine(flag.boundingRect(), id.contains("war") ? QColor("#c0302a") : QColor("#2a5ab0")));
+        p.drawPath(flag);
+        QPolygonF star;
+        for (int i = 0; i < 10; ++i) {
+            const double a = M_PI / 5 * i - M_PI / 2, rad = (i % 2 ? 0.05 : 0.12) * r.width();
+            star << P(0.52, 0.32) + QPointF(rad * std::cos(a), rad * std::sin(a));
+        }
+        p.setBrush(QColor("#f0c030"));
+        p.drawPolygon(star);
+        p.setBrush(ball(P(0.22, 0.04), r.width() * 0.04, QColor("#f0c030")));
+        p.drawEllipse(P(0.22, 0.04), r.width() * 0.04, r.width() * 0.04);
+    } else if (id.contains("orb")) {
+        p.setBrush(shine(QRectF(P(0.24, 0.76), P(0.76, 0.94)), QColor("#8a5a2c")));
+        p.drawRoundedRect(QRectF(P(0.24, 0.76), P(0.76, 0.94)), pw * 2, pw * 2);
+        p.setBrush(ball(P(0.5, 0.46), r.width() * 0.32, QColor("#6a4ac8")));
+        p.drawEllipse(P(0.5, 0.46), r.width() * 0.32, r.width() * 0.32);
+        p.setPen(QPen(QColor(220, 200, 255, 160), pw));
+        p.setBrush(Qt::NoBrush);
+        p.drawEllipse(P(0.5, 0.46), r.width() * 0.16, r.width() * 0.08);
+        glint(p, P(0.38, 0.32), r.width() * 0.08);
+    } else if (id.contains("horseshoe")) {
+        p.setBrush(Qt::NoBrush);
+        p.setPen(QPen(QColor("#2a2a30"), r.width() * 0.17, Qt::SolidLine, Qt::FlatCap));
+        p.drawArc(QRectF(P(0.2, 0.14), P(0.8, 0.8)), -30 * 16, 240 * 16);
+        p.setPen(QPen(QColor("#a8b0bc"), r.width() * 0.12, Qt::SolidLine, Qt::FlatCap));
+        p.drawArc(QRectF(P(0.2, 0.14), P(0.8, 0.8)), -28 * 16, 236 * 16);
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#2a2a30"));
+        for (int i = 0; i < 6; ++i) {
+            const double a = (-10 + 40 * i) * M_PI / 180;
+            p.drawEllipse(P(0.5, 0.47) + QPointF(std::cos(a), -std::sin(a)) * r.width() * 0.3, r.width() * 0.018, r.width() * 0.018);
+        }
+    } else if (id.contains("heart")) {
+        QPainterPath heart;
+        heart.moveTo(P(0.5, 0.9));
+        heart.cubicTo(P(0.1, 0.6), P(0.06, 0.2), P(0.32, 0.18));
+        heart.cubicTo(P(0.44, 0.18), P(0.5, 0.28), P(0.5, 0.34));
+        heart.cubicTo(P(0.5, 0.28), P(0.56, 0.18), P(0.68, 0.18));
+        heart.cubicTo(P(0.94, 0.2), P(0.9, 0.6), P(0.5, 0.9));
+        p.setBrush(shine(heart.boundingRect(), QColor("#3a8a3a")));
+        p.drawPath(heart);
+        p.setPen(QPen(QColor("#1a4a1a"), pw));
+        p.drawLine(P(0.4, 0.4), P(0.48, 0.6));
+        p.drawLine(P(0.62, 0.36), P(0.56, 0.56));
+        glint(p, P(0.3, 0.32), r.width() * 0.06);
+    } else if (id.contains("string") || id.contains("bow")) {
+        p.setBrush(Qt::NoBrush);
+        p.setPen(inkPen(pw * 4, QColor("#3a2410")));
+        p.drawArc(QRectF(P(0.1, 0.06), P(0.7, 0.94)), -70 * 16, 140 * 16);
+        p.setPen(QPen(QColor("#a06a38"), pw * 2.4, Qt::SolidLine, Qt::RoundCap));
+        p.drawArc(QRectF(P(0.1, 0.06), P(0.7, 0.94)), -70 * 16, 140 * 16);
+        p.setPen(QPen(QColor("#f4f0e0"), pw * 1.2));
+        const QPointF top = P(0.4, 0.06) + QPointF(r.width() * 0.3 * std::cos(70 * M_PI / 180) * 0 + r.width() * 0.1, r.height() * 0.02);
+        p.drawLine(top, QPointF(top.x(), r.top() + r.height() * 0.92));
+        glint(p, P(0.6, 0.3), r.width() * 0.06);
+    } else if (id.contains("stone")) {
+        drawGem(p, QRectF(P(0.14, 0.18), P(0.86, 0.86)), QColor("#3a8ae0"));
+    } else {
+        drawGem(p, QRectF(P(0.14, 0.18), P(0.86, 0.86)), QColor("#d8a838"));
+    }
+}
+
+}  // namespace
+
+void drawArtifactIcon(QPainter& p, const QRectF& r, const QString& id, const QString& slot) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    if (slot == "weapon") {
+        if (id.contains("axe")) drawAxe(p, r);
+        else if (id.contains("staff")) drawStaff(p, r, QColor("#6ab8ff"));
+        else drawBlade(p, r, id.contains("dragon"));
+    } else if (slot == "shield") drawShield(p, r, id.contains("tower"));
+    else if (slot == "head") drawHeadgear(p, r, id);
+    else if (slot == "neck") drawNecklace(p, r, id.contains("mana") ? QColor("#3a6ae0") : id.contains("courage") ? QColor("#e0602a") : QColor("#d02040"));
+    else if (slot == "body") drawArmour(p, r, id.contains("scale") || id.contains("dragon"));
+    else if (slot == "feet") drawBoots(p, r, id.contains("wing"));
+    else if (slot == "ring") drawRing(p, r, id.contains("sage") ? QColor("#8a4ae0") : id.contains("vigor") ? QColor("#d02040") : QColor("#2aa060"));
+    else drawMiscArtifact(p, r, id);
+    p.restore();
+}
+
+const QPixmap& artifactIcon(const QString& id, const QString& slot, int size) {
+    return sprite(QStringLiteral("artifact|%1|%2").arg(id, slot), size, [&](QPainter& p, const QRectF& r) { drawArtifactIcon(p, r, id, slot); });
+}
+
+}  // namespace kot::client::art

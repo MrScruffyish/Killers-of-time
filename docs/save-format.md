@@ -38,7 +38,8 @@ Save files (not scenarios) also have `gameVersion` (the game that saved it) and 
 (ISO date and time); both are shown in the load list.
 
 Heroes may have `spells` (list of spell ids, the spellbook; optional, validated against the content).
-Heroes may have `artifacts` (artifact ids; their bonuses are already in `traits`).
+Heroes may have `artifacts` (worn artifact ids; their bonuses are already in `traits`) and
+`backpack` (carried, not worn, no bonus).
 `mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`), `x`, `y`, `resources` or `artifact`.
 The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses).
 Army stacks may have `experience` (average per unit, veterancy).

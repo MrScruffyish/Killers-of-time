@@ -23,6 +23,8 @@
 #include "client/SpellBook.h"
 #include "client/TownDialog.h"
 #include "client/BuildTree.h"
+#include "client/EquipmentView.h"
+#include "client/Toast.h"
 #include "core/content/ContentRegistry.h"
 #include "net/LobbyClient.h"
 #include "server/GameServer.h"
@@ -190,7 +192,7 @@ private slots:
             const QStringList res = {"gold", "wood", "stone", "grain", "gems", "sulphur", "coal", "mercury", "papyrus"};
             const QStringList buttons = {"build", "buy", "wagon", "end", "spell", "market", "defend", "auto", "retreat",
                                          "catapult", "town", "army", "tavern"};
-            QImage icons(int(res.size()) * 136 + 20, 128 + 40 + 24 + 140 + 80, QImage::Format_ARGB32);
+            QImage icons(int(res.size()) * 136 + 20, 128 + 40 + 24 + 140 + 80 + 180, QImage::Format_ARGB32);
             icons.fill(QColor("#3a2c1e"));
             QPainter ip(&icons);
             for (int i = 0; i < res.size(); ++i) {
@@ -209,8 +211,31 @@ private slots:
                 QVERIFY(!pm.isNull());
                 ip.drawPixmap(10 + i * 70, 340, pm);
             }
+            int ai = 0;
+            for (const core::ArtifactDef& a : reg.artifacts()) {
+                const QPixmap& pm = art::artifactIcon(a.id, a.slot, 72);
+                QVERIFY(!pm.isNull());
+                ip.drawPixmap(10 + (ai % 15) * 80, 420 + (ai / 15) * 80, pm);
+                ++ai;
+            }
             ip.end();
             if (!dir.isEmpty()) icons.save(QDir(dir).filePath("0_icons.png"));
+        }
+        // The hero's gear: worn things around the figure, the backpack below (0_equipment.png).
+        {
+            EquipmentView gear(&reg);
+            gear.setArtifacts({"crown_of_kings", "dragon_blade", "tower_shield", "winged_boots", "ring_of_vigor", "spyglass", "war_banner"},
+                              {"iron_sword", "lucky_clover", "chain_mail"}, true);
+            gear.resize(gear.sizeHint());
+            QVERIFY(gear.sizeHint().height() > 400);
+            if (!dir.isEmpty()) gear.grab().save(QDir(dir).filePath("0_equipment.png"));
+            QSignalSpy wear(&gear, &EquipmentView::equipRequested);
+            QTest::mouseClick(&gear, Qt::LeftButton, {}, QPoint(6 + 28, 430 + 28));  // the first backpack box
+            QCOMPARE(wear.count(), 1);
+            QCOMPARE(wear.first().first().toString(), QString("iron_sword"));
+            gear.show();
+            Toast* t = Toast::show(&gear, art::artifactIcon("winged_boots", "feet", 128), "<b>Found the Winged Boots!</b>");
+            QVERIFY(t && t->isVisible());
         }
         // Towns: palisade / walls / citadel, small to big, for each race; and a town scene.
         QImage towns(3 * 4 * 110, 3 * 120 + 190, QImage::Format_ARGB32);

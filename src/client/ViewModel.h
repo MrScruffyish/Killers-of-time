@@ -59,7 +59,8 @@ struct ViewHero {
     int movementPoints = 0;
     int movementMax = 0;  // a full day's movement
     QStringList spells;
-    QStringList artifacts;
+    QStringList artifacts;  // worn
+    QStringList backpack;   // carried, not worn
     bool inBoat = false;
     std::optional<core::Pos> destination;  // own heroes: the unfinished route's target
 };

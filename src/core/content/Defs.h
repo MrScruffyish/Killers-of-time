@@ -235,7 +235,24 @@ struct ArtifactDef {
     QString description;
     QMap<QString, int> traits;  // trait id -> bonus
     int value = 1;              // rough worth, 1 (minor) .. 3 (major); stronger guards
+    QString slot = QStringLiteral("misc");  // where it is worn: see artifactSlots()
 };
+
+// The places a hero wears artifacts, and how many of each.
+struct ArtifactSlot {
+    QString id;
+    int count = 1;
+};
+inline const QList<ArtifactSlot>& artifactSlots() {
+    static const QList<ArtifactSlot> kSlots = {{"head", 1},   {"neck", 1}, {"body", 1}, {"weapon", 1},
+                                              {"shield", 1}, {"feet", 1}, {"ring", 2}, {"misc", 3}};
+    return kSlots;
+}
+inline int artifactSlotCount(const QString& slot) {
+    for (const ArtifactSlot& s : artifactSlots())
+        if (s.id == slot) return s.count;
+    return 0;
+}
 
 // Something that happens to everyone at the start of a week (events.json).
 struct WeekEventDef {

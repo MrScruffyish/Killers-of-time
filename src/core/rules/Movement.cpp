@@ -1,4 +1,5 @@
 #include "core/rules/Movement.h"
+#include "core/rules/HeroRules.h"
 
 #include <QSet>
 #include <algorithm>
@@ -376,8 +377,7 @@ void pickUpAt(GameState& state, const ContentRegistry& content, HeroId heroId, P
             result->foundResources[it.key()] += it.value();
         }
         if (const ArtifactDef* a = content.artifact(o.artifact)) {
-            hero->artifacts.append(a->id);
-            for (auto it = a->traits.begin(); it != a->traits.end(); ++it) hero->traits[it.key()] += it.value();
+            if (!takeArtifact(*hero, content, a->id)) result->stowedArtifacts.append(a->id);
             result->foundArtifacts.append(a->id);
         }
     }

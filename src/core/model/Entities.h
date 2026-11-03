@@ -41,7 +41,8 @@ struct Hero {
     ArmyId army;                 // the army this hero leads (holds his position)
     QString templateId;          // the tavern hero this one was hired as (empty = none)
     QStringList spells;          // the spellbook: spell ids this hero knows
-    QStringList artifacts;       // artifacts carried (their trait bonuses are in `traits`)
+    QStringList artifacts;       // artifacts worn (their trait bonuses are in `traits`)
+    QStringList backpack;        // artifacts carried but not worn (no bonus)
     bool inBoat = false;         // sails (moves on water only) until he lands
     std::optional<Pos> destination;  // where the last move was going when movement ran out
 

@@ -91,4 +91,75 @@ int regenSpellPoints(Hero& hero) {
     return gained;
 }
 
+namespace {
+int wornInSlot(const Hero& hero, const ContentRegistry& content, const QString& slot) {
+    int n = 0;
+    for (const QString& id : hero.artifacts)
+        if (const ArtifactDef* a = content.artifact(id); a && a->slot == slot) ++n;
+    return n;
+}
+void applyBonus(Hero& hero, const ArtifactDef& a, int sign) {
+    for (auto it = a.traits.begin(); it != a.traits.end(); ++it) {
+        hero.traits[it.key()] += sign * it.value();
+        if (hero.traits[it.key()] == 0) hero.traits.remove(it.key());
+    }
+    hero.spellPoints = std::min(hero.spellPoints, std::max(0, maxSpellPoints(hero)));
+}
+}  // namespace
+
+bool takeArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId) {
+    const ArtifactDef* a = content.artifact(artifactId);
+    if (!a) return false;
+    if (wornInSlot(hero, content, a->slot) < artifactSlotCount(a->slot)) {
+        hero.artifacts.append(a->id);
+        applyBonus(hero, *a, +1);
+        return true;
+    }
+    hero.backpack.append(a->id);
+    return false;
+}
+
+bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId, const QString& replace,
+                   QString* error) {
+    const ArtifactDef* a = content.artifact(artifactId);
+    if (!a || !hero.backpack.contains(artifactId)) {
+        setError(error, QStringLiteral("the hero does not carry that artifact"));
+        return false;
+    }
+    if (wornInSlot(hero, content, a->slot) >= artifactSlotCount(a->slot)) {
+        QString off;
+        if (!replace.isEmpty()) {
+            const ArtifactDef* r = content.artifact(replace);
+            if (!r || r->slot != a->slot || !hero.artifacts.contains(replace)) {
+                setError(error, QStringLiteral("that artifact is not worn in the same place"));
+                return false;
+            }
+            off = replace;
+        } else {
+            for (const QString& id : hero.artifacts)
+                if (const ArtifactDef* w = content.artifact(id); w && w->slot == a->slot) {
+                    off = id;
+                    break;
+                }
+        }
+        if (!unequipArtifact(hero, content, off, error)) return false;
+    }
+    hero.backpack.removeOne(artifactId);
+    hero.artifacts.append(artifactId);
+    applyBonus(hero, *a, +1);
+    return true;
+}
+
+bool unequipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId, QString* error) {
+    const ArtifactDef* a = content.artifact(artifactId);
+    if (!a || !hero.artifacts.contains(artifactId)) {
+        setError(error, QStringLiteral("the hero does not wear that artifact"));
+        return false;
+    }
+    hero.artifacts.removeOne(artifactId);
+    hero.backpack.append(artifactId);
+    applyBonus(hero, *a, -1);
+    return true;
+}
+
 }  // namespace kot::core

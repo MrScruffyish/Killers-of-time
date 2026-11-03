@@ -185,10 +185,12 @@ to falter), `luckPercentPerPoint` (chance per Luck point for double damage),
 ## artifacts.json (optional)
 ```json
 { "artifacts": [ { "id": "iron_sword", "name": "Iron Sword", "description": "+2 Attack",
-                   "traits": { "attack": 2 }, "value": 1 } ] }
+                   "traits": { "attack": 2 }, "value": 1, "slot": "weapon" } ] }
 ```
-Artifacts lie on the map (guarded by monsters; `value` 1..3 makes the guard stronger). The hero who
-walks onto one keeps it and its trait bonuses are added to his traits.
+Artifacts lie on the map (guarded by monsters; `value` 1..3 makes the guard stronger). `slot`
+(default `misc`) is where it is worn: `head`, `neck`, `body`, `weapon`, `shield`, `feet` (one each),
+`ring` (two), `misc` (three). The hero who walks onto one wears it when that place has room (its
+trait bonuses are added to his traits), else carries it in his backpack (no bonus) until he wears it.
 
 ## balance.json "difficulty" and "aiSlotDifficulty"
 `difficulty`: one entry per overall level (`easy`, `normal`, `hard`, `expert`, chosen in the lobby):

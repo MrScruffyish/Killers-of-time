@@ -121,6 +121,7 @@ QJsonObject GameState::toJson() const {
         if (!h.templateId.isEmpty()) o.insert("template", h.templateId);
         if (!h.spells.isEmpty()) o.insert("spells", QJsonArray::fromStringList(h.spells));
         if (!h.artifacts.isEmpty()) o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));
+        if (!h.backpack.isEmpty()) o.insert("backpack", QJsonArray::fromStringList(h.backpack));
         if (h.inBoat) o.insert("inBoat", true);
         if (h.destination) o.insert("destination", QJsonArray{h.destination->x, h.destination->y});
         heroes.append(o);
@@ -399,6 +400,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         h.templateId = r.optionalString("template");
         h.spells = r.optionalStringList("spells");
         h.artifacts = r.optionalStringList("artifacts");
+        h.backpack = r.optionalStringList("backpack");
         h.inBoat = r.optionalBool("inBoat", false);
         if (r.has("destination")) {
             const QJsonArray d = r.requireArray("destination");
@@ -408,7 +410,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         r.finish();
         for (const QString& s : h.spells)
             if (!content.spell(s)) r.addError(QStringLiteral("unknown spell '%1'").arg(s));
-        for (const QString& a : h.artifacts)
+        for (const QString& a : h.artifacts + h.backpack)
             if (!content.artifact(a)) r.addError(QStringLiteral("unknown artifact '%1'").arg(a));
         if (r.ok() && !h.templateId.isEmpty() && !content.heroTemplate(h.templateId))
             r.addError(QStringLiteral("unknown hero template '%1'").arg(h.templateId));

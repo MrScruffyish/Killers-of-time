@@ -74,6 +74,49 @@ private slots:
         QVERIFY(gs.mapObjects().isEmpty());
     }
 
+    void aSecondWeaponGoesToTheBackpack() {
+        for (const ArtifactDef& a : reg.artifacts()) QVERIFY2(artifactSlotCount(a.slot) > 0, qPrintable(a.id));
+        const HeroId h = createHero(gs, reg, p1, "H", "knight", {0, 0});
+        gs.hero(h)->movementPoints = 2000;
+        const int attack = gs.hero(h)->trait("attack");
+        artifact({2, 0}, "iron_sword");
+        artifact({4, 0}, "dragon_blade");
+        QVERIFY(moveHero(gs, reg, h, {2, 0}).ok);
+        const MoveResult second = moveHero(gs, reg, h, {4, 0});
+        QVERIFY(second.ok);
+        QCOMPARE(second.stowedArtifacts, QStringList({"dragon_blade"}));
+        Hero& hero = *gs.hero(h);
+        QCOMPARE(hero.artifacts, QStringList({"iron_sword"}));  // the first is worn
+        QCOMPARE(hero.backpack, QStringList({"dragon_blade"}));  // the second is carried
+        QCOMPARE(hero.trait("attack"), attack + 2);
+        // Wearing the blade puts the sword in the backpack and swaps the bonus.
+        QString why;
+        QVERIFY2(equipArtifact(hero, reg, "dragon_blade", {}, &why), qPrintable(why));
+        QCOMPARE(hero.artifacts, QStringList({"dragon_blade"}));
+        QCOMPARE(hero.backpack, QStringList({"iron_sword"}));
+        QCOMPARE(hero.trait("attack"), attack + 4);
+        QVERIFY(unequipArtifact(hero, reg, "dragon_blade"));
+        QCOMPARE(hero.trait("attack"), attack);
+        QVERIFY(!unequipArtifact(hero, reg, "dragon_blade"));  // not worn any more
+        // Saved and loaded with the backpack.
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.hero(h)->backpack.size(), 2);
+    }
+
+    void twoRingsAreWorn() {
+        const HeroId h = createHero(gs, reg, p1, "H", "knight", {0, 0});
+        Hero& hero = *gs.hero(h);
+        QVERIFY(takeArtifact(hero, reg, "ring_of_vigor"));
+        QVERIFY(takeArtifact(hero, reg, "travellers_ring"));
+        QVERIFY(!takeArtifact(hero, reg, "ring_of_the_sages"));  // a third ring is carried
+        QString why;
+        QVERIFY(!equipArtifact(hero, reg, "ring_of_the_sages", "iron_sword", &why));  // not the same place
+        QVERIFY(equipArtifact(hero, reg, "ring_of_the_sages", "travellers_ring"));
+        QVERIFY(hero.artifacts.contains("ring_of_vigor") && hero.backpack == QStringList({"travellers_ring"}));
+    }
+
     void objectsBlockTheWay() {
         for (int y = 0; y < 20; ++y)
             if (y != 5) gs.map().setTerrain({5, y}, "sea");

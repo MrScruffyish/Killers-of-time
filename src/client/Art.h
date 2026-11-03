@@ -107,6 +107,9 @@ void drawSawmill(QPainter& p, const QRectF& r, const QColor& owner);
 void drawQuarry(QPainter& p, const QRectF& r, const QColor& owner);
 void drawCrystalCave(QPainter& p, const QRectF& r, const QColor& crystal, const QColor& owner);
 void drawResourceIcon(QPainter& p, const QRectF& r, const QString& id, const QColor& c);
+// An artifact's own picture, by where it is worn and its name (sword, crown, boots...).
+void drawArtifactIcon(QPainter& p, const QRectF& r, const QString& id, const QString& slot);
+const QPixmap& artifactIcon(const QString& id, const QString& slot, int size);
 void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner);
 void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat = false);
 void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner);  // the knight on horseback (UnitArt.cpp)

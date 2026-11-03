@@ -351,6 +351,8 @@ void ContentRegistry::loadArtifacts(const QString& dir, QStringList& errors) {
                      d.description = r.optionalString(QStringLiteral("description"));
                      d.traits = r.optionalIntMap(QStringLiteral("traits"), -100, 100);
                      d.value = r.optionalInt(QStringLiteral("value"), 1, 1, 3);
+                     d.slot = r.optionalString(QStringLiteral("slot"), QStringLiteral("misc"));
+                     if (artifactSlotCount(d.slot) == 0) r.addError(QStringLiteral("unknown slot '%1'").arg(d.slot));
                      r.finish();
                      if (!r.ok()) return;
                      if (m_artifacts.contains(d.id)) {

@@ -52,6 +52,7 @@ struct MoveResult {
     QStringList learnedSpells;  // arrived in an own town with a mage guild
     ResourceAmounts foundResources;  // picked up a treasure
     QStringList foundArtifacts;      // picked up artifacts
+    QStringList stowedArtifacts;     // of those, the ones put in the backpack (their slot was full)
     bool landed = false;  // left the boat
     bool ambushed = false;  // stopped by a zone of control: the armies there attacked (see `battles`)
     bool spotted = false;   // stopped because a hostile army came into sight (destination kept)

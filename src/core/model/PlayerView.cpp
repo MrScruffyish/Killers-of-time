@@ -134,6 +134,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             o.insert("template", h.templateId);
             o.insert("spells", QJsonArray::fromStringList(h.spells));
             o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));
+            o.insert("backpack", QJsonArray::fromStringList(h.backpack));
             if (h.destination) o.insert("destination", QJsonArray{h.destination->x, h.destination->y});
         }
         heroes.append(o);

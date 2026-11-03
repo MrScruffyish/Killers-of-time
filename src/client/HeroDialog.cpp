@@ -10,6 +10,8 @@
 #include <QVBoxLayout>
 
 #include "client/Art.h"
+#include "client/EquipmentView.h"
+#include "net/Protocol.h"
 #include "client/Settings.h"
 #include "core/content/ContentRegistry.h"
 
@@ -164,11 +166,21 @@ void HeroDialog::rebuild() {
     v->addWidget(spellBox);
     auto* artBox = new QGroupBox(tr("Artifacts"), m_body);
     auto* artl = new QVBoxLayout(artBox);
-    for (const QString& id : h->artifacts) {
+    auto* gear = new EquipmentView(m_content, artBox);
+    const bool canChange = m_view.currentPlayer == m_view.you && h->owner == m_view.you;
+    gear->setArtifacts(h->artifacts, h->backpack, canChange);
+    const int heroId = h->id;
+    connect(gear, &EquipmentView::equipRequested, this, [this, heroId](const QString& id) {
         const core::ArtifactDef* a = m_content->artifact(id);
-        artl->addWidget(new QLabel(a ? tr("<b>%1</b>: %2").arg(a->name, a->description) : id, artBox));
-    }
-    if (h->artifacts.isEmpty()) artl->addWidget(new QLabel(tr("None yet. Artifacts lie on the map, often guarded."), artBox));
+        emit commandRequested(net::msg::equipArtifact, {{"hero", heroId}, {"artifact", id}}, tr("Wear the %1").arg(a ? a->name : id));
+    });
+    connect(gear, &EquipmentView::unequipRequested, this, [this, heroId](const QString& id) {
+        const core::ArtifactDef* a = m_content->artifact(id);
+        emit commandRequested(net::msg::unequipArtifact, {{"hero", heroId}, {"artifact", id}}, tr("Take off the %1").arg(a ? a->name : id));
+    });
+    artl->addWidget(gear, 0, Qt::AlignHCenter);
+    if (h->artifacts.isEmpty() && h->backpack.isEmpty())
+        artl->addWidget(new QLabel(tr("None yet. Artifacts lie on the map, often guarded."), artBox));
     v->addWidget(artBox);
     v->addStretch(1);
 }

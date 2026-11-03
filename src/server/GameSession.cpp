@@ -407,6 +407,7 @@ QJsonObject GameSession::moveInfo(const MoveResult& m) const {
     if (m.spotted) info.insert("spotted", true);
     if (!m.foundResources.isEmpty()) info.insert("foundResources", resourcesJson(m.foundResources));
     if (!m.foundArtifacts.isEmpty()) info.insert("foundArtifacts", QJsonArray::fromStringList(m.foundArtifacts));
+    if (!m.stowedArtifacts.isEmpty()) info.insert("stowedArtifacts", QJsonArray::fromStringList(m.stowedArtifacts));
     if (m.attacked) {
         QJsonArray battles;
         for (const BattleReport& b : m.battles) battles.append(battleReportToJson(b));
@@ -671,6 +672,19 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
             return success({{"moved", moved}, {"left", m_state.army(from) ? m_state.army(from)->totalUnits() : 0}});
         }
         return fromAction(moveUnits(m_state, from, to, stack, count));
+    }
+    if (cmd.type == net::msg::equipArtifact || cmd.type == net::msg::unequipArtifact) {
+        const HeroId hero(id32("hero"));
+        const QString artifact = r.requireString("artifact");
+        const QString replace = cmd.type == net::msg::equipArtifact ? r.optionalString("replace") : QString();
+        r.finish();
+        if (!r.ok()) return bad();
+        Hero* h = m_state.hero(hero);
+        if (!h || h->owner != player) return failure("failed", "that is not your hero");
+        QString why;
+        const bool ok = cmd.type == net::msg::equipArtifact ? equipArtifact(*h, m_content, artifact, replace, &why)
+                                                           : unequipArtifact(*h, m_content, artifact, &why);
+        return ok ? success() : failure("failed", why);
     }
     if (cmd.type == net::msg::pickTrait) {
         const HeroId hero(id32("hero"));

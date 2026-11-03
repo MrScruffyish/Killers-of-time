@@ -35,6 +35,7 @@
 #include "client/Panels.h"
 #include "client/Settings.h"
 #include "client/SpellBook.h"
+#include "client/Toast.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
 #include "client/Sound.h"
@@ -337,6 +338,22 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
         const Pending p = m_pending.take(replyTo);
         const QString text = describeResult(p.type, info);
+        // A found artifact: a note that fades by itself, saying whether it is worn.
+        {
+            const QJsonArray found = info["foundArtifacts"].toArray();
+            const QJsonArray stowed = info["stowedArtifacts"].toArray();
+            for (const QJsonValue& v : found) {
+                const core::ArtifactDef* a = m_content->artifact(v.toString());
+                if (!a) continue;
+                const bool carried = stowed.contains(v);
+                const QString where = carried ? tr("Put in the backpack: something is already worn there. Open the hero (H) to swap.")
+                                              : tr("Worn at once.");
+                Toast::show(this, art::artifactIcon(a->id, a->slot, 128),
+                            tr("<b style='color:#ffd84a; font-size:13pt'>Found the %1!</b><br>%2<br><i>%3</i>")
+                                .arg(a->name.toHtmlEscaped(), a->description.toHtmlEscaped(), where));
+            }
+            if (!found.isEmpty()) sound::play(sound::Effect::Bell);
+        }
         using sound::Effect;
         if (p.type == net::msg::moveHero) sound::play(info["battleStarted"].toBool() ? Effect::Drums : Effect::Step);
         if (p.type == net::msg::moveHero && info.contains("joinOffer")) offerToJoin(info["joinOffer"].toObject());

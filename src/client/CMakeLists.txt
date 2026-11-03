@@ -8,6 +8,10 @@ add_library(kot_client_lib STATIC
     Art.cpp
     IconArt.cpp
     BuildTree.cpp
+    Toast.cpp
+    Toast.h
+    EquipmentView.cpp
+    EquipmentView.h
     Sound.h
     Sound.cpp
     MovePlanner.h

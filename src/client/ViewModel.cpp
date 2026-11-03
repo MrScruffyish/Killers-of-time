@@ -169,6 +169,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             h.pendingTraitPicks = o.value("pendingTraitPicks").toInt();
             for (const QJsonValue& s : o.value("spells").toArray()) h.spells << s.toString();
             for (const QJsonValue& a : o.value("artifacts").toArray()) h.artifacts << a.toString();
+            for (const QJsonValue& a : o.value("backpack").toArray()) h.backpack << a.toString();
             h.movementPoints = o.value("movementPoints").toInt();
             h.movementMax = o.value("movementMax").toInt();
             const QJsonArray d = o.value("destination").toArray();

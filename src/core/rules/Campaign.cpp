@@ -96,6 +96,7 @@ QJsonObject heroSnapshot(const GameState& state, HeroId id) {
     o.insert("traits", traits);
     o.insert("spells", QJsonArray::fromStringList(h->spells));
     o.insert("artifacts", QJsonArray::fromStringList(h->artifacts));
+    o.insert("backpack", QJsonArray::fromStringList(h->backpack));
     o.insert("pendingTraitPicks", h->pendingTraitPicks);
     QJsonArray stacks;
     if (const Army* a = state.army(h->army))
@@ -150,6 +151,9 @@ int applyCarriedHeroes(GameState& state, const ContentRegistry& content, PlayerI
         h->artifacts.clear();
         for (const QJsonValue& v : c.value("artifacts").toArray())
             if (content.artifact(v.toString())) h->artifacts << v.toString();
+        h->backpack.clear();
+        for (const QJsonValue& v : c.value("backpack").toArray())
+            if (content.artifact(v.toString())) h->backpack << v.toString();
         h->spellPoints = maxSpellPoints(*h);
         if (withArmy) {
             Army* a = state.army(h->army);

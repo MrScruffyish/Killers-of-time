@@ -27,6 +27,18 @@ int addExperience(Hero& hero, const ContentRegistry& content, int experience);
 bool pickTrait(Hero& hero, const ContentRegistry& content, const QString& traitId,
                QString* error = nullptr);
 
+// Artifacts. A hero wears a limited number per slot (artifactSlots()); the
+// bonuses of worn ones are added to his traits, carried ones (the backpack) give
+// nothing. Picking one up wears it when its slot has room, else it goes to the
+// backpack; returns true when worn.
+bool takeArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId);
+// Wears an artifact from the backpack. When its slot is full, `replace` (worn,
+// same slot) or else the first worn one of that slot goes to the backpack.
+bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId,
+                   const QString& replace = {}, QString* error = nullptr);
+// Takes a worn artifact off into the backpack.
+bool unequipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId, QString* error = nullptr);
+
 // Daily recovery: + "spell_recovery" spell points, capped at the maximum.
 // Returns the spell points actually regained.
 int regenSpellPoints(Hero& hero);
