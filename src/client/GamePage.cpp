@@ -719,6 +719,7 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
     if (type == net::msg::moveHero) {
         QString text = info["arrived"].toBool() ? tr("arrived")
                        : info["ambushed"].toBool() ? tr("ambushed after %1 steps (zone of control)").arg(info["stepsTaken"].toInt())
+                       : info["spotted"].toBool() ? tr("stopped after %1 steps: an enemy came into sight. Look before you go on (Enter continues)").arg(info["stepsTaken"].toInt())
                        : tr("moved %1 steps, out of movement; the route is kept for the next day").arg(info["stepsTaken"].toInt());
         if (info.contains("capturedMine")) text += tr(", captured a mine");
         if (info.contains("capturedTown")) text += tr(", captured a town");

@@ -6,6 +6,10 @@
 
 namespace kot::core {
 
+int heroVisionRadius(const Hero& hero, const ContentRegistry& content) {
+    return hero.trait(QStringLiteral("scouting_radius")) + hero.trait(QStringLiteral("scouting")) * content.balance().scouting.visionPerLevel;
+}
+
 QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegistry& content) {
     const GameMap& map = state.map();
     QByteArray visible(static_cast<qsizetype>(map.width()) * map.height(), 0);
@@ -14,7 +18,7 @@ QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegist
         radius = std::max(radius, 1);
         for (int dy = -radius; dy <= radius; ++dy) {
             for (int dx = -radius; dx <= radius; ++dx) {
-                if (dx * dx + dy * dy > radius * radius + radius) continue;  // roughly round
+                if (!withinVision(center, {center.x + dx, center.y + dy}, radius)) continue;  // roughly round
                 const Pos p{center.x + dx, center.y + dy};
                 if (map.inBounds(p)) visible[p.y * map.width() + p.x] = 1;
             }
@@ -24,8 +28,7 @@ QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegist
     for (const Hero& hero : state.heroes()) {
         if (state.teamOf(hero.owner) != team) continue;
         if (const Army* army = state.army(hero.army))
-            reveal(army->pos, hero.trait(QStringLiteral("scouting_radius")) +
-                              hero.trait(QStringLiteral("scouting")) * content.balance().scouting.visionPerLevel);
+            reveal(army->pos, heroVisionRadius(hero, content));
     }
     const VisionBalance& vb = content.balance().vision;
     for (const Town& t : state.towns()) {

@@ -162,6 +162,7 @@ and react to; add depth afterwards.
 - [x] Market window (M, Game menu): give one resource for another at your trade rate (view: `tradePercent`), preview before trading; M no longer toggles sound
 - [x] Map: centred on your hero at the start (the centre is kept until the window has its size); scrolls when the mouse is near the edge
 - [x] Town: "Give all units to <hero>" (G) on the Recruit tab, Armies tab's Move everything uses one command (`move_units` with `all`); one hero per town (already a rule, now tested); `move_units` accepts all 10 stack slots
+- [x] Spotting: a moving hero stops when a hostile army comes into sight that his team could not see when he set out (`spotted`; the route is kept, Enter goes on), so a zone of control never attacks from out of sight (playtest: a mine guard at the edge of vision)
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

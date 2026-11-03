@@ -178,6 +178,27 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     QList<ArmyId> ambushers;
     if (army->totalUnits() > 0) {
         const QList<ArmyId> atStart = zoneOfControlAt(state, content, *hero, army->pos);
+        // Hostile field armies the team cannot see yet (they may come into sight on the way).
+        const QByteArray seen = visibleTiles(state, state.teamOf(hero->owner), content);
+        QSet<Pos> townTilesSet;
+        for (const Town& t : state.towns()) townTilesSet.insert(t.pos);
+        QList<Pos> unseen;
+        if (!hero->inBoat)
+            for (const Army& a : state.armies())
+                if (a.id != army->id && a.totalUnits() > 0 && !townTilesSet.contains(a.pos) && state.isHostile(a.owner, hero->owner) &&
+                    !seen.at(a.pos.y * state.map().width() + a.pos.x))
+                    unseen.append(a.pos);
+        const int sight = heroVisionRadius(*hero, content);
+        // Stop where something new comes into sight, before walking on into danger.
+        for (int i = 0; i + 1 < steps; ++i) {
+            bool newSight = false;
+            for (const Pos p : unseen) newSight = newSight || (p != target && withinVision(path.steps[i], p, sight));
+            if (newSight) {
+                steps = i + 1;
+                result.spotted = true;
+                break;
+            }
+        }
         for (int i = 0; i < steps; ++i) {
             QList<ArmyId> here;
             for (const ArmyId a : zoneOfControlAt(state, content, *hero, path.steps[i]))
@@ -188,6 +209,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
             if (onlyTheTarget) break;  // the attack below fights them anyway
             ambushers = here;
             steps = i + 1;
+            result.spotted = false;
             break;
         }
     }

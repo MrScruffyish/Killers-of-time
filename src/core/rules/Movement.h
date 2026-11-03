@@ -54,6 +54,7 @@ struct MoveResult {
     QStringList foundArtifacts;      // picked up artifacts
     bool landed = false;  // left the boat
     bool ambushed = false;  // stopped by a zone of control: the armies there attacked (see `battles`)
+    bool spotted = false;   // stopped because a hostile army came into sight (destination kept)
     std::optional<PendingAttack> pending;  // deferBattles: the battles still to fight
 };
 
@@ -73,6 +74,9 @@ struct MoveResult {
 // stops on that tile and fights them (`ambushed`), unless they are the very
 // armies he is attacking anyway. A move that ends short of the target remembers
 // it as the hero's `destination`; arriving (or attacking it) clears it.
+// Spotting: when a hostile field army that the team could not see at the start
+// comes into the hero's sight, he stops right there (`spotted`), so the player
+// sees the danger before walking into its zone of control.
 // With `deferBattles` the hero stops next to the target and the battles are left to
 // the caller (`pending`; interactive battles): fight them, then call finishAttack.
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,

@@ -7,6 +7,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Movement.h"
+#include "core/rules/Vision.h"
 
 using namespace kot::core;
 
@@ -158,6 +159,7 @@ private slots:
     void monstersAttackAHeroWhoComesTooClose() {
         gs.setMap(GameMap(20, 10, "grass"));
         const HeroId h = makeHero(p1, {0, 0});
+        gs.hero(h)->traits["scouting_radius"] = 12;  // sees the monsters from the start
         armyOf(h).addUnits("pikeman", 40, 10);
         const ArmyId m = gs.addArmy(PlayerId(), {8, 2});
         gs.army(m)->addUnits("militia", 2, 6);
@@ -170,6 +172,24 @@ private slots:
         QCOMPARE(armyOf(h).pos, (Pos{6, 0}));  // stopped two tiles from the monsters
         QVERIFY(!gs.army(m));                   // and beat them
         QCOMPARE(gs.hero(h)->destination, std::optional<Pos>(Pos{12, 0}));
+    }
+
+    void aHeroStopsWhenAnUnseenEnemyComesIntoSight() {
+        gs.setMap(GameMap(30, 10, "grass"));
+        const HeroId h = makeHero(p1, {0, 0});  // sees 5 tiles
+        armyOf(h).addUnits("pikeman", 40, 10);
+        const ArmyId m = gs.addArmy(PlayerId(), {12, 2});  // out of sight at the start
+        gs.army(m)->addUnits("militia", 2, 6);
+        MoveResult r = moveHero(gs, reg, h, {20, 0});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY(r.spotted);
+        QVERIFY(!r.ambushed);
+        QCOMPARE(armyOf(h).pos, (Pos{7, 0}));  // the first tile from where it is seen
+        QCOMPARE(gs.hero(h)->destination, std::optional<Pos>(Pos{20, 0}));
+        // Going on walks into its zone of control: now that is the player's choice.
+        r = moveHero(gs, reg, h, {20, 0});
+        QVERIFY(r.ambushed);
+        QVERIFY(!r.spotted);
     }
 
     void walkingAwayFromAnArmyAlreadyInReachIsFree() {
