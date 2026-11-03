@@ -262,6 +262,10 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
                 return LobbyResult::failure("invalid_value", "campaign: unknown campaign");
             s.campaign = v.toString();
             if (!s.campaign.isEmpty()) s.scenario.clear();
+        } else if (key == "autosaves") {
+            if (!v.isDouble() || v.toInt() < 0 || v.toInt() > 100)
+                return LobbyResult::failure("invalid_value", "autosaves: 0 to 100");
+            s.autosaves = v.toInt();
         } else if (key == "difficulty") {
             static const QStringList levels = {"easy", "normal", "hard", "expert"};
             if (!v.isString() || !levels.contains(v.toString()))

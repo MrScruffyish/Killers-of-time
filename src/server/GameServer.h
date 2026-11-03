@@ -77,6 +77,11 @@ private:
     std::unique_ptr<GameSession> m_session;
     int m_nextClientId = 1;
     QString m_saveDir;
+    int m_lastAutosaveDay = 0;
+    // A save at the start of every new day, the oldest beyond the lobby's
+    // `autosaves` removed; skipped (and tried again) while a battle runs.
+    void autosave();
+    void saveCampaignStart();
     QJsonArray m_scenarios;  // for the welcome message
     QJsonArray campaignsJson() const;  // with each campaign's progress (saves folder)
 };

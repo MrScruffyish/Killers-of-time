@@ -96,6 +96,17 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
         m_difficulty->setItemData(m_difficulty->count() - 1, tip, Qt::ToolTipRole);
     }
     settings->addWidget(m_difficulty);
+    settings->addSpacing(20);
+    settings->addWidget(new QLabel(tr("Autosaves"), this));
+    m_autosaves = new QSpinBox(this);
+    m_autosaves->setObjectName("autosaves");
+    m_autosaves->setRange(0, 100);
+    m_autosaves->setToolTip(tr("A save at the start of every day; this many are kept (0 = none). "
+                               "Campaign chapters also get a save when they start."));
+    settings->addWidget(m_autosaves);
+    connect(m_autosaves, &QSpinBox::editingFinished, this, [this]() {
+        if (m_autosaves->value() != m_client->lobby().settings.autosaves) m_client->setSettings({{"autosaves", m_autosaves->value()}});
+    });
     settings->addStretch(1);
     outer->addLayout(settings);
 
@@ -169,6 +180,11 @@ void LobbyPage::rebuild() {
     m_height->blockSignals(false);
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
     m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
+    if (!m_autosaves->hasFocus()) {
+        m_autosaves->blockSignals(true);
+        m_autosaves->setValue(lobby.settings.autosaves);
+        m_autosaves->blockSignals(false);
+    }
     // The map: a random one or a scenario.
     if (m_scenario->count() != m_client->scenarios().size() + m_client->campaigns().size() + 1) {
         m_scenario->clear();
@@ -209,6 +225,7 @@ void LobbyPage::rebuild() {
                        static_cast<QWidget*>(m_mapType)})
         w->setEnabled(host && random);
     m_difficulty->setEnabled(host);
+    m_autosaves->setEnabled(host);
     m_start->setEnabled(host);
     m_load->setEnabled(host);
     m_start->setToolTip(host ? QString() : tr("Only the host can start the game"));

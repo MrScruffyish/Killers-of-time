@@ -37,6 +37,8 @@ public:
     bool start(const net::LobbyState& lobby, QString* error);
     // Where campaign progress is kept (the server's saves folder).
     void setCampaignDir(const QString& dir) { m_campaignDir = dir; }
+    const QString& campaignId() const { return m_campaign; }  // empty: not a campaign
+    int campaignChapter() const { return m_campaignChapter; }  // 0-based
     // Continues a saved game. AI players get their AI profile again; every human
     // player starts free and the game waits on his turn until someone takes him
     // over (joinPlayer). Players who leave later are skipped as before.

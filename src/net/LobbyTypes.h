@@ -51,6 +51,7 @@ struct LobbySettings {
     QString scenario;  // scenario id (data/scenarios), empty = a random map
     QString campaign;  // campaign id (data/campaigns): its next chapter is played
     QString mapType = QStringLiteral("continent");  // random maps: continent or islands
+    int autosaves = 5;  // autosaves kept (one at the start of each day), 0 = none
 };
 
 // Everything a client needs to show the game setup screen.

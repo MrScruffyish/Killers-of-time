@@ -1,12 +1,14 @@
+#include <QDir>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtEndian>
 #include <QtTest>
 
-#include "core/Version.h"
 #include <memory>
 
+#include "core/Version.h"
 #include "core/content/ContentRegistry.h"
+#include "core/model/GameState.h"
 #include "net/Connection.h"
 #include "net/LobbyClient.h"
 #include "net/Protocol.h"
@@ -398,6 +400,48 @@ private slots:
         QCOMPARE(b2->view()["heroes"], savedView["heroes"]);
         b2->sendCommand(msg::endTurn);
         QTRY_COMPARE_WITH_TIMEOUT(a2->view()["day"].toInt(), 2, 3000);
+    }
+
+    void autosavesEveryDayKeepingTheNewest() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().members.size(), 2, 3000);
+        a->setSettings({{"autosaves", 2}});
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().settings.autosaves, 2, 3000);
+        startTwoPlayerGame(*a, *b);
+        for (int day = 2; day <= 5; ++day) {
+            a->sendCommand(msg::endTurn);
+            QTRY_COMPARE_WITH_TIMEOUT(b->view()["currentPlayer"].toInt(), b->you()["playerId"].toInt(), 3000);
+            b->sendCommand(msg::endTurn);
+            QTRY_COMPARE_WITH_TIMEOUT(a->view()["day"].toInt(), day, 3000);
+        }
+        QTRY_COMPARE_WITH_TIMEOUT(QDir(saves.path()).entryList({"autosave_*.json"}, QDir::Files, QDir::Name),
+                                  QStringList({"autosave_day0004.json", "autosave_day0005.json"}), 3000);
+        kot::core::GameState loaded;
+        QVERIFY(kot::core::GameState::loadFromFile(saves.filePath("autosave_day0005.json"), content, &loaded, nullptr));
+        QCOMPARE(loaded.day(), 5);
+    }
+
+    void campaignChaptersAreSavedWhenTheyStart() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().members.size(), 2, 3000);
+        a->setSettings({{"campaign", "first_war"}});
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().settings.campaign, QString("first_war"), 3000);
+        startTwoPlayerGame(*a, *b);
+        QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(saves.filePath("campaign_first_war_chapter1_start.json")), 3000);
+        // It shows in the load list; the campaign's progress file does not.
+        QJsonObject info;
+        connect(a.get(), &LobbyClient::commandResult, this, [&](int, const QJsonObject& i) { info = i; });
+        a->listSaves();
+        QTRY_VERIFY_WITH_TIMEOUT(info.contains("saves"), 3000);
+        for (const QJsonValue& v : info["saves"].toArray()) QVERIFY(v.toString().contains("_chapter"));
     }
 
     void connectingToNothingReportsAFailure() {

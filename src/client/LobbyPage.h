@@ -40,6 +40,7 @@ private:
     QLineEdit* m_seed;
     QComboBox* m_difficulty;
     QComboBox* m_mapType;
+    QSpinBox* m_autosaves;
     QComboBox* m_scenario;
     QLabel* m_scenarioInfo;
     QPushButton* m_start;

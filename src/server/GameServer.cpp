@@ -1,6 +1,7 @@
 #include "server/GameServer.h"
 
 #include <QDir>
+#include <QFile>
 #include <QJsonArray>
 #include <QRegularExpression>
 
@@ -216,6 +217,7 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
         reply.body.insert("info", command.info);
         client.connection->send(reply);
         sendGameStates();
+        autosave();
         return;
     } else {
         result = LobbyResult::failure("unknown_message", "unknown message type '" + message.type + "'");
@@ -257,8 +259,36 @@ void GameServer::startGame() {
         for (Client& c : m_clients) {
             if (c.greeted && m_session->playerOfClient(c.id).isValid()) sendGameStarted(c);
         }
+        m_lastAutosaveDay = m_session->state().day();  // day 1 is the start itself
+        saveCampaignStart();
     }
     emit gameStartRequested(m_lobby.state());
+}
+
+void GameServer::autosave() {
+    if (!m_session || !m_session->active() || m_session->battleRunning() || m_saveDir.isEmpty()) return;
+    const int day = m_session->state().day();
+    const int keep = m_lobby.state().settings.autosaves;
+    if (day <= m_lastAutosaveDay || keep <= 0) return;
+    m_lastAutosaveDay = day;
+    QString error;
+    const QString name = QStringLiteral("autosave_day%1").arg(day, 4, 10, QLatin1Char('0'));
+    const QString path = savePath(name, &error);
+    if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) {
+        qCWarning(lcKotServer) << "Autosave failed:" << error;
+        return;
+    }
+    // Keep the newest `keep` autosaves (the names sort by day).
+    QStringList all = QDir(m_saveDir).entryList({QStringLiteral("autosave_day*.json")}, QDir::Files, QDir::Name);
+    while (all.size() > keep) QFile::remove(QDir(m_saveDir).filePath(all.takeFirst()));
+}
+
+void GameServer::saveCampaignStart() {
+    if (!m_session || m_session->campaignId().isEmpty() || m_saveDir.isEmpty()) return;
+    QString error;
+    const QString name = QStringLiteral("campaign_%1_chapter%2_start").arg(m_session->campaignId()).arg(m_session->campaignChapter() + 1);
+    const QString path = savePath(name.left(40), &error);
+    if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) qCWarning(lcKotServer) << "Campaign save failed:" << error;
 }
 
 void GameServer::sendGameStates() {
@@ -341,6 +371,8 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
         QJsonArray games;
         if (!m_saveDir.isEmpty()) {
             for (const QFileInfo& f : QDir(m_saveDir).entryInfoList({"*.json"}, QDir::Files, QDir::Time)) {
+                // campaign_<id>.json holds campaign progress, not a game.
+                if (f.completeBaseName().startsWith("campaign_") && !f.completeBaseName().contains("_chapter")) continue;
                 names << f.completeBaseName();
                 if (!m_content) continue;
                 const core::SaveInfo s = core::inspectSave(f.filePath(), *m_content);
@@ -380,6 +412,7 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
         if (!notes.isEmpty()) qCInfo(lcKotServer) << "Converted" << path << notes;
         m_session = std::make_unique<GameSession>(*m_content);
         m_session->startFromState(std::move(state));
+        m_lastAutosaveDay = m_session->state().day();
         qCInfo(lcKotServer) << "Loaded the game" << path;
         reply(client, message, {{"name", message.body.value("name").toString()}, {"converted", QJsonArray::fromStringList(notes)}});
         Message loaded;
