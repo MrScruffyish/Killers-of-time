@@ -165,6 +165,8 @@ struct GameView {
     QString difficulty;
     QString victory;  // what wins this game
     QString weekEventName, weekEventText;
+    int upkeep = 0;            // gold per week for your units
+    bool upkeepUnpaid = false; // this week's was not paid: morale suffers
     QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
     core::ResourceAmounts resources;

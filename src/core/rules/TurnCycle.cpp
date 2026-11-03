@@ -59,6 +59,26 @@ void beginGame(GameState& state, const ContentRegistry& content) {
     startTurn(state, content, state.currentPlayer());
 }
 
+int weeklyUpkeep(const GameState& state, const ContentRegistry& content, PlayerId player) {
+    const int percent = content.balance().economy.upkeepPercent;
+    long long total = 0;
+    for (const Army& a : state.armies()) {
+        if (a.owner != player) continue;
+        for (const UnitStack& s : a.stacks)
+            if (const UnitDef* u = content.unit(s.unitTypeId())) total += static_cast<long long>(s.count()) * u->cost.value(QStringLiteral("gold"));
+    }
+    return static_cast<int>(total * percent / 100);
+}
+
+void payUpkeep(GameState& state, const ContentRegistry& content) {
+    for (Player& p : state.players()) {
+        const int due = weeklyUpkeep(state, content, p.id);
+        const int gold = p.resources.value(QStringLiteral("gold"));
+        p.upkeepUnpaid = gold < due;
+        p.resources[QStringLiteral("gold")] = std::max(0, gold - due);
+    }
+}
+
 void startWeekEvent(GameState& state, const ContentRegistry& content) {
     state.setWeekEvent(QString());
     int total = 0;
@@ -88,6 +108,7 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
             info.newDay = true;
             state.setDay(state.day() + 1);
             if (isNewWeek(state.day())) {
+                payUpkeep(state, content);
                 startWeekEvent(state, content);
                 applyWeeklyGrowth(state, content);
                 refreshTavernOffers(state, content);

@@ -59,6 +59,21 @@ private slots:
         QCOMPARE(loaded.weekEvent(), gs.weekEvent());
     }
 
+    void upkeepIsPaidWeekly() {
+        const ArmyId a = gs.addArmy(p1, {2, 2});
+        gs.army(a)->addUnits("militia", 50, 6);  // 20 gold each
+        const int due = 50 * reg.unit("militia")->cost.value("gold") * reg.balance().economy.upkeepPercent / 100;
+        QCOMPARE(weeklyUpkeep(gs, reg, p1), due);
+        gs.player(p1)->resources = {{"gold", 1000}};
+        payUpkeep(gs, reg);
+        QCOMPARE(gs.player(p1)->resources.value("gold"), 1000 - due);
+        QVERIFY(!gs.player(p1)->upkeepUnpaid);
+        gs.player(p1)->resources = {{"gold", 10}};
+        payUpkeep(gs, reg);
+        QCOMPARE(gs.player(p1)->resources.value("gold"), 0);
+        QVERIFY(gs.player(p1)->upkeepUnpaid);
+    }
+
     void incomeFromTownsAndMines() {
         gs.addTown("T1", "humans", {1, 1}, p1);
         gs.addTown("T2", "humans", {3, 3}, p1);

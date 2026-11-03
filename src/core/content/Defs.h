@@ -81,6 +81,8 @@ struct EconomyBalance {
     int maxHeroesPerPlayer = 8;
     ResourceAmounts startingResources{{"gold", 10000}};
     ResourceAmounts boatCost{{"gold", 1000}, {"wood", 10}};
+    int upkeepPercent = 10;      // weekly upkeep of every unit: this share of its gold cost
+    int unpaidMorale = -2;       // morale of a player's armies in a week he could not pay
 };
 // Auto-resolved battles (core/battle/AutoBattle.h). Percentages per point of
 // attack minus defense, with caps.

@@ -423,7 +423,7 @@ one-click actions on top of the basic rules. They are part of the rules engine
 | D3 | Network format | JSON first, optimize later |
 | D6 | Map size / tile size | Up to 256x256, 32 px tiles |
 | D8 | Win conditions | Last team standing first |
-| D9 | Unit upkeep (gold/grain per day) | **Later.** When added, unpaid upkeep lowers Morale; low morale can make units refuse to attack or attack badly |
+| D9 | Unit upkeep | **Done:** weekly, `upkeepPercent` of the units' gold cost (balance.json); unpaid lowers Morale that week |
 | D18 | Do wounded stacks heal after a battle? | Survivors restored to full HP after battle; eliminated units stay dead (revisit when balancing) |
 | D10 | Hot-seat mode on one machine | Later, via multiple local clients |
 | D15 | Exact numbers (unit speeds, trait->bonus tables, slow-unit penalty, XP curve) | Tuned in data files during M2/M6 |

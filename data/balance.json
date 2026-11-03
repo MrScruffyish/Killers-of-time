@@ -3,7 +3,8 @@
   "vision": { "townRadius": 5, "mineRadius": 2 },
   "economy": { "townDailyGold": 500, "tradeEfficiencyPercent": 80,
                "heroCost": 2500, "tavernOffers": 2, "maxHeroesPerPlayer": 8,
-               "startingResources": { "gold": 10000, "wood": 20, "stone": 20 } },
+               "startingResources": { "gold": 10000, "wood": 20, "stone": 20 },
+               "upkeepPercent": 10, "unpaidMorale": -2 },
   "_difficulty": "Overall level (lobby): human starting resources, monster group size, AI income and growth bonus.",
   "difficulty": {
     "easy":   { "humanStartPercent": 150, "monsterPercent": 70,  "aiIncomePercent": -20, "aiGrowthPercent": -10 },

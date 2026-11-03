@@ -142,7 +142,8 @@ and react to; add depth afterwards.
 - [x] Island maps (lobby map type; sea channels, one island per player, starts near the shore) and the AI uses boats when its island is done
 - [x] Weekly events (`events.json`: resources for everyone, growth changes, extra units; announced in the client)
 - [x] Hero screen (H): experience bar, traits by group with + buttons for level-up picks, army with stats and stars, spellbook and artifacts with descriptions
-- [ ] Playtesting; next ideas: upkeep (D9)
+- [x] Unit upkeep (D9): 10% of the units' gold cost per week; unpaid = -2 morale that week; shown in the status bar
+- [ ] Playtesting
 
 ---
 

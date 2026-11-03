@@ -22,11 +22,13 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
         if (!army) continue;
         m_owner[side] = army->owner;
         m_hero[side] = army->hero;
+        if (const Player* pl = state.player(army->owner); pl && pl->upkeepUnpaid)
+            m_morale[side] += content.balance().economy.unpaidMorale;  // unpaid soldiers (D9)
         if (const Hero* h = state.hero(army->hero)) {
             m_attackBonus[side] = h->trait(QStringLiteral("attack"));
             m_defenseBonus[side] = h->trait(QStringLiteral("defense"));
             m_heroCopy[side] = *h;
-            m_morale[side] = h->trait(QStringLiteral("morale"));
+            m_morale[side] += h->trait(QStringLiteral("morale"));
             m_luck[side] = h->trait(QStringLiteral("luck"));
         }
         const int hpPercent = (m_heroCopy[side].id.isValid() ? m_heroCopy[side].trait(QStringLiteral("hit_points")) : 0)

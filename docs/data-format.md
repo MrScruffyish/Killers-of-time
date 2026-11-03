@@ -240,3 +240,8 @@ is full at the start of every battle and its tier is the spell power. The battle
 At the start of every week one event is drawn (by `weight`, from the game's random numbers).
 `resources` go to (or, negative, are taken from) every player; `growthPercent` changes that week's
 dwelling growth; `unitGrowth` adds units to every dwelling of those units (towns and map).
+
+## Upkeep (balance.json economy `upkeepPercent`, `unpaidMorale`)
+At the start of every week each player pays `upkeepPercent` of the gold cost of all his units.
+Who cannot pay it all gives what he has, and his armies fight with `unpaidMorale` morale that
+week (undead ignore morale). Decision D9.

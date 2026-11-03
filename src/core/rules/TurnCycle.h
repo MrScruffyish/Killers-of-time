@@ -15,6 +15,12 @@ ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& conte
 // team's explored map is updated.
 void startTurn(GameState& state, const ContentRegistry& content, PlayerId player);
 
+// Weekly upkeep of a player's units: upkeepPercent (balance.json) of their gold cost.
+int weeklyUpkeep(const GameState& state, const ContentRegistry& content, PlayerId player);
+// At a new week every player pays it; who cannot pay it all gives what he has and his
+// armies fight with unpaidMorale that week.
+void payUpkeep(GameState& state, const ContentRegistry& content);
+
 // A new week: draws this week's event (events.json, by weight, from the game's Rng)
 // and gives its resources; its growth changes apply in this week's growth.
 void startWeekEvent(GameState& state, const ContentRegistry& content);

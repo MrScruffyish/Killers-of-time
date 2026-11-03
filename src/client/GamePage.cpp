@@ -387,7 +387,9 @@ void GamePage::updateStatus() {
     m_status->setText(tr("<b>Day %1</b> (week %4, %5) &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3%6")
                           .arg(m_view.day)
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
-                          .arg(res.join(", "))
+                          .arg(res.join(", ") + (m_view.upkeep > 0 ? tr(" &nbsp;(upkeep %1/week%2)").arg(m_view.upkeep)
+                                                         .arg(m_view.upkeepUnpaid ? tr(", <b style='color:#ff6060'>unpaid: morale -2</b>") : QString())
+                                                   : QString()))
                           .arg((m_view.day - 1) / 7 + 1)
                           .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty)
                           .arg(campaign));

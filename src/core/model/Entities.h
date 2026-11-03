@@ -23,6 +23,7 @@ struct Player {
     ResourceAmounts resources;
     int incomePercent = 0;   // difficulty bonus: +/- percent of all income
     int growthPercent = 0;   // difficulty bonus: +/- percent dwelling growth in his towns
+    bool upkeepUnpaid = false;  // could not pay this week's upkeep: his armies' morale drops
 };
 
 struct Hero {

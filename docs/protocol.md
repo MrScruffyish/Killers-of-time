@@ -166,3 +166,4 @@ Stacks in views and battle units may have `stars` (0..5, veterancy).
 The game view has `victory` (a short text: what wins this game).
 The game view has `weekEvent` (`id`, `name`, `description`) when an event is on.
 Lobby settings also have `mapType` (`continent` or `islands`: one island per player, boats needed; random maps only).
+The game view has `upkeep` (your weekly upkeep in gold) and `upkeepUnpaid`.

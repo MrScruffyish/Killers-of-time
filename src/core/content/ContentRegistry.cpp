@@ -633,6 +633,8 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         const ResourceAmounts start = er.optionalIntMap(QStringLiteral("startingResources"), 0, 1000000000);
         const ResourceAmounts boat = er.optionalIntMap(QStringLiteral("boatCost"), 1, 1000000);
         if (!boat.isEmpty()) eb.boatCost = boat;
+        eb.upkeepPercent = er.optionalInt(QStringLiteral("upkeepPercent"), eb.upkeepPercent, 0, 100);
+        eb.unpaidMorale = er.optionalInt(QStringLiteral("unpaidMorale"), eb.unpaidMorale, -10, 0);
         if (!start.isEmpty()) eb.startingResources = start;
         er.finish();
         if (vr.ok() && er.ok()) {

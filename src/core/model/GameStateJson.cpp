@@ -92,6 +92,7 @@ QJsonObject GameState::toJson() const {
         if (!p.aiProfile.isEmpty()) o.insert("aiProfile", p.aiProfile);
         if (p.incomePercent) o.insert("incomePercent", p.incomePercent);
         if (p.growthPercent) o.insert("growthPercent", p.growthPercent);
+        if (p.upkeepUnpaid) o.insert("upkeepUnpaid", true);
         o.insert("race", p.race);
         o.insert("color", p.color);
         o.insert("resources", intMapToJson(p.resources));
@@ -355,6 +356,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         p.aiProfile = r.optionalString("aiProfile");
         p.incomePercent = r.optionalInt("incomePercent", 0, -100, 1000);
         p.growthPercent = r.optionalInt("growthPercent", 0, -100, 1000);
+        p.upkeepUnpaid = r.optionalBool("upkeepUnpaid", false);
         p.race = r.requireId("race");
         p.color = r.requireColor("color");
         p.resources = r.optionalIntMap("resources", 0, 1000000000);
