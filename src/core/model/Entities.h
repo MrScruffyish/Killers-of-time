@@ -71,6 +71,7 @@ struct Town {
     QStringList buildings;  // built building ids (building data comes in M3)
     ArmyId garrison;        // invalid = none
     int lastBuildDay = 0;   // day something was last built here (one building per day)
+    int lastHireWeek = 0;   // week a hero was last hired in its tavern (one per week; 0 = never)
     // Units waiting to be recruited: dwelling chain root building id -> count.
     QMap<QString, int> recruitPool;
     // Units sent here from map dwellings: unit id -> count, recruitable like the pool.

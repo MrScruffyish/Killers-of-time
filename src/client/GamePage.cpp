@@ -758,13 +758,23 @@ void GamePage::updateStatus() {
     const QString campaign = m_view.campaign.isEmpty() ? QString()
         : tr(" &nbsp;&mdash;&nbsp; %1, chapter %2/%3").arg(m_view.campaign["name"].toString())
               .arg(m_view.campaign["chapter"].toInt()).arg(m_view.campaign["chapters"].toInt());
-    m_status->setToolTip(tr("Goal: %1").arg(m_view.victory));
-    m_status->setText(tr("<b>Day %1</b> (week %3, %4) &nbsp;&mdash;&nbsp; %2%5")
+    // Where in the week we are: seven marks, today lit, and when the towns grow.
+    const int weekDay = (m_view.day - 1) % 7 + 1;
+    QString marks;
+    for (int d = 1; d <= 7; ++d)
+        marks += d < weekDay ? QStringLiteral("<span style='color:#8a7a5a'>&#x25CF;</span>")
+                 : d == weekDay ? QStringLiteral("<span style='color:#ffd84a; font-size:13pt'>&#x25C6;</span>")
+                                : QStringLiteral("<span style='color:#5a4a34'>&#x25CB;</span>");
+    const int toGrowth = 8 - weekDay;
+    const QString growth = toGrowth == 7 ? tr("new units today") : toGrowth == 1 ? tr("new units tomorrow") : tr("new units in %1 days").arg(toGrowth);
+    m_status->setToolTip(tr("Day %1 of the week %2. Towns and dwellings get new units at the start of each week.<br>Goal: %3")
+                             .arg(weekDay).arg((m_view.day - 1) / 7 + 1).arg(m_view.victory));
+    m_status->setText(tr("<b>Day %1</b> &nbsp;Week %3: %6 <span style='color:#c8b890'>%7</span> &nbsp;(%4) &nbsp;&mdash;&nbsp; %2%5")
                           .arg(m_view.day)
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
                           .arg((m_view.day - 1) / 7 + 1)
                           .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty)
-                          .arg(campaign));
+                          .arg(campaign, marks, growth));
     const bool myTurn = m_view.isMyTurn();
     const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
     for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits, m_castSpell}) b->setEnabled(free);

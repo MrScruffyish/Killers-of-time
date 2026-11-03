@@ -191,6 +191,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             o.insert("garrison", id(t.garrison.value()));
             o.insert("buildings", QJsonArray::fromStringList(t.buildings));
             o.insert("lastBuildDay", t.lastBuildDay);
+            o.insert("hiredThisWeek", t.lastHireWeek == (state.day() - 1) / 7 + 1);
             o.insert("recruitPool", intMap(t.recruitPool));
             o.insert("importedUnits", intMap(t.importedUnits));
             o.insert("tavernOffers", QJsonArray::fromStringList(t.tavernOffers));

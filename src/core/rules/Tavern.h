@@ -29,7 +29,8 @@ struct HireResult : ActionResult {
 
 // Hires an offered hero in a town you own: pays `heroCost` gold and the new hero
 // appears in the town with his class's starting traits and no army. Only one hero
-// can stand in a town, and a player has at most `maxHeroesPerPlayer`. With
+// can stand in a town, a tavern hires out one hero a week, and a player has at
+// most `maxHeroesPerPlayer`. With
 // `useTrade`, missing gold is bought by trading spare resources.
 HireResult hireHero(GameState& state, const ContentRegistry& content, TownId town,
                     PlayerId player, const QString& templateId, bool useTrade = false);

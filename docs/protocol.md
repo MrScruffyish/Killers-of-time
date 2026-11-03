@@ -99,7 +99,7 @@ When the game is over every command is refused with code `game_over`.
 | `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
 | `recruit` | `town`, `unit`, `count`, `army`? | |
 | `recruit_at_dwelling` | `dwelling`, `count`, `army` | |
-| `hire_hero` | `town`, `hero` (template id), `useTrade`? | `hero` (id) |
+| `hire_hero` | `town`, `hero` (template id), `useTrade`? | `hero` (id); a tavern hires out one hero a week (own towns in the view: `hiredThisWeek`) |
 | `trade` | `give`, `amount`, `get` | |
 | `answer_join` | `answer`: `accept`, `fight` or `leave` | answers a `joinOffer` from the last `move_hero`: `joined`, `left`, or (fight) the attack like `move_hero` (`battleStarted`, ...). Any other command drops the offer |
 | `move_units` | `from`, `to`, `stack`, `count`; or `all: true` instead of `stack`/`count` (every stack that fits) | with `all`: `moved` (units), `left` (units that did not fit) |

@@ -162,6 +162,7 @@ QJsonObject GameState::toJson() const {
         o.insert("buildings", QJsonArray::fromStringList(t.buildings));
         putOptionalId(o, "garrison", t.garrison.value());
         o.insert("lastBuildDay", t.lastBuildDay);
+        if (t.lastHireWeek) o.insert("lastHireWeek", t.lastHireWeek);
         o.insert("recruitPool", intMapToJson(t.recruitPool));
         o.insert("importedUnits", intMapToJson(t.importedUnits));
         o.insert("tavernOffers", QJsonArray::fromStringList(t.tavernOffers));
@@ -471,6 +472,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         t.buildings = r.optionalStringList("buildings");
         t.garrison = ArmyId(static_cast<quint32>(r.optionalInt("garrison", 0, 0, kMaxId)));
         t.lastBuildDay = r.optionalInt("lastBuildDay", 0, 0, 10000000);
+        t.lastHireWeek = r.optionalInt("lastHireWeek", 0, 0, 10000000);
         t.recruitPool = r.optionalIntMap("recruitPool", 0, 1000000);
         t.importedUnits = r.optionalIntMap("importedUnits", 0, 1000000);
         t.tavernOffers = r.optionalStringList("tavernOffers");

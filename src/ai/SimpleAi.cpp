@@ -130,7 +130,7 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
         const int cost = content.balance().economy.heroCost;
         if (heroes < wanted && player->resources.value("gold") >= cost + 1000) {
             for (const Town& t : state.towns()) {
-                if (t.owner != me || t.tavernOffers.isEmpty()) continue;
+                if (t.owner != me || t.tavernOffers.isEmpty() || t.lastHireWeek == (state.day() - 1) / 7 + 1) continue;
                 bool heroThere = false;
                 for (const Army& a : state.armies()) heroThere = heroThere || (a.pos == t.pos && a.hasHero());
                 if (heroThere) continue;

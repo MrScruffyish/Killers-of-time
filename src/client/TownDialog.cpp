@@ -487,6 +487,11 @@ void TownDialog::rebuild() {
             layout->addWidget(new QLabel(tr("Build a Tavern to hire heroes."), page));
         } else if (town->tavernOffers.isEmpty()) {
             layout->addWidget(new QLabel(tr("No heroes are offered right now. New ones arrive every week."), page));
+        } else if (town->hiredThisWeek) {
+            auto* done = new QLabel(tr("<b style='color:#ffd27a'>A hero was hired here this week.</b> The tavern hires out one hero a week: the next one when the week turns."), page);
+            done->setObjectName("hiredThisWeek");
+            done->setWordWrap(true);
+            layout->addWidget(done);
         }
         const int cost = m_content->balance().economy.heroCost;
         const int gold = m_view.resources.value(m_content->currency() ? m_content->currency()->id : QString());
@@ -501,7 +506,7 @@ void TownDialog::rebuild() {
             row->addWidget(new QLabel(t ? tr("<b>%1</b><br>%2").arg(t->name, cls ? cls->name : t->classId) : offer, page), 1);
             auto* hire = new QPushButton(gold >= cost ? tr("Hire for %1").arg(cost) : tr("Hire for %1 (trade first)").arg(cost), page);
             hire->setObjectName(QStringLiteral("hire_%1").arg(offer));
-            hire->setEnabled(myTurn);
+            hire->setEnabled(myTurn && !town->hiredThisWeek);
             const int tid = town->id;
             const bool trade = gold < cost;
             connect(hire, &QPushButton::clicked, this, [=, this]() {

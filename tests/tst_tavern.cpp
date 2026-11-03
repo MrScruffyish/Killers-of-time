@@ -91,10 +91,22 @@ private slots:
 
     void oneHeroInTheTownAtATime() {
         QVERIFY(hireHero(gs, reg, town, p1, t().tavernOffers[0]).ok);
+        t().lastHireWeek = 0;  // only the hero standing there stops the next one
         const HireResult r = hireHero(gs, reg, town, p1, t().tavernOffers[0]);
         QVERIFY(!r.ok);
         QVERIFY(r.error.contains("already in the town"));
         QCOMPARE(me().resources.value("gold"), 7500);
+    }
+
+    void oneHeroAWeekPerTavern() {
+        const HireResult first = hireHero(gs, reg, town, p1, t().tavernOffers[0]);
+        QVERIFY(first.ok);
+        gs.army(gs.hero(first.hero)->army)->pos = {6, 6};  // he walks out
+        const HireResult again = hireHero(gs, reg, town, p1, t().tavernOffers[0]);
+        QVERIFY(!again.ok);
+        QVERIFY2(again.error.contains("this week"), qPrintable(again.error));
+        while ((gs.day() - 1) / 7 + 1 == t().lastHireWeek) gs.setDay(gs.day() + 1);  // the week turns
+        QVERIFY(hireHero(gs, reg, town, p1, t().tavernOffers[0]).ok);
     }
 
     void hiredHeroIsOfferedNowhereElse() {

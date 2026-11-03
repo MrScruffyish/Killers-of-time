@@ -65,6 +65,8 @@ HireResult hireHero(GameState& state, const ContentRegistry& content, TownId tow
     Player* player = state.player(playerId);
     if (!player || town->owner != playerId) return fail(QStringLiteral("this is not your town"));
     if (!hasTavern(*town, content)) return fail(QStringLiteral("this town has no tavern"));
+    const int week = (state.day() - 1) / 7 + 1;
+    if (town->lastHireWeek == week) return fail(QStringLiteral("a hero was hired in this tavern this week; the next one next week"));
     if (!town->tavernOffers.contains(templateId))
         return fail(QStringLiteral("that hero is not offered here"));
     const HeroTemplateDef* tmpl = content.heroTemplate(templateId);
@@ -96,6 +98,8 @@ HireResult hireHero(GameState& state, const ContentRegistry& content, TownId tow
     applyTradeSteps(player->resources, plan);
     player->resources[currency] -= cost.value(currency);
     state.hero(id)->templateId = templateId;
+    town = state.town(townId);  // createHero may have moved the towns in memory
+    if (town) town->lastHireWeek = week;
     for (Town& t : state.towns()) t.tavernOffers.removeAll(templateId);
 
     HireResult ok;
