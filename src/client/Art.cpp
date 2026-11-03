@@ -319,6 +319,36 @@ QPixmap pointerImage(Pointer kind) {
         foot(21, 11, 12, c);
         break;
     }
+    case Pointer::MoveAttack: {  // a sword with footsteps under it: walk there, then strike
+        foot(8, 25, -12, QColor("#ffffff"));
+        foot(15, 20, 12, QColor("#ffffff"));
+        p.save();
+        p.translate(21, 13);
+        p.rotate(40);
+        p.setPen(outline);
+        p.setBrush(QColor("#e8e8f0"));
+        p.drawRect(QRectF(-2, -12, 4, 17));
+        p.setBrush(QColor("#c9a24a"));
+        p.drawRect(QRectF(-5.5, 4, 11, 3));
+        p.drawRect(QRectF(-1.5, 7, 3, 5));
+        p.restore();
+        break;
+    }
+    case Pointer::Shoot: {  // a bow with an arrow
+        p.setPen(QPen(QColor(20, 12, 4), 4));
+        p.setBrush(Qt::NoBrush);
+        p.drawArc(QRectF(4, 4, 20, 24), 40 * 16, 190 * 16);
+        p.setPen(QPen(QColor("#a06a2a"), 2.2));
+        p.drawArc(QRectF(4, 4, 20, 24), 40 * 16, 190 * 16);
+        p.setPen(QPen(QColor(240, 230, 210), 1));
+        p.drawLine(QPointF(20, 6), QPointF(9, 26));
+        p.setPen(QPen(QColor(20, 12, 4), 2.4));
+        p.drawLine(QPointF(8, 24), QPointF(28, 4));
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#e8e8f0"));
+        p.drawPolygon(QPolygonF{QPointF(30, 2), QPointF(23, 5), QPointF(27, 9)});
+        break;
+    }
     case Pointer::Attack: {  // two crossed swords
         for (const int side : {-1, 1}) {
             p.save();

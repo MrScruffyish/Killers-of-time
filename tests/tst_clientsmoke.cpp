@@ -71,7 +71,7 @@ private slots:
     void artGallery() {
         const QList<core::UnitDef> units = reg.units().values();
         const int cols = 6, cell = 110;
-        QImage sheet(cols * cell, ((units.size() + cols - 1) / cols + 1) * cell, QImage::Format_ARGB32);
+        QImage sheet(cols * cell + 640, ((units.size() + cols - 1) / cols + 1) * cell, QImage::Format_ARGB32);
         sheet.fill(QColor("#2b2118"));
         QPainter p(&sheet);
         for (int i = 0; i < units.size(); ++i) {
@@ -89,6 +89,16 @@ private slots:
             QVERIFY(!pm.isNull());
             p.drawPixmap(x, y, pm);
             x += pm.width() + 12;
+        }
+        // The mouse pointers, twice their size.
+        int px = x + 10;
+        using art::Pointer;
+        for (const Pointer k : {Pointer::Normal, Pointer::Move, Pointer::MoveLater, Pointer::Attack, Pointer::MoveAttack, Pointer::Shoot,
+                                Pointer::Enter, Pointer::Select, Pointer::Blocked}) {
+            const QPixmap pm = art::pointerImage(k);
+            QVERIFY(!pm.isNull());
+            p.drawPixmap(QRect(px, y, 64, 64), pm);
+            px += 70;
         }
         p.end();
         const QString dir = qEnvironmentVariable("KOT_SCREENSHOT_DIR");

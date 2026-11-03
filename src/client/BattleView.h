@@ -34,7 +34,7 @@ signals:
     void actionRequested(const QJsonObject& body);  // a battle_action body
 
 private:
-    void onHexClicked(core::Pos hex);
+    void onHexClicked(core::Pos hex, core::Pos strikeFrom = {-1, -1});
     void chooseSpell(bool unitSpell);
     void updateInfo();
     void updateStats();  // the stats panel: hovered stack, else the acting one

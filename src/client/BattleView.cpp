@@ -1,6 +1,8 @@
 #include "client/BattleView.h"
 
+#include <QCursor>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QInputDialog>
 #include <QLabel>
 #include <QMessageBox>
@@ -27,9 +29,66 @@ public:
     }
     ViewBattle battle;
     QColor sideColor[2];
-    std::function<void(core::Pos)> clicked;
+    std::function<void(core::Pos, core::Pos)> clicked;  // hex, and the hex to strike from (or -1,-1)
     std::function<void(core::Pos)> hovered;
     core::Pos hover{-1, -1};
+    // What a click would do where the mouse is, and for an attack where from.
+    enum class Intent { None, Move, Attack, MoveAttack, Shoot, Blocked };
+    Intent intent = Intent::None;
+    core::Pos strikeFrom{-1, -1};
+
+    // Works out the intent at `pt`: on an enemy the side the mouse is on picks the
+    // hex to attack from (one the stack can reach, or where it stands).
+    void updateIntent(QPointF pt) {
+        const core::Pos h = hexAt(pt);
+        intent = Intent::None;
+        strikeFrom = {-1, -1};
+        const ViewBattleUnit* me = battle.unit(battle.active);
+        if (!battle.myMove() || !me || h.x < 0) return;
+        const ViewBattleUnit* there = battle.unitAt(h);
+        if (there && there->side == battle.yourSide) return;  // your own stack: just look
+        if (!there) {
+            intent = battle.reachable.contains(h) ? Intent::Move : Intent::Blocked;
+            return;
+        }
+        if (battle.shootable.contains(there->id)) {
+            intent = Intent::Shoot;
+            return;
+        }
+        if (!battle.attackable.contains(there->id)) {
+            intent = Intent::Blocked;
+            return;
+        }
+        const QPointF c = centre(h);
+        double best = 1e18;
+        for (const core::Pos n : core::hex::neighbours(h)) {
+            const bool canStand = n == me->hex || (battle.reachable.contains(n) && !battle.unitAt(n));
+            if (!canStand) continue;
+            const QPointF dir = centre(n) - c, toMouse = pt - c;
+            // Closest in angle to where the mouse points (ties: no movement).
+            const double d = std::hypot(dir.x() - toMouse.x() * 2, dir.y() - toMouse.y() * 2) - (n == me->hex ? 0.01 : 0);
+            if (d < best) {
+                best = d;
+                strikeFrom = n;
+            }
+        }
+        intent = strikeFrom == me->hex ? Intent::Attack : Intent::MoveAttack;
+    }
+    void updatePointer() {
+        using art::Pointer;
+        const Pointer kind = intent == Intent::Move ? Pointer::Move
+                           : intent == Intent::Attack ? Pointer::Attack
+                           : intent == Intent::MoveAttack ? Pointer::MoveAttack
+                           : intent == Intent::Shoot ? Pointer::Shoot
+                           : intent == Intent::Blocked ? Pointer::Blocked : Pointer::Normal;
+        static QHash<int, QCursor> cursors;
+        auto it = cursors.find(int(kind));
+        if (it == cursors.end()) {
+            const bool tip = kind == Pointer::Normal;
+            it = cursors.insert(int(kind), QCursor(art::pointerImage(kind), tip ? 3 : 16, tip ? 2 : 16));
+        }
+        setCursor(it.value());
+    }
 
     double radius() const {
         const int w = std::max(1, battle.width), h = std::max(1, battle.height);
@@ -123,6 +182,15 @@ protected:
                 for (int x = 0; x < battle.width; ++x)
                     if (core::hex::distance(ranger->hex, {x, y}) == ranger->range) p.drawPath(hexPath({x, y}, 0.9));
         }
+        if (intent == Intent::MoveAttack && strikeFrom.x >= 0 && hover.x >= 0) {
+            // Where the stack will stand to strike, and the blow.
+            p.setPen(QPen(QColor("#ffd84a"), 3));
+            p.setBrush(QColor(255, 216, 74, 70));
+            p.drawPath(hexPath(strikeFrom, 0.92));
+            const QPointF a = centre(strikeFrom), b = centre(hover);
+            p.setPen(QPen(QColor("#ffd84a"), 3, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(a, a + (b - a) * 0.55);
+        }
         for (const ViewBattleUnit& u : battle.units) {
             const bool active = (u.id == battle.active);
             const bool target = mine && u.side != battle.yourSide && (battle.shootable.contains(u.id) || battle.attackable.contains(u.id));
@@ -150,19 +218,28 @@ protected:
     }
     void mouseMoveEvent(QMouseEvent* e) override {
         const core::Pos h = hexAt(e->position());
-        if (h == hover) return;
-        hover = h;
-        if (hovered) hovered(h);
+        const core::Pos oldFrom = strikeFrom;
+        const Intent oldIntent = intent;
+        updateIntent(e->position());
+        updatePointer();
+        if (h == hover && oldFrom == strikeFrom && oldIntent == intent) return;
+        if (h != hover) {
+            hover = h;
+            if (hovered) hovered(h);
+        }
         update();
     }
     void leaveEvent(QEvent*) override {
         hover = {-1, -1};
+        intent = Intent::None;
+        strikeFrom = {-1, -1};
         if (hovered) hovered(hover);
         update();
     }
     void mouseReleaseEvent(QMouseEvent* e) override {
         const core::Pos h = hexAt(e->position());
-        if (h.x >= 0 && clicked) clicked(h);
+        updateIntent(e->position());
+        if (h.x >= 0 && clicked) clicked(h, intent == Intent::MoveAttack || intent == Intent::Attack ? strikeFrom : core::Pos{-1, -1});
     }
 
 private:
@@ -177,7 +254,7 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     layout->addWidget(m_info);
     m_field = new HexField(content, this);
     m_field->setObjectName("battleField");
-    m_field->clicked = [this](core::Pos h) { onHexClicked(h); };
+    m_field->clicked = [this](core::Pos h, core::Pos from) { onHexClicked(h, from); };
     m_field->hovered = [this](core::Pos h) {
         m_hoverUnit = m_battle.unitAt(h) ? m_battle.unitAt(h)->id : 0;
         updateStats();
@@ -341,7 +418,7 @@ void BattleView::chooseSpell(bool unitSpell) {
     updateInfo();
 }
 
-void BattleView::onHexClicked(core::Pos hex) {
+void BattleView::onHexClicked(core::Pos hex, core::Pos from) {
     if (!m_battle.myMove()) return;
     if (!m_castSpell.isEmpty()) {
         const QString spell = m_castSpell;
@@ -354,8 +431,14 @@ void BattleView::onHexClicked(core::Pos hex) {
     if (const ViewBattleUnit* u = m_battle.unitAt(hex)) {
         if (u->side != m_battle.yourSide && m_battle.shootable.contains(u->id))
             emit actionRequested({{"action", "shoot"}, {"target", u->id}});
-        else if (u->side != m_battle.yourSide && m_battle.attackable.contains(u->id))
-            emit actionRequested({{"action", "attack"}, {"target", u->id}});
+        else if (u->side != m_battle.yourSide && m_battle.attackable.contains(u->id)) {
+            QJsonObject body{{"action", "attack"}, {"target", u->id}};
+            if (from.x >= 0) {  // strike from the hex the pointer chose
+                body.insert("x", from.x);
+                body.insert("y", from.y);
+            }
+            emit actionRequested(body);
+        }
         return;
     }
     if (m_battle.reachable.contains(hex)) emit actionRequested({{"action", "move"}, {"x", hex.x}, {"y", hex.y}});

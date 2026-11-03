@@ -59,7 +59,7 @@ const QPixmap& artifactSprite(int size);
 QColor resourceColor(const QString& id);
 const QPixmap& resourceIcon(const QString& id, int size);
 // Mouse pointers for the adventure map.
-enum class Pointer { Normal, Move, MoveLater, Attack, Enter, Select, Blocked };
+enum class Pointer { Normal, Move, MoveLater, Attack, Enter, Select, Blocked, MoveAttack, Shoot };
 QPixmap pointerImage(Pointer kind);
 
 void drawTown(QPainter& p, const QRectF& r, const QColor& owner);
