@@ -8,6 +8,7 @@
 #include <QStackedWidget>
 #include <QTimer>
 
+#include "client/Art.h"
 #include "client/ConnectPage.h"
 #include "client/GamePage.h"
 #include "client/LobbyPage.h"
@@ -38,6 +39,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     } else {
         QStringList errors;
         m_contentLoaded = m_content.loadFromDirectory(dataDir, &errors);
+        QHash<QString, int> tiers;
+        for (const core::UnitDef& u : m_content.units()) tiers.insert(u.id, u.tier);
+        art::setUnitTiers(tiers);
         if (!m_contentLoaded) contentMessage = tr("The game data is invalid:\n%1").arg(errors.join('\n'));
     }
     showConnect(contentMessage, !contentMessage.isEmpty());

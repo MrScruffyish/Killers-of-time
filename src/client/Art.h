@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QHash>
+
 #include <QColor>
 #include <QIcon>
 #include <QPainterPath>
@@ -122,7 +124,12 @@ void drawArtifact(QPainter& p, const QRectF& r);
 
 // A picture of the unit (UnitArt.cpp; chosen by unit id, rank 0 regular .. 2 elite).
 void drawUnitIcon(QPainter& p, const QRectF& r, const QString& unitId, int rank);
+// Weaker units are drawn smaller in their square (more room around them), so
+// strength shows at a glance: tier 1 about two thirds, tier 5 the full square.
 const QPixmap& unitIcon(const QString& unitId, int rank, int size);
+// Tells the art each unit's tier (call once the content is loaded).
+void setUnitTiers(const QHash<QString, int>& tiers);
+double unitScale(const QString& unitId, int rank);
 
 // A battle stack token: a round shield in the side's colour with the unit's picture
 // (or its name, when `unitId` is empty), the count, stars and rank chevrons.

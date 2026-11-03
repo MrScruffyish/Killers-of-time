@@ -4,6 +4,7 @@
 
 #include <QPainter>
 #include <QPainterPath>
+#include <algorithm>
 #include <cmath>
 #include <tuple>
 
@@ -1749,9 +1750,27 @@ void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     p.restore();
 }
 
+namespace {
+QHash<QString, int>& unitTiers() {
+    static QHash<QString, int> tiers;
+    return tiers;
+}
+}  // namespace
+
+void setUnitTiers(const QHash<QString, int>& tiers) { unitTiers() = tiers; }
+
+double unitScale(const QString& id, int rank) {
+    const int tier = unitTiers().value(id, 5);  // unknown: full size
+    return std::clamp(0.66 + 0.085 * (tier - 1) + 0.03 * rank, 0.5, 1.0);
+}
+
 const QPixmap& unitIcon(const QString& id, int rank, int size) {
-    return sprite(QStringLiteral("unit|%1|%2").arg(id).arg(rank), size,
-                  [&](QPainter& p, const QRectF& r) { drawUnitIcon(p, r, id, rank); });
+    const double scale = unitScale(id, rank);
+    return sprite(QStringLiteral("unit|%1|%2|%3").arg(id).arg(rank).arg(scale, 0, 'f', 2), size, [&](QPainter& p, const QRectF& r) {
+        // Smaller, standing on the same ground line, centred.
+        const double w = r.width() * scale, h = r.height() * scale;
+        drawUnitIcon(p, QRectF(r.center().x() - w / 2, r.bottom() - h, w, h), id, rank);
+    });
 }
 
 }  // namespace kot::client::art

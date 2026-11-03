@@ -50,6 +50,9 @@ private slots:
         QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope, config.path());
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        QHash<QString, int> tiers;
+        for (const core::UnitDef& u : reg.units()) tiers.insert(u.id, u.tier);
+        art::setUnitTiers(tiers);
         qputenv("KOT_DATA_DIR", KOT_DATA_DIR);
         qApp->setStyleSheet(art::styleSheet());  // the real look
     }
