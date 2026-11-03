@@ -1,5 +1,7 @@
 #include "core/rules/GameSetup.h"
 
+#include <climits>
+
 #include <QSet>
 #include <algorithm>
 
@@ -90,6 +92,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     mapParams.height = params.mapHeight;
     mapParams.seed = params.seed;
     if (params.islands) mapParams.islands = static_cast<int>(params.players.size());
+    mapParams.rivers = 2 + params.mapWidth * params.mapHeight / 1500;
     GameMap map;
     QString mapError;
     if (!generateMap(content, mapParams, &map, &mapError)) return fail(error, mapError);
@@ -335,6 +338,50 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         Pos where;
         if (!place(&where)) break;
         addMonsters(where, 1 + gs.rng().nextInt(0, 1));
+    }
+
+    // Roads join the towns: each to its nearest neighbours (a spanning tree),
+    // around everything standing on the map; where a road meets a river it
+    // becomes a bridge.
+    {
+        QSet<Pos> blockedTiles;
+        for (const Town& t : gs.towns())
+            for (const Pos p : townTiles(t.pos, gs.map().width(), gs.map().height()))
+                if (p != t.pos) blockedTiles.insert(p);
+        for (const Mine& m : gs.mines()) blockedTiles.insert(m.pos);
+        for (const MapDwelling& d : gs.mapDwellings()) blockedTiles.insert(d.pos);
+        for (const MapObject& o : gs.mapObjects()) blockedTiles.insert(o.pos);
+        for (const Army& a : gs.armies()) blockedTiles.insert(a.pos);
+        GameMap roadMap = gs.map();  // rivers count as crossable (bridges) for the road builder
+        for (int y = 0; y < roadMap.height(); ++y)
+            for (int x = 0; x < roadMap.width(); ++x)
+                if (roadMap.terrainAt({x, y}) == QLatin1String("river")) roadMap.setTerrain({x, y}, QStringLiteral("swamp"));
+        const MoveCostGrid roadGrid(roadMap, content, MoveMode::Foot);
+        QList<Pos> towns;
+        for (const Town& t : gs.towns()) towns.append(t.pos);
+        QList<Pos> joined;
+        if (!towns.isEmpty()) joined.append(towns.takeFirst());
+        while (!towns.isEmpty()) {
+            // The closest pair between the joined towns and the rest.
+            int bestI = 0, bestJ = 0, bestD = INT_MAX;
+            for (int i = 0; i < towns.size(); ++i)
+                for (int j = 0; j < joined.size(); ++j) {
+                    const int d = distance(towns[i], joined[j]);
+                    if (d < bestD) {
+                        bestD = d;
+                        bestI = i;
+                        bestJ = j;
+                    }
+                }
+            const Pos from = towns.takeAt(bestI);
+            const PathResult road = findPath(roadGrid, from, joined[bestJ], [&](Pos p) { return blockedTiles.contains(p); });
+            joined.append(from);
+            if (!road.found || bestD > gs.map().width()) continue;  // across the sea, or too far
+            for (const Pos p : road.steps) {
+                if (gs.townCovering(p)) continue;
+                gs.map().setTerrain(p, QStringLiteral("road"));
+            }
+        }
     }
 
     // Everybody starts with full movement (armies now exist) and a look around.

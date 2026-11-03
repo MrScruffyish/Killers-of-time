@@ -541,7 +541,8 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         if (!r.ok()) return bad();
         const Hero* h = m_state.hero(hero);
         if (!h || h->owner != player) return failure("failed", "that is not your hero");
-        const MoveResult m = moveHero(m_state, m_content, hero, Pos{x, y}, MoveMode::Foot, true, true);
+        const bool human = m_state.player(player)->controller == Player::Controller::Human;
+        const MoveResult m = moveHero(m_state, m_content, hero, Pos{x, y}, MoveMode::Foot, true, true, human);
         if (!m.ok) return failure("failed", m.error);
         if (m.joinOffer.isValid()) {
             // Much weaker monsters offer to join. The computer always takes them;

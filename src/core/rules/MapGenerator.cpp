@@ -111,6 +111,41 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
         tiles[y * w + w - 1] = QStringLiteral("sea");
     }
 
+    // Mountain ranges: ridges across the land with passes of hills every few tiles,
+    // so they shape the map without cutting it in two.
+    const int ridges = p.ridges >= 0 ? p.ridges : 1 + w * h / 1800;
+    for (int r = 0; r < ridges; ++r) {
+        int x = rng.nextInt(3, w - 4), y = rng.nextInt(3, h - 4);
+        if (tiles[y * w + x] == QLatin1String("sea")) continue;
+        const int dirs[8][2] = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
+        int d = rng.nextInt(0, 7);
+        const int length = rng.nextInt(6, 14);
+        int sincePass = 0, passAt = rng.nextInt(3, 5);
+        for (int step = 0; step < length; ++step) {
+            if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2) break;
+            const int i = y * w + x;
+            if (tiles[i] == QLatin1String("sea")) break;
+            if (++sincePass >= passAt) {  // a pass
+                tiles[i] = QStringLiteral("hills");
+                sincePass = 0;
+                passAt = rng.nextInt(3, 5);
+            } else {
+                tiles[i] = QStringLiteral("mountains");
+                // Foothills on the sides.
+                for (const int side : {-1, 1}) {
+                    const int sx = x + dirs[(d + 2 * side + 8) % 8][0], sy = y + dirs[(d + 2 * side + 8) % 8][1];
+                    const int si = sy * w + sx;
+                    if (sx > 0 && sy > 0 && sx < w - 1 && sy < h - 1 && rng.nextInt(0, 1) == 0 &&
+                        (tiles[si] == QLatin1String("grass") || tiles[si] == QLatin1String("dirt")))
+                        tiles[si] = QStringLiteral("hills");
+                }
+            }
+            if (rng.nextInt(0, 3) == 0) d = (d + (rng.nextInt(0, 1) ? 1 : 7)) % 8;  // bend a little
+            x += dirs[d][0];
+            y += dirs[d][1];
+        }
+    }
+
     QList<int> mountains;
     for (int i = 0; i < w * h; ++i) {
         if (tiles[i] == QLatin1String("mountains")) mountains.append(i);

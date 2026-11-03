@@ -17,6 +17,7 @@ struct MapGenParams {
     double hillFraction = 0.16;       // share of all tiles that are hills/snow
     double mountainFraction = 0.06;   // share of all tiles that are mountains
     int rivers = 2;               // rivers running from mountains toward the sea
+    int ridges = -1;              // mountain ranges (with passes); -1 = by map size
     int islands = 1;              // > 1: sea channels cut the land into about this many islands
 };
 

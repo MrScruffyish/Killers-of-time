@@ -71,7 +71,7 @@ void refreshHeroMovement(GameState& state, const ContentRegistry& content, Playe
 }
 
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,
-                    MoveMode mode, bool deferBattles, bool offerJoins) {
+                    MoveMode mode, bool deferBattles, bool offerJoins, bool stopWhenSpotted) {
     MoveResult result;
     Hero* hero = state.hero(heroId);
     Army* army = hero ? state.army(hero->army) : nullptr;
@@ -212,7 +212,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
                     unseen.append(a.pos);
         const int sight = heroVisionRadius(*hero, content);
         // Stop where something new comes into sight, before walking on into danger.
-        for (int i = 0; i + 1 < steps; ++i) {
+        for (int i = 0; stopWhenSpotted && i + 1 < steps; ++i) {
             bool newSight = false;
             for (const Pos p : unseen) newSight = newSight || (p != target && withinVision(path.steps[i], p, sight));
             if (newSight) {

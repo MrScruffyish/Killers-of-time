@@ -80,14 +80,16 @@ struct MoveResult {
 // it as the hero's `destination`; arriving (or attacking it) clears it.
 // Spotting: when a hostile field army that the team could not see at the start
 // comes into the hero's sight, he stops right there (`spotted`), so the player
-// sees the danger before walking into its zone of control.
+// sees the danger before walking into its zone of control (`stopWhenSpotted`; the
+// game session asks it for human players only).
 // Joining: instead of attacking (or ambushing) a single neutral monster army that
 // wouldJoin (ArmyRules.h), the hero stops next to it and `joinOffer` is set; the
 // caller then lets the player accept (acceptJoin) or fight. Only with `offerJoins`.
 // With `deferBattles` the hero stops next to the target and the battles are left to
 // the caller (`pending`; interactive battles): fight them, then call finishAttack.
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,
-                    MoveMode mode = MoveMode::Foot, bool deferBattles = false, bool offerJoins = false);
+                    MoveMode mode = MoveMode::Foot, bool deferBattles = false, bool offerJoins = false,
+                    bool stopWhenSpotted = true);
 
 // After the battles of an attack: enters a won town, captures what is on the
 // target and updates the explored map. `won` = every battle was won.

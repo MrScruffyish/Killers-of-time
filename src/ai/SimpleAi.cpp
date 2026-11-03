@@ -152,18 +152,16 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
         if (h.owner != me || m_garrisonTaken.contains(h.id.value())) continue;
         const Army* army = state.army(h.army);
         if (!army) continue;
+        // Only heroes standing in a town are done here: one who walks into a town
+        // later this turn takes its garrison then.
         for (const Town& t : state.towns()) {
-            if (t.owner != me || t.pos != army->pos || threatNear(t.pos)) continue;
+            if (t.owner != me || t.pos != army->pos) continue;
+            m_garrisonTaken.insert(h.id.value());
+            if (threatNear(t.pos)) break;  // the garrison stays to defend
             const Army* garrison = state.army(t.garrison);
-            if (!garrison || garrison->stacks.isEmpty()) continue;
-            const UnitStack& s = garrison->stacks.first();
-            bool fits = army->stacks.size() < kMaxArmyStacks;
-            for (const UnitStack& own : army->stacks) fits = fits || own.canMerge(s);
-            if (!fits) break;
-            return command(net::msg::moveUnits, {{"from", toInt(garrison->id.value())}, {"to", toInt(army->id.value())},
-                                                 {"stack", 0}, {"count", s.count()}});
+            if (!garrison || garrison->stacks.isEmpty()) break;
+            return command(net::msg::moveUnits, {{"from", toInt(garrison->id.value())}, {"to", toInt(army->id.value())}, {"all", true}});
         }
-        m_garrisonTaken.insert(h.id.value());
     }
 
     // 6. Movement spells, then moves.
@@ -368,7 +366,8 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
             continue;
         }
         const Army* g = state.army(t.garrison);
-        if (g && army->totalUnits() > 0 && armyStrength(state, content, *g) >= 0.6 * myStrength) add(t.pos, 60);
+        // Fetch the garrison only when it would at least double the army (not every day's recruits).
+        if (g && army->totalUnits() > 0 && armyStrength(state, content, *g) >= myStrength) add(t.pos, 60);
         else if (g && army->totalUnits() == 0 && g->totalUnits() > 0) add(t.pos, 200);  // an empty hero gets an army
     }
     if (army->totalUnits() > 0) {
