@@ -475,6 +475,12 @@ void GamePage::updateStatus() {
     const bool myTurn = m_view.isMyTurn();
     const bool free = myTurn && !m_view.gameOver && !m_view.battle.present && !m_view.battleInProgress;
     for (QPushButton* b : {m_endTurn, m_buildAndBuy, m_buyAll, m_sendUnits, m_castSpell}) b->setEnabled(free);
+    // Build, then buy: only while some town of yours has not built today.
+    bool canStillBuild = false;
+    for (const ViewTown* t : m_view.myTowns()) canStillBuild = canStillBuild || t->lastBuildDay != m_view.day;
+    m_buildAndBuy->setEnabled(free && canStillBuild);
+    m_buildAndBuy->setToolTip(canStillBuild ? tr("Builds the best building in each town (trading if needed), then buys all units")
+                                            : tr("Every town has built today; use Buy all units"));
     m_save->setEnabled(!m_view.battle.present && !m_view.battleInProgress && !m_view.gameOver);
     updateEndTurnHighlight();
 

@@ -206,6 +206,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         t.own = ownTeam(t.owner);
         t.mine = (t.owner == v.you);
         t.garrison = o.value("garrison").toInt();
+        t.lastBuildDay = o.value("lastBuildDay").toInt();
         t.buildings = strings(o.value("buildings"));
         t.tavernOffers = strings(o.value("tavernOffers"));
         for (const QJsonValue& bv : o.value("buildOptions").toArray())

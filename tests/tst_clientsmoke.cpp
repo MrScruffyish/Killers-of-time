@@ -171,6 +171,8 @@ private slots:
         QVERIFY(build && build->isEnabled());
         QTest::mouseClick(build, Qt::LeftButton);
         QTRY_VERIFY_WITH_TIMEOUT(game->view().town(town.id)->buildings.contains("barracks"), 5000);
+        // The only town has built today: "Build, then buy" is off until tomorrow.
+        QTRY_VERIFY_WITH_TIMEOUT(!game->findChild<QPushButton*>("buildAndBuyButton")->isEnabled(), 3000);
         QTRY_VERIFY_WITH_TIMEOUT(game->townDialog()->findChild<QPushButton*>("recruit_militia") != nullptr, 5000);
         game->townDialog()->findChild<QTabWidget*>()->setCurrentIndex(1);
         QApplication::processEvents();
