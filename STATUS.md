@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
 **Current milestone:** first versions of every part of the game are in (M0-M10); version 0.2.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
-**Next session should do:** go on with the user's playtest notes. Graphics: more variety (next maybe hero portraits, a nicer minimap, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
+**Next session should do:** go on with the user's playtest notes. Graphics: more variety (next maybe a nicer minimap, map decorations, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -169,6 +169,7 @@ and react to; add depth afterwards.
 - [x] Map: soft edges where terrains meet (the higher layer spreads over the lower), surf along coasts
 - [x] Battles are fought on the ground of the defender's tile (battle `terrain`): grass, earth, sand, snow, swamp; trees as obstacles in forests, pools in swamps, rocks elsewhere
 - [x] Animation: heroes walk their route tile by tile on the map; in battle stacks slide to their new hex, losses float up as red -N, wiped-out stacks fade
+- [x] Hero portraits by class (helmets, wizard hat, hoods, leaf crown; undead with green eyes) in the hero panel, hero screen and tavern
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

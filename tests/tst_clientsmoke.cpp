@@ -122,6 +122,17 @@ private slots:
                             {K::Dwelling, 0, "armoured_eagle"}});
         tp.end();
         if (!dir.isEmpty()) towns.save(QDir(dir).filePath("0_towns.png"));
+        // Hero portraits of every class.
+        {
+            const QList<core::HeroClassDef> classes = reg.heroClasses().values();
+            QImage faces(int(classes.size()) * 110, 110, QImage::Format_ARGB32);
+            faces.fill(QColor("#2b2118"));
+            QPainter fp(&faces);
+            for (int i = 0; i < classes.size(); ++i)
+                fp.drawPixmap(i * 110 + 5, 5, art::portrait(classes[i].id, i % 2 ? QColor("#1f77b4") : QColor("#d62728"), i, 100));
+            fp.end();
+            if (!dir.isEmpty()) faces.save(QDir(dir).filePath("0_portraits.png"));
+        }
         // Battles on different ground.
         for (const QString ground : {"forest", "snow", "swamp", "sand"}) {
             ViewBattle vb;

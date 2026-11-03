@@ -9,6 +9,7 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
+#include "client/Art.h"
 #include "client/Settings.h"
 #include "core/content/ContentRegistry.h"
 
@@ -61,7 +62,16 @@ void HeroDialog::rebuild() {
     const QList<int>& xp = m_content->xpThresholds();
     const int prev = h->level >= 2 ? xp.value(h->level - 2) : 0;
     const int next = h->level - 1 < xp.size() ? xp[h->level - 1] : 0;
-    v->addWidget(new QLabel(tr("<h2>%1</h2>Level %2 %3").arg(h->name).arg(h->level).arg(cls ? cls->name : h->classId), m_body));
+    {
+        auto* head = new QHBoxLayout();
+        auto* face = new QLabel(m_body);
+        face->setObjectName("heroPortrait");
+        const ViewPlayer* owner = m_view.player(h->owner);
+        face->setPixmap(art::portrait(h->classId, owner ? QColor(owner->color) : QColor("#999999"), h->id, 96));
+        head->addWidget(face);
+        head->addWidget(new QLabel(tr("<h2>%1</h2>Level %2 %3").arg(h->name).arg(h->level).arg(cls ? cls->name : h->classId), m_body), 1);
+        v->addLayout(head);
+    }
     if (next > 0) {
         auto* bar = new QProgressBar(m_body);
         bar->setRange(prev, next);

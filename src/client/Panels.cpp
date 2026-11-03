@@ -162,7 +162,7 @@ void HeroPanel::paintEvent(QPaintEvent*) {
     p.setPen(QPen(QColor("#c9a24a"), 2));
     p.setBrush(QColor("#1d1610"));
     p.drawRoundedRect(portrait, 6, 6);
-    p.drawPixmap(portrait.adjusted(2, 2, -2, -2), art::heroSprite(owner ? QColor(owner->color) : QColor("#999999"), h->inBoat, 48));
+    p.drawPixmap(portrait.adjusted(2, 2, -2, -2), art::portrait(h->classId, owner ? QColor(owner->color) : QColor("#999999"), h->id, 48));
     QFont f = font();
     f.setPixelSize(15);
     f.setBold(true);

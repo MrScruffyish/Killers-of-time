@@ -64,6 +64,10 @@ const QPixmap& artifactSprite(int size);
 // A resource's colour and a small icon for it (coin, logs, stone, gem, orb).
 QColor resourceColor(const QString& id);
 const QPixmap& resourceIcon(const QString& id, int size);
+// A hero's portrait (PortraitArt.cpp): headgear by class, in the owner's colours;
+// `seed` (the hero id) varies the face a little.
+void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QColor& owner, int seed);
+const QPixmap& portrait(const QString& classId, const QColor& owner, int seed, int size);
 // Mouse pointers for the adventure map.
 enum class Pointer { Normal, Move, MoveLater, Attack, Enter, Select, Blocked, MoveAttack, Shoot };
 QPixmap pointerImage(Pointer kind);

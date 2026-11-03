@@ -338,7 +338,12 @@ void TownDialog::rebuild() {
         for (const QString& offer : town->tavernOffers) {
             const core::HeroTemplateDef* t = m_content->heroTemplate(offer);
             auto* row = new QHBoxLayout();
-            row->addWidget(new QLabel(t ? tr("%1 (%2)").arg(t->name, t->classId) : offer, page), 1);
+            auto* face = new QLabel(page);
+            const ViewPlayer* me = m_view.player(m_view.you);
+            if (t) face->setPixmap(art::portrait(t->classId, me ? QColor(me->color) : QColor("#999999"), int(qHash(offer) % 6), 56));
+            row->addWidget(face);
+            const core::HeroClassDef* cls = t ? m_content->heroClass(t->classId) : nullptr;
+            row->addWidget(new QLabel(t ? tr("<b>%1</b><br>%2").arg(t->name, cls ? cls->name : t->classId) : offer, page), 1);
             auto* hire = new QPushButton(gold >= cost ? tr("Hire for %1").arg(cost) : tr("Hire for %1 (trade first)").arg(cost), page);
             hire->setObjectName(QStringLiteral("hire_%1").arg(offer));
             hire->setEnabled(myTurn);
