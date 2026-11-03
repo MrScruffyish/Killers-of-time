@@ -118,6 +118,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
     v.you = json.value("you").toInt();
     v.resources = amounts(json.value("resources").toObject());
     v.income = amounts(json.value("income").toObject());
+    v.tradePercent = json.value("tradePercent").toInt();
 
     for (const QJsonValue& pv : json.value("players").toArray()) {
         const QJsonObject o = pv.toObject();

@@ -3,6 +3,7 @@
 #include <QAbstractScrollArea>
 #include <QColor>
 #include <QList>
+#include <QPointF>
 #include <optional>
 
 class QPainter;
@@ -68,11 +69,14 @@ protected:
     void leaveEvent(QEvent* event) override;
     bool viewportEvent(QEvent* event) override;
     void scrollContentsBy(int dx, int dy) override;
+    void showEvent(QShowEvent* event) override;
 
 private:
     void updateScrollBars();
     void replan();
     void updatePointer();
+    void applyCentre(QPointF world);
+    void edgeScroll();
     void drawPlan(QPainter& p, const MovePlan& plan, bool pinned) const;
     QColor ownerColor(int owner) const;
 
@@ -87,6 +91,8 @@ private:
     MovePlan m_routePlan;  // to the plotted route's target
     std::optional<core::Pos> m_route;
     bool m_doubleClicked = false;
+    std::optional<QPointF> m_wantCentre;  // tile coordinates to keep in the middle (centerOn)
+    class QTimer* m_edgeTimer;
     core::Pos m_hover{-1, -1};
 };
 

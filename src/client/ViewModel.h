@@ -174,6 +174,7 @@ struct GameView {
     QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
     core::ResourceAmounts income;  // what you get each day
+    int tradePercent = 0;          // share of the fair value you get when trading (markets raise it)
     core::ResourceAmounts resources;
     QList<ViewPlayer> players;
 

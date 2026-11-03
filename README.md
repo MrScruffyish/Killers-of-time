@@ -47,7 +47,7 @@ Other players join with the server address. Right-click your town on the map to 
 
 - **Settings** (window and dialog sizes, last server and name, map zoom, sound, view choices) are
   kept in `~/.config/KillersOfTime/client.conf`; delete it to start fresh.
-- **Sound**: the checkbox on the start screen, M or the Game menu. Off closes the audio output;
+- **Sound**: the checkbox on the start screen or the Game menu. Off closes the audio output;
   `kot_client --no-sound` (or `KOT_NO_SOUND=1`) never opens it.
 - **Crashes**: the client prints a backtrace and appends it to
   `~/.local/share/KillersOfTime/crash.log`; please send that file. Use a **Debug** build (Qt Creator:

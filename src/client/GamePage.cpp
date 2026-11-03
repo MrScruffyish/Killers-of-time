@@ -27,6 +27,7 @@
 #include "client/BattleView.h"
 #include "client/Art.h"
 #include "client/MapView.h"
+#include "client/MarketDialog.h"
 #include "client/MovePlanner.h"
 #include "client/Panels.h"
 #include "client/Settings.h"
@@ -120,7 +121,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     QMenu* sizes = menu->addMenu(tr("Map icon size"));
     for (const int step : art::kZoomSteps)
         connect(sizes->addAction(tr("%1 pixels").arg(step)), &QAction::triggered, this, [this, step]() { m_map->setTileSize(step); });
-    QAction* mute = menu->addAction(tr("Sound\tM"));
+    QAction* market = menu->addAction(tr("Market...\tM"));
+    connect(market, &QAction::triggered, this, [this]() { openMarket(); });
+    QAction* mute = menu->addAction(tr("Sound"));
     mute->setCheckable(true);
     mute->setChecked(!sound::muted());
     connect(mute, &QAction::toggled, this, [](bool on) { sound::setMuted(!on); });
@@ -197,10 +200,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     shortcut("=", [this]() { m_map->zoomStep(1); });
     shortcut("-", [this]() { m_map->zoomStep(-1); });
     shortcut("Enter", [this]() { goAlongRoute(); });
-    shortcut("M", [this]() {
-        sound::setMuted(!sound::muted());
-        log(sound::muted() ? tr("Sound off (M)") : tr("Sound on (M)"));
-    });
+    shortcut("M", [this]() { openMarket(); });
     shortcut("H", [this]() {
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
     });
@@ -323,6 +323,7 @@ void GamePage::onViewChanged() {
     updateStatus();
     updateHeroPanel();
     m_townDialog->refresh(m_view);
+    if (m_market && m_market->isVisible()) m_market->setView(m_view);
     m_heroDialog->refresh(m_view);
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
     if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1.").arg(m_view.victory));
@@ -435,6 +436,17 @@ void GamePage::rememberObjects(GameView* view) {
     keep(m_memMines, view->mines);
     keep(m_memDwellings, view->dwellings);
     keep(m_memObjects, view->objects);
+}
+
+void GamePage::openMarket() {
+    if (!m_market) {
+        m_market = new MarketDialog(m_content, this);
+        connect(m_market, &MarketDialog::commandRequested, this,
+                [this](const QString& type, const QJsonObject& body, const QString& what) { send(type, body, what); });
+    }
+    m_market->setView(m_view);
+    m_market->show();
+    m_market->raise();
 }
 
 void GamePage::selectNextHero() {

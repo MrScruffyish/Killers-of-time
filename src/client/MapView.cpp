@@ -9,6 +9,7 @@
 #include <QPen>
 #include <QResizeEvent>
 #include <QScrollBar>
+#include <QTimer>
 #include <QToolTip>
 #include <QWheelEvent>
 #include <algorithm>
@@ -27,6 +28,12 @@ MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
     viewport()->setMouseTracking(true);
     horizontalScrollBar()->setSingleStep(m_tile);
     verticalScrollBar()->setSingleStep(m_tile);
+    m_edgeTimer = new QTimer(this);
+    m_edgeTimer->setInterval(30);
+    connect(m_edgeTimer, &QTimer::timeout, this, &MapView::edgeScroll);
+    // Dragging a scroll bar is the player scrolling: stop keeping a centre.
+    for (QScrollBar* bar : {horizontalScrollBar(), verticalScrollBar()})
+        connect(bar, &QScrollBar::sliderPressed, this, [this]() { m_wantCentre.reset(); });
 }
 
 void MapView::setView(const GameView& view) {
@@ -61,6 +68,13 @@ void MapView::setRoute(std::optional<core::Pos> target) {
 }
 
 void MapView::mouseMoveEvent(QMouseEvent* event) {
+    if (!m_edgeTimer->isActive()) {
+        const QRect area = viewport()->rect();
+        const int band = std::clamp(area.width() / 25, 12, 40);
+        const QPoint at = event->pos();
+        if (at.x() < band || at.y() < band || at.x() > area.width() - band || at.y() > area.height() - band)
+            m_edgeTimer->start();
+    }
     const core::Pos t = tileAt(event->pos());
     if (t == m_hover) return;
     m_hover = t;
@@ -107,6 +121,7 @@ void MapView::updatePointer() {
 }
 
 void MapView::leaveEvent(QEvent* event) {
+    m_edgeTimer->stop();
     m_hover = {-1, -1};
     m_plan = MovePlan();
     viewport()->update();
@@ -189,8 +204,9 @@ QString MapView::describeTile(core::Pos t) const {
 
 void MapView::setTileSize(int pixels) {
     const QPoint centre = viewport()->rect().center();
-    const QPointF world((centre.x() + horizontalScrollBar()->value()) / double(m_tile),
-                        (centre.y() + verticalScrollBar()->value()) / double(m_tile));
+    const QPointF world = m_wantCentre ? *m_wantCentre
+                                       : QPointF((centre.x() + horizontalScrollBar()->value()) / double(m_tile),
+                                                 (centre.y() + verticalScrollBar()->value()) / double(m_tile));
     m_tile = art::nextZoom(std::clamp(pixels, art::kZoomSteps[0], 4096), 0);
     horizontalScrollBar()->setSingleStep(m_tile);
     verticalScrollBar()->setSingleStep(m_tile);
@@ -215,19 +231,54 @@ void MapView::updateScrollBars() {
 }
 
 void MapView::resizeEvent(QResizeEvent* event) {
-    // Keep the same spot in the middle while the window changes size.
+    // Keep the same spot in the middle while the window changes size: the spot
+    // centerOn asked for (until the player scrolls), else what was in the middle.
     const QSize old = event->oldSize().isValid() ? event->oldSize() : viewport()->size();
-    const QPointF world((horizontalScrollBar()->value() + old.width() / 2.0) / m_tile,
-                        (verticalScrollBar()->value() + old.height() / 2.0) / m_tile);
+    const QPointF world = m_wantCentre ? *m_wantCentre
+                                       : QPointF((horizontalScrollBar()->value() + old.width() / 2.0) / m_tile,
+                                                 (verticalScrollBar()->value() + old.height() / 2.0) / m_tile);
     QAbstractScrollArea::resizeEvent(event);
     updateScrollBars();
+    applyCentre(world);
+}
+
+void MapView::applyCentre(QPointF world) {
     horizontalScrollBar()->setValue(int(world.x() * m_tile - viewport()->width() / 2.0));
     verticalScrollBar()->setValue(int(world.y() * m_tile - viewport()->height() / 2.0));
 }
 
 void MapView::centerOn(core::Pos tile) {
-    horizontalScrollBar()->setValue(tile.x * m_tile + m_tile / 2 - viewport()->width() / 2);
-    verticalScrollBar()->setValue(tile.y * m_tile + m_tile / 2 - viewport()->height() / 2);
+    // Remembered: before the window has its final size the scroll bars cannot
+    // reach the spot yet; every resize centres it again until the player scrolls.
+    m_wantCentre = QPointF(tile.x + 0.5, tile.y + 0.5);
+    updateScrollBars();
+    applyCentre(*m_wantCentre);
+}
+
+void MapView::showEvent(QShowEvent* event) {
+    QAbstractScrollArea::showEvent(event);
+    if (m_wantCentre) applyCentre(*m_wantCentre);
+}
+
+void MapView::edgeScroll() {
+    // The mouse near the edge of the map scrolls it that way.
+    const QPoint pos = viewport()->mapFromGlobal(QCursor::pos());
+    const QRect area = viewport()->rect();
+    const int band = std::clamp(area.width() / 25, 12, 40);
+    if (!area.contains(pos) || !isActiveWindow()) {
+        m_edgeTimer->stop();
+        return;
+    }
+    const int step = std::max(4, m_tile / 3);
+    const int dx = pos.x() < band ? -step : pos.x() > area.width() - band ? step : 0;
+    const int dy = pos.y() < band ? -step : pos.y() > area.height() - band ? step : 0;
+    if (!dx && !dy) {
+        m_edgeTimer->stop();
+        return;
+    }
+    m_wantCentre.reset();
+    horizontalScrollBar()->setValue(horizontalScrollBar()->value() + dx);
+    verticalScrollBar()->setValue(verticalScrollBar()->value() + dy);
 }
 
 core::Pos MapView::tileAt(const QPoint& p) const {
@@ -443,6 +494,7 @@ void MapView::mouseReleaseEvent(QMouseEvent* event) {
 }
 
 void MapView::wheelEvent(QWheelEvent* event) {
+    m_wantCentre.reset();
     if (event->modifiers() & Qt::ControlModifier) {
         zoomStep(event->angleDelta().y() > 0 ? 1 : -1);
         event->accept();

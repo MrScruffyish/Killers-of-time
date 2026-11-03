@@ -10,6 +10,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/rules/Movement.h"
 #include "core/rules/TownRules.h"
+#include "core/rules/Trade.h"
 #include "core/rules/TurnCycle.h"
 #include "core/rules/Vision.h"
 
@@ -49,6 +50,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     const Player* me = state.player(viewer);
     view.insert("resources", intMap(me ? me->resources : ResourceAmounts()));
     view.insert("income", intMap(me ? dailyIncome(state, content, viewer) : ResourceAmounts()));
+    view.insert("tradePercent", me ? tradeEfficiency(state, content, viewer) : 0);
 
     QJsonArray players;
     for (const Player& p : state.players()) {

@@ -40,7 +40,7 @@ ConnectPage::ConnectPage(QWidget* parent) : QWidget(parent) {
     form->addRow(tr("Your name"), m_name);
     form->addRow(tr("Server"), m_host);
     form->addRow(tr("Port"), m_port);
-    auto* soundBox = new QCheckBox(tr("Sound effects (M in the game)"), this);
+    auto* soundBox = new QCheckBox(tr("Sound effects (also in the game's menu)"), this);
     soundBox->setObjectName("soundCheck");
     soundBox->setChecked(!sound::muted());
     soundBox->setEnabled(sound::available());

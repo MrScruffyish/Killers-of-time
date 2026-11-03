@@ -133,7 +133,7 @@ and react to; add depth afterwards.
 - [x] Map editor `kot_editor` (terrain brush, towns, mines, dwellings, treasures, artifacts, monsters, starting heroes, player slots; random map start; saves checked scenarios)
 - [x] Campaigns (`data/campaigns`, chapters = scenarios, progress in the saves folder, best heroes carried over with their army); sample "The First War". Tests: `tst_campaign` (40 test programs)
 - [x] Better placeholder art: textured terrain tiles, soft fog edges, drawn icons (castle, mines, huts, chests, artifacts, hero banners, monsters), textured battle hexes with rocks and unit tokens, a dark wood-and-gold style sheet
-- [x] Sound effects generated in code (click, steps, clash, spell, coins, bell, drums, fanfare, defeat) with Qt Multimedia when installed; M mutes
+- [x] Sound effects generated in code (click, steps, clash, spell, coins, bell, drums, fanfare, defeat) with Qt Multimedia when installed; on/off on the start screen and in the Game menu
 - [ ] Real art, 2.5D projection decision
 - [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
 - [x] Packaging: install rules, desktop entries, icon, CPack DEB/TGZ (`cpack -G DEB`)
@@ -159,6 +159,8 @@ and react to; add depth afterwards.
 - [x] Lobby: the host needs no Ready; "Play against the computer" adds an AI opponent and starts
 - [x] Client settings file (~/.config/KillersOfTime/client.conf): window/dialog geometry, last server and name, zoom, sound, view choices
 - [x] Sound: one audio output with an own mixer instead of QSoundEffect (fixes a PulseAudio abort when effects overlapped, e.g. archers shooting twice); sound off closes the output; --no-sound; crash backtraces to ~/.local/share/KillersOfTime/crash.log
+- [x] Market window (M, Game menu): give one resource for another at your trade rate (view: `tradePercent`), preview before trading; M no longer toggles sound
+- [x] Map: centred on your hero at the start (the centre is kept until the window has its size); scrolls when the mouse is near the edge
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

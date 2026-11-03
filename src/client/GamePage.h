@@ -58,6 +58,7 @@ private:
     void updateStatus();
     void updateHeroPanel();
     void selectHero(int id);
+    void openMarket();  // M
     // Moves the selected hero along his plotted route (Enter, double click).
     void goAlongRoute();
     // Keeps the plotted routes in step with the server's remembered destinations.
@@ -88,6 +89,7 @@ private:
     QLabel* m_hoverInfo;
     class ResourceBar* m_resources;
     class HeroPanel* m_heroPanel;
+    class MarketDialog* m_market = nullptr;
     QStackedWidget* m_centre;
     MapView* m_map;
     HeroDialog* m_heroDialog;
