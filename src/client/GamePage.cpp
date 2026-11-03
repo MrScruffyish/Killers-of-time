@@ -18,6 +18,7 @@
 
 #include "client/BattleView.h"
 #include "client/MapView.h"
+#include "client/HeroDialog.h"
 #include "client/MiniMap.h"
 #include "client/TownDialog.h"
 #include "core/content/ContentRegistry.h"
@@ -60,6 +61,15 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_levelUp = new QPushButton(tr("Level up: choose a trait"), this);
     m_levelUp->setObjectName("levelUpButton");
     side->addWidget(m_levelUp);
+    auto* heroButton = new QPushButton(tr("Hero screen (H)"), this);
+    heroButton->setObjectName("heroButton");
+    side->addWidget(heroButton);
+    m_heroDialog = new HeroDialog(content, this);
+    connect(heroButton, &QPushButton::clicked, this, [this]() {
+        if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
+    });
+    connect(m_heroDialog, &HeroDialog::commandRequested, this,
+            [this](const QString& type, const QJsonObject& body, const QString& what) { send(type, body, what); });
     m_castSpell = new QPushButton(tr("Cast spell..."), this);
     m_castSpell->setObjectName("castAdventureSpellButton");
     side->addWidget(m_castSpell);
@@ -121,6 +131,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     };
     shortcut("E", [this]() { if (m_endTurn->isEnabled()) m_endTurn->click(); });
     shortcut("N", [this]() { selectNextHero(); });
+    shortcut("H", [this]() {
+        if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
+    });
     shortcut("C", [this]() {
         if (const ViewHero* h = m_view.hero(m_selectedHero)) m_map->centerOn(h->pos);
     });
@@ -133,7 +146,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_endTurn->setToolTip(tr("End your turn (E)"));
     connect(m_map, &MapView::tileRightClicked, this, &GamePage::onTileRightClicked);
     connect(m_heroCombo, &QComboBox::activated, this, [this](int i) { selectHero(m_heroCombo->itemData(i).toInt()); });
-    connect(m_levelUp, &QPushButton::clicked, this, &GamePage::chooseTrait);
+    connect(m_levelUp, &QPushButton::clicked, this, [this]() {
+        if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);  // picks are made there
+    });
     connect(m_castSpell, &QPushButton::clicked, this, &GamePage::castAdventureSpell);
     connect(m_townList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
         m_townDialog->showTown(m_view, item->data(Qt::UserRole).toInt());
@@ -212,6 +227,7 @@ void GamePage::onViewChanged() {
     updateStatus();
     updateHeroPanel();
     m_townDialog->refresh(m_view);
+    m_heroDialog->refresh(m_view);
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
     if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1.").arg(m_view.victory));
     showBattle(first);
@@ -458,22 +474,6 @@ void GamePage::onTileClicked(core::Pos tile) {
 void GamePage::onTileRightClicked(core::Pos tile) {
     const ViewTown* t = m_view.townAt(tile);
     if (t && t->mine) m_townDialog->showTown(m_view, t->id);
-}
-
-void GamePage::chooseTrait() {
-    const ViewHero* h = m_view.hero(m_selectedHero);
-    if (!h || h->pendingTraitPicks <= 0) return;
-    QStringList names;
-    QMap<QString, QString> idOf;
-    for (const core::TraitDef& t : m_content->traits()) {
-        if (!t.pickable) continue;
-        const QString label = QStringLiteral("%1 (%2: %3)").arg(t.name, core::traitGroupName(t.group)).arg(h->traits.value(t.id));
-        names << label;
-        idOf.insert(label, t.id);
-    }
-    bool ok = false;
-    const QString chosen = QInputDialog::getItem(this, tr("Level up"), tr("Boost which trait?"), names, 0, false, &ok);
-    if (ok) send(net::msg::pickTrait, {{"hero", h->id}, {"trait", idOf.value(chosen)}}, tr("Level up"));
 }
 
 QString GamePage::describeBattle(const QJsonObject& b) const {

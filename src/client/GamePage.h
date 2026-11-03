@@ -22,6 +22,7 @@ namespace kot::client {
 
 class BattleView;
 class MiniMap;
+class HeroDialog;
 
 class MapView;
 class TownDialog;
@@ -37,6 +38,7 @@ public:
     int selectedHero() const { return m_selectedHero; }
     MapView* mapView() const { return m_map; }
     BattleView* battleView() const { return m_battleView; }
+    HeroDialog* heroDialog() const { return m_heroDialog; }
     TownDialog* townDialog() const { return m_townDialog; }
     QString logText() const;
 
@@ -65,7 +67,6 @@ private:
     QString describeBattleEvents(const QJsonArray& events) const;
     void showBattle(bool firstView);
     QString describeResult(const QString& type, const QJsonObject& info) const;
-    void chooseTrait();
 
     net::LobbyClient* m_client;
     const core::ContentRegistry* m_content;
@@ -80,6 +81,7 @@ private:
     QLabel* m_status;
     QStackedWidget* m_centre;
     MapView* m_map;
+    HeroDialog* m_heroDialog;
     MiniMap* m_miniMap;
     QList<ViewTown> m_memTowns;
     QList<ViewMine> m_memMines;

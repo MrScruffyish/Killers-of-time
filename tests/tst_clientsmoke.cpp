@@ -1,5 +1,6 @@
 #include <QCheckBox>
 #include <QDir>
+#include <QLabel>
 #include <QPushButton>
 #include <QTabWidget>
 #include <QtTest>
@@ -7,6 +8,7 @@
 #include "client/Art.h"
 #include "client/BattleView.h"
 #include "client/GamePage.h"
+#include "client/HeroDialog.h"
 #include "client/MainWindow.h"
 #include "client/LobbyPage.h"
 #include "client/MapView.h"
@@ -129,6 +131,14 @@ private slots:
         QVERIFY(game->logText().contains("Day 2"));
         QApplication::processEvents();
         shot(&w, "6_game_day2");
+
+        // The hero screen.
+        QTest::mouseClick(game->findChild<QPushButton*>("heroButton"), Qt::LeftButton);
+        QVERIFY(game->heroDialog()->isVisible());
+        QVERIFY(game->heroDialog()->findChildren<QLabel*>().size() > 5);
+        QApplication::processEvents();
+        shot(game->heroDialog(), "6b_hero");
+        game->heroDialog()->hide();
 
         // One-click action from the toolbar.
         auto* buy = game->findChild<QPushButton*>("buyAllButton");
