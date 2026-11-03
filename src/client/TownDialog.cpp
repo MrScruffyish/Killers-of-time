@@ -324,8 +324,7 @@ void TownDialog::rebuild() {
                     parts << (w.isEmpty() ? tr("%1 (can build now)").arg(name(n))
                               : w.startsWith("not enough") ? tr("%1 (after a trade)").arg(name(n)) : name(n));
                 }
-                status = steps == 1 ? tr("First build %1").arg(parts.join(tr(" and ")))
-                                    : tr("%1 steps away: first %2").arg(steps).arg(parts.join(tr(" and ")));
+                status = tr("Requires: %1").arg(parts.join(", "));  // only what is not built yet
                 rank = 2 + steps;  // nearer ones first
             } else if (o.why.contains(QStringLiteral("today"))) {
                 status = QString();  // said once above
