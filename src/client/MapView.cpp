@@ -64,7 +64,14 @@ void MapView::setView(const GameView& view) {
             if (h.id == m_selectedHero && end >= 0) steps.append(route.steps.mid(0, end + 1));
             else steps.append(h.pos);
             if (std::max(std::abs(h.pos.x - before->pos.x), std::abs(h.pos.y - before->pos.y)) > 30) continue;  // a jump
-            m_walks.insert(h.id, Walk{steps, 0.0});
+            Walk walk{steps, 0.0, {}};
+            // What the hero picks up at the end stays on the map until he gets there.
+            for (const ViewObject& o : m_view.objects) {
+                bool still = false;
+                for (const ViewObject& n : view.objects) still = still || n.id == o.id;
+                if (!still && steps.contains(o.pos)) walk.pickups.append(o);
+            }
+            m_walks.insert(h.id, walk);
         }
         if (!m_walks.isEmpty() && !m_walkTimer->isActive()) {
             m_walkClock.restart();
@@ -421,7 +428,9 @@ void MapView::paintEvent(QPaintEvent*) {
         if (shown(mine.pos)) put(mine.pos, art::mineSprite(mine.resource, resourceColor(mine.resource), ownerOrNeutral(mine.owner), m_tile));
     for (const ViewDwelling& d : m_view.dwellings)
         if (shown(d.pos)) put(d.pos, art::dwellingSprite(ownerOrNeutral(d.owner), d.unit, m_tile));
-    for (const ViewObject& o : m_view.objects) {
+    QList<ViewObject> objects = m_view.objects;
+    for (const Walk& w : m_walks) objects.append(w.pickups);  // not reached yet on screen
+    for (const ViewObject& o : objects) {
         if (!shown(o.pos)) continue;
         if (o.artifact) put(o.pos, art::artifactSprite(m_tile));
         else put(o.pos, art::chestSprite(o.resources.isEmpty() ? QColor("#d4a017") : resourceColor(o.resources.firstKey()), m_tile));

@@ -606,11 +606,17 @@ void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, con
     m_field->sideColor[1] = defender;
     if (!battle.myMove()) m_castSpell.clear();
     if (!battle.unit(m_hoverUnit)) m_hoverUnit = 0;
-    if (!battle.present && m_autoPlay->isChecked()) m_autoPlay->setChecked(false);  // the battle is over
     autoStep();
     updateInfo();
     updateStats();
     m_field->update();
+}
+
+void BattleView::battleEnded() {
+    // Auto-play never carries over into the next battle.
+    m_autoPlay->setChecked(false);
+    m_battle = ViewBattle();
+    m_field->setBattleAnimated(ViewBattle());
 }
 
 void BattleView::autoStep() {

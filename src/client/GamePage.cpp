@@ -100,7 +100,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_castSpell = new QPushButton(tr("Cast spell..."), this);
     m_castSpell->setObjectName("castAdventureSpellButton");
     side->addWidget(m_castSpell);
-    auto* townsLabel = new QLabel(tr("<b>My towns</b> (double-click here, or right-click the town on the map)"), this);
+    auto* townsLabel = new QLabel(tr("<b>My towns</b> (T: next town, O or double-click: open)"), this);
     townsLabel->setWordWrap(true);
     side->addWidget(townsLabel);
     m_townList = new QListWidget(this);
@@ -209,9 +209,21 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     shortcut("C", [this]() {
         if (const ViewHero* h = m_view.hero(m_selectedHero)) m_map->centerOn(h->pos);
     });
+    // T: the next of your towns (the map looks there), O: open it.
     shortcut("T", [this]() {
-        const ViewHero* h = m_view.hero(m_selectedHero);
-        const ViewTown* t = h ? m_view.townAt(h->pos) : nullptr;
+        const QList<const ViewTown*> towns = m_view.myTowns();
+        if (towns.isEmpty()) return;
+        int index = 0;
+        for (int i = 0; i < towns.size(); ++i)
+            if (towns[i]->id == m_selectedTown) index = (i + 1) % towns.size();
+        selectTown(towns[index]->id);
+    });
+    shortcut("O", [this]() {
+        const ViewTown* t = m_view.town(m_selectedTown);
+        if (!t) {
+            const ViewHero* h = m_view.hero(m_selectedHero);
+            t = h ? m_view.townAt(h->pos) : nullptr;
+        }
         if (!t && !m_view.myTowns().isEmpty()) t = m_view.myTowns().first();
         if (t && t->mine) m_townDialog->showTown(m_view, t->id);
     });
@@ -230,6 +242,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);  // picks are made there
     });
     connect(m_castSpell, &QPushButton::clicked, this, &GamePage::castAdventureSpell);
+    connect(m_townList, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) { selectTown(item->data(Qt::UserRole).toInt()); });
     connect(m_townList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
         m_townDialog->showTown(m_view, item->data(Qt::UserRole).toInt());
     });
@@ -386,6 +399,7 @@ void GamePage::showBattle(bool firstView) {
         m_battleView->setBattle(m_view.battle, colourOf(m_view.battle.sideOwner[0]), colourOf(m_view.battle.sideOwner[1]));
         m_centre->setCurrentWidget(m_battleView);
     } else {
+        if (m_centre->currentWidget() == m_battleView) m_battleView->battleEnded();
         m_centre->setCurrentWidget(m_map);
     }
     // The result of your newest battle (attacker or defender), once.
@@ -525,6 +539,16 @@ void GamePage::openMarket() {
     m_market->raise();
 }
 
+void GamePage::selectTown(int id) {
+    const ViewTown* t = m_view.town(id);
+    if (!t) return;
+    m_selectedTown = id;
+    m_map->centerOn(t->pos);
+    m_miniMap->setVisibleTiles(m_map->visibleTiles());
+    for (int i = 0; i < m_townList->count(); ++i)
+        if (m_townList->item(i)->data(Qt::UserRole).toInt() == id) m_townList->setCurrentRow(i);
+}
+
 void GamePage::selectNextHero() {
     const QList<const ViewHero*> heroes = m_view.myHeroes();
     if (heroes.isEmpty()) return;
@@ -575,6 +599,7 @@ void GamePage::updateStatus() {
                                  .arg(choice ? tr("  \u2605 choose a building") : QString());
         auto* item = new QListWidgetItem(text, m_townList);
         item->setData(Qt::UserRole, t->id);
+        if (t->id == m_selectedTown) m_townList->setCurrentItem(item);
         if (choice) item->setToolTip(tr("Auto-build leaves choices to you: open the town and pick one"));
     }
 }

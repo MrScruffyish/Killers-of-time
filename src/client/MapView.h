@@ -99,6 +99,7 @@ private:
     struct Walk {
         QList<core::Pos> steps;
         double progress = 0;  // steps done, with the fraction of the current one
+        QList<ViewObject> pickups;  // treasures taken at the end, drawn until he arrives
     };
     QHash<int, Walk> m_walks;
     class QTimer* m_walkTimer;

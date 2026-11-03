@@ -59,6 +59,7 @@ private:
     void updateHeroPanel();
     void selectHero(int id);
     void openMarket();  // M
+    void selectTown(int id);  // T cycles: the map looks there
     // Moves the selected hero along his plotted route (Enter, double click).
     void goAlongRoute();
     // Keeps the plotted routes in step with the server's remembered destinations.
@@ -105,6 +106,7 @@ private:
     BattleView* m_battleView;
     int m_seenBattleId = 0;
     int m_announcedWeek = 0;
+    int m_selectedTown = 0;
     QHash<int, int> m_knownPicks;  // hero -> level-up picks seen so far
     QHash<int, core::Pos> m_routes;                     // hero -> plotted target
     QHash<int, std::optional<core::Pos>> m_serverRoutes;  // hero -> last destination the server reported

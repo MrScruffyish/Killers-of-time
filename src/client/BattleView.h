@@ -29,6 +29,8 @@ public:
     void setBattle(const ViewBattle& battle, const QColor& attacker, const QColor& defender);
     // Shows what happened (battle events from the server): arrows, blows, spells.
     void playEvents(const QJsonArray& events);
+    // The battle is over (the map is shown again): auto-play off, nothing left over.
+    void battleEnded();
     // Hex centre on screen, for tests that click.
     QPoint hexCentre(core::Pos hex) const;
     QWidget* field() const;
