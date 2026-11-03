@@ -42,6 +42,9 @@ public:
     TownDialog* townDialog() const { return m_townDialog; }
     QString logText() const;
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private slots:
     void onViewChanged();
     void onTileClicked(core::Pos tile);
@@ -97,11 +100,16 @@ private:
     MapView* m_map;
     HeroDialog* m_heroDialog;
     MiniMap* m_miniMap;
-    QList<ViewTown> m_memTowns;
-    QList<ViewMine> m_memMines;
-    QList<ViewDwelling> m_memDwellings;
-    QList<ViewObject> m_memObjects;
-    int m_memoryOwner = -1;
+    // What each player (several in hot-seat) remembers of places out of sight.
+    struct Memory {
+        QList<ViewTown> towns;
+        QList<ViewMine> mines;
+        QList<ViewDwelling> dwellings;
+        QList<ViewObject> objects;
+    };
+    QHash<int, Memory> m_memory;
+    QWidget* m_curtain = nullptr;  // hot-seat: hides the game while it is handed over
+    void showHandover(const QString& name, const QColor& colour);
     QPushButton* m_castSpell;
     class QAction* m_save;
     BattleView* m_battleView;

@@ -48,7 +48,10 @@ public:
 
     core::GameState& state() { return m_state; }
     const core::GameState& state() const { return m_state; }
-    core::PlayerId playerOfClient(int clientId) const { return m_clientPlayers.value(clientId); }
+    // The player a client acts for now: of his players (more than one in hot-seat),
+    // the one whose stack acts in a battle, else the one whose turn it is, else his first.
+    core::PlayerId playerOfClient(int clientId) const;
+    QList<core::PlayerId> playersOfClient(int clientId) const { return m_clientPlayers.value(clientId); }
     QList<int> clients() const { return m_clientPlayers.keys(); }
 
     CommandResult handle(int clientId, const net::Message& command);
@@ -56,7 +59,7 @@ public:
     void clientLeft(int clientId);
     // Human players nobody plays right now (left, or not taken yet after loading).
     QList<core::PlayerId> freePlayers() const;
-    // A client takes over a free human player. Fills `error` when that is not possible.
+    // A client takes over a free human player (more than one: hot-seat). Fills `error` when that is not possible.
     bool joinPlayer(int clientId, core::PlayerId player, QString* error);
 
     // True while a battle waits for a human; only battle_action is accepted then.
@@ -92,7 +95,8 @@ private:
     const core::ContentRegistry& m_content;
     core::GameState m_state;
     bool m_active = false;
-    QHash<int, core::PlayerId> m_clientPlayers;  // connected humans
+    QHash<int, QList<core::PlayerId>> m_clientPlayers;  // connected humans (several: hot-seat)
+    bool clientPlays(core::PlayerId player) const;
     QHash<core::PlayerId, std::shared_ptr<ai::IAiPlayer>> m_autoPlayers;  // AI and abandoned players
     std::unique_ptr<ActiveBattle> m_battle;
     core::MoveResult m_finishedMove;  // the last attack that ended

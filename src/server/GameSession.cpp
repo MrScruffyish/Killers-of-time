@@ -158,7 +158,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     m_clientPlayers.clear();
     m_autoPlayers.clear();
     for (int i = 0; i < ids.size(); ++i) {
-        if (occupiedSlots[i]->kind == net::SlotKind::Human) m_clientPlayers.insert(occupiedSlots[i]->clientId, ids[i]);
+        if (occupiedSlots[i]->human()) m_clientPlayers[occupiedSlots[i]->clientId].append(ids[i]);  // hot-seat: several per client
         else m_autoPlayers.insert(ids[i], ai::createAi(occupiedSlots[i]->aiProfile, params.seed ^ (0x9e3779b97f4a7c15ULL * (i + 1))));
     }
     m_active = true;
@@ -209,30 +209,45 @@ void GameSession::startFromState(GameState state) {
 QList<PlayerId> GameSession::freePlayers() const {
     QList<PlayerId> free;
     for (const Player& p : m_state.players()) {
-        if (p.controller == Player::Controller::Human && !m_clientPlayers.values().contains(p.id)) free.append(p.id);
+        if (p.controller == Player::Controller::Human && !clientPlays(p.id)) free.append(p.id);
     }
     return free;
 }
 
-bool GameSession::joinPlayer(int clientId, PlayerId player, QString* error) {
-    if (m_clientPlayers.contains(clientId)) {
-        if (error) *error = QStringLiteral("you already play in this game");
-        return false;
+bool GameSession::clientPlays(PlayerId player) const {
+    for (const QList<PlayerId>& players : m_clientPlayers)
+        if (players.contains(player)) return true;
+    return false;
+}
+
+PlayerId GameSession::playerOfClient(int clientId) const {
+    const QList<PlayerId> players = m_clientPlayers.value(clientId);
+    if (players.isEmpty()) return {};
+    if (m_battle && m_battle->battle && !m_battle->battle->isOver()) {
+        const BattleUnit* active = m_battle->battle->activeUnit();
+        if (active && players.contains(m_battle->battle->owner(active->side))) return m_battle->battle->owner(active->side);
+        for (int side = 0; side < 2; ++side)
+            if (players.contains(m_battle->battle->owner(side))) return m_battle->battle->owner(side);
     }
+    if (players.contains(m_state.currentPlayer())) return m_state.currentPlayer();
+    return players.first();
+}
+
+bool GameSession::joinPlayer(int clientId, PlayerId player, QString* error) {
     if (!freePlayers().contains(player)) {
         if (error) *error = QStringLiteral("that player is not free");
         return false;
     }
     m_autoPlayers.remove(player);
-    m_clientPlayers.insert(clientId, player);
+    m_clientPlayers[clientId].append(player);
     playAutoTurns();
     return true;
 }
 
 void GameSession::clientLeft(int clientId) {
-    const PlayerId p = m_clientPlayers.take(clientId);
-    if (!p.isValid()) return;
-    m_autoPlayers.insert(p, std::make_shared<ai::PassiveAi>());
+    const QList<PlayerId> players = m_clientPlayers.take(clientId);
+    if (players.isEmpty()) return;
+    for (const PlayerId p : players) m_autoPlayers.insert(p, std::make_shared<ai::PassiveAi>());
     if (m_battle) runBattles();  // his side is played by the battle AI now
     afterCommand();
 }
@@ -320,7 +335,7 @@ void GameSession::afterCommand() {
 bool GameSession::humanControls(int side) const {
     if (!m_battle || !m_battle->battle || m_battle->autoSide[side]) return false;
     const PlayerId owner = m_battle->battle->owner(side);
-    return owner.isValid() && m_clientPlayers.values().contains(owner);
+    return owner.isValid() && clientPlays(owner);
 }
 
 void GameSession::recordBattle(const BattleReport& report) {

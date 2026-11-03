@@ -70,6 +70,33 @@ private slots:
             if (p.controller == core::Player::Controller::Ai) pBot = p.id;
     }
 
+    void hotSeatPlayersShareOneClient() {
+        // Ann and Cid at one computer (client 1), against a passive bot.
+        net::LobbyState lobby;
+        lobby.settings.seed = 9;
+        lobby.slotList.append(human(0, 1, "Ann", 1, "#d62728"));
+        net::SlotInfo cid = human(1, 1, "Cid", 2, "#1f77b4");
+        cid.kind = net::SlotKind::HotSeat;
+        lobby.slotList.append(cid);
+        GameSession hs(reg);
+        QString error;
+        QVERIFY2(hs.start(lobby, &error), qPrintable(error));
+        QCOMPARE(hs.playersOfClient(1).size(), 2);
+        const core::PlayerId ann = hs.playersOfClient(1)[0], c = hs.playersOfClient(1)[1];
+        QCOMPARE(hs.state().player(c)->controller, core::Player::Controller::Human);
+        // Ann's turn: the client acts for Ann; after her End turn it acts for Cid.
+        QCOMPARE(hs.playerOfClient(1), ann);
+        Message end;
+        end.type = net::msg::endTurn;
+        QVERIFY(hs.handle(1, end).ok);
+        QCOMPARE(hs.state().currentPlayer(), c);
+        QCOMPARE(hs.playerOfClient(1), c);
+        QCOMPARE(hs.viewFor(hs.playerOfClient(1))["you"].toInt(), id(c));
+        QVERIFY(hs.handle(1, end).ok);  // Cid ends his turn too: day 2, Ann again
+        QCOMPARE(hs.state().currentPlayer(), ann);
+        QCOMPARE(hs.state().day(), 2);
+    }
+
     void startCreatesTheGame() {
         QVERIFY(session->active());
         QCOMPARE(session->clients().size(), 2);

@@ -288,7 +288,7 @@ void LobbyPage::rebuild() {
     for (const SlotInfo& s : lobby.slotList) {
         const int row = s.index + 1;
         const bool mine = (s.kind == SlotKind::Human && s.clientId == me);
-        const bool canEdit = s.occupied() && (host || mine) && !(s.kind == SlotKind::Ai && !host);
+        const bool canEdit = s.occupied() && (host || mine) && !((s.kind == SlotKind::Ai || s.kind == SlotKind::HotSeat) && !host);
         const int slot = s.index;
 
         m_grid->addWidget(new QLabel(QString::number(slot + 1), m_slotHolder), row, 0);
@@ -301,19 +301,30 @@ void LobbyPage::rebuild() {
             auto* kind = new QComboBox(who);
             kind->setObjectName(QStringLiteral("kind%1").arg(slot));
             if (s.kind == SlotKind::Human) kind->addItem(tr("Human: %1").arg(s.name));
-            kind->addItems({tr("Open"), tr("AI"), tr("Closed")});
+            kind->addItems({tr("Open"), tr("AI"), tr("Closed"), tr("Human on this computer")});
+            kind->setItemData(kind->count() - 1, tr("Hot-seat: another player takes turns at this computer"), Qt::ToolTipRole);
             const int current = s.kind == SlotKind::Human ? 0
-                              : s.kind == SlotKind::Open ? 0 : s.kind == SlotKind::Ai ? 1 : 2;
+                              : s.kind == SlotKind::Open ? 0 : s.kind == SlotKind::Ai ? 1 : s.kind == SlotKind::Closed ? 2 : 3;
             kind->setCurrentIndex(current);
             const int offset = (s.kind == SlotKind::Human) ? 1 : 0;
             connect(kind, &QComboBox::activated, this, [this, slot, offset, kind](int index) {
-                static const char* kinds[] = {"open", "ai", "closed"};
+                static const char* kinds[] = {"open", "ai", "closed", "hotseat"};
                 const int k = index - offset;
-                if (k >= 0 && k < 3) m_client->setSlot(slot, {{"kind", kinds[k]}});
+                if (k >= 0 && k < 4) m_client->setSlot(slot, {{"kind", kinds[k]}});
             });
             whoLayout->addWidget(kind);
+            if (s.kind == SlotKind::HotSeat) {  // the hot-seat player's name
+                auto* name = new QLineEdit(s.name, who);
+                name->setObjectName(QStringLiteral("hotseatName%1").arg(slot));
+                name->setMaximumWidth(140);
+                connect(name, &QLineEdit::editingFinished, this, [this, slot, name]() {
+                    if (!name->text().trimmed().isEmpty()) m_client->setSlot(slot, {{"name", name->text().trimmed()}});
+                });
+                whoLayout->addWidget(name);
+            }
         } else {
             QString text = s.kind == SlotKind::Human ? s.name + (mine ? tr(" (you)") : QString())
+                         : s.kind == SlotKind::HotSeat ? tr("%1 (at the host's computer)").arg(s.name)
                          : s.kind == SlotKind::Ai ? tr("AI: %1").arg(s.name)
                          : s.kind == SlotKind::Open ? tr("Open") : tr("Closed");
             whoLayout->addWidget(new QLabel(text, who));

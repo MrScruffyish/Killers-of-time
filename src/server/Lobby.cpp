@@ -105,6 +105,8 @@ LobbyResult Lobby::addMember(int clientId, const QString& name) {
 void Lobby::removeMember(int clientId) {
     const int slot = slotOf(clientId);
     if (slot >= 0) vacate(slot);
+    for (const SlotInfo& s : QList<SlotInfo>(m_state.slotList))  // his hot-seat players leave with him
+        if (s.kind == SlotKind::HotSeat && s.clientId == clientId) vacate(s.index);
     const bool wasHost = (hostId() == clientId);
     m_state.members.removeIf([&](const LobbyMember& m) { return m.clientId == clientId; });
     if (wasHost && !m_state.members.isEmpty()) m_state.members.first().isHost = true;
@@ -164,13 +166,18 @@ LobbyResult Lobby::editSlot(int actorId, int slot, const QJsonObject& patch) {
         if (key == "kind") {
             SlotKind kind;
             if (!v.isString() || !net::parseSlotKind(v.toString(), &kind) || kind == SlotKind::Human)
-                return bad("must be open, ai or closed (players claim human slots themselves)");
+                return bad("must be open, ai, closed or hotseat (players claim human slots themselves)");
             if (s.kind == SlotKind::Human) kicked = true;
             const bool wasAi = (s.kind == SlotKind::Ai);
+            const bool wasHotSeat = (s.kind == SlotKind::HotSeat);
             s.kind = kind;
-            s.clientId = 0;
-            s.ready = (kind == SlotKind::Ai);
-            if (kind == SlotKind::Ai) {
+            s.clientId = kind == SlotKind::HotSeat ? actorId : 0;  // hot-seat players sit at the host's computer
+            s.ready = (kind == SlotKind::Ai || kind == SlotKind::HotSeat);
+            if (kind == SlotKind::HotSeat) {
+                if (!wasHotSeat) s.name = QStringLiteral("Player %1").arg(slot + 1);
+                s.aiProfile.clear();
+                s.difficulty.clear();
+            } else if (kind == SlotKind::Ai) {
                 if (!wasAi) {
                     s.name = QStringLiteral("AI %1").arg(slot + 1);
                     s.aiProfile = m_aiProfiles.first();
@@ -195,8 +202,8 @@ LobbyResult Lobby::editSlot(int actorId, int slot, const QJsonObject& patch) {
             s.color = v.toString().toLower();
         } else if (key == "name") {
             const QString n = v.toString().trimmed();
-            if (!v.isString() || n.isEmpty() || n.size() > 24 || s.kind != SlotKind::Ai)
-                return bad("only AI slots have a name set by the host (1 to 24 characters)");
+            if (!v.isString() || n.isEmpty() || n.size() > 24 || (s.kind != SlotKind::Ai && s.kind != SlotKind::HotSeat))
+                return bad("only AI and hot-seat slots have a name set by the host (1 to 24 characters)");
             s.name = n;
         } else if (key == "aiProfile") {
             if (!v.isString() || !m_aiProfiles.contains(v.toString()) || s.kind != SlotKind::Ai)
@@ -301,6 +308,7 @@ LobbyResult Lobby::checkStart(int actorId) const {
         if (!s.occupied()) continue;
         ++occupied;
         teams.insert(s.team);
+        if (s.kind == SlotKind::HotSeat) ++humans;  // always ready
         if (s.kind == SlotKind::Human) {
             ++humans;
             // The host starts the game, which is ready enough; the others confirm.

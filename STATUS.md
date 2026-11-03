@@ -181,6 +181,7 @@ and react to; add depth afterwards.
 - [x] Fog of war is a lobby option (on by default); off: everyone sees the whole map from the start (saved as `fogOfWar: false`)
 - [x] Weak monsters offer to join: neutral armies at least `joinStrengthRatio` (5) times weaker than the hero's army that fit into it stop him with an offer (pay / fight / leave them); joining costs `joinCostPercent` (50) of their recruit price in gold; computer players pay when they can, else fight
 - [x] Town sieges: walls by the town's defense buildings (Fort, Citadel) with a gate, rubble when a segment falls; towers shoot the most dangerous attacker each round; defending shooters do more damage; the attacker can pay for a catapult for one battle (gone afterwards; computer attackers buy one when they can). `tst_siege`
+- [x] Hot-seat: lobby slot kind "Human on this computer" (named by the host, always ready); one connection plays several players, the server acts for the one whose turn it is (or whose stack acts in a battle); the client covers the game with a "Pass to <name>" screen between them; map memory per player
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

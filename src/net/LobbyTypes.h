@@ -7,7 +7,9 @@
 
 namespace kot::net {
 
-enum class SlotKind { Open, Human, Ai, Closed };
+// HotSeat: another human playing on the host's computer (same connection; the
+// client hands the game over between turns).
+enum class SlotKind { Open, Human, Ai, Closed, HotSeat };
 
 QString slotKindName(SlotKind kind);
 bool parseSlotKind(const QString& name, SlotKind* out);
@@ -31,7 +33,8 @@ struct SlotInfo {
     QString aiProfile;       // kind Ai
     QString difficulty;      // kind Ai: easy / normal / hard
 
-    bool occupied() const { return kind == SlotKind::Human || kind == SlotKind::Ai; }
+    bool occupied() const { return kind == SlotKind::Human || kind == SlotKind::Ai || kind == SlotKind::HotSeat; }
+    bool human() const { return kind == SlotKind::Human || kind == SlotKind::HotSeat; }
     QJsonObject toJson() const;
     static bool fromJson(const QJsonObject& json, const QString& context, SlotInfo* out,
                          QStringList* errors);

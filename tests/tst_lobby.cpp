@@ -239,6 +239,21 @@ private slots:
         QVERIFY(lobby.checkStart(1).ok);
     }
 
+    void hotSeatSlotsBelongToTheHost() {
+        lobby.addMember(1, "Ann");
+        QVERIFY(lobby.editSlot(1, 1, {{"kind", "hotseat"}}).ok);
+        QCOMPARE(slot(1).kind, kot::net::SlotKind::HotSeat);
+        QCOMPARE(slot(1).clientId, 1);
+        QVERIFY(slot(1).ready);
+        QVERIFY(lobby.editSlot(1, 1, {{"name", "Cid"}, {"team", 2}}).ok);
+        QCOMPARE(slot(1).name, QString("Cid"));
+        QVERIFY2(lobby.checkStart(1).ok, qPrintable(lobby.checkStart(1).message));  // two humans at one computer
+        lobby.addMember(2, "Bob");
+        QVERIFY(!lobby.editSlot(2, 1, {{"name", "Bob's"}}).ok);  // only the host edits it
+        lobby.removeMember(1);  // the host leaves: his hot-seat players go too
+        QCOMPARE(slot(1).kind, kot::net::SlotKind::Open);
+    }
+
     void needsTwoPlayers() {
         lobby.addMember(1, "Ann");
         lobby.setReady(1, true);

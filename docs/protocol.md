@@ -29,7 +29,7 @@ A wrong `protocol` gives `error` with code `protocol_mismatch`, then the connect
 |---|---|---|
 | client -> server | `claim_slot` | `slot` (0-based; must be open) |
 | client -> server | `release_slot` | |
-| client -> server | `set_slot` | `slot` plus any of `race`, `team` (1-8), `color` (#RRGGBB). Host only: `kind` (`open`/`ai`/`closed`), `name`, `aiProfile`, `difficulty` (`easy`/`normal`/`hard`) |
+| client -> server | `set_slot` | `slot` plus any of `race`, `team` (1-8), `color` (#RRGGBB). Host only: `kind` (`open`/`ai`/`closed`/`hotseat`: another human at the host's computer, always ready; the host's connection plays all his hot-seat players, the server acts for and shows the one whose turn it is), `name` (AI and hot-seat slots), `aiProfile`, `difficulty` (`easy`/`normal`/`hard`) |
 | client -> server | `set_ready` | `ready` (bool) |
 | client -> server | `set_settings` | host only: `mapWidth`, `mapHeight` (16-256), `seed` (number or text) |
 | client -> server | `start_game` | host only |

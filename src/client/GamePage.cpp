@@ -344,6 +344,18 @@ void GamePage::onViewChanged() {
     }
     const bool wasMyTurn = m_view.isMyTurn() && m_view.you == view.you;
     const bool first = (m_view.you == 0);
+    // Hot-seat: the game moved on to another player at this computer.
+    // (Within a battle between two of them the field is the same for both: no curtain.)
+    const bool handover = m_view.you != 0 && view.you != m_view.you && !(view.battle.present && m_view.battle.present);
+    if (handover) {
+        m_centered = false;
+        m_selectedHero = 0;
+        m_townDialog->hide();
+        m_heroDialog->hide();
+        if (m_market) m_market->hide();
+        const ViewPlayer* next = view.player(view.you);
+        showHandover(next ? next->name : tr("the next player"), next ? QColor(next->color) : QColor("#999999"));
+    }
     rememberObjects(&view);
     m_view = view;
     if (!m_view.myHeroes().isEmpty()) {
@@ -572,17 +584,53 @@ void GamePage::rememberObjects(GameView* view) {
         now = merged;
         memory = merged;
     };
-    if (view->you != m_memoryOwner) {
-        m_memTowns.clear();
-        m_memMines.clear();
-        m_memDwellings.clear();
-        m_memObjects.clear();
-        m_memoryOwner = view->you;
+    Memory& m = m_memory[view->you];
+    keep(m.towns, view->towns);
+    keep(m.mines, view->mines);
+    keep(m.dwellings, view->dwellings);
+    keep(m.objects, view->objects);
+}
+
+void GamePage::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    if (m_curtain) m_curtain->setGeometry(rect());
+}
+
+void GamePage::showHandover(const QString& name, const QColor& colour) {
+    // A curtain over the whole game: the next player clicks when the previous one
+    // has looked away.
+    if (!m_curtain) {
+        m_curtain = new QWidget(this);
+        m_curtain->setObjectName("handoverCurtain");
+        m_curtain->setAutoFillBackground(true);
+        auto* v = new QVBoxLayout(m_curtain);
+        v->addStretch(1);
+        auto* label = new QLabel(m_curtain);
+        label->setObjectName("handoverText");
+        label->setAlignment(Qt::AlignCenter);
+        label->setTextFormat(Qt::RichText);
+        v->addWidget(label);
+        auto* go = new QPushButton(m_curtain);
+        go->setObjectName("handoverButton");
+        go->setMinimumSize(260, 50);
+        auto* row = new QHBoxLayout();
+        row->addStretch(1);
+        row->addWidget(go);
+        row->addStretch(1);
+        v->addLayout(row);
+        v->addStretch(1);
+        connect(go, &QPushButton::clicked, m_curtain, &QWidget::hide);
     }
-    keep(m_memTowns, view->towns);
-    keep(m_memMines, view->mines);
-    keep(m_memDwellings, view->dwellings);
-    keep(m_memObjects, view->objects);
+    m_curtain->setStyleSheet(QStringLiteral("QWidget#handoverCurtain { background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+                                            "stop:0 #1d1610, stop:1 %1); }").arg(colour.darker(250).name()));
+    m_curtain->findChild<QLabel*>("handoverText")
+        ->setText(tr("<span style='font-size:28pt; font-weight:bold; color:%1'>%2</span><br><br>"
+                     "<span style='font-size:13pt'>It is your turn. The others look away, please.</span>")
+                      .arg(colour.lighter(130).name(), name.toHtmlEscaped()));
+    m_curtain->findChild<QPushButton*>("handoverButton")->setText(tr("I am %1: start my turn").arg(name));
+    m_curtain->setGeometry(rect());
+    m_curtain->show();
+    m_curtain->raise();
 }
 
 void GamePage::openMarket() {

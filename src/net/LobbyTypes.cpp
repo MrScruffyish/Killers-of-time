@@ -20,12 +20,13 @@ QString slotKindName(SlotKind kind) {
         case SlotKind::Human: return QStringLiteral("human");
         case SlotKind::Ai: return QStringLiteral("ai");
         case SlotKind::Closed: return QStringLiteral("closed");
+        case SlotKind::HotSeat: return QStringLiteral("hotseat");
     }
     return {};
 }
 
 bool parseSlotKind(const QString& name, SlotKind* out) {
-    for (SlotKind k : {SlotKind::Open, SlotKind::Human, SlotKind::Ai, SlotKind::Closed}) {
+    for (SlotKind k : {SlotKind::Open, SlotKind::Human, SlotKind::Ai, SlotKind::Closed, SlotKind::HotSeat}) {
         if (slotKindName(k) == name) {
             *out = k;
             return true;
