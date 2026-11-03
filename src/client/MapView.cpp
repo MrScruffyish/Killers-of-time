@@ -28,6 +28,20 @@ MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
     viewport()->setMouseTracking(true);
     horizontalScrollBar()->setSingleStep(m_tile);
     verticalScrollBar()->setSingleStep(m_tile);
+    m_walkTimer = new QTimer(this);
+    m_walkTimer->setInterval(16);
+    connect(m_walkTimer, &QTimer::timeout, this, [this]() {
+        const double dt = m_walkClock.restart() / 1000.0;
+        for (auto it = m_walks.begin(); it != m_walks.end();) {
+            Walk& w = it.value();
+            const double perStep = std::min(0.09, 1.2 / std::max<qsizetype>(1, w.steps.size() - 1));
+            w.progress += dt / perStep;
+            if (w.progress >= w.steps.size() - 1) it = m_walks.erase(it);
+            else ++it;
+        }
+        if (m_walks.isEmpty()) m_walkTimer->stop();
+        viewport()->update();
+    });
     m_edgeTimer = new QTimer(this);
     m_edgeTimer->setInterval(30);
     connect(m_edgeTimer, &QTimer::timeout, this, &MapView::edgeScroll);
@@ -37,6 +51,25 @@ MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
 }
 
 void MapView::setView(const GameView& view) {
+    // Heroes that moved walk there: along the route that was shown for them, else
+    // in a straight line (other players' heroes).
+    if (m_view.width == view.width && m_view.height == view.height) {
+        for (const ViewHero& h : view.heroes) {
+            const ViewHero* before = m_view.hero(h.id);
+            if (!before || before->pos == h.pos) continue;
+            QList<core::Pos> steps{before->pos};
+            const MovePlan& route = (h.id == m_selectedHero && m_routePlan.found) ? m_routePlan : m_plan;
+            const qsizetype end = route.found ? route.steps.indexOf(h.pos) : -1;
+            if (h.id == m_selectedHero && end >= 0) steps.append(route.steps.mid(0, end + 1));
+            else steps.append(h.pos);
+            if (std::max(std::abs(h.pos.x - before->pos.x), std::abs(h.pos.y - before->pos.y)) > 30) continue;  // a jump
+            m_walks.insert(h.id, Walk{steps, 0.0});
+        }
+        if (!m_walks.isEmpty() && !m_walkTimer->isActive()) {
+            m_walkClock.restart();
+            m_walkTimer->start();
+        }
+    }
     m_view = view;
     m_paletteColors.clear();
     for (const QString& terrain : m_view.terrainPalette) {
@@ -453,10 +486,19 @@ void MapView::paintEvent(QPaintEvent*) {
     for (const ViewHero& h : m_view.heroes) {
         if (!shown(h.pos)) continue;
         const QRect r = tileRect(h.pos);
-        if (h.id == m_selectedHero) {  // a gold ring on the ground under the selected hero
+        if (h.id == m_selectedHero && !m_walks.contains(h.id)) {  // a gold ring on the ground under the selected hero
             p.setPen(QPen(QColor("#ffd84a"), std::max(2, m_tile / 14)));
             p.setBrush(QColor(255, 216, 74, 60));
             p.drawEllipse(QRectF(r).adjusted(m_tile * 0.08, m_tile * 0.68, -m_tile * 0.08, -m_tile * 0.02));
+        }
+        // Walking heroes are drawn between the tiles of their way.
+        const auto walk = m_walks.constFind(h.id);
+        if (walk != m_walks.cend()) {
+            const int i = std::min(int(walk->progress), int(walk->steps.size()) - 2);
+            const double f = walk->progress - i;
+            const QPointF a = tileRect(walk->steps[i]).topLeft(), b = tileRect(walk->steps[i + 1]).topLeft();
+            p.drawPixmap(a + (b - a) * f, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile));
+            continue;
         }
         put(h.pos, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile));
     }

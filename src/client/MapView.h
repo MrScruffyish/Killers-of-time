@@ -3,6 +3,8 @@
 #include <QAbstractScrollArea>
 #include <QColor>
 #include <QList>
+#include <QHash>
+#include <QElapsedTimer>
 #include <QPointF>
 #include <optional>
 
@@ -93,6 +95,14 @@ private:
     bool m_doubleClicked = false;
     std::optional<QPointF> m_wantCentre;  // tile coordinates to keep in the middle (centerOn)
     class QTimer* m_edgeTimer;
+    // Heroes walking from their old tile to the new one (animation only).
+    struct Walk {
+        QList<core::Pos> steps;
+        double progress = 0;  // steps done, with the fraction of the current one
+    };
+    QHash<int, Walk> m_walks;
+    class QTimer* m_walkTimer;
+    QElapsedTimer m_walkClock;
     core::Pos m_hover{-1, -1};
 };
 

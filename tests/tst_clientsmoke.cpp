@@ -143,6 +143,16 @@ private slots:
             view.show();
             QApplication::processEvents();
             if (!dir.isEmpty()) view.grab().save(QDir(dir).filePath(QStringLiteral("0_battle_%1.png").arg(ground)));
+            if (ground == "forest") {
+                // The next state: the archers walked, a treant fell. Mid-animation.
+                ViewBattle next = vb;
+                next.units[0].hex = {4, 5};
+                next.units[1].count = 3;
+                view.setBattle(next, QColor("#d62728"), QColor("#6e5a86"));
+                QTest::qWait(150);
+                if (!dir.isEmpty()) view.grab().save(QDir(dir).filePath("0_battle_anim.png"));
+                QTest::qWait(1400);  // everything settles
+            }
         }
         // A lost battle as the result window shows it.
         const QJsonObject report{{"outcome", "defender"}, {"rounds", 4}, {"loserHeroKilled", true},

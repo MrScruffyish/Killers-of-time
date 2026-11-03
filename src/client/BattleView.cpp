@@ -12,6 +12,9 @@
 #include <QPushButton>
 #include <QShortcut>
 #include <QVBoxLayout>
+#include <QFontMetrics>
+#include <QElapsedTimer>
+#include <QTimer>
 #include <cmath>
 
 #include "client/Art.h"
@@ -26,6 +29,51 @@ public:
     HexField(const core::ContentRegistry* content, QWidget* parent) : QWidget(parent), m_content(content) {
         setMinimumSize(400, 280);
         setMouseTracking(true);
+        m_anim.setInterval(16);
+        connect(&m_anim, &QTimer::timeout, this, [this]() {
+            const double dt = m_clock.restart() / 1000.0;
+            m_slide = std::min(1.0, m_slide + dt / 0.28);
+            for (Floater& f : m_floaters) f.age += dt;
+            m_floaters.removeIf([](const Floater& f) { return f.age > 1.2; });
+            for (Ghost& g : m_ghosts) g.age += dt;
+            m_ghosts.removeIf([](const Ghost& g) { return g.age > 0.7; });
+            if (m_slide >= 1.0 && m_floaters.isEmpty() && m_ghosts.isEmpty()) m_anim.stop();
+            update();
+        });
+    }
+    // A new state of the battle: stacks that moved slide there, losses float up,
+    // stacks that were wiped out fade away.
+    void setBattleAnimated(const ViewBattle& next) {
+        const ViewBattle old = battle;
+        battle = next;
+        if (!old.present || !next.present) return;
+        m_slideFrom.clear();
+        for (const ViewBattleUnit& u : old.units) {
+            const ViewBattleUnit* now = next.unit(u.id);
+            if (!now) {
+                m_ghosts.append({u, 0});
+                m_floaters.append({centre(u.hex), QStringLiteral("-%1").arg(u.count), QColor("#ff5040"), 0});
+                continue;
+            }
+            if (now->hex != u.hex) m_slideFrom.insert(u.id, centre(u.hex));
+            if (now->count < u.count)
+                m_floaters.append({centre(now->hex), QStringLiteral("-%1").arg(u.count - now->count), QColor("#ff5040"), 0});
+            else if (now->frontHp < u.frontHp && now->count == u.count)
+                m_floaters.append({centre(now->hex), tr("hit"), QColor("#ffb060"), 0});
+        }
+        m_slide = m_slideFrom.isEmpty() ? 1.0 : 0.0;
+        if (!m_slideFrom.isEmpty() || !m_floaters.isEmpty() || !m_ghosts.isEmpty()) {
+            m_clock.restart();
+            m_anim.start();
+        }
+    }
+    // Where a stack is drawn now (sliding toward its hex).
+    QPointF drawnAt(const ViewBattleUnit& u) const {
+        const QPointF to = centre(u.hex);
+        const auto it = m_slideFrom.constFind(u.id);
+        if (it == m_slideFrom.cend() || m_slide >= 1.0) return to;
+        const double t = 1 - (1 - m_slide) * (1 - m_slide);  // ease out
+        return *it + (to - *it) * t;
     }
     ViewBattle battle;
     QColor sideColor[2];
@@ -225,7 +273,7 @@ protected:
             const bool active = (u.id == battle.active);
             const bool target = mine && u.side != battle.yourSide && (battle.shootable.contains(u.id) || battle.attackable.contains(u.id));
             const core::UnitDef* def = m_content->unit(u.unit);
-            const QPointF c = centre(u.hex);
+            const QPointF c = drawnAt(u);
             art::drawUnitToken(p, c, r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars, active, target,
                                u.unit, def ? def->rank : 0);
             if (u.range > 0) {
@@ -244,6 +292,31 @@ protected:
                 p.setFont(f);
                 p.drawText(QRectF(b.x() - br * 0.2, b.y() - br, br * 1.1, br * 2), Qt::AlignCenter, QString::number(u.range));
             }
+        }
+        // Stacks wiped out fade; losses float up.
+        for (const Ghost& g : m_ghosts) {
+            const core::UnitDef* def = m_content->unit(g.unit.unit);
+            p.setOpacity(std::max(0.0, 1.0 - g.age / 0.7));
+            art::drawUnitToken(p, centre(g.unit.hex), r * 0.78 * (1 + g.age * 0.3), sideColor[g.unit.side], def ? def->name : g.unit.unit, 0,
+                               0, false, false, g.unit.unit, def ? def->rank : 0);
+        }
+        p.setOpacity(1.0);
+        QFont ff = p.font();
+        ff.setPixelSize(std::max(12, int(r * 0.7)));
+        ff.setBold(true);
+        p.setFont(ff);
+        for (const Floater& f : m_floaters) {
+            const QPointF at = f.at - QPointF(0, r * (0.6 + f.age * 1.2));
+            QColor c = f.colour;
+            c.setAlphaF(std::max(0.0, 1.0 - f.age / 1.2));
+            QPainterPath text;
+            text.addText(at - QPointF(QFontMetrics(ff).horizontalAdvance(f.text) / 2.0, 0), ff, f.text);
+            p.setPen(QPen(QColor(0, 0, 0, c.alpha()), 3));
+            p.setBrush(Qt::NoBrush);
+            p.drawPath(text);
+            p.setPen(Qt::NoPen);
+            p.setBrush(c);
+            p.drawPath(text);
         }
     }
     void mouseMoveEvent(QMouseEvent* e) override {
@@ -273,7 +346,23 @@ protected:
     }
 
 private:
+    struct Floater {
+        QPointF at;
+        QString text;
+        QColor colour;
+        double age;
+    };
+    struct Ghost {
+        ViewBattleUnit unit;
+        double age;
+    };
     const core::ContentRegistry* m_content;
+    QTimer m_anim;
+    QElapsedTimer m_clock;
+    QHash<int, QPointF> m_slideFrom;
+    double m_slide = 1.0;
+    QList<Floater> m_floaters;
+    QList<Ghost> m_ghosts;
 };
 
 BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
@@ -352,7 +441,7 @@ QPoint BattleView::hexCentre(core::Pos hex) const {
 
 void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, const QColor& defender) {
     m_battle = battle;
-    m_field->battle = battle;
+    m_field->setBattleAnimated(battle);
     m_field->sideColor[0] = attacker;
     m_field->sideColor[1] = defender;
     if (!battle.myMove()) m_castSpell.clear();
