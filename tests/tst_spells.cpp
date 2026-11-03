@@ -217,6 +217,19 @@ private slots:
         QVERIFY(gs.hero(h)->spellPoints < sp);
     }
 
+    // Not only damage: a hero who knows only Bless blesses one of his stacks.
+    void aiHeroUsesBlessingsAndCurses() {
+        const HeroId h = wizard();
+        gs.hero(h)->spells = {"bless"};
+        gs.army(gs.hero(h)->army)->addUnits("militia", 10, 6);
+        const ArmyId m = monsters("pikeman", 20);
+        Battle b(gs, reg, gs.hero(h)->army, m, 3);
+        const BattleAction a = chooseBattleAction(b);
+        QCOMPARE(a.type, BattleAction::Type::Cast);
+        QCOMPARE(a.spell, QString("bless"));
+        QCOMPARE(b.unit(a.target)->side, 0);
+    }
+
     void unitsCastTheirOwnSpells() {
         const HeroId h = wizard();
         gs.army(gs.hero(h)->army)->addUnits("unicorn", 3, 80);

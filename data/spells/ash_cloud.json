@@ -12,8 +12,8 @@
     {
       "type": "modifyStat",
       "stat": "defense",
-      "amount": -4,
-      "perPower": 1,
+      "amount": -3,
+      "perPower": -1,
       "rounds": 3
     }
   ]

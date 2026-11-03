@@ -32,6 +32,58 @@ double strikeValue(const Battle& b, const BattleUnit& me, const BattleUnit& targ
     return value;
 }
 
+// What casting `spell` at `target` is worth, in the same units as strikeValue
+// (the danger of enemies killed or held back, or of allies made stronger):
+// damage on the target and on everyone in its area, curses on enemies without
+// that curse yet, blessings on allies without them, heals on hurt allies.
+double spellValue(const Battle& b, const SpellDef& spell, int power, const BattleUnit& target) {
+    QList<const BattleUnit*> hit{&target};
+    if (spell.area > 0)
+        for (const BattleUnit& u : b.units())
+            if (&u != &target && u.alive() && u.side == target.side && hex::distance(u.pos, target.pos) <= spell.area) hit.append(&u);
+    double value = 0;
+    for (const SpellEffect& e : spell.effects) {
+        const int strength = effectStrength(e, power);
+        for (const BattleUnit* t : hit) {
+            const double perUnit = danger(*t) / std::max(1, t->stack.count());
+            switch (e.type) {
+            case SpellEffect::Type::Damage: {
+                const double kills = std::min<double>(t->stack.count(), double(strength) / std::max(1, t->stack.maxHp()));
+                value += kills * perUnit * (t->def->range > 0 && t->shotsLeft > 0 ? 1.5 : 1.0);
+                break;
+            }
+            case SpellEffect::Type::Heal: {
+                const int missing = t->stack.count() * t->stack.maxHp() - t->stack.totalHp();
+                value += std::min(missing, std::max(0, strength)) / double(std::max(1, t->stack.maxHp())) * perUnit;
+                break;
+            }
+            case SpellEffect::Type::ModifyStat: {
+                // Already under such a spell: little to gain.
+                bool has = false;
+                for (const StatModifier& m : t->modifiers) has = has || m.stat == e.stat;
+                if (has) break;
+                const bool helps = (t->side == target.side) == (spell.target == SpellDef::Target::Ally) ? strength > 0 : strength < 0;
+                if (!helps) break;
+                const double weight = e.stat == QLatin1String("battleSpeed") ? 0.02 : 0.025;  // about 5% per point, half of it felt (tested against the old AI)
+                value += danger(*t) * std::abs(strength) * weight * std::min(3, std::max(1, e.rounds)) / 2.0;
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+    return value;
+}
+
+// Ranged punch still in the stacks of one side (shots left).
+double rangedDanger(const Battle& b, int side) {
+    double d = 0;
+    for (const BattleUnit& u : b.units())
+        if (u.alive() && u.side == side && u.def->range > 0 && u.shotsLeft > 0) d += danger(u);
+    return d;
+}
+
 }  // namespace
 
 BattleAction chooseBattleAction(const Battle& b) {
@@ -64,26 +116,32 @@ BattleAction chooseBattleAction(const Battle& b) {
                      [](const BattleUnit* x, const BattleUnit* y) { return danger(*x) > danger(*y); });
     if (enemies.isEmpty()) return a;
 
-    // The hero first: the strongest damage spell at the most dangerous enemy.
+    // The hero first: of every spell and target, the one worth most (area damage
+    // counts every stack it hits; curses, blessings and heals count too).
     if (const Hero* hero = b.heroOf(me->side); hero && !b.heroHasCast(me->side)) {
         const int power = hero->trait(QStringLiteral("spell_power"));
-        QString best;
-        int bestDamage = 0;
+        QString bestSpell;
+        int bestTarget = 0;
+        double bestValue = 0;
         for (const QString& id : hero->spells) {
             const SpellDef* s = b.content().spell(id);
-            if (!s || s->target != SpellDef::Target::Enemy || !b.whyCannotCast(id, 0).isEmpty()) continue;
-            int damage = 0;
-            for (const SpellEffect& e : s->effects)
-                if (e.type == SpellEffect::Type::Damage) damage += effectStrength(e, power);
-            if (damage > bestDamage) {
-                bestDamage = damage;
-                best = id;
+            if (!s || s->scope != SpellDef::Scope::Battle || !b.whyCannotCast(id, 0).isEmpty()) continue;
+            for (const BattleUnit& t : b.units()) {
+                if (!t.alive()) continue;
+                if ((s->target == SpellDef::Target::Enemy) != (t.side != me->side)) continue;
+                if (!b.whyCannotCast(id, t.id).isEmpty()) continue;
+                const double v = spellValue(b, *s, power, t);  // one cast a round: the round's cast is what is scarce
+                if (v > bestValue) {
+                    bestValue = v;
+                    bestSpell = id;
+                    bestTarget = t.id;
+                }
             }
         }
-        if (!best.isEmpty()) {
+        if (!bestSpell.isEmpty()) {
             a.type = BattleAction::Type::Cast;
-            a.spell = best;
-            a.target = enemies.first()->id;
+            a.spell = bestSpell;
+            a.target = bestTarget;
             return a;
         }
     }
@@ -176,6 +234,18 @@ BattleAction chooseBattleAction(const Battle& b) {
         a.hex = bestFrom;
         a.hasHex = true;
         return a;
+    }
+    // No blow this turn. When this side out-shoots the other, melee stacks hold
+    // back for a few rounds and let the enemy come through the arrows (not when
+    // storming walls, and not against an army of shooters, which never comes).
+    if (me->def->range <= 0 && b.round() <= 4 && !(b.wallLevel() > 0 && me->side == 0)) {
+        const double mine = rangedDanger(b, me->side), theirs = rangedDanger(b, 1 - me->side);
+        bool theyHaveMelee = false;
+        for (const BattleUnit* e : enemies) theyHaveMelee = theyHaveMelee || e->def->range <= 0;
+        if (mine > 0 && mine > theirs * 1.3 && theyHaveMelee) {
+            a.type = BattleAction::Type::Defend;
+            return a;
+        }
     }
     // Ranged units out of shots or blocked still walk in; everybody closes in.
     const QHash<Pos, int> reach = b.reachable(*me);
