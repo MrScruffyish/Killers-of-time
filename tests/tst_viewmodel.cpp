@@ -2,6 +2,7 @@
 #include <QtTest>
 
 #include "client/MovePlanner.h"
+#include "client/Sound.h"
 #include "client/ViewModel.h"
 #include "core/content/ContentRegistry.h"
 #include "core/model/PlayerView.h"
@@ -119,6 +120,23 @@ private slots:
         for (const core::Pos t : planner.reachableToday())
             for (const core::Pos n : {core::Pos{t.x + 1, t.y}, core::Pos{t.x - 1, t.y}, core::Pos{t.x, t.y + 1}})
                 if (v.inBounds(n) && v.tiles[n.y * v.width + n.x] < 0) QVERIFY(!planner.plan(n).found);
+    }
+
+    void soundEffectsAreValidWavs() {
+        using sound::Effect;
+        for (const Effect e : {Effect::Click, Effect::Step, Effect::Clash, Effect::Spell, Effect::Coins, Effect::Bell,
+                               Effect::Drums, Effect::Fanfare, Effect::Defeat}) {
+            const QByteArray w = sound::effectWav(e);
+            QVERIFY(w.startsWith("RIFF"));
+            QCOMPARE(w.mid(8, 4), QByteArray("WAVE"));
+            QVERIFY(w.size() > 44 + 1000);  // header + some sound
+            int loud = 0;
+            for (int i = 44; i + 1 < w.size(); i += 2) {
+                const qint16 v = qint16(quint8(w[i]) | (quint8(w[i + 1]) << 8));
+                loud = std::max<int>(loud, std::abs(v));
+            }
+            QVERIFY(loud > 1000);  // not silent
+        }
     }
 
     void rejectsInconsistentData() {

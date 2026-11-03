@@ -20,6 +20,7 @@
 #include "client/MapView.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
+#include "client/Sound.h"
 #include "client/TownDialog.h"
 #include "core/content/ContentRegistry.h"
 #include "net/Protocol.h"
@@ -131,6 +132,10 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     };
     shortcut("E", [this]() { if (m_endTurn->isEnabled()) m_endTurn->click(); });
     shortcut("N", [this]() { selectNextHero(); });
+    shortcut("M", [this]() {
+        sound::setMuted(!sound::muted());
+        log(sound::muted() ? tr("Sound off (M)") : tr("Sound on (M)"));
+    });
     shortcut("H", [this]() {
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
     });
@@ -169,6 +174,23 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
         const Pending p = m_pending.take(replyTo);
         const QString text = describeResult(p.type, info);
+        using sound::Effect;
+        if (p.type == net::msg::moveHero) sound::play(info["battleStarted"].toBool() ? Effect::Drums : Effect::Step);
+        else if (p.type == net::msg::endTurn) sound::play(Effect::Click);
+        else if (p.type == net::msg::castSpell) sound::play(Effect::Spell);
+        else if (p.type == net::msg::buyAllUnits || p.type == net::msg::recruit || p.type == net::msg::build ||
+                 p.type == net::msg::buildThenBuy || p.type == net::msg::hireHero)
+            sound::play(Effect::Coins);
+        else if (p.type == net::msg::battleAction) {
+            bool cast = false, strike = false;
+            for (const QJsonValue& v : info["events"].toArray()) {
+                const QString t = v.toObject()["type"].toString();
+                cast = cast || t == "cast";
+                strike = strike || t == "attack" || t == "shoot" || t == "retaliate";
+            }
+            if (cast) sound::play(Effect::Spell);
+            else if (strike) sound::play(Effect::Clash);
+        }
         log(QStringLiteral("%1: %2").arg(p.what.isEmpty() ? tr("Done") : p.what, text));
     });
     connect(m_client, &net::LobbyClient::errorReceived, this, [this](const QString&, const QString& text, int replyTo) {
@@ -235,6 +257,7 @@ void GamePage::onViewChanged() {
     if (week != m_announcedWeek) {
         if (!first && week > m_announcedWeek && !m_view.weekEventName.isEmpty()) {
             const QString text = tr("Week %1: %2. %3").arg(week).arg(m_view.weekEventName, m_view.weekEventText);
+            sound::play(sound::Effect::Bell);
             log(text);
             if (m_view.weekEventName != QLatin1String("A quiet week")) {
                 auto* box = new QMessageBox(QMessageBox::Information, tr("A new week"), text, QMessageBox::Ok, this);
@@ -267,6 +290,7 @@ void GamePage::showBattle(bool firstView) {
         m_seenBattleId = m_view.lastBattleId;
         if (fresh) {
             const QString text = describeBattle(m_view.lastBattleReport);
+            sound::play(text.contains(tr("battle won")) ? sound::Effect::Fanfare : sound::Effect::Defeat);
             log(tr("Battle result: %1").arg(text));
             auto* box = new QMessageBox(QMessageBox::Information, tr("Battle"), text, QMessageBox::Ok, this);
             box->setObjectName("battleResultBox");
@@ -305,6 +329,7 @@ void GamePage::announceEnd() {
         }
     }
     if (text.isEmpty()) return;
+    sound::play(text.startsWith(tr("Victory")) ? sound::Effect::Fanfare : sound::Effect::Defeat);
     log(text);
     auto* box = new QMessageBox(QMessageBox::Information, tr("Game over"), text, QMessageBox::Ok, this);
     box->setAttribute(Qt::WA_DeleteOnClose);

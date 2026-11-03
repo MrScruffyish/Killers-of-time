@@ -6,6 +6,8 @@ add_library(kot_client_lib STATIC
     MapView.cpp
     Art.h
     Art.cpp
+    Sound.h
+    Sound.cpp
     MovePlanner.h
     MovePlanner.cpp
     MiniMap.h
@@ -27,6 +29,12 @@ add_library(kot_client_lib STATIC
 )
 target_include_directories(kot_client_lib PUBLIC ${KOT_SRC_DIR})
 target_link_libraries(kot_client_lib PUBLIC kot_net kot_core Qt6::Widgets Qt6::Network PRIVATE kot_warnings)
+# Sound effects when Qt Multimedia is installed (sudo apt install qt6-multimedia-dev).
+find_package(Qt6 QUIET COMPONENTS Multimedia)
+if(Qt6Multimedia_FOUND)
+    target_link_libraries(kot_client_lib PRIVATE Qt6::Multimedia)
+    target_compile_definitions(kot_client_lib PRIVATE KOT_HAVE_SOUND)
+endif()
 
 add_executable(kot_client main.cpp)
 target_link_libraries(kot_client PRIVATE kot_client_lib kot_warnings)

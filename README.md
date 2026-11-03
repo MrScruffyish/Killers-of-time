@@ -7,6 +7,7 @@ the design and `STATUS.md` for progress.
 
 ```
 sudo apt install build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools libgl1-mesa-dev
+sudo apt install qt6-multimedia-dev graphviz   # optional: sound effects, kot_graph PDFs
 ```
 
 Qt 6.4 or newer, CMake 3.21 or newer, a C++20 compiler (GCC 11+).

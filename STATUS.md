@@ -133,13 +133,14 @@ and react to; add depth afterwards.
 - [x] Map editor `kot_editor` (terrain brush, towns, mines, dwellings, treasures, artifacts, monsters, starting heroes, player slots; random map start; saves checked scenarios)
 - [x] Campaigns (`data/campaigns`, chapters = scenarios, progress in the saves folder, best heroes carried over with their army); sample "The First War". Tests: `tst_campaign` (40 test programs)
 - [x] Better placeholder art: textured terrain tiles, soft fog edges, drawn icons (castle, mines, huts, chests, artifacts, hero banners, monsters), textured battle hexes with rocks and unit tokens, a dark wood-and-gold style sheet
-- [ ] Real art, sound, 2.5D projection decision
+- [x] Sound effects generated in code (click, steps, clash, spell, coins, bell, drums, fanfare, defeat) with Qt Multimedia when installed; M mutes
+- [ ] Real art, 2.5D projection decision
 - [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
 - [x] Packaging: install rules, desktop entries, icon, CPack DEB/TGZ (`cpack -G DEB`)
 - [x] Random maps have neutral towns with garrisons to conquer
 - [x] Weekly events (`events.json`: resources for everyone, growth changes, extra units; announced in the client)
 - [x] Hero screen (H): experience bar, traits by group with + buttons for level-up picks, army with stats and stars, spellbook and artifacts with descriptions
-- [ ] Playtesting; next ideas: boats/shipyards, upkeep (D9), sound
+- [ ] Playtesting; next ideas: boats/shipyards, upkeep (D9)
 
 ---
 
