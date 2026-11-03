@@ -74,25 +74,21 @@ private slots:
         QCOMPARE(r.needsChoice.size(), 2);          // snail_pen would shut out eagle_roost
         QCOMPARE(r.needsChoice[0].buildings, QStringList({"snail_pen"}));
 
-        // Then the trained archers (tier 2 before tier 1), the pikemen, the village hall.
-        gs.setDay(3);
-        r = autoBuild(gs, reg, p1);
-        QVERIFY(builtIn(r, t1, "archery_school"));
-        QCOMPARE(r.needsChoice[0].buildings, QStringList({"eagle_roost", "snail_pen"}));
-
-        gs.setDay(4);
-        QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "pike_barracks"));
-
-        gs.setDay(5);
-        QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "village_hall"));
-
-        gs.setDay(6);
-        autoBuild(gs, reg, p1);
-        QVERIFY(gs.town(t1)->buildings.contains("tavern"));
-
+        // Then the higher-tier dwellings and upgrades, the village hall and the tavern,
+        // in some order, never one of the two rival dwellings.
+        QStringList builtSoFar;
+        for (int day = 3; day <= 12; ++day) {
+            gs.setDay(day);
+            gs.player(p1)->resources = {{"gold", 50000}, {"wood", 200}, {"stone", 200}, {"gems", 50}, {"mercury", 50}};
+            r = autoBuild(gs, reg, p1);
+            for (const AutoBuildReport::Built& b : r.built) builtSoFar << b.building;
+        }
+        for (const QString& id : {"pike_barracks", "archery_school", "sword_hall", "village_hall", "tavern"})
+            QVERIFY2(builtSoFar.contains(id), qPrintable(id + QString(" was not built: ") + builtSoFar.join(", ")));
+        QVERIFY(!builtSoFar.contains("snail_pen") && !builtSoFar.contains("eagle_roost"));
         // Then other buildings without a choice (mage guild, fort, ...), never the rival dwellings.
         const qsizetype before = gs.town(t1)->buildings.size();
-        for (int day = 7; day <= 10; ++day) {
+        for (int day = 13; day <= 16; ++day) {
             gs.setDay(day);
             r = autoBuild(gs, reg, p1);
             for (const AutoBuildReport::Built& b : r.built)

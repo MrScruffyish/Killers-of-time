@@ -1,0 +1,22 @@
+{
+  "id": "dread_knight",
+  "name": "Dread Knight",
+  "race": "undead",
+  "tier": 5,
+  "attack": 22,
+  "defense": 22,
+  "damageMin": 35,
+  "damageMax": 50,
+  "maxHp": 170,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3200,
+    "mercury": 2
+  },
+  "initiative": 11,
+  "abilities": [
+    "undead",
+    "double_attack"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "troll",
+  "name": "Troll",
+  "race": "neutral",
+  "tier": 3,
+  "attack": 12,
+  "defense": 10,
+  "damageMin": 8,
+  "damageMax": 12,
+  "maxHp": 45,
+  "battleSpeed": 5,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 450
+  },
+  "initiative": 6
+}

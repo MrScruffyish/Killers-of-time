@@ -1,0 +1,17 @@
+{
+  "id": "cavalier",
+  "name": "Cavalier",
+  "race": "humans",
+  "tier": 4,
+  "attack": 15,
+  "defense": 15,
+  "damageMin": 15,
+  "damageMax": 25,
+  "maxHp": 100,
+  "battleSpeed": 8,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1000
+  },
+  "initiative": 11
+}

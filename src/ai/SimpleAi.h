@@ -63,6 +63,8 @@ private:
     QHash<quint32, int> m_moves;     // hero id -> move commands this turn
     QSet<quint32> m_heroDone;        // heroes with nothing more to do this turn
     QSet<quint32> m_resting;  // heroes that stopped short of their destination today
+    QList<QSet<core::Pos>> m_visitedIslands;  // islands left by boat (not landed on again)
+    bool m_savingForBoat = false;  // the island is done: keep gold and wood for a boat (kept across turns)
     QSet<quint32> m_spellCast;       // heroes that considered a movement spell this turn
     QSet<std::uint64_t> m_failedTargets;  // hero/target pairs refused this turn
     std::uint64_t m_lastTarget = 0;

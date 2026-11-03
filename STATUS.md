@@ -182,7 +182,9 @@ and react to; add depth afterwards.
 - [x] Weak monsters offer to join: neutral armies at least `joinStrengthRatio` (5) times weaker than the hero's army that fit into it stop him with an offer (pay / fight / leave them); joining costs `joinCostPercent` (50) of their recruit price in gold; computer players pay when they can, else fight
 - [x] Town sieges: walls by the town's defense buildings (Fort, Citadel) with a gate, rubble when a segment falls; towers shoot the most dangerous attacker each round; defending shooters do more damage; the attacker can pay for a catapult for one battle (gone afterwards; computer attackers buy one when they can). `tst_siege`
 - [x] Hot-seat: lobby slot kind "Human on this computer" (named by the host, always ready); one connection plays several players, the server acts for the one whose turn it is (or whose stack acts in a battle); the client covers the game with a "Pass to <name>" screen between them; map memory per player
-- [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
+- [x] More content: 36 units (each race up to tier 5: humans swordsman/crusader, monk, cavalier, angel; sylvan dryad, centaur, ancient treant, green dragon; undead ghoul, lich, spectre, vampire, dread knight; neutral wolf, harpy, troll, ogre), 40 buildings (their dwellings, Mage Academy level 4), 21 spells (ice bolt, bless, rock fall, barkskin, thorn storm, weakness, drain life, chain lightning, wind step), pictures for all
+- [x] AI: saves up for a boat when its island is done (and buys missing wood), lands only on real islands it has not left before
+- [ ] Balance (later, user): ranges favour the elves' archers; the new tier 3-5 units are first guesses (kot_balance races: humans 62.7k, sylvan 41.8k, undead 79.1k week power)
 
 ---
 

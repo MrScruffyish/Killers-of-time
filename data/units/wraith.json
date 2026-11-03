@@ -23,5 +23,6 @@
   "spellPoints": 10,
   "spells": [
     "curse"
-  ]
+  ],
+  "upgradesTo": "spectre"
 }

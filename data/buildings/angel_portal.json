@@ -1,0 +1,20 @@
+{
+  "id": "angel_portal",
+  "name": "Portal of Glory",
+  "race": "humans",
+  "cost": {
+    "gold": 6000,
+    "stone": 10,
+    "gems": 5
+  },
+  "requires": [
+    "stables",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "angel"
+    }
+  ]
+}

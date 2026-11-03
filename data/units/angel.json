@@ -1,0 +1,25 @@
+{
+  "id": "angel",
+  "name": "Angel",
+  "race": "humans",
+  "tier": 5,
+  "attack": 20,
+  "defense": 20,
+  "damageMin": 50,
+  "damageMax": 50,
+  "maxHp": 200,
+  "battleSpeed": 12,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3000,
+    "gems": 1
+  },
+  "initiative": 14,
+  "abilities": [
+    "flying"
+  ],
+  "spellPoints": 20,
+  "spells": [
+    "cure"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "swordsman",
+  "name": "Swordsman",
+  "race": "humans",
+  "tier": 3,
+  "attack": 10,
+  "defense": 12,
+  "damageMin": 6,
+  "damageMax": 9,
+  "maxHp": 35,
+  "battleSpeed": 5,
+  "weeklyGrowth": 6,
+  "cost": {
+    "gold": 300
+  },
+  "initiative": 8,
+  "upgradesTo": "crusader"
+}

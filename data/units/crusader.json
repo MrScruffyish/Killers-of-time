@@ -1,0 +1,20 @@
+{
+  "id": "crusader",
+  "name": "Crusader",
+  "race": "humans",
+  "tier": 3,
+  "attack": 12,
+  "defense": 14,
+  "damageMin": 7,
+  "damageMax": 10,
+  "maxHp": 40,
+  "battleSpeed": 6,
+  "weeklyGrowth": 6,
+  "cost": {
+    "gold": 400
+  },
+  "initiative": 9,
+  "abilities": [
+    "double_attack"
+  ]
+}

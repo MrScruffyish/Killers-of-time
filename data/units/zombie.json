@@ -16,5 +16,6 @@
   "mapSpeed": 3,
   "abilities": [
     "undead"
-  ]
+  ],
+  "upgradesTo": "ghoul"
 }

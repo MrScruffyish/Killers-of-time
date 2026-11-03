@@ -18,5 +18,6 @@
   "spellPoints": 10,
   "spells": [
     "entangle"
-  ]
+  ],
+  "upgradesTo": "ancient_treant"
 }

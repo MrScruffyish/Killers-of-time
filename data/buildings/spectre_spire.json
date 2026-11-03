@@ -1,0 +1,17 @@
+{
+  "id": "spectre_spire",
+  "name": "Spectre Spire",
+  "race": "undead",
+  "cost": {
+    "gold": 1800,
+    "stone": 5,
+    "mercury": 1
+  },
+  "upgradeOf": "haunted_tower",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "spectre"
+    }
+  ]
+}

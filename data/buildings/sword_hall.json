@@ -1,0 +1,19 @@
+{
+  "id": "sword_hall",
+  "name": "Hall of Swords",
+  "race": "humans",
+  "cost": {
+    "gold": 1200,
+    "wood": 5,
+    "stone": 5
+  },
+  "requires": [
+    "archery_range"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "swordsman"
+    }
+  ]
+}

@@ -10,6 +10,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/magic/Spells.h"
 #include "core/rules/Boats.h"
+#include "core/rules/Trade.h"
 #include "net/Protocol.h"
 
 namespace kot::ai {
@@ -111,10 +112,13 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
             if (d.owner == me && d.available > 0) return command(net::msg::sendDwellingUnits);
     }
 
-    // 3. Build, then buy units everywhere.
+    // 3. Build, then buy units everywhere (unless saving up for a boat to leave the island).
     if (!m_built) {
         m_built = true;
-        return command(net::msg::buildThenBuy, {{"useTrade", true}});
+        bool canPayBoat = true;
+        const ResourceAmounts& boat = content.balance().economy.boatCost;
+        for (auto it = boat.begin(); it != boat.end(); ++it) canPayBoat = canPayBoat && player->resources.value(it.key()) >= it.value();
+        if (!m_savingForBoat || canPayBoat) return command(net::msg::buildThenBuy, {{"useTrade", true}});
     }
 
     // 4. Hire heroes while rich enough.
@@ -217,13 +221,35 @@ net::Message SimpleAi::boatPlan(const GameState& state, const ContentRegistry& c
     if (!army || army->totalUnits() == 0 || m_boatTried.contains(hero.id.value())) return {};
     const Player* player = state.player(me);
     const ResourceAmounts& cost = content.balance().economy.boatCost;
-    for (auto it = cost.begin(); it != cost.end(); ++it)
-        if (player->resources.value(it.key()) < it.value()) return {};
+    bool shipyard = false;
+    for (const Town& t : state.towns()) shipyard = shipyard || (t.owner == me && hasShipyard(t, content));
+    // Missing wood (or the like): buy it at the market when the gold covers it.
+    int goldNeeded = cost.value(QStringLiteral("gold"));
+    QString buy;
+    int buyAmount = 0;
+    for (auto it = cost.begin(); it != cost.end(); ++it) {
+        const int missing = it.value() - player->resources.value(it.key());
+        if (missing <= 0 || it.key() == QStringLiteral("gold")) continue;
+        const int price = tradeCostToGet(content, QStringLiteral("gold"), it.key(), missing, tradeEfficiency(state, content, me));
+        goldNeeded += price;
+        if (buy.isEmpty()) {
+            buy = it.key();
+            buyAmount = price;
+        }
+    }
+    if (player->resources.value(QStringLiteral("gold")) < goldNeeded) {
+        m_savingForBoat = shipyard;  // nothing left here: keep the money for a boat
+        return {};
+    }
+    if (!buy.isEmpty() && shipyard)
+        return command(net::msg::trade, {{"give", "gold"}, {"amount", buyAmount}, {"get", buy}});
     for (const Town& t : state.towns()) {
         if (t.owner != me || !hasShipyard(t, content) || !freeWaterNext(state, content, t.pos)) continue;
         if (t.pos == army->pos) {
             m_boatTried.insert(hero.id.value());
+            m_savingForBoat = false;
             m_homeLand[hero.id.value()] = walkableRegion(state, content, t.pos);
+            m_visitedIslands.append(m_homeLand[hero.id.value()]);
             return command(net::msg::buyBoat, {{"hero", toInt(hero.id.value())}});
         }
         if (!m_failedTargets.contains(key(hero.id.value(), t.pos))) {
@@ -249,11 +275,19 @@ net::Message SimpleAi::sailMove(const GameState& state, const ContentRegistry& c
         return t && t->walkable && !t->sailable;
     };
     const Pos at = army->pos;
+    // Only real islands are worth landing on (not a rock in the sea), and not one
+    // already walked over.
+    const auto worthLanding = [&](Pos n) {
+        for (const QSet<Pos>& seen : m_visitedIslands)
+            if (seen.contains(n)) return false;
+        return walkableRegion(state, content, n).size() >= 12;
+    };
     // Land right here if foreign shore is next to us.
     for (int dy = -1; dy <= 1; ++dy)
         for (int dx = -1; dx <= 1; ++dx) {
             const Pos n{at.x + dx, at.y + dy};
-            if ((dx || dy) && walkable(n) && !home.contains(n) && view.explored(n) && !m_failedTargets.contains(key(hero.id.value(), n))) {
+            if ((dx || dy) && walkable(n) && !home.contains(n) && view.explored(n) && !m_failedTargets.contains(key(hero.id.value(), n)) &&
+                worthLanding(n)) {
                 bool free = true;
                 for (const Army& a : state.armies()) free = free && a.pos != n;
                 if (!free) continue;
@@ -273,7 +307,7 @@ net::Message SimpleAi::sailMove(const GameState& state, const ContentRegistry& c
                 for (int dx = -1; dx <= 1; ++dx) {
                     const Pos n{x + dx, y + dy};
                     if (!state.map().inBounds(n)) continue;
-                    if ((walkable(n) && !home.contains(n) && view.explored(n)) || !view.explored(n)) good = true;
+                    if ((walkable(n) && !home.contains(n) && view.explored(n) && worthLanding(n)) || !view.explored(n)) good = true;
                 }
             const int d = std::max(std::abs(x - at.x), std::abs(y - at.y));
             if (good && d < bestDistance) {

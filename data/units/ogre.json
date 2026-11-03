@@ -1,0 +1,20 @@
+{
+  "id": "ogre",
+  "name": "Ogre",
+  "race": "neutral",
+  "tier": 4,
+  "attack": 16,
+  "defense": 12,
+  "damageMin": 14,
+  "damageMax": 20,
+  "maxHp": 90,
+  "battleSpeed": 4,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 800
+  },
+  "initiative": 5,
+  "abilities": [
+    "double_attack"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "dragon_cliff",
+  "name": "Dragon Cliff",
+  "race": "sylvan",
+  "cost": {
+    "gold": 7000,
+    "stone": 10,
+    "gems": 5
+  },
+  "requires": [
+    "centaur_plain",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "green_dragon"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "rock_fall",
+  "name": "Rock Fall",
+  "school": "earth",
+  "level": 3,
+  "cost": 12,
+  "requiredMagic": 3,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "Rocks crash down on one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 30,
+      "perPower": 18
+    }
+  ]
+}

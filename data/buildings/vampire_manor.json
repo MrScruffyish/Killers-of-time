@@ -1,0 +1,19 @@
+{
+  "id": "vampire_manor",
+  "name": "Vampire Manor",
+  "race": "undead",
+  "cost": {
+    "gold": 3000,
+    "stone": 10,
+    "wood": 5
+  },
+  "requires": [
+    "haunted_tower"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "vampire"
+    }
+  ]
+}

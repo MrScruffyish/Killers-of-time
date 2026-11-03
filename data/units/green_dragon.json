@@ -1,0 +1,21 @@
+{
+  "id": "green_dragon",
+  "name": "Green Dragon",
+  "race": "sylvan",
+  "tier": 5,
+  "attack": 22,
+  "defense": 20,
+  "damageMin": 40,
+  "damageMax": 50,
+  "maxHp": 180,
+  "battleSpeed": 10,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3500,
+    "gems": 2
+  },
+  "initiative": 12,
+  "abilities": [
+    "flying"
+  ]
+}

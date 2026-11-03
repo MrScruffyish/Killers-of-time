@@ -95,6 +95,8 @@ void skull(Canvas& c, double x, double y, double size) {
     c.p.drawEllipse(c.box(x + size * 0.08, y - size * 0.12, size * 0.22, size * 0.24));
 }
 
+void skull_(Canvas& c) { skull(c, 0.5, 0.22, 0.24); }
+
 void skeleton(Canvas& c, bool warrior) {
     c.pen(kBone, 0.05);
     c.line(0.5, 0.36, 0.5, 0.66);  // spine
@@ -151,17 +153,17 @@ void wraith(Canvas& c) {
     c.p.drawEllipse(c.box(0.54, 0.3, 0.1, 0.08));
 }
 
-void dragon(Canvas& c) {
+void dragon(Canvas& c, const QColor& bone = kBone) {
     // Bony wings, a long skull head.
     c.pen(kInk, 0.025);
-    c.p.setBrush(QColor(236, 228, 204, 170));
+    c.p.setBrush(QColor(bone.red(), bone.green(), bone.blue(), 170));
     c.poly({{0.45, 0.45}, {0.05, 0.05}, {0.15, 0.35}, {0.0, 0.4}, {0.2, 0.55}});
     c.poly({{0.55, 0.45}, {0.95, 0.05}, {0.85, 0.35}, {1.0, 0.4}, {0.8, 0.55}});
-    c.pen(kBone, 0.05);
+    c.pen(bone, 0.05);
     c.line(0.3, 0.9, 0.5, 0.5);
     c.line(0.7, 0.9, 0.5, 0.5);
     c.pen(kInk, 0.025);
-    c.p.setBrush(kBone);
+    c.p.setBrush(bone);
     c.p.drawEllipse(c.box(0.38, 0.42, 0.24, 0.3));  // ribcage
     c.poly({{0.4, 0.3}, {0.6, 0.3}, {0.56, 0.5}, {0.44, 0.5}});  // neck
     c.poly({{0.36, 0.12}, {0.64, 0.12}, {0.6, 0.34}, {0.5, 0.42}, {0.4, 0.34}});  // head
@@ -269,6 +271,133 @@ void catapult(Canvas& c) {
     }
 }
 
+void wings(Canvas& c, const QColor& colour) {
+    c.pen(kInk, 0.02);
+    c.p.setBrush(colour);
+    c.poly({{0.42, 0.42}, {0.05, 0.12}, {0.1, 0.38}, {0.02, 0.45}, {0.36, 0.6}});
+    c.poly({{0.58, 0.42}, {0.95, 0.12}, {0.9, 0.38}, {0.98, 0.45}, {0.64, 0.6}});
+}
+
+void angel(Canvas& c) {
+    wings(c, QColor("#f4f0e8"));
+    figure(c, QColor("#e8e0c8"), false);
+    c.p.setPen(QPen(QColor("#ffd84a"), c.s(0.03)));
+    c.p.setBrush(Qt::NoBrush);
+    c.p.drawEllipse(c.box(0.38, 0.04, 0.24, 0.07));  // halo
+    c.pen(kInk, 0.025);
+    c.p.setBrush(kSteel);
+    c.poly({{0.74, 0.62}, {0.78, 0.08}, {0.82, 0.62}});  // a shining sword
+}
+
+void horseBody(Canvas& c, const QColor& coat) {
+    c.pen(QPen(coat.darker(170), c.s(0.04)).color(), 0.045);
+    for (const double x : {0.2, 0.3, 0.62, 0.72}) c.line(x, 0.66, x, 0.94);
+    c.pen(kInk, 0.025);
+    c.p.setBrush(coat);
+    c.p.drawEllipse(c.box(0.12, 0.48, 0.68, 0.26));
+    c.p.setBrush(coat.darker(140));
+    c.p.drawEllipse(c.box(0.04, 0.5, 0.12, 0.22));  // tail
+}
+
+void centaur(Canvas& c) {
+    horseBody(c, QColor("#8a6038"));
+    c.pen(kInk, 0.025);
+    c.p.setBrush(QColor("#e0b080"));  // the man's body on the horse
+    c.p.drawRoundedRect(c.box(0.6, 0.24, 0.18, 0.32), c.s(0.05), c.s(0.05));
+    c.p.drawEllipse(c.box(0.6, 0.06, 0.18, 0.2));
+    c.pen(kWood.darker(110), 0.04);
+    c.p.setBrush(Qt::NoBrush);
+    c.p.drawArc(c.box(0.74, 0.12, 0.24, 0.5), -80 * 16, 160 * 16);
+}
+
+void cavalier(Canvas& c) {
+    horseBody(c, QColor("#f0ece4"));
+    c.pen(kInk, 0.025);
+    c.p.setBrush(QColor("#3a64b0"));
+    c.p.drawRoundedRect(c.box(0.38, 0.22, 0.2, 0.32), c.s(0.05), c.s(0.05));
+    c.p.setBrush(kSteel);
+    c.p.drawEllipse(c.box(0.39, 0.04, 0.18, 0.2));
+    c.pen(kWood.darker(120), 0.035);
+    c.line(0.3, 0.6, 0.98, 0.1);  // lance
+}
+
+void wolf(Canvas& c) {
+    const QColor fur("#7a7470");
+    c.pen(fur.darker(160), 0.045);
+    for (const double x : {0.25, 0.35, 0.62, 0.72}) c.line(x, 0.62, x, 0.9);
+    c.pen(kInk, 0.025);
+    c.p.setBrush(fur);
+    c.p.drawEllipse(c.box(0.15, 0.42, 0.62, 0.26));
+    c.poly({{0.68, 0.5}, {0.98, 0.42}, {0.9, 0.3}, {0.74, 0.24}, {0.7, 0.14}, {0.62, 0.3}});  // head and ears
+    c.poly({{0.18, 0.5}, {0.0, 0.32}, {0.06, 0.52}});  // tail
+    c.p.setBrush(QColor("#ffd84a"));
+    c.p.drawEllipse(c.box(0.78, 0.32, 0.04, 0.04));
+}
+
+void brute(Canvas& c, const QColor& skin, bool club) {
+    // A big, broad figure: trolls and ogres.
+    c.pen(kInk, 0.025);
+    c.p.setBrush(skin.darker(120));
+    c.p.drawRect(c.box(0.3, 0.7, 0.14, 0.24));
+    c.p.drawRect(c.box(0.56, 0.7, 0.14, 0.24));
+    c.p.setBrush(QColor("#6a4a28"));
+    c.p.drawRoundedRect(c.box(0.22, 0.34, 0.56, 0.42), c.s(0.1), c.s(0.1));
+    c.p.setBrush(skin);
+    c.p.drawEllipse(c.box(0.34, 0.08, 0.32, 0.3));
+    c.p.drawEllipse(c.box(0.1, 0.38, 0.16, 0.3));
+    c.p.drawEllipse(c.box(0.74, 0.38, 0.16, 0.3));
+    c.p.setBrush(kInk);
+    c.p.drawEllipse(c.box(0.42, 0.18, 0.04, 0.04));
+    c.p.drawEllipse(c.box(0.54, 0.18, 0.04, 0.04));
+    if (club) {
+        c.p.setBrush(kWood);
+        c.poly({{0.82, 0.5}, {0.98, 0.02}, {0.9, 0.0}, {0.78, 0.48}});
+    }
+}
+
+void vampire(Canvas& c) {
+    c.pen(kInk, 0.025);
+    c.p.setBrush(QColor("#1a1020"));  // cape
+    c.poly({{0.5, 0.3}, {0.1, 0.95}, {0.9, 0.95}});
+    c.p.setBrush(QColor("#8a1a2a"));
+    c.poly({{0.5, 0.36}, {0.3, 0.92}, {0.7, 0.92}});
+    c.p.setBrush(QColor("#e8e0e8"));
+    c.p.drawEllipse(c.box(0.38, 0.1, 0.24, 0.26));
+    c.p.setBrush(QColor("#1a1020"));
+    c.poly({{0.36, 0.2}, {0.5, 0.06}, {0.64, 0.2}, {0.5, 0.14}});  // hair
+    c.p.setPen(Qt::NoPen);
+    c.p.setBrush(QColor("#ff3030"));
+    c.p.drawEllipse(c.box(0.43, 0.2, 0.04, 0.04));
+    c.p.drawEllipse(c.box(0.53, 0.2, 0.04, 0.04));
+}
+
+void robedCaster(Canvas& c, const QColor& robe, bool skull, const QColor& orb) {
+    c.pen(kInk, 0.025);
+    c.p.setBrush(robe);
+    c.poly({{0.5, 0.28}, {0.18, 0.95}, {0.82, 0.95}});
+    if (skull) skull_(c);
+    else {
+        c.p.setBrush(kSkin);
+        c.p.drawEllipse(c.box(0.39, 0.12, 0.22, 0.24));
+        c.p.setBrush(robe.darker(120));
+        c.p.drawChord(c.box(0.36, 0.08, 0.28, 0.24), 0, 180 * 16);  // hood
+    }
+    c.pen(kWood.darker(120), 0.04);
+    c.line(0.8, 0.95, 0.8, 0.2);  // staff
+    c.p.setPen(Qt::NoPen);
+    c.p.setBrush(orb);
+    c.p.drawEllipse(c.box(0.73, 0.1, 0.14, 0.14));
+}
+
+void dryad(Canvas& c) {
+    figure(c, QColor("#5aa84a"), false);
+    c.pen(kInk, 0.02);
+    for (int i = 0; i < 6; ++i) {  // hair of leaves
+        c.p.setBrush(i % 2 ? QColor("#7ac85a") : QColor("#3e8a3a"));
+        c.p.drawEllipse(c.box(0.34 + 0.055 * i, 0.08 + (i % 2) * 0.04, 0.1, 0.12));
+    }
+}
+
 void swordsman(Canvas& c, const QColor& coat) {
     figure(c, coat, true);
     c.pen(kInk, 0.025);
@@ -293,13 +422,30 @@ void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     else if (id == "skeleton_warrior") skeleton(c, true);
     else if (id == "zombie") zombie(c);
     else if (id == "wraith") wraith(c);
+    else if (id == "green_dragon") dragon(c, QColor("#6ab85a"));
     else if (id.contains("dragon")) dragon(c);
     else if (id.contains("eagle")) eagle(c);
     else if (id.contains("snail")) snail(c);
-    else if (id == "treant") treant(c);
+    else if (id == "treant" || id == "ancient_treant") treant(c);
     else if (id == "unicorn") unicorn(c);
     else if (id == "woodsman") woodsman(c);
     else if (id == "catapult") catapult(c);
+    else if (id == "swordsman") swordsman(c, QColor("#8a6a3a"));
+    else if (id == "crusader") swordsman(c, QColor("#d8d8e0"));
+    else if (id == "monk") robedCaster(c, QColor("#8a6a3a"), false, QColor("#fff0a0"));
+    else if (id == "cavalier") cavalier(c);
+    else if (id == "angel") angel(c);
+    else if (id == "dryad") dryad(c);
+    else if (id == "centaur") centaur(c);
+    else if (id == "ghoul") zombie(c);
+    else if (id == "lich") robedCaster(c, QColor("#2a2030"), true, QColor("#60ff90"));
+    else if (id == "spectre") wraith(c);
+    else if (id == "vampire") vampire(c);
+    else if (id == "dread_knight") swordsman(c, QColor("#2a2630"));
+    else if (id == "wolf") wolf(c);
+    else if (id == "harpy") { wings(c, QColor("#8a6a4a")); figure(c, QColor("#6a5040"), false); }
+    else if (id == "troll") brute(c, QColor("#6a8a5a"), true);
+    else if (id == "ogre") brute(c, QColor("#c8a070"), true);
     else swordsman(c, QColor::fromHsv(int(qHash(id) % 360), 120, 160));
     p.restore();
 }

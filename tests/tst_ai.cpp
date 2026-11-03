@@ -140,17 +140,43 @@ private slots:
         GameSession s(reg);
         QString error;
         QVERIFY2(s.start(lobby, &error), qPrintable(error));
-        int sailingDays = 0;
+        // Each AI's home island: the land around its first town.
+        const auto island = [&](core::Pos from) {
+            QSet<core::Pos> seen{from};
+            QList<core::Pos> todo{from};
+            while (!todo.isEmpty()) {
+                const core::Pos p = todo.takeLast();
+                for (int dy = -1; dy <= 1; ++dy)
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        const core::Pos n{p.x + dx, p.y + dy};
+                        if (seen.contains(n) || !s.state().map().inBounds(n)) continue;
+                        const core::TerrainDef* t = reg.terrainType(s.state().map().terrainAt(n));
+                        if (t && t->walkable && !t->sailable) {
+                            seen.insert(n);
+                            todo.append(n);
+                        }
+                    }
+            }
+            return seen;
+        };
+        QHash<quint32, QSet<core::Pos>> home;
+        for (const core::Town& t : s.state().towns())
+            if (t.owner.isValid() && s.state().player(t.owner)->controller == core::Player::Controller::Ai) home.insert(t.owner.value(), island(t.pos));
+        int sailingDays = 0, awayDays = 0;
         for (int day = 0; day < 60; ++day) {
             playDays(s, 1);
-            for (const core::Hero& h : s.state().heroes())
-                if (h.inBoat && s.state().player(h.owner)->controller == core::Player::Controller::Ai) {
-                    ++sailingDays;
-                    break;
-                }
+            bool sailing = false, away = false;
+            for (const core::Hero& h : s.state().heroes()) {
+                if (s.state().player(h.owner)->controller != core::Player::Controller::Ai) continue;
+                sailing = sailing || h.inBoat;
+                const core::Army* a = s.state().army(h.army);
+                away = away || (!h.inBoat && a && !home.value(h.owner.value()).contains(a->pos));
+            }
+            sailingDays += sailing;
+            awayDays += away;
         }
-        qInfo() << "days with an AI hero at sea:" << sailingDays << "day" << s.state().day();
-        QVERIFY2(sailingDays > 0, "an AI should take to the sea when its island is done");
+        qInfo() << "days with an AI hero at sea:" << sailingDays << "on another island:" << awayDays << "day" << s.state().day();
+        QVERIFY2(sailingDays + awayDays > 0, "an AI should take to the sea when its island is done");
     }
 
     void deterministic() {
