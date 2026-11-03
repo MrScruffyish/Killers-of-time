@@ -9,6 +9,7 @@
 #include <QVBoxLayout>
 #include <cmath>
 
+#include "client/Art.h"
 #include "core/content/ContentRegistry.h"
 
 namespace kot::client {
@@ -92,8 +93,8 @@ SpellBook::SpellBook(const core::ContentRegistry* content, const QList<Entry>& s
         if (!s) continue;
         auto* card = new QPushButton(this);
         card->setObjectName(QStringLiteral("spell_%1").arg(e.id));
-        card->setIcon(QIcon(schoolRune(s->school, 48)));
-        card->setIconSize(QSize(40, 40));
+        card->setIcon(QIcon(art::spellIcon(s->id, s->school, 128)));
+        card->setIconSize(QSize(52, 52));
         card->setText(tr("%1   (%2 SP, level %3)\n%4").arg(s->name).arg(s->cost).arg(s->level).arg(s->description));
         card->setStyleSheet("QPushButton { text-align: left; padding: 8px; }");
         card->setMinimumSize(320, 62);

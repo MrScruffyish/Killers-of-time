@@ -110,6 +110,9 @@ void drawResourceIcon(QPainter& p, const QRectF& r, const QString& id, const QCo
 // An artifact's own picture, by where it is worn and its name (sword, crown, boots...).
 void drawArtifactIcon(QPainter& p, const QRectF& r, const QString& id, const QString& slot);
 const QPixmap& artifactIcon(const QString& id, const QString& slot, int size);
+// A spell's picture: a medallion in its school's colour with what it does (SpellArt.cpp).
+void drawSpellIcon(QPainter& p, const QRectF& r, const QString& id, const QString& school);
+const QPixmap& spellIcon(const QString& id, const QString& school, int size);
 void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner);
 void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat = false);
 void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner);  // the knight on horseback (UnitArt.cpp)

@@ -9,6 +9,7 @@ add_library(kot_client_lib STATIC
     IconArt.cpp
     BuildTree.cpp
     Toast.cpp
+    SpellArt.cpp
     Toast.h
     EquipmentView.cpp
     EquipmentView.h

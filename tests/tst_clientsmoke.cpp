@@ -192,7 +192,7 @@ private slots:
             const QStringList res = {"gold", "wood", "stone", "grain", "gems", "sulphur", "coal", "mercury", "papyrus"};
             const QStringList buttons = {"build", "buy", "wagon", "end", "spell", "market", "defend", "auto", "retreat",
                                          "catapult", "town", "army", "tavern"};
-            QImage icons(int(res.size()) * 136 + 20, 128 + 40 + 24 + 140 + 80 + 180, QImage::Format_ARGB32);
+            QImage icons(int(res.size()) * 136 + 20, 128 + 40 + 24 + 140 + 80 + 180 + 160, QImage::Format_ARGB32);
             icons.fill(QColor("#3a2c1e"));
             QPainter ip(&icons);
             for (int i = 0; i < res.size(); ++i) {
@@ -210,6 +210,11 @@ private slots:
                 const QPixmap pm = art::buttonIcon(buttons[i]).pixmap(64, 64);
                 QVERIFY(!pm.isNull());
                 ip.drawPixmap(10 + i * 70, 340, pm);
+            }
+            int si = 0;
+            for (const core::SpellDef& sp : reg.spells()) {
+                ip.drawPixmap(10 + (si % 17) * 70, 590 + (si / 17) * 70, art::spellIcon(sp.id, sp.school, 64));
+                ++si;
             }
             int ai = 0;
             for (const core::ArtifactDef& a : reg.artifacts()) {
