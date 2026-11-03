@@ -100,6 +100,7 @@ private:
     MapView* m_map;
     HeroDialog* m_heroDialog;
     MiniMap* m_miniMap;
+    QLabel* m_players;  // who is who: a coloured mark per player
     // What each player (several in hot-seat) remembers of places out of sight.
     struct Memory {
         QList<ViewTown> towns;

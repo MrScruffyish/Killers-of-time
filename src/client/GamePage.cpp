@@ -78,6 +78,11 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_miniMap = new MiniMap(content, this);
     m_miniMap->setObjectName("miniMap");
     side->addWidget(m_miniMap);
+    m_players = new QLabel(this);
+    m_players->setObjectName("playerColours");
+    m_players->setWordWrap(true);
+    m_players->setToolTip(tr("Each side's colour: rings on the map, flags, roofs and banners"));
+    side->addWidget(m_players);
     m_heroCombo = new QComboBox(this);
     m_heroCombo->setObjectName("heroCombo");
     {
@@ -400,6 +405,21 @@ void GamePage::onViewChanged() {
     syncRoutes();
     m_miniMap->setView(m_view);
     m_miniMap->setVisibleTiles(m_map->visibleTiles());
+    {
+        // Who is who: a shield in each player's colour; you, your allies, whose turn.
+        const ViewPlayer* me = m_view.player(m_view.you);
+        QStringList parts;
+        for (const ViewPlayer& pl : m_view.players) {
+            QString name = pl.name.toHtmlEscaped();
+            if (pl.id == m_view.you) name = tr("%1 (you)").arg(name);
+            else if (me && pl.team && pl.team == me->team) name = tr("%1 (ally)").arg(name);
+            if (pl.id == m_view.currentPlayer) name = QStringLiteral("<b>%1</b>").arg(name);
+            if (pl.eliminated) name = QStringLiteral("<s>%1</s>").arg(name);
+            parts << QStringLiteral("<span style='color:%1; font-size:14pt'>&#x25C6;</span>&nbsp;%2").arg(pl.color, name);
+        }
+        parts << QStringLiteral("<span style='color:#9a9a9a; font-size:14pt'>&#x25C7;</span>&nbsp;%1").arg(tr("neutral"));
+        m_players->setText(parts.join(QStringLiteral(" &nbsp; ")));
+    }
     if (!m_centered && m_selectedHero) {
         const ViewHero* h = m_view.hero(m_selectedHero);
         if (h) m_map->centerOn(h->pos);

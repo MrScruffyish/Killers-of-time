@@ -556,12 +556,34 @@ void MapView::paintEvent(QPaintEvent*) {
     const auto ownerOrNeutral = [&](int owner) { return owner ? ownerColor(owner) : QColor("#9a9a9a"); };
 
     Q_UNUSED(inner);
+    // Who owns it, at a glance: a ring on the ground in the owner's colour under
+    // everything owned (heroes, towns, mines, dwellings); neutral things have none.
+    const auto ownerRing = [&](const QRectF& foot, int owner) {
+        if (!owner) return;
+        const QColor c = ownerColor(owner);
+        const double w = std::max(2.0, m_tile / 12.0);
+        p.setPen(QPen(QColor(0, 0, 0, 150), w + 2));
+        p.setBrush(Qt::NoBrush);
+        p.drawEllipse(foot);
+        QColor fill = c;
+        fill.setAlpha(95);
+        p.setPen(QPen(c.lighter(115), w));
+        p.setBrush(fill);
+        p.drawEllipse(foot);
+    };
+    const auto tileFoot = [&](core::Pos t) { return QRectF(tileRect(t)).adjusted(m_tile * 0.04, m_tile * 0.6, -m_tile * 0.04, -m_tile * 0.01); };
     // Sprites are drawn big once and scaled to the zoom step (art::sprite).
     const auto put = [&](core::Pos t, const QPixmap& pm) { p.drawPixmap(tileRect(t).topLeft(), pm); };
     for (const ViewMine& mine : m_view.mines)
-        if (shown(mine.pos)) put(mine.pos, art::mineSprite(mine.resource, resourceColor(mine.resource), ownerOrNeutral(mine.owner), m_tile));
+        if (shown(mine.pos)) {
+            ownerRing(tileFoot(mine.pos), mine.owner);
+            put(mine.pos, art::mineSprite(mine.resource, resourceColor(mine.resource), ownerOrNeutral(mine.owner), m_tile));
+        }
     for (const ViewDwelling& d : m_view.dwellings)
-        if (shown(d.pos)) put(d.pos, art::dwellingSprite(ownerOrNeutral(d.owner), d.unit, m_tile));
+        if (shown(d.pos)) {
+            ownerRing(tileFoot(d.pos), d.owner);
+            put(d.pos, art::dwellingSprite(ownerOrNeutral(d.owner), d.unit, m_tile));
+        }
     QList<ViewObject> objects = m_view.objects;
     for (const Walk& w : m_walks) objects.append(w.pickups);  // not reached yet on screen
     for (const ViewObject& o : objects) {
@@ -573,6 +595,7 @@ void MapView::paintEvent(QPaintEvent*) {
     for (const ViewTown& t : m_view.towns) {
         if (!shown(t.pos)) continue;
         const QRect gate = tileRect(t.pos);
+        ownerRing(QRectF(gate.left() - m_tile * 0.02, gate.top() + m_tile * 0.45, 2.04 * m_tile, m_tile * 0.6), t.owner);
         p.drawPixmap(QPoint(gate.left(), gate.top() - m_tile),
                      art::townSprite(art::TownLook{ownerOrNeutral(t.owner), t.race, t.walls, t.size}, 2 * m_tile));
         if (m_tile >= 32) {
@@ -583,8 +606,12 @@ void MapView::paintEvent(QPaintEvent*) {
             const QRect label(gate.left() - m_tile / 2, gate.bottom() + 1, 3 * m_tile, f.pixelSize() + 6);
             const int textWidth = QFontMetrics(f).horizontalAdvance(t.name) + 10;
             const QRect plate(label.center().x() - textWidth / 2 + m_tile / 2, label.top(), textWidth, label.height());
-            p.setPen(Qt::NoPen);
-            p.setBrush(QColor(20, 12, 4, 190));
+            // The name plate in the owner's colour (dark for neutral towns).
+            const QColor own = t.owner ? ownerColor(t.owner) : QColor(20, 12, 4);
+            QColor fill = t.owner ? own.darker(170) : QColor(20, 12, 4);
+            fill.setAlpha(220);
+            p.setPen(QPen(t.owner ? own.lighter(120) : QColor(120, 110, 90), 2));
+            p.setBrush(fill);
             p.drawRoundedRect(plate, 4, 4);
             p.setPen(QColor("#f6e7c1"));
             p.drawText(plate, Qt::AlignCenter, t.name);
@@ -635,6 +662,7 @@ void MapView::paintEvent(QPaintEvent*) {
     for (const ViewHero& h : m_view.heroes) {
         if (!shown(h.pos)) continue;
         const QRect r = tileRect(h.pos);
+        if (!m_walks.contains(h.id)) ownerRing(tileFoot(h.pos), h.owner);
         if (h.id == m_selectedHero && !m_walks.contains(h.id)) {  // a gold ring on the ground under the selected hero
             p.setPen(QPen(QColor("#ffd84a"), std::max(2, m_tile / 14)));
             p.setBrush(QColor(255, 216, 74, 60));
