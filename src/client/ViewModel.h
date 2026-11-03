@@ -57,6 +57,7 @@ struct ViewHero {
     int spellPoints = 0;
     int pendingTraitPicks = 0;
     int movementPoints = 0;
+    int movementMax = 0;  // a full day's movement
     QStringList spells;
     QStringList artifacts;
     bool inBoat = false;
@@ -170,6 +171,7 @@ struct GameView {
     QString weekEventName, weekEventText;
     QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
+    core::ResourceAmounts income;  // what you get each day
     core::ResourceAmounts resources;
     QList<ViewPlayer> players;
 

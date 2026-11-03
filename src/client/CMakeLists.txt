@@ -20,6 +20,8 @@ add_library(kot_client_lib STATIC
     LobbyPage.cpp
     LoadDialog.h
     LoadDialog.cpp
+    Panels.h
+    Panels.cpp
     TownDialog.h
     TownDialog.cpp
     HeroDialog.h

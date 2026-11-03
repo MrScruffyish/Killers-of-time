@@ -20,15 +20,7 @@
 
 namespace kot::client {
 
-namespace {
-QColor resourceColor(const QString& id) {
-    static const QMap<QString, QColor> colors = {
-        {"gold", "#ffd700"}, {"wood", "#8b5a2b"}, {"stone", "#aaaaaa"}, {"grain", "#e6c35c"},
-        {"gems", "#ff4fd8"}, {"sulphur", "#e8e800"}, {"coal", "#333333"}, {"mercury", "#a0a0ff"},
-        {"papyrus", "#d2b48c"}};
-    return colors.value(id, QColor::fromHsv(static_cast<int>(qHash(id) % 360), 200, 220));
-}
-}  // namespace
+using art::resourceColor;
 
 MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
     : QAbstractScrollArea(parent), m_content(content) {

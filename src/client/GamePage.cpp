@@ -28,6 +28,7 @@
 #include "client/Art.h"
 #include "client/MapView.h"
 #include "client/MovePlanner.h"
+#include "client/Panels.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
 #include "client/Sound.h"
@@ -51,7 +52,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     top->addWidget(menuButton);
     m_status = new QLabel(this);
     m_status->setObjectName("statusLabel");
-    top->addWidget(m_status, 1);
+    top->addWidget(m_status);
+    m_resources = new ResourceBar(content, this);
+    top->addWidget(m_resources, 1);
     outer->addLayout(top);
 
     auto* middle = new QHBoxLayout();
@@ -73,6 +76,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_heroCombo = new QComboBox(this);
     m_heroCombo->setObjectName("heroCombo");
     side->addWidget(m_heroCombo);
+    m_heroPanel = new HeroPanel(content, this);
+    side->addWidget(m_heroPanel);
     m_heroInfo = new QLabel(this);
     m_heroInfo->setObjectName("heroInfo");
     m_heroInfo->setWordWrap(true);
@@ -82,11 +87,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_levelUp = new QPushButton(tr("Level up: choose a trait"), this);
     m_levelUp->setObjectName("levelUpButton");
     side->addWidget(m_levelUp);
-    auto* heroButton = new QPushButton(tr("Hero screen (H)"), this);
-    heroButton->setObjectName("heroButton");
-    side->addWidget(heroButton);
     m_heroDialog = new HeroDialog(content, this);
-    connect(heroButton, &QPushButton::clicked, this, [this]() {
+    connect(m_heroPanel, &HeroPanel::clicked, this, [this]() {
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
     });
     connect(m_heroDialog, &HeroDialog::commandRequested, this,
@@ -442,20 +444,15 @@ void GamePage::selectNextHero() {
 }
 
 void GamePage::updateStatus() {
-    QStringList res;
-    for (const core::ResourceDef& r : m_content->resources()) {
-        const int n = m_view.resources.value(r.id);
-        if (n > 0 || r.isCurrency) res << QStringLiteral("%1 %2").arg(n).arg(r.id);
-    }
+    m_resources->setView(m_view);
     const ViewPlayer* current = m_view.player(m_view.currentPlayer);
     const QString campaign = m_view.campaign.isEmpty() ? QString()
         : tr(" &nbsp;&mdash;&nbsp; %1, chapter %2/%3").arg(m_view.campaign["name"].toString())
               .arg(m_view.campaign["chapter"].toInt()).arg(m_view.campaign["chapters"].toInt());
     m_status->setToolTip(tr("Goal: %1").arg(m_view.victory));
-    m_status->setText(tr("<b>Day %1</b> (week %4, %5) &nbsp;&mdash;&nbsp; %2 &nbsp;&mdash;&nbsp; %3%6")
+    m_status->setText(tr("<b>Day %1</b> (week %3, %4) &nbsp;&mdash;&nbsp; %2%5")
                           .arg(m_view.day)
                           .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
-                          .arg(res.join(", "))
                           .arg((m_view.day - 1) / 7 + 1)
                           .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty)
                           .arg(campaign));
@@ -495,28 +492,12 @@ void GamePage::updateHeroPanel() {
     const ViewHero* h = m_view.hero(m_selectedHero);
     if (!h) {
         m_heroInfo->setText(tr("No hero."));
+        m_heroPanel->setHero(m_view, 0);
         m_levelUp->setVisible(false);
         return;
     }
+    m_heroPanel->setHero(m_view, h->id);
     QStringList lines;
-    lines << tr("<b>%1</b> - %2, level %3").arg(h->name, h->classId).arg(h->level);
-    lines << tr("Movement: %1 &nbsp; Spell points: %2/%3")
-                 .arg(h->movementPoints / 100.0, 0, 'f', 1)
-                 .arg(h->spellPoints)
-                 .arg(h->traits.value("spell_points_max"));
-    lines << tr("Attack %1, Defense %2, Spell power %3, Magic %4")
-                 .arg(h->traits.value("attack")).arg(h->traits.value("defense"))
-                 .arg(h->traits.value("spell_power")).arg(h->traits.value("magic"));
-    const ViewArmy* army = m_view.army(h->army);
-    if (army) {
-        for (const ViewStack& s : army->stacks) {
-            QString line = QStringLiteral("%1 x %2").arg(s.count).arg(unitName(s.unit));
-            if (s.stars > 0) line += QStringLiteral(" ") + QString(s.stars, QChar(0x2605));
-            if (s.totalHp >= 0 && s.totalHp < s.count * s.maxHp) line += tr(" (wounded)");
-            lines << line;
-        }
-        if (army->stacks.isEmpty()) lines << tr("No army.");
-    }
     QStringList spellNames;
     for (const QString& id : h->spells) {
         const core::SpellDef* s = m_content->spell(id);

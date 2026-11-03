@@ -76,9 +76,10 @@ Failed commands answer with `error` (`replyTo` names the request). Codes: `not_y
 `unknown_message`.
 
 ### The view (`PlayerView`)
-The server only sends what the player may know: `day`, `currentPlayer`, `you`, own `resources`
+The server only sends what the player may know: `day`, `currentPlayer`, `you`, own `resources` and `income` (per day)
 (private), `players` (name, team, colour, race, isAi), `map`, `heroes`, `armies`, `towns`,
 `mines`, `mapDwellings`, `mapObjects` (in sight: `id`, `kind` treasure/artifact, `x`, `y`, `resources` or `artifact`), `gameOver` (bool) and `winnerTeam` (when over; 0 = nobody). Each
+Own heroes have `movementPoints` and `movementMax` (a full day). Each
 player has `eliminated` (no towns and no heroes left: out of the game, turns skipped).
 When the game is over every command is refused with code `game_over`.
 - `map`: `width`, `height`, `terrainPalette`, `tiles` (palette index per tile, row-major, **-1 =

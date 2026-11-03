@@ -8,7 +8,9 @@
 #include <QSet>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/Movement.h"
 #include "core/rules/TownRules.h"
+#include "core/rules/TurnCycle.h"
 #include "core/rules/Vision.h"
 
 namespace kot::core {
@@ -46,6 +48,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     view.insert("you", id(viewer.value()));
     const Player* me = state.player(viewer);
     view.insert("resources", intMap(me ? me->resources : ResourceAmounts()));
+    view.insert("income", intMap(me ? dailyIncome(state, content, viewer) : ResourceAmounts()));
 
     QJsonArray players;
     for (const Player& p : state.players()) {
@@ -120,6 +123,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             o.insert("spellPoints", h.spellPoints);
             o.insert("pendingTraitPicks", h.pendingTraitPicks);
             o.insert("movementPoints", h.movementPoints);
+            o.insert("movementMax", armyMovementPoints(*army, &h, content));
             o.insert("template", h.templateId);
             o.insert("spells", QJsonArray::fromStringList(h.spells));
             o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));

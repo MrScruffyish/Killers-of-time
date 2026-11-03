@@ -36,6 +36,9 @@ const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size);
 const QPixmap& monsterSprite(int size);
 const QPixmap& chestSprite(const QColor& resource, int size);
 const QPixmap& artifactSprite(int size);
+// A resource's colour and a small icon for it (coin, logs, stone, gem, orb).
+QColor resourceColor(const QString& id);
+const QPixmap& resourceIcon(const QString& id, int size);
 // Mouse pointers for the adventure map.
 enum class Pointer { Normal, Move, MoveLater, Attack, Enter, Select, Blocked };
 QPixmap pointerImage(Pointer kind);

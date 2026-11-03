@@ -28,7 +28,7 @@ Top level fields: `formatVersion`, `day`, `nextId`, `currentIndex`, `map`, `rng`
 
 Cross-checks on load: owners are players, positions are on the map, unit/trait/
 terrain/resource/class ids exist, a hero and his army point at each other, no
-duplicate ids, at most 7 stacks per army.
+duplicate ids, at most 10 stacks per army.
 
 Bump `kSaveFormatVersion` when the format changes incompatibly, and add a conversion
 from the previous format in `GameStateJson.cpp` when one is possible (a save of a newer

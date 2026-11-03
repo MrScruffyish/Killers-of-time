@@ -31,8 +31,8 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
         }
         const int hpPercent = (m_heroCopy[side].id.isValid() ? m_heroCopy[side].trait(QStringLiteral("hit_points")) : 0)
                             * content.balance().battle.hpPercentPerTraitLevel;
-        // Up to 7 stacks over the start column, from the middle outwards.
-        static const int rows[] = {5, 3, 7, 1, 9, 0, 10};
+        // Up to 10 stacks over the start column, from the middle outwards.
+        static const int rows[] = {5, 3, 7, 1, 9, 0, 10, 2, 8, 4, 6};
         int placed = 0;
         for (int i = 0; i < army->stacks.size(); ++i) {
             const UnitStack& s = army->stacks[i];
@@ -51,7 +51,7 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             u.stars = veteranStars(s.experience(), content);
             for (const char* stat : {"attack", "defense", "initiative", "battleSpeed", "morale"})
                 if (const int b = veteranBonus(u.stars, QString::fromLatin1(stat), content)) u.veteran.insert(QString::fromLatin1(stat), b);
-            u.pos = Pos{side == 0 ? 0 : hex::kWidth - 1, rows[placed++ % 7]};
+            u.pos = Pos{side == 0 ? 0 : hex::kWidth - 1, rows[placed++ % 11]};
             u.shotsLeft = def->shots;
             u.spellPoints = def->spellPoints;  // full at the start of every battle
             m_units.append(u);

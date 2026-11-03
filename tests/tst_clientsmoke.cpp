@@ -140,7 +140,7 @@ private slots:
         shot(&w, "6_game_day2");
 
         // The hero screen.
-        QTest::mouseClick(game->findChild<QPushButton*>("heroButton"), Qt::LeftButton);
+        QTest::mouseClick(game->findChild<QWidget*>("heroPanel"), Qt::LeftButton);
         QVERIFY(game->heroDialog()->isVisible());
         QVERIFY(game->heroDialog()->findChildren<QLabel*>().size() > 5);
         QApplication::processEvents();

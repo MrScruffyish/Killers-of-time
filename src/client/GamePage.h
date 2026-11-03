@@ -86,6 +86,8 @@ private:
 
     QLabel* m_status;
     QLabel* m_hoverInfo;
+    class ResourceBar* m_resources;
+    class HeroPanel* m_heroPanel;
     QStackedWidget* m_centre;
     MapView* m_map;
     HeroDialog* m_heroDialog;

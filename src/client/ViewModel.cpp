@@ -117,6 +117,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
     v.winnerTeam = json.value("winnerTeam").toInt();
     v.you = json.value("you").toInt();
     v.resources = amounts(json.value("resources").toObject());
+    v.income = amounts(json.value("income").toObject());
 
     for (const QJsonValue& pv : json.value("players").toArray()) {
         const QJsonObject o = pv.toObject();
@@ -168,6 +169,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             for (const QJsonValue& s : o.value("spells").toArray()) h.spells << s.toString();
             for (const QJsonValue& a : o.value("artifacts").toArray()) h.artifacts << a.toString();
             h.movementPoints = o.value("movementPoints").toInt();
+            h.movementMax = o.value("movementMax").toInt();
             const QJsonArray d = o.value("destination").toArray();
             if (d.size() == 2) h.destination = core::Pos{d[0].toInt(), d[1].toInt()};
         }

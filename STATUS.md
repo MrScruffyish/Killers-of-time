@@ -150,6 +150,7 @@ and react to; add depth afterwards.
 - [x] Mouse pointers: footsteps (white today, red later), crossed swords (attack or ambush), gate (enter), hand (select), blocked; a hover line under the map says what is there
 - [x] Game menu (Save game, icon size, sound) instead of the Save button
 - [x] Save versions: files carry the game version (now 0.2.0) and save time; save format 2 (2x2 towns) converts format 1 saves on load; newer or broken saves are refused with the reason; the lobby's Load opens a list (newest first: name, saved, day, players, map, version, can load?)
+- [x] Side panel: hero portrait, bars for movement / spell points / experience, traits, the army in 10 slots (tooltips with unit stats; click opens the hero screen); resource bar with icons, amounts and +N per day (view: `income`, heroes' `movementMax`); armies hold up to 10 stacks
 - [ ] Playtesting
 - [ ] **Next version, battle map** (user has more to say about it; collected so far):
   - Ranges: `range` is in the unit data but not used yet (archers reach the whole field); give units their own ranges, longer for trained/upgraded ones

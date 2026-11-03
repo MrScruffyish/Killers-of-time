@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QHash>
+#include <QMap>
 #include <QPainter>
 #include <QPainterPath>
 #include <QRandomGenerator>
@@ -280,6 +281,18 @@ const QPixmap& chestSprite(const QColor& resource, int size) {
 }
 const QPixmap& artifactSprite(int size) {
     return sprite(QStringLiteral("artifact"), size, [&](QPainter& p, const QRectF& r) { drawArtifact(p, r); });
+}
+
+QColor resourceColor(const QString& id) {
+    static const QMap<QString, QColor> colors = {
+        {"gold", "#ffd700"}, {"wood", "#8b5a2b"}, {"stone", "#aaaaaa"}, {"grain", "#e6c35c"},
+        {"gems", "#ff4fd8"}, {"sulphur", "#e8e800"}, {"coal", "#333333"}, {"mercury", "#a0a0ff"},
+        {"papyrus", "#d2b48c"}};
+    return colors.value(id, QColor::fromHsv(static_cast<int>(qHash(id) % 360), 200, 220));
+}
+
+const QPixmap& resourceIcon(const QString& id, int size) {
+    return sprite(QStringLiteral("res|") + id, size, [&](QPainter& p, const QRectF& r) { drawResourceIcon(p, r, id, resourceColor(id)); });
 }
 
 QPixmap pointerImage(Pointer kind) {

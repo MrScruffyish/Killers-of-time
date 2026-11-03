@@ -8,7 +8,7 @@
 
 namespace kot::core {
 
-inline constexpr int kMaxArmyStacks = 7;
+inline constexpr int kMaxArmyStacks = 10;
 
 // A group of unit stacks standing somewhere on the map. An army led by a hero
 // can move and capture; a hero-less army is a garrison (town defenders etc.).
