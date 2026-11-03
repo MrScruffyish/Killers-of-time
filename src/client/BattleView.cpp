@@ -284,37 +284,54 @@ protected:
             if (!ranger || !mine || ranger->range <= 0 || !battle.canShoot) ranger = nullptr;
         }
         const bool enemyRange = ranger && ranger->side != battle.yourSide;
-        // Grass hexes with a little texture; reachable ones lit, rocks grey.
+        // One continuous ground under the whole field (no tile seams at the hexes),
+        // shaped to the hexes; then soft hex lines, lit hexes, small decorations.
+        {
+            QPainterPath fieldShape;
+            for (int y = 0; y < battle.height; ++y)
+                for (int x = 0; x < battle.width; ++x) fieldShape.addPath(hexPath({x, y}, 1.0));
+            fieldShape.setFillRule(Qt::WindingFill);
+            const QRectF area = fieldShape.boundingRect();
+            const int tile = std::max(16, int(r * 2.2));
+            p.save();
+            p.setClipPath(fieldShape);
+            for (double ty = area.top(); ty < area.bottom(); ty += tile)
+                for (double tx = area.left(); tx < area.right(); tx += tile) {
+                    const int ix = int((tx - area.left()) / tile), iy = int((ty - area.top()) / tile);
+                    p.drawPixmap(QPointF(tx, ty), art::terrainTile(groundId, groundColour, tile, art::variantFor(ix + 31, iy + 17)));
+                }
+            // A gentle vignette towards the edges of the field.
+            QRadialGradient vignette(area.center(), std::max(area.width(), area.height()) * 0.62);
+            vignette.setColorAt(0.6, QColor(0, 0, 0, 0));
+            vignette.setColorAt(1.0, QColor(0, 0, 0, 90));
+            p.fillRect(area, vignette);
+            p.restore();
+        }
         for (int y = 0; y < battle.height; ++y)
             for (int x = 0; x < battle.width; ++x) {
                 const core::Pos h{x, y};
                 const QPainterPath path = hexPath(h, 0.97);
-                const QRectF box = path.boundingRect();
-                p.save();
-                p.setClipPath(path);
-                p.drawPixmap(box.topLeft(), art::terrainTile(groundId, groundColour, int(box.width()) + 2, art::variantFor(x, y)));
-                p.restore();
+                if (!battle.obstacles.contains(h) && r >= 14) {
+                    const int variant = art::decorationAt(x * 3 + 7, y * 5 + 3);
+                    const QPixmap& deco = variant >= 0 ? art::decoration(groundId, variant, int(r * 1.5)) : QPixmap();
+                    if (!deco.isNull()) p.drawPixmap(centre(h) - QPointF(r * 0.75, r * 0.75), deco);
+                }
                 if (mine && battle.reachable.contains(h)) p.fillPath(path, QColor(255, 240, 160, 70));
                 if (ranger && core::hex::distance(ranger->hex, h) <= ranger->range)
                     p.fillPath(path, enemyRange ? QColor(255, 40, 40, 45) : QColor(80, 150, 255, 40));
-                p.setPen(QPen(QColor(30, 45, 20, 160), 1));
                 p.setBrush(Qt::NoBrush);
+                p.setPen(QPen(QColor(255, 250, 220, 45), 1.2));
                 p.drawPath(path);
+                p.setPen(QPen(QColor(20, 30, 10, 60), 1));
+                p.drawPath(hexPath(h, 0.95));
                 if (battle.obstacles.contains(h) && (where == "forest" || where == "swamp")) {
-                    // A tree (forest) or a reedy pool (swamp) instead of a rock.
+                    // A tree clump (forest) or a reedy pool (swamp) instead of a rock.
                     const QPointF c = centre(h);
                     p.setPen(QPen(QColor(20, 30, 10), 1.5));
                     if (where == "forest") {
-                        p.setBrush(QColor(0, 0, 0, 70));
-                        p.drawEllipse(c + QPointF(0, r * 0.55), r * 0.7, r * 0.25);
-                        p.setBrush(QColor("#5b3a1e"));
-                        p.drawRect(QRectF(c.x() - r * 0.1, c.y() + r * 0.2, r * 0.2, r * 0.4));
-                        for (int i = 0; i < 3; ++i) {  // three layers of a fir, widest at the bottom
-                            const double tw = r * (1.5 - 0.35 * i), base = c.y() + r * (0.3 - 0.42 * i);
-                            p.setBrush(QColor("#3f8a36").lighter(100 + 10 * i));
-                            p.drawPolygon(QPolygonF{QPointF(c.x(), base - r * 0.75), QPointF(c.x() + tw * 0.5, base),
-                                                    QPointF(c.x() - tw * 0.5, base)});
-                        }
+                        const int size = int(r * 2.3);
+                        const QPixmap& trees = art::terrainFeature("forest", wt ? QColor(wt->color) : QColor("#2f6b3a"), size, art::variantFor(x, y));
+                        if (!trees.isNull()) p.drawPixmap(c - QPointF(size, size * 1.6), trees);
                     } else {
                         p.setBrush(QColor("#3c5a6e"));
                         p.drawEllipse(c, r * 0.6, r * 0.38);
@@ -340,53 +357,105 @@ protected:
         // A siege: the wall (cracking as it takes damage, rubble where it fell), the
         // wooden gate, and the towers behind it.
         if (battle.wallLevel > 0) {
+            // The wall seen from the side: each segment a block of stone standing up
+            // out of its hex (courses of stones, battlements, cracks as it weakens),
+            // the gate a timbered door, rubble where a segment fell; drawn top down.
+            const double wallH = r * (1.1 + 0.15 * battle.wallLevel);
             for (int y = 0; y < battle.height; ++y) {
                 const core::Pos h{core::kWallColumn, y};
                 const QPointF c = centre(h);
                 const auto it = battle.walls.constFind(h);
                 if (it == battle.walls.cend()) {  // rubble
                     p.setPen(QPen(QColor("#3a3a3a"), 1));
-                    p.setBrush(QColor("#9a968c"));
-                    for (int i = 0; i < 5; ++i)
-                        p.drawEllipse(c + QPointF((i % 3 - 1) * r * 0.35, (i / 3 - 0.5) * r * 0.4), r * 0.16, r * 0.12);
+                    for (int i = 0; i < 7; ++i) {
+                        p.setBrush(QColor("#9a968c").darker(100 + (i % 3) * 12));
+                        p.drawEllipse(c + QPointF((i % 4 - 1.5) * r * 0.3, (i / 4 - 0.2) * r * 0.35), r * 0.2, r * 0.14);
+                    }
                     continue;
                 }
                 const double health = battle.wallMaxHp > 0 ? double(it.value()) / battle.wallMaxHp : 1.0;
-                const QPainterPath block = hexPath(h, 0.98);
-                QLinearGradient g(c - QPointF(0, r), c + QPointF(0, r));
                 const bool gate = h == battle.gate;
-                g.setColorAt(0, gate ? QColor("#8a5a2b") : QColor("#d4cdbb"));
-                g.setColorAt(1, gate ? QColor("#4a3018") : QColor("#8a8476"));
-                p.setPen(QPen(QColor("#2b2620"), 1.5));
-                p.setBrush(g);
-                p.drawPath(block);
-                p.setPen(QPen(gate ? QColor("#2a1a0c") : QColor(70, 66, 58), 1));
-                if (gate) {  // planks and iron bands
-                    for (int i = -1; i <= 1; ++i) p.drawLine(c + QPointF(i * r * 0.3, -r * 0.7), c + QPointF(i * r * 0.3, r * 0.7));
-                    p.setPen(QPen(QColor("#505058"), 2));
-                    p.drawLine(c + QPointF(-r * 0.6, -r * 0.3), c + QPointF(r * 0.6, -r * 0.3));
-                    p.drawLine(c + QPointF(-r * 0.6, r * 0.3), c + QPointF(r * 0.6, r * 0.3));
-                } else {  // stone courses
-                    for (int i = -1; i <= 1; ++i) p.drawLine(c + QPointF(-r * 0.8, i * r * 0.35), c + QPointF(r * 0.8, i * r * 0.35));
+                const QRectF front(c.x() - r * 0.88, c.y() + r * 0.45 - wallH, r * 1.76, wallH);
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(0, 0, 0, 80));
+                p.drawEllipse(QPointF(c.x() + r * 0.1, c.y() + r * 0.5), r * 0.95, r * 0.25);
+                p.setPen(QPen(QColor("#2b2620"), 1.4));
+                QLinearGradient stone(front.topLeft(), front.bottomRight());
+                stone.setColorAt(0, QColor("#ddd6c4"));
+                stone.setColorAt(1, QColor("#8a8476"));
+                p.setBrush(stone);
+                p.drawRect(front);
+                // The top of the wall walk, slightly lighter, with battlements.
+                p.setBrush(QColor("#e8e2d2"));
+                p.drawRect(QRectF(front.left(), front.top() - r * 0.12, front.width(), r * 0.12));
+                for (int k = 0; k < 4; ++k)
+                    p.drawRect(QRectF(front.left() + k * front.width() / 3.5, front.top() - r * 0.34, front.width() / 7, r * 0.24));
+                // Courses of stone.
+                p.setPen(QPen(QColor(70, 66, 58, 200), 1));
+                for (int row = 1; row < 4; ++row) {
+                    const double ly = front.top() + row * front.height() / 4;
+                    p.drawLine(QPointF(front.left(), ly), QPointF(front.right(), ly));
+                    for (int k = 0; k < 3; ++k) {
+                        const double lx = front.left() + (k + (row % 2) * 0.5 + 0.25) * front.width() / 3;
+                        p.drawLine(QPointF(lx, ly - front.height() / 4), QPointF(lx, ly));
+                    }
+                }
+                if (gate) {  // an arched timber door with iron bands
+                    const QRectF door(c.x() - r * 0.5, front.bottom() - wallH * 0.75, r, wallH * 0.75);
+                    QPainterPath arch;
+                    arch.moveTo(door.bottomLeft());
+                    arch.lineTo(door.left(), door.top() + door.width() / 2);
+                    arch.arcTo(QRectF(door.left(), door.top(), door.width(), door.width()), 180, -180);
+                    arch.lineTo(door.bottomRight());
+                    arch.closeSubpath();
+                    QLinearGradient wood(door.topLeft(), door.bottomRight());
+                    wood.setColorAt(0, QColor("#9a6a34"));
+                    wood.setColorAt(1, QColor("#4a3018"));
+                    p.setPen(QPen(QColor("#2a1a0c"), 1.4));
+                    p.setBrush(wood);
+                    p.drawPath(arch);
+                    p.setPen(QPen(QColor("#2a1a0c"), 1));
+                    for (int k = 1; k < 4; ++k) p.drawLine(QPointF(door.left() + k * door.width() / 4, door.top() + r * 0.15), QPointF(door.left() + k * door.width() / 4, door.bottom()));
+                    p.setPen(QPen(QColor("#505058"), std::max(1.5, r * 0.08)));
+                    for (const double f : {0.45, 0.8}) p.drawLine(QPointF(door.left() + 2, door.top() + door.height() * f), QPointF(door.right() - 2, door.top() + door.height() * f));
                 }
                 // Cracks as it weakens.
                 p.setPen(QPen(QColor(20, 18, 14), 1.6));
-                if (health < 0.67) p.drawPolyline(QPolygonF{c + QPointF(-r * 0.3, -r * 0.6), c + QPointF(-r * 0.1, -r * 0.2), c + QPointF(-r * 0.25, r * 0.2)});
-                if (health < 0.34) p.drawPolyline(QPolygonF{c + QPointF(r * 0.4, -r * 0.5), c + QPointF(r * 0.15, 0), c + QPointF(r * 0.35, r * 0.5)});
+                if (health < 0.67) p.drawPolyline(QPolygonF{QPointF(front.left() + r * 0.4, front.top() + r * 0.1), QPointF(front.left() + r * 0.6, front.center().y()), QPointF(front.left() + r * 0.45, front.bottom() - r * 0.2)});
+                if (health < 0.34) p.drawPolyline(QPolygonF{QPointF(front.right() - r * 0.4, front.top() + r * 0.2), QPointF(front.right() - r * 0.7, front.center().y()), QPointF(front.right() - r * 0.5, front.bottom() - r * 0.1)});
             }
+            // The towers behind: round, with battlements, a cone roof and a flag.
             for (const core::Pos t : battle.towers) {
                 const QPointF c = centre(t);
-                p.setPen(QPen(QColor("#2b2620"), 1.5));
+                const double th = r * 1.9, tw = r * 1.2;
+                const QRectF body(c.x() - tw / 2, c.y() + r * 0.45 - th, tw, th);
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(0, 0, 0, 80));
+                p.drawEllipse(QPointF(c.x() + r * 0.1, c.y() + r * 0.5), tw * 0.6, r * 0.22);
+                p.setPen(QPen(QColor("#2b2620"), 1.4));
+                QLinearGradient stone(body.topLeft(), body.topRight());
+                stone.setColorAt(0, QColor("#e0dac8"));
+                stone.setColorAt(0.6, QColor("#b8b0a0"));
+                stone.setColorAt(1, QColor("#7a7466"));
+                p.setBrush(stone);
+                p.drawRect(body);
+                p.setPen(QPen(QColor(70, 66, 58, 180), 1));
+                for (int row = 1; row < 5; ++row) p.drawLine(QPointF(body.left(), body.top() + row * th / 5), QPointF(body.right(), body.top() + row * th / 5));
+                p.setPen(QPen(QColor("#2b2620"), 1.4));
+                p.setBrush(QColor("#2a2018"));  // an arrow slit
+                p.drawRect(QRectF(c.x() - r * 0.05, body.top() + th * 0.35, r * 0.1, th * 0.2));
                 p.setBrush(QColor("#c8c0ae"));
-                p.drawEllipse(c, r * 0.62, r * 0.62);
-                p.setBrush(QColor("#a8a090"));
-                for (int i = 0; i < 8; ++i) {  // battlements around the top
-                    const double a = i * M_PI / 4;
-                    p.drawRect(QRectF(c.x() + std::cos(a) * r * 0.55 - r * 0.09, c.y() + std::sin(a) * r * 0.55 - r * 0.09, r * 0.18, r * 0.18));
-                }
+                p.drawRect(QRectF(body.left() - r * 0.08, body.top() - r * 0.1, tw + r * 0.16, r * 0.14));
+                QPolygonF roof{QPointF(body.left() - r * 0.12, body.top() - r * 0.1), QPointF(c.x(), body.top() - r * 1.0),
+                               QPointF(body.right() + r * 0.12, body.top() - r * 0.1)};
+                QLinearGradient tile(roof[0], roof[2]);
+                tile.setColorAt(0, sideColor[1].lighter(130));
+                tile.setColorAt(1, sideColor[1].darker(140));
+                p.setBrush(tile);
+                p.drawPolygon(roof);
+                p.drawLine(QPointF(c.x(), body.top() - r * 1.0), QPointF(c.x(), body.top() - r * 1.4));
                 p.setBrush(sideColor[1]);
-                p.drawPolygon(QPolygonF{c + QPointF(0, -r * 0.7), c + QPointF(r * 0.38, -r * 0.48), c + QPointF(0, -r * 0.28)});
-                p.drawLine(c + QPointF(0, -r * 0.7), c + QPointF(0, r * 0.1));
+                p.drawPolygon(QPolygonF{QPointF(c.x(), body.top() - r * 1.4), QPointF(c.x() + r * 0.4, body.top() - r * 1.3), QPointF(c.x(), body.top() - r * 1.2)});
             }
         }
         if (ranger) {  // the edge of the range
