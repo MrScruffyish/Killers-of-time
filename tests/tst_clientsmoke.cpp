@@ -245,11 +245,11 @@ private slots:
             QVERIFY(t && t->isVisible());
         }
         // Towns: palisade / walls / citadel, small to big, for each race; and a town scene.
-        QImage towns(3 * 4 * 110, 3 * 120 + 190, QImage::Format_ARGB32);
+        QImage towns(3 * 4 * 110, 7 * 120 + 190, QImage::Format_ARGB32);
         towns.fill(QColor("#5d8a3a"));
         QPainter tp(&towns);
         int row = 0;
-        for (const QString race : {"humans", "undead", "sylvan"}) {
+        for (const QString race : {"humans", "undead", "sylvan", "orcs", "dwarves", "ashborn", "tidefolk"}) {
             for (int walls = 0; walls <= 2; ++walls)
                 for (int stage = 0; stage < 4; ++stage)
                     tp.drawPixmap((walls * 4 + stage) * 110, row * 120,
@@ -257,7 +257,7 @@ private slots:
             ++row;
         }
         using K = art::SceneBuilding::Kind;
-        art::drawTownScene(tp, QRectF(0, 3 * 120 + 10, towns.width(), 170), art::TownLook{QColor("#d62728"), "humans", 2, 12},
+        art::drawTownScene(tp, QRectF(0, 7 * 120 + 10, towns.width(), 170), art::TownLook{QColor("#d62728"), "humans", 2, 12},
                            {{K::Hall, 2, {}}, {K::Tavern, 0, {}}, {K::Dwelling, 1, "pikeman"}, {K::Dwelling, 2, "archer_elite"},
                             {K::MageGuild, 2, {}}, {K::Market, 0, {}}, {K::Granary, 0, {}}, {K::Shipyard, 0, {}}, {K::Walls, 0, {}},
                             {K::Walls, 0, {}}, {K::Walls, 0, {}}, {K::Dwelling, 0, "armoured_eagle"}});

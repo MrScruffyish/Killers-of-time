@@ -48,7 +48,165 @@ QBrush cylinder(const QRectF& r, const QColor& c) {
     return g;
 }
 
-void house(QPainter& p, const QRectF& r, const Palette& pal, const QColor& roof) {
+void battlements(QPainter& p, const QRectF& top, double merlon) {
+    for (double x = top.left(); x < top.right() - merlon * 0.5; x += merlon * 1.8)
+        p.drawRect(QRectF(x, top.top() - merlon, merlon, merlon));
+}
+
+// Each race builds its own way: the shape of its roofs (returns the top, where a
+// flag goes) ...
+QPointF raceRoof(QPainter& p, const QString& race, double left, double right, double y, double hgt, const QColor& c) {
+    const double cx = (left + right) / 2, wd = right - left, pw = std::max(1.0, wd / 16);
+    p.setPen(QPen(kInk, pw));
+    if (race == "undead") {  // a tall dark spike with a green finial
+        const QPolygonF spike{QPointF(left + wd * 0.06, y), QPointF(cx, y - hgt * 1.8), QPointF(right - wd * 0.06, y)};
+        p.setBrush(cylinder(spike.boundingRect(), c));
+        p.drawPolygon(spike);
+        for (const double side : {-1.0, 1.0})  // little spikes on the eaves
+            p.drawPolygon(QPolygonF{QPointF(cx + side * wd * 0.44, y), QPointF(cx + side * wd * 0.56, y - hgt * 0.5), QPointF(cx + side * wd * 0.3, y)});
+        p.setBrush(QColor("#9aff9a"));
+        p.drawEllipse(QPointF(cx, y - hgt * 1.8), wd * 0.08, wd * 0.08);
+        return {cx, y - hgt * 1.8};
+    }
+    if (race == "sylvan") {  // a leafy crown
+        p.setBrush(lit(QRectF(left, y - hgt, wd, hgt), QColor("#4a9a3a"), 135, 150));
+        QPainterPath crown;
+        for (const auto& [fx, fy, fr] : {std::tuple{0.2, 0.35, 0.34}, std::tuple{0.8, 0.35, 0.34}, std::tuple{0.5, 0.65, 0.42}, std::tuple{0.5, 0.2, 0.3}})
+            crown.addEllipse(QPointF(left + wd * fx, y - hgt * fy), wd * fr, hgt * fr * 1.1);
+        p.drawPath(crown.simplified());
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(200, 240, 140, 110));
+        p.drawEllipse(QPointF(left + wd * 0.35, y - hgt * 0.75), wd * 0.14, hgt * 0.12);
+        return {cx, y - hgt * 1.05};
+    }
+    if (race == "orcs") {  // a thatched hut roof with poles sticking out
+        const QPolygonF cone{QPointF(left - wd * 0.12, y), QPointF(cx, y - hgt * 1.05), QPointF(right + wd * 0.12, y)};
+        p.setBrush(lit(cone.boundingRect(), QColor("#b08a48"), 130, 150));
+        p.drawPolygon(cone);
+        p.setPen(QPen(QColor("#6a4a20"), pw * 0.6));
+        for (int i = 1; i < 6; ++i) {
+            const double fx = left - wd * 0.12 + (wd * 1.24) * i / 6;
+            p.drawLine(QPointF(fx, y), QPointF(cx + (fx - cx) * 0.3, y - hgt * 0.75));
+        }
+        p.setPen(QPen(kInk, pw * 1.2));
+        p.drawLine(QPointF(cx, y - hgt * 0.9), QPointF(cx - wd * 0.18, y - hgt * 1.4));
+        p.drawLine(QPointF(cx, y - hgt * 0.9), QPointF(cx + wd * 0.2, y - hgt * 1.35));
+        return {cx, y - hgt * 1.1};
+    }
+    if (race == "dwarves") {  // flat: a stone cap with battlements
+        const QRectF cap(left - wd * 0.06, y - hgt * 0.2, wd * 1.12, hgt * 0.2);
+        p.setBrush(lit(cap, c.lighter(110)));
+        p.drawRect(cap);
+        battlements(p, cap, wd * 0.16);
+        return {cx, cap.top() - wd * 0.16};
+    }
+    if (race == "ashborn") {  // a flat dark roof with a glowing chimney
+        const QRectF cap(left - wd * 0.04, y - hgt * 0.16, wd * 1.08, hgt * 0.16);
+        p.setBrush(lit(cap, c));
+        p.drawRect(cap);
+        const QRectF chim(cx + wd * 0.1, y - hgt * 0.75, wd * 0.24, hgt * 0.6);
+        p.setBrush(lit(chim, QColor("#3a2a28")));
+        p.drawRect(chim);
+        QRadialGradient ember(QPointF(chim.center().x(), chim.top()), wd * 0.3);
+        ember.setColorAt(0, QColor(255, 180, 60, 230));
+        ember.setColorAt(1, QColor(255, 80, 20, 0));
+        p.setPen(Qt::NoPen);
+        p.setBrush(ember);
+        p.drawEllipse(QPointF(chim.center().x(), chim.top()), wd * 0.3, wd * 0.22);
+        p.setBrush(QColor(80, 70, 70, 120));
+        p.drawEllipse(QPointF(chim.center().x() + wd * 0.1, chim.top() - hgt * 0.4), wd * 0.18, hgt * 0.2);
+        return {cx - wd * 0.15, y - hgt * 0.2};
+    }
+    if (race == "tidefolk") {  // an onion dome with a golden point
+        QPainterPath dome;
+        dome.moveTo(left, y);
+        dome.cubicTo(QPointF(left - wd * 0.1, y - hgt * 0.7), QPointF(cx - wd * 0.1, y - hgt * 0.8), QPointF(cx, y - hgt * 1.25));
+        dome.cubicTo(QPointF(cx + wd * 0.1, y - hgt * 0.8), QPointF(right + wd * 0.1, y - hgt * 0.7), QPointF(right, y));
+        dome.closeSubpath();
+        p.setBrush(cylinder(dome.boundingRect(), c));
+        p.drawPath(dome);
+        p.setPen(QPen(c.lighter(150), pw * 0.7));
+        p.drawLine(QPointF(cx, y - hgt * 1.15), QPointF(cx, y));
+        p.setPen(QPen(kInk, pw));
+        p.setBrush(QColor("#f0c040"));
+        p.drawPolygon(QPolygonF{QPointF(cx - wd * 0.06, y - hgt * 1.2), QPointF(cx, y - hgt * 1.55), QPointF(cx + wd * 0.06, y - hgt * 1.2)});
+        return {cx, y - hgt * 1.55};
+    }
+    // Humans (and anyone else): a cone with rows of tiles.
+    const QPolygonF cone{QPointF(left - wd * 0.14, y), QPointF(cx, y - hgt), QPointF(right + wd * 0.14, y)};
+    p.setBrush(cylinder(cone.boundingRect(), c));
+    p.drawPolygon(cone);
+    p.setPen(QPen(c.darker(170), pw * 0.6));
+    for (const double f : {0.35, 0.65}) {
+        const double yy = y - hgt * (1 - f), half = (wd * 0.64) * f;
+        p.drawLine(QPointF(cx - half, yy), QPointF(cx + half, yy));
+    }
+    return {cx, y - hgt};
+}
+
+// ... and what stands behind it: the dwarves' mountain, the ashborn volcano, the
+// sylvan great tree, dead trees by an undead town, an orc totem.
+void raceBackdrop(QPainter& p, const QRectF& r, const QString& race) {
+    const double w = r.width(), h = r.height();
+    const auto P = [&](double x, double y) { return QPointF(r.left() + w * x, r.top() + h * y); };
+    const double pw = std::max(1.0, w / 90);
+    p.setPen(QPen(kInk, pw));
+    if (race == "dwarves") {
+        const QPolygonF m{P(0.0, 0.62), P(0.22, 0.12), P(0.34, 0.22), P(0.5, -0.02), P(0.68, 0.2), P(0.8, 0.1), P(1.0, 0.62)};
+        p.setBrush(lit(m.boundingRect(), QColor("#7a746a"), 125, 160));
+        p.drawPolygon(m);
+        p.setBrush(QColor("#f0f4f8"));
+        p.drawPolygon(QPolygonF{P(0.44, 0.08), P(0.5, -0.02), P(0.57, 0.08), P(0.52, 0.06), P(0.48, 0.1)});
+        p.drawPolygon(QPolygonF{P(0.18, 0.2), P(0.22, 0.12), P(0.26, 0.18)});
+    } else if (race == "ashborn") {
+        const QPolygonF v{P(0.08, 0.62), P(0.36, 0.06), P(0.56, 0.06), P(0.9, 0.62)};
+        p.setBrush(lit(v.boundingRect(), QColor("#3a2a2a"), 120, 160));
+        p.drawPolygon(v);
+        QRadialGradient lava(P(0.46, 0.06), w * 0.2);
+        lava.setColorAt(0, QColor(255, 200, 80, 240));
+        lava.setColorAt(1, QColor(255, 60, 10, 0));
+        p.setPen(Qt::NoPen);
+        p.setBrush(lava);
+        p.drawEllipse(P(0.46, 0.06), w * 0.2, h * 0.12);
+        p.setPen(QPen(QColor(255, 120, 30, 220), pw * 2, Qt::SolidLine, Qt::RoundCap));
+        p.drawPolyline(QPolygonF{P(0.42, 0.08), P(0.38, 0.24), P(0.4, 0.34)});
+        p.drawPolyline(QPolygonF{P(0.52, 0.08), P(0.58, 0.22), P(0.56, 0.3)});
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(70, 60, 60, 130));
+        p.drawEllipse(P(0.52, -0.04), w * 0.12, h * 0.06);
+    } else if (race == "sylvan") {
+        p.setBrush(lit(QRectF(P(0.44, 0.1), P(0.58, 0.6)), QColor("#6a4a2a")));
+        p.drawRect(QRectF(P(0.45, 0.12), P(0.57, 0.6)));
+        QPainterPath crown;
+        for (const auto& [x, y, rr] : {std::tuple{0.3, 0.14, 0.17}, std::tuple{0.5, 0.04, 0.2}, std::tuple{0.7, 0.14, 0.17}, std::tuple{0.5, 0.2, 0.18}})
+            crown.addEllipse(P(x, y), w * rr, h * rr * 0.85);
+        p.setBrush(lit(crown.boundingRect(), QColor("#3a8a34"), 140, 150));
+        p.drawPath(crown.simplified());
+    } else if (race == "undead") {
+        p.setPen(QPen(QColor("#2a2028"), pw * 2.2, Qt::SolidLine, Qt::RoundCap));
+        for (const double x : {0.04, 0.9}) {
+            p.drawLine(P(x + 0.03, 0.62), P(x + 0.03, 0.2));
+            p.drawLine(P(x + 0.03, 0.32), P(x - 0.02, 0.2));
+            p.drawLine(P(x + 0.03, 0.28), P(x + 0.09, 0.16));
+            p.drawLine(P(x + 0.06, 0.21), P(x + 0.1, 0.22));
+        }
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(140, 255, 160, 40));
+        p.drawEllipse(QRectF(P(0.0, 0.5), P(1.0, 0.72)));
+    } else if (race == "orcs") {
+        const QRectF pole(P(0.86, 0.12), P(0.92, 0.6));
+        p.setBrush(lit(pole, QColor("#7a5a30")));
+        p.drawRect(pole);
+        p.setBrush(QColor("#e8e0c8"));  // a skull with horns on top
+        p.drawEllipse(P(0.89, 0.12), w * 0.04, h * 0.04);
+        p.drawPolygon(QPolygonF{P(0.86, 0.1), P(0.8, 0.02), P(0.87, 0.08)});
+        p.drawPolygon(QPolygonF{P(0.92, 0.1), P(0.98, 0.02), P(0.91, 0.08)});
+        p.setBrush(QColor("#c03020"));
+        p.drawRect(QRectF(P(0.86, 0.26), P(0.92, 0.3)));
+    }
+}
+
+void house(QPainter& p, const QRectF& r, const Palette& pal, const QColor& roof, const QString& race) {
     const double pw = std::max(1.0, r.width() / 18);
     p.setPen(QPen(kInk, pw));
     const QRectF body(r.left(), r.top() + r.height() * 0.4, r.width(), r.height() * 0.6);
@@ -59,16 +217,7 @@ void house(QPainter& p, const QRectF& r, const Palette& pal, const QColor& roof)
     p.drawLine(QPointF(body.left(), body.top() + body.height() * 0.45), QPointF(body.right(), body.top() + body.height() * 0.45));
     p.drawLine(QPointF(body.left() + body.width() * 0.2, body.top()), QPointF(body.left() + body.width() * 0.2, body.bottom()));
     p.drawLine(QPointF(body.right() - body.width() * 0.2, body.top()), QPointF(body.right() - body.width() * 0.2, body.bottom()));
-    const QPolygonF roofShape{QPointF(r.left() - r.width() * 0.1, r.top() + r.height() * 0.42), QPointF(r.center().x(), r.top()),
-                              QPointF(r.right() + r.width() * 0.1, r.top() + r.height() * 0.42)};
-    p.setPen(QPen(kInk, pw));
-    p.setBrush(lit(roofShape.boundingRect(), roof, 135, 145));
-    p.drawPolygon(roofShape);
-    p.setPen(QPen(roof.darker(160), pw * 0.6));
-    for (int i = 1; i < 3; ++i) {
-        const double f = i / 3.0, y = r.top() + r.height() * 0.42 * f, half = r.width() * 0.6 * f;
-        p.drawLine(QPointF(r.center().x() - half, y), QPointF(r.center().x() + half, y));
-    }
+    raceRoof(p, race, r.left(), r.right(), r.top() + r.height() * 0.42, r.height() * 0.42, roof);
     p.setPen(QPen(kInk, pw * 0.8));
     p.setBrush(pal.window);
     const QRectF win(r.center().x() - r.width() * 0.13, r.top() + r.height() * 0.58, r.width() * 0.26, r.height() * 0.2);
@@ -76,10 +225,6 @@ void house(QPainter& p, const QRectF& r, const Palette& pal, const QColor& roof)
     p.drawLine(QPointF(win.center().x(), win.top()), QPointF(win.center().x(), win.bottom()));
 }
 
-void battlements(QPainter& p, const QRectF& top, double merlon) {
-    for (double x = top.left(); x < top.right() - merlon * 0.5; x += merlon * 1.8)
-        p.drawRect(QRectF(x, top.top() - merlon, merlon, merlon));
-}
 
 // Stone courses with staggered joints over a face.
 void masonry(QPainter& p, const QRectF& face, double course, const QColor& stone) {
@@ -95,7 +240,7 @@ void masonry(QPainter& p, const QRectF& face, double course, const QColor& stone
     p.restore();
 }
 
-void tower(QPainter& p, const QRectF& r, const Palette& pal, const QColor& roof, bool flag, const QColor& owner) {
+void tower(QPainter& p, const QRectF& r, const Palette& pal, const QColor& roof, bool flag, const QColor& owner, const QString& race) {
     const double pw = std::max(1.0, r.width() / 14);
     p.setPen(QPen(kInk, pw));
     p.setBrush(cylinder(r, pal.stone.lighter(108)));
@@ -104,22 +249,13 @@ void tower(QPainter& p, const QRectF& r, const Palette& pal, const QColor& roof,
     p.setPen(QPen(kInk, pw));
     p.setBrush(Qt::NoBrush);
     p.drawRect(r);
-    // A conical roof with a rim, shaded round.
-    const QPolygonF cone{QPointF(r.left() - r.width() * 0.14, r.top()), QPointF(r.center().x(), r.top() - r.width() * 1.05),
-                         QPointF(r.right() + r.width() * 0.14, r.top())};
-    p.setBrush(cylinder(cone.boundingRect(), roof));
-    p.drawPolygon(cone);
-    p.setPen(QPen(roof.darker(170), pw * 0.6));
-    for (const double f : {0.35, 0.65}) {
-        const double y = r.top() - r.width() * 1.05 * (1 - f), half = (r.width() * 0.64) * f;
-        p.drawLine(QPointF(r.center().x() - half, y), QPointF(r.center().x() + half, y));
-    }
+    // The roof in the race's way.
+    const QPointF top = raceRoof(p, race, r.left(), r.right(), r.top(), r.width() * 1.05, roof);
     p.setPen(QPen(kInk, pw));
     p.setBrush(pal.window);
     p.drawRoundedRect(QRectF(r.center().x() - r.width() * 0.13, r.top() + r.height() * 0.22, r.width() * 0.26, r.height() * 0.16),
                       r.width() * 0.1, r.width() * 0.1);
     if (flag) {
-        const QPointF top(r.center().x(), r.top() - r.width() * 1.05);
         p.drawLine(top, top - QPointF(0, r.width() * 0.6));
         p.setBrush(lit(QRectF(top - QPointF(0, r.width() * 0.6), QSizeF(r.width() * 0.7, r.width() * 0.3)), owner));
         p.drawPolygon(QPolygonF{top - QPointF(0, r.width() * 0.6), top - QPointF(-r.width() * 0.7, r.width() * 0.45),
@@ -142,28 +278,37 @@ void drawTownIcon(QPainter& p, const QRectF& r, const TownLook& look) {
     p.setPen(Qt::NoPen);
     p.setBrush(QColor(0, 0, 0, 70));
     p.drawEllipse(QRectF(X(0.02), Y(0.8), w * 0.96, h * 0.18));
+    raceBackdrop(p, r, look.race);
     // Houses behind the walls: more as the town grows.
     static const double hx[] = {0.62, 0.18, 0.74, 0.08, 0.5, 0.3, 0.84};
     static const double hy[] = {0.42, 0.44, 0.3, 0.32, 0.26, 0.24, 0.42};
     for (int i = 0; i < 1 + stage * 2 && i < 7; ++i)
-        house(p, QRectF(X(hx[i]), Y(hy[i]), w * 0.16, h * 0.18), pal, i % 2 ? roof.darker(115) : roof);
+        house(p, QRectF(X(hx[i]), Y(hy[i]), w * 0.16, h * 0.18), pal, i % 2 ? roof.darker(115) : roof, look.race);
     // The keep grows taller; a city has a spire.
     const QRectF keep(X(0.36), Y(0.34 - 0.06 * stage), w * 0.3, h * (0.36 + 0.06 * stage));
     p.setPen(QPen(kInk, std::max(1.0, w / 90)));
     p.setBrush(lit(keep, pal.stone, 118, 135));
     p.drawRect(keep);
     masonry(p, keep, h * 0.05, pal.stone);
-    p.setBrush(pal.stone.lighter(110));
-    battlements(p, keep, w * 0.035);
     p.setBrush(pal.window);
     for (int i = 0; i <= stage; ++i)
         p.drawRoundedRect(QRectF(keep.center().x() - w * 0.025, keep.top() + h * (0.05 + 0.08 * i), w * 0.05, h * 0.05), 2, 2);
-    const double flagTop = keep.top() - h * (stage >= 3 ? 0.2 : 0.06);
-    if (stage >= 3) {
-        p.setBrush(roof);
-        p.drawPolygon(QPolygonF{QPointF(keep.left() + w * 0.06, keep.top() - h * 0.04), QPointF(keep.center().x(), flagTop),
-                                QPointF(keep.right() - w * 0.06, keep.top() - h * 0.04)});
+    const bool castle = look.race == "humans" || look.race.isEmpty();
+    double flagTop = keep.top() - h * 0.06;
+    p.setPen(QPen(kInk, std::max(1.0, w / 90)));
+    if (castle) {
+        p.setBrush(pal.stone.lighter(110));
+        battlements(p, keep, w * 0.035);
+        if (stage >= 3) {
+            flagTop = keep.top() - h * 0.2;
+            p.setBrush(roof);
+            p.drawPolygon(QPolygonF{QPointF(keep.left() + w * 0.06, keep.top() - h * 0.04), QPointF(keep.center().x(), flagTop),
+                                    QPointF(keep.right() - w * 0.06, keep.top() - h * 0.04)});
+        }
+    } else {
+        flagTop = raceRoof(p, look.race, keep.left(), keep.right(), keep.top(), h * (0.12 + 0.03 * stage), roof).y();
     }
+    p.setPen(QPen(kInk, std::max(1.0, w / 90)));
     p.drawLine(QPointF(keep.center().x(), flagTop), QPointF(keep.center().x(), flagTop - h * 0.1));
     p.setBrush(look.owner);
     p.drawPolygon(QPolygonF{QPointF(keep.center().x(), flagTop - h * 0.1), QPointF(keep.center().x() + w * 0.16, flagTop - h * 0.07),
@@ -201,7 +346,7 @@ void drawTownIcon(QPainter& p, const QRectF& r, const TownLook& look) {
         if (look.walls >= 2) towers << 0.34 << 0.62;
         for (const double tx : towers)
             tower(p, QRectF(X(tx), Y(wallTop - (look.walls >= 2 ? 0.14 : 0.08)), w * tw, h * (0.94 - wallTop + (look.walls >= 2 ? 0.14 : 0.08))),
-                  pal, roof, look.walls >= 2, look.owner);
+                  pal, roof, look.walls >= 2, look.owner, look.race);
     }
     // The gate.
     p.setPen(QPen(kInk, std::max(1.0, w / 90)));
@@ -366,7 +511,7 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
             break;
         }
         case SceneBuilding::Kind::Workshop: {  // a workshop with a heap of its resource
-            house(p, QRectF(cx - unit * 0.32, base - unit * 0.55, unit * 0.5, unit * 0.55), pal, roof.darker(118));
+            house(p, QRectF(cx - unit * 0.32, base - unit * 0.55, unit * 0.5, unit * 0.55), pal, roof.darker(118), look.race);
             p.setBrush(resourceColor(b.unit));
             p.drawChord(QRectF(cx + unit * 0.12, base - unit * 0.2, unit * 0.34, unit * 0.4), 0, 180 * 16);
             p.setBrush(QColor("#6a6a6a"));
@@ -394,14 +539,14 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
             break;
         }
         case SceneBuilding::Kind::Tavern: {
-            house(p, QRectF(cx - unit * 0.4, base - unit * 0.9, unit * 0.8, unit * 0.9), pal, roof.darker(110));
+            house(p, QRectF(cx - unit * 0.4, base - unit * 0.9, unit * 0.8, unit * 0.9), pal, roof.darker(110), look.race);
             p.setBrush(QColor("#c9a24a"));  // the sign with a mug
             p.drawRect(QRectF(cx + unit * 0.42, base - unit * 0.62, unit * 0.22, unit * 0.18));
             break;
         }
         case SceneBuilding::Kind::Dwelling: {
             const double hgt = unit * (0.6 + 0.18 * b.level);
-            house(p, QRectF(cx - unit * 0.35, base - hgt, unit * 0.7, hgt), pal, roof);
+            house(p, QRectF(cx - unit * 0.35, base - hgt, unit * 0.7, hgt), pal, roof, look.race);
             if (!b.unit.isEmpty()) {  // the unit that lives here, on a sign
                 const int s = int(unit * 0.5);
                 p.setBrush(QColor(240, 228, 192));
@@ -435,7 +580,7 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
             break;
         }
         default: {
-            house(p, QRectF(cx - unit * 0.3, base - unit * 0.6, unit * 0.6, unit * 0.6), pal, roof.darker(125));
+            house(p, QRectF(cx - unit * 0.3, base - unit * 0.6, unit * 0.6, unit * 0.6), pal, roof.darker(125), look.race);
             break;
         }
         }
@@ -491,7 +636,7 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
         }
         if (walls >= 2)
             for (const double tx : {0.01, 0.4, 0.52, 0.84})
-                tower(p, QRectF(X(tx), Y(top - 0.08), w * 0.028, h * (1.08 - top)), pal, roof, false, look.owner);
+                tower(p, QRectF(X(tx), Y(top - 0.08), w * 0.028, h * (1.08 - top)), pal, roof, false, look.owner, look.race);
         p.setBrush(QColor("#4a3520"));
         p.drawChord(QRectF(X(0.445), Y(top + 0.02), w * 0.06, h * 0.25), 0, 180 * 16);
     }
