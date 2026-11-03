@@ -6,6 +6,7 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
+#include <QShortcut>
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QTableWidget>
@@ -35,6 +36,11 @@ TownDialog::TownDialog(const core::ContentRegistry* content, QWidget* parent)
     bottom->addWidget(close);
     layout->addLayout(bottom);
     m_onlyBuildable = QSettings().value(QStringLiteral("town/onlyBuildable"), false).toBool();
+    // G: the hero in the town takes all units of the garrison.
+    auto* g = new QShortcut(QKeySequence(Qt::Key_G), this);
+    connect(g, &QShortcut::activated, this, [this]() {
+        if (auto* b = findChild<QPushButton*>("giveAllToHero"); b && b->isEnabled()) b->click();
+    });
 }
 
 QString TownDialog::costText(const core::ResourceAmounts& cost) const {
@@ -241,6 +247,21 @@ void TownDialog::rebuild() {
             send("buy_all_units", {{"town", tid}, {"useTrade", true}}, tr("Buy all units in %1").arg(town->name));
         });
         layout->addWidget(buyAll);
+        // A hero in the town takes the whole garrison along (G).
+        const ViewHero* visitor = nullptr;
+        for (const ViewHero* h : m_view.myHeroes())
+            if (h->pos == town->pos) visitor = h;
+        if (visitor && garrison) {
+            auto* give = new QPushButton(tr("Give all units to %1  (G)").arg(visitor->name), page);
+            give->setObjectName("giveAllToHero");
+            give->setEnabled(myTurn && !garrison->stacks.isEmpty());
+            const int fromId = garrison->id, toId = visitor->army;
+            const QString name = visitor->name;
+            connect(give, &QPushButton::clicked, this, [=, this]() {
+                send("move_units", {{"from", fromId}, {"to", toId}, {"all", true}}, tr("Give the garrison to %1").arg(name));
+            });
+            layout->addWidget(give);
+        }
         m_tabs->addTab(page, tr("Recruit"));
     }
 
@@ -325,12 +346,8 @@ void TownDialog::rebuild() {
                 all->setObjectName(QStringLiteral("moveAll_%1").arg(from->id));
                 all->setEnabled(myTurn);
                 const int fromId = from->id, toId = to->id;
-                const QList<ViewStack> stacks = from->stacks;
                 connect(all, &QPushButton::clicked, this, [=, this]() {
-                    // Always the first stack: the rest moves up as each one leaves.
-                    for (const ViewStack& s : stacks)
-                        send("move_units", {{"from", fromId}, {"to", toId}, {"stack", 0}, {"count", s.count}},
-                             tr("Move %1 %2").arg(s.count).arg(unitName(s.unit)));
+                    send("move_units", {{"from", fromId}, {"to", toId}, {"all", true}}, tr("Move everything to %1").arg(toName));
                 });
                 layout->addWidget(all);
             }

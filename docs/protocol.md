@@ -98,7 +98,7 @@ When the game is over every command is refused with code `game_over`.
 | `recruit_at_dwelling` | `dwelling`, `count`, `army` | |
 | `hire_hero` | `town`, `hero` (template id), `useTrade`? | `hero` (id) |
 | `trade` | `give`, `amount`, `get` | |
-| `move_units` | `from`, `to`, `stack`, `count` | |
+| `move_units` | `from`, `to`, `stack`, `count`; or `all: true` instead of `stack`/`count` (every stack that fits) | with `all`: `moved` (units), `left` (units that did not fit) |
 | `pick_trait` | `hero`, `trait` | |
 | `cast_spell` | `hero`, `spell` | an adventure-map spell (costs spell points) |
 | `buy_boat` | `hero` | in a town with a shipyard: the hero boards a boat on the water next to it; `move_hero` then sails, and moving onto the shore lands (`landed`, ends the day's movement) |

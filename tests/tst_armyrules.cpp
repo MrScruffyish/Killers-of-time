@@ -63,6 +63,24 @@ private slots:
         QVERIFY(moveUnits(gs, a, b, 1, 1).ok);  // merges into u0
     }
 
+    void movingEverythingTakesWhatFits() {
+        gs.army(a)->addUnits("archer", 5, 10);
+        gs.army(a)->addUnits("pikeman", 3, 10);
+        int moved = 0;
+        QVERIFY(moveAllUnits(gs, a, b, &moved).ok);
+        QCOMPARE(moved, 18);
+        QVERIFY(gs.army(a)->stacks.isEmpty());
+        QCOMPARE(gs.army(b)->stacks.size(), 3);
+        // A full army takes only what joins its stacks.
+        for (int i = 3; i < kMaxArmyStacks; ++i) gs.army(b)->addUnits(QString("u%1").arg(i), 1, 5);
+        gs.army(a)->addUnits("zombie", 4, 10);
+        gs.army(a)->addUnits("militia", 2, 6);
+        QVERIFY(moveAllUnits(gs, a, b, &moved).ok);
+        QCOMPARE(moved, 2);                       // the militia joined
+        QCOMPARE(gs.army(a)->totalUnits(), 4);    // the zombies stay
+        QVERIFY(!moveAllUnits(gs, a, b).ok);      // nothing more fits
+    }
+
     void rejections() {
         QVERIFY(moveUnits(gs, a, ArmyId(999), 0, 1).error.contains("unknown army"));
         QVERIFY(moveUnits(gs, a, a, 0, 1).error.contains("same army"));

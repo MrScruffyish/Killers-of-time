@@ -161,6 +161,7 @@ and react to; add depth afterwards.
 - [x] Sound: one audio output with an own mixer instead of QSoundEffect (fixes a PulseAudio abort when effects overlapped, e.g. archers shooting twice); sound off closes the output; --no-sound; crash backtraces to ~/.local/share/KillersOfTime/crash.log
 - [x] Market window (M, Game menu): give one resource for another at your trade rate (view: `tradePercent`), preview before trading; M no longer toggles sound
 - [x] Map: centred on your hero at the start (the centre is kept until the window has its size); scrolls when the mouse is near the edge
+- [x] Town: "Give all units to <hero>" (G) on the Recruit tab, Armies tab's Move everything uses one command (`move_units` with `all`); one hero per town (already a rule, now tested); `move_units` accepts all 10 stack slots
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

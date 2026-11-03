@@ -290,6 +290,17 @@ private slots:
         QVERIFY(!r.capturedTown.isValid());
     }
 
+    void onlyOneHeroPerTown() {
+        const TownId town = gs.addTown("Home", "humans", {2, 1}, p1);
+        Q_UNUSED(town);
+        makeHero(p1, {2, 1});                 // already in the town
+        const HeroId second = makeHero(p1, {0, 1});
+        const MoveResult r = moveHero(gs, reg, second, {2, 1});
+        QVERIFY(!r.ok);
+        QVERIFY(r.error.contains("occupied"));
+        QCOMPARE(armyOf(second).pos, (Pos{0, 1}));
+    }
+
     void movingRevealsMap() {
         gs.setMap(GameMap(30, 10, "grass"));
         const HeroId h = makeHero(p1, {2, 5});

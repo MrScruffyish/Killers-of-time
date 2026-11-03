@@ -41,4 +41,25 @@ ActionResult moveUnits(GameState& state, ArmyId fromId, ArmyId toId, int stackIn
     return ok;
 }
 
+ActionResult moveAllUnits(GameState& state, ArmyId fromId, ArmyId toId, int* moved) {
+    if (moved) *moved = 0;
+    const Army* from = state.army(fromId);
+    if (!from) return fail(QStringLiteral("unknown army"));
+    if (from->stacks.isEmpty()) return fail(QStringLiteral("there are no units to move"));
+    int total = 0;
+    ActionResult last;
+    // From the back, so the indexes of the stacks still to move stay valid.
+    for (int i = static_cast<int>(from->stacks.size()) - 1; i >= 0; --i) {
+        const int count = state.army(fromId)->stacks[i].count();
+        last = moveUnits(state, fromId, toId, i, count);
+        if (last.ok) total += count;
+        else if (last.error != QStringLiteral("the target army has no free slot")) return last;
+    }
+    if (moved) *moved = total;
+    if (total == 0) return fail(QStringLiteral("the target army has no free slot"));
+    ActionResult ok;
+    ok.ok = true;
+    return ok;
+}
+
 }  // namespace kot::core

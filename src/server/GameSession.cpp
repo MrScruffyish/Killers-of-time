@@ -529,11 +529,19 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     }
     if (cmd.type == net::msg::moveUnits) {
         const ArmyId from(id32("from")), to(id32("to"));
-        const int stack = r.requireInt("stack", 0, 6), count = r.requireInt("count", 1, 100000);
+        const bool all = r.optionalBool("all", false);
+        const int stack = all ? 0 : r.requireInt("stack", 0, kMaxArmyStacks - 1);
+        const int count = all ? 0 : r.requireInt("count", 1, 100000);
         r.finish();
         if (!r.ok()) return bad();
         const Army* a = m_state.army(from);
         if (!a || a->owner != player) return failure("failed", "that is not your army");
+        if (all) {
+            int moved = 0;
+            const ActionResult res = moveAllUnits(m_state, from, to, &moved);
+            if (!res.ok) return failure("failed", res.error);
+            return success({{"moved", moved}, {"left", m_state.army(from) ? m_state.army(from)->totalUnits() : 0}});
+        }
         return fromAction(moveUnits(m_state, from, to, stack, count));
     }
     if (cmd.type == net::msg::pickTrait) {
