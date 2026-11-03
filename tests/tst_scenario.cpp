@@ -7,6 +7,8 @@
 #include "core/rules/Scenario.h"
 #include "core/rules/ScenarioGen.h"
 #include "core/rules/Campaign.h"
+#include "core/rules/Movement.h"
+#include "core/rules/Pathfinding.h"
 #include "server/GameSession.h"
 
 using namespace kot;
@@ -24,6 +26,26 @@ class TstScenario : public QObject {
         GameState gs;
         createGame(reg, p, &gs, nullptr, nullptr);
         return gs;
+    }
+
+    // Tiles (towns, mines, map objects) that cannot be walked to from the first
+    // town: a map that needs boats lists them.
+    static QStringList unreachableOnFoot(const GameState& gs, const ContentRegistry& reg) {
+        const MoveCostGrid grid(gs.map(), reg, MoveMode::Foot);
+        QList<Pos> targets;
+        for (const Town& t : gs.towns()) targets << t.pos;
+        for (const Mine& m : gs.mines()) targets << m.pos;
+        for (const MapObject& o : gs.mapObjects()) targets << o.pos;
+        if (targets.isEmpty()) return {};
+        const QHash<Pos, int> reach = reachableTiles(grid, targets.first(), 1000000000);
+        QStringList out;
+        for (const Pos t : targets) {
+            bool near = reach.contains(t);
+            for (int dy = -1; dy <= 1 && !near; ++dy)
+                for (int dx = -1; dx <= 1 && !near; ++dx) near = reach.contains(Pos{t.x + dx, t.y + dy});
+            if (!near) out << QStringLiteral("(%1,%2)").arg(t.x).arg(t.y);
+        }
+        return out;
     }
 
 private slots:
@@ -93,6 +115,33 @@ private slots:
             QVERIFY(s.info.races.size() > lastPlayers);
             lastWidth = s.info.width;
             lastPlayers = int(s.info.races.size());
+        }
+    }
+
+    void mapsNeedNoBoats() {
+        // Shipped scenarios and continent maps: everything can be walked to (only
+        // maps made with islands need boats).
+        const QDir dir(QDir(KOT_DATA_DIR).filePath("scenarios"));
+        for (const QFileInfo& f : dir.entryInfoList({"*.json"}, QDir::Files)) {
+            Scenario s;
+            QStringList errors;
+            QVERIFY2(loadScenario(f.filePath(), reg, &s, &errors), qPrintable(errors.join("\n")));
+            GameState gs;
+            QVERIFY2(GameState::fromJson(s.game, reg, &gs, &errors), qPrintable(errors.join("\n")));
+            const QStringList cut = unreachableOnFoot(gs, reg);
+            QVERIFY2(cut.isEmpty(), qPrintable(f.fileName() + ": needs a boat for " + cut.join(" ")));
+        }
+        for (quint64 seed = 1; seed <= 12; ++seed) {
+            GameSetupParams params;
+            params.seed = seed;
+            params.mapWidth = params.mapHeight = seed % 2 ? 48 : 72;
+            params.players = {{"A", false, {}, "humans", 1, "#ff0000"}, {"B", true, {}, "orcs", 2, "#0000ff"}, {"C", true, {}, "sylvan", 3, "#00ff00"}};
+            GameState gs;
+            QList<PlayerId> ids;
+            QString why;
+            QVERIFY2(createGame(reg, params, &gs, &ids, &why), qPrintable(why));
+            const QStringList cut = unreachableOnFoot(gs, reg);
+            QVERIFY2(cut.isEmpty(), qPrintable(QStringLiteral("seed %1: needs a boat for %2").arg(seed).arg(cut.join(" "))));
         }
     }
 
