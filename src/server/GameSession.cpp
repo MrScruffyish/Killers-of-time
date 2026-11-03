@@ -13,6 +13,7 @@
 #include "core/magic/Spells.h"
 #include "core/model/PlayerView.h"
 #include "core/rules/Automation.h"
+#include "core/rules/Boats.h"
 #include "core/rules/Dwellings.h"
 #include "core/rules/GameSetup.h"
 #include "core/rules/HeroRules.h"
@@ -355,6 +356,7 @@ QJsonObject GameSession::moveInfo(const MoveResult& m) const {
     if (m.capturedTown.isValid()) info.insert("capturedTown", toInt(m.capturedTown.value()));
     if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
     if (!m.learnedSpells.isEmpty()) info.insert("learnedSpells", QJsonArray::fromStringList(m.learnedSpells));
+    if (m.landed) info.insert("landed", true);
     if (!m.foundResources.isEmpty()) info.insert("foundResources", resourcesJson(m.foundResources));
     if (!m.foundArtifacts.isEmpty()) info.insert("foundArtifacts", QJsonArray::fromStringList(m.foundArtifacts));
     if (m.attacked) {
@@ -459,6 +461,14 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
             return success(info);
         }
         return success(moveInfo(m_finishedMove));
+    }
+    if (cmd.type == net::msg::buyBoat) {
+        const HeroId hero(id32("hero"));
+        r.finish();
+        if (!r.ok()) return bad();
+        const Hero* h = m_state.hero(hero);
+        if (!h || h->owner != player) return failure("failed", "that is not your hero");
+        return fromAction(buyBoat(m_state, m_content, hero));
     }
     if (cmd.type == net::msg::castSpell) {
         const HeroId hero(id32("hero"));

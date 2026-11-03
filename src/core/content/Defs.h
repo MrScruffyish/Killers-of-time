@@ -80,6 +80,7 @@ struct EconomyBalance {
     int tavernOffers = 2;             // heroes a tavern offers at a time
     int maxHeroesPerPlayer = 8;
     ResourceAmounts startingResources{{"gold", 10000}};
+    ResourceAmounts boatCost{{"gold", 1000}, {"wood", 10}};
 };
 // Auto-resolved battles (core/battle/AutoBattle.h). Percentages per point of
 // attack minus defense, with caps.
@@ -128,7 +129,8 @@ struct BuildingEffect {
         Tavern,    // heroes can be hired in this town
         MageGuild, // heroes in this town learn all spells up to `amount` (the guild level)
         Defense,   // the town's defenders get +`amount` defense in battle (walls)
-        Market     // its owner trades at +`amount` percent better rates (less fee)
+        Market,    // its owner trades at +`amount` percent better rates (less fee)
+        Shipyard   // heroes in the town can buy a boat (coastal towns only)
     };
     Type type = Type::Income;
     QString unit;

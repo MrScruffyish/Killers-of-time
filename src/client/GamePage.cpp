@@ -586,6 +586,8 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
 
 QString GamePage::describeResult(const QString& type, const QJsonObject& info) const {
     if (type == net::msg::moveHero && info["battleStarted"].toBool()) return tr("a battle begins!");
+    if (type == net::msg::moveHero && info["landed"].toBool()) return tr("landed (that ends the day's movement)");
+    if (type == net::msg::buyBoat) return tr("the hero boards the boat; click the water to sail, the shore to land");
     if (type == net::msg::moveHero) {
         QString text = info["arrived"].toBool() ? tr("arrived") : tr("moved %1 steps, out of movement").arg(info["stepsTaken"].toInt());
         if (info.contains("capturedMine")) text += tr(", captured a mine");

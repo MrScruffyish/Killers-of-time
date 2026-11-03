@@ -6,6 +6,7 @@
 
 #include "client/ViewModel.h"
 #include "core/model/GameMap.h"
+#include "core/rules/Pathfinding.h"
 
 namespace kot::core { class ContentRegistry; }
 
@@ -36,6 +37,7 @@ private:
     int m_heroId = 0;
     core::Pos m_from;
     int m_movement = 0;
+    core::MoveMode m_mode = core::MoveMode::Foot;
     core::GameMap m_map;
     QMap<QString, int> m_terrainPercent;
     QSet<core::Pos> m_blocked;

@@ -259,7 +259,7 @@ void MapView::paintEvent(QPaintEvent*) {
         }
     }
     for (const ViewHero& h : m_view.heroes)
-        if (shown(h.pos)) art::drawHero(p, inner(h.pos), ownerColor(h.owner), h.id == m_selectedHero);
+        if (shown(h.pos)) art::drawHero(p, inner(h.pos), ownerColor(h.owner), h.id == m_selectedHero, h.inBoat);
 }
 
 void MapView::mousePressEvent(QMouseEvent* event) {

@@ -86,3 +86,5 @@ target_compile_definitions(tst_scenario PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR
 kot_add_test(tst_campaign)
 target_link_libraries(tst_campaign PRIVATE kot_server_lib)
 target_compile_definitions(tst_campaign PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+kot_add_test(tst_boats)
+target_compile_definitions(tst_boats PRIVATE KOT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")

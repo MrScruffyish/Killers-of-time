@@ -232,11 +232,23 @@ void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner) {
     p.restore();
 }
 
-void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected) {
+void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
-    shadow(p, r);
     const double w = r.width(), h = r.height();
+    if (inBoat) {  // a wooden hull under the banner
+        QPainterPath hull;
+        hull.moveTo(r.left(), r.top() + h * 0.62);
+        hull.lineTo(r.right(), r.top() + h * 0.62);
+        hull.lineTo(r.right() - w * 0.18, r.bottom());
+        hull.lineTo(r.left() + w * 0.18, r.bottom());
+        hull.closeSubpath();
+        p.setPen(QPen(QColor("#2a1a0c"), std::max(1.0, w / 18)));
+        p.setBrush(QColor("#8a5a2b"));
+        p.drawPath(hull);
+    } else {
+        shadow(p, r);
+    }
     if (selected) {
         p.setPen(QPen(QColor("#ffd84a"), std::max(2.0, w / 8)));
         p.setBrush(Qt::NoBrush);

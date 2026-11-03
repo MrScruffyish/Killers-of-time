@@ -293,6 +293,8 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
                 e.type = BuildingEffect::Type::Income;
                 e.resource = er.requireId(QStringLiteral("resource"));
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 1000000);
+            } else if (type == QLatin1String("shipyard")) {
+                e.type = BuildingEffect::Type::Shipyard;
             } else if (type == QLatin1String("market")) {
                 e.type = BuildingEffect::Type::Market;
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 50);
@@ -303,7 +305,7 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
                 e.type = BuildingEffect::Type::MageGuild;
                 e.amount = er.requireInt(QStringLiteral("level"), 1, 10);
             } else if (!type.isEmpty()) {
-                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income, tavern, mageGuild, defense or market)").arg(type));
+                er.addError(QStringLiteral("unknown effect type '%1' (use dwelling, income, tavern, mageGuild, defense, market or shipyard)").arg(type));
             }
             er.finish();
             if (er.ok()) d.effects.append(e);
@@ -629,6 +631,8 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         eb.tavernOffers = er.optionalInt(QStringLiteral("tavernOffers"), 2, 1, 10);
         eb.maxHeroesPerPlayer = er.optionalInt(QStringLiteral("maxHeroesPerPlayer"), 8, 1, 100);
         const ResourceAmounts start = er.optionalIntMap(QStringLiteral("startingResources"), 0, 1000000000);
+        const ResourceAmounts boat = er.optionalIntMap(QStringLiteral("boatCost"), 1, 1000000);
+        if (!boat.isEmpty()) eb.boatCost = boat;
         if (!start.isEmpty()) eb.startingResources = start;
         er.finish();
         if (vr.ok() && er.ok()) {

@@ -256,6 +256,21 @@ void TownDialog::rebuild() {
                 layout->addWidget(all);
             }
         };
+        bool shipyard = false;
+        for (const QString& id : town->buildings)
+            if (const core::BuildingDef* b = m_content->building(id))
+                for (const core::BuildingEffect& e : b->effects) shipyard = shipyard || e.type == core::BuildingEffect::Type::Shipyard;
+        if (shipyard && visitor) {
+            QStringList cost;
+            const core::ResourceAmounts& c = m_content->balance().economy.boatCost;
+            for (auto it = c.begin(); it != c.end(); ++it) cost << QStringLiteral("%1 %2").arg(it.value()).arg(it.key());
+            auto* boat = new QPushButton(tr("Buy a boat for %1 (%2)").arg(visitor->name, cost.join(", ")), page);
+            boat->setObjectName("buyBoat");
+            boat->setEnabled(myTurn);
+            const int hid = visitor->id;
+            connect(boat, &QPushButton::clicked, this, [=, this]() { send("buy_boat", {{"hero", hid}}, tr("Buy a boat")); });
+            layout->addWidget(boat);
+        }
         if (!visitor) {
             section(tr("Garrison"), garrison, nullptr, {});
             layout->addWidget(new QLabel(tr("A hero standing in the town can take units from the garrison or leave them here."), page));

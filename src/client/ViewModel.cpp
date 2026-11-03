@@ -150,6 +150,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         h.level = o.value("level").toInt(1);
         h.pos = posOf(o);
         h.army = o.value("army").toInt();
+        h.inBoat = o.value("inBoat").toBool();
         h.own = ownTeam(h.owner);
         if (o.contains("traits")) {
             h.experience = o.value("experience").toInt();

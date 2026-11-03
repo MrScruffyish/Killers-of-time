@@ -57,6 +57,7 @@ struct ViewHero {
     int movementPoints = 0;
     QStringList spells;
     QStringList artifacts;
+    bool inBoat = false;
 };
 
 struct BuildOption {

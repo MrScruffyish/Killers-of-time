@@ -40,6 +40,7 @@ struct Hero {
     QString templateId;          // the tavern hero this one was hired as (empty = none)
     QStringList spells;          // the spellbook: spell ids this hero knows
     QStringList artifacts;       // artifacts carried (their trait bonuses are in `traits`)
+    bool inBoat = false;         // sails (moves on water only) until he lands
 
     int trait(const QString& traitId) const { return traits.value(traitId, 0); }
 };

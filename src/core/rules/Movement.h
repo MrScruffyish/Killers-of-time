@@ -44,6 +44,7 @@ struct MoveResult {
     QStringList learnedSpells;  // arrived in an own town with a mage guild
     ResourceAmounts foundResources;  // picked up a treasure
     QStringList foundArtifacts;      // picked up artifacts
+    bool landed = false;  // left the boat
     std::optional<PendingAttack> pending;  // deferBattles: the battles still to fight
 };
 
@@ -56,7 +57,8 @@ struct MoveResult {
 // from the tile before (auto-resolved battles, core/battle/AutoBattle.h). A won
 // town is entered and captured; after beating a field army the hero stays where
 // he fought from. A friendly army on the target blocks it. The team's explored
-// map is updated after the move.
+// map is updated after the move. A hero in a boat sails on water only; moving onto
+// the land next to him lands (and ends today's movement).
 // With `deferBattles` the hero stops next to the target and the battles are left to
 // the caller (`pending`; interactive battles): fight them, then call finishAttack.
 MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,

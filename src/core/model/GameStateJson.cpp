@@ -116,6 +116,7 @@ QJsonObject GameState::toJson() const {
         if (!h.templateId.isEmpty()) o.insert("template", h.templateId);
         if (!h.spells.isEmpty()) o.insert("spells", QJsonArray::fromStringList(h.spells));
         if (!h.artifacts.isEmpty()) o.insert("artifacts", QJsonArray::fromStringList(h.artifacts));
+        if (h.inBoat) o.insert("inBoat", true);
         heroes.append(o);
     }
     root.insert("heroes", heroes);
@@ -383,6 +384,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         h.templateId = r.optionalString("template");
         h.spells = r.optionalStringList("spells");
         h.artifacts = r.optionalStringList("artifacts");
+        h.inBoat = r.optionalBool("inBoat", false);
         r.finish();
         for (const QString& s : h.spells)
             if (!content.spell(s)) r.addError(QStringLiteral("unknown spell '%1'").arg(s));

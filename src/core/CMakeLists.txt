@@ -34,6 +34,8 @@ add_library(kot_core STATIC
     rules/ArmyRules.cpp
     rules/TownRules.h
     rules/TownRules.cpp
+    rules/Boats.h
+    rules/Boats.cpp
     rules/Trade.h
     rules/Trade.cpp
     rules/Dwellings.h

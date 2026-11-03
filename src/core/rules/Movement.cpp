@@ -53,6 +53,37 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
         result.error = QStringLiteral("target is outside the map");
         return result;
     }
+    if (hero->inBoat) {
+        mode = MoveMode::Boat;
+        // Landing: step onto the land next to the boat; that ends today's movement.
+        const TerrainDef* t = content.terrainType(state.map().terrainAt(target));
+        if (t && t->walkable && !t->sailable) {
+            if (std::max(std::abs(target.x - army->pos.x), std::abs(target.y - army->pos.y)) != 1) {
+                result.error = QStringLiteral("sail next to the shore to land");
+                return result;
+            }
+            for (const Army& a : state.armies())
+                if (a.id != army->id && a.pos == target) {
+                    result.error = QStringLiteral("cannot land there: the tile is occupied");
+                    return result;
+                }
+            if (hero->movementPoints <= 0) {
+                result.error = QStringLiteral("not enough movement points");
+                return result;
+            }
+            army->pos = target;
+            hero->inBoat = false;
+            hero->movementPoints = 0;
+            result.ok = result.arrived = true;
+            result.stepsTaken = 1;
+            const PlayerId owner = hero->owner;
+            captureAt(state, owner, target, &result);
+            pickUpAt(state, content, heroId, target, &result);
+            result.landed = true;
+            updateExplored(state, content, state.teamOf(owner));
+            return result;
+        }
+    }
 
     // Things that block walking through a tile.
     QSet<Pos> occupied;

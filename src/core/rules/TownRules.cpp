@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/Boats.h"
 #include "core/rules/Tavern.h"
 
 namespace kot::core {
@@ -71,6 +72,9 @@ QString whyCannotBuild(const GameState& state, const ContentRegistry& content, T
     if (!b->fitsRace(town->race))
         return QStringLiteral("%1 cannot be built in a %2 town").arg(b->name, town->race);
     if (town->buildings.contains(buildingId)) return QStringLiteral("already built");
+    for (const BuildingEffect& e : b->effects)
+        if (e.type == BuildingEffect::Type::Shipyard && !freeWaterNext(state, content, town->pos))
+            return QStringLiteral("%1 needs a town at the coast").arg(b->name);
     if (town->lastBuildDay == state.day())
         return QStringLiteral("a building was already built here today");
 

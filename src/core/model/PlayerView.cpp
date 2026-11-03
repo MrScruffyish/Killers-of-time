@@ -113,6 +113,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
         o.insert("x", army->pos.x);
         o.insert("y", army->pos.y);
         o.insert("army", id(h.army.value()));
+        if (h.inBoat) o.insert("inBoat", true);
         if (own) {
             o.insert("experience", h.experience);
             o.insert("traits", intMap(h.traits));

@@ -119,7 +119,7 @@ trading resources (the rest is the trading fee).
 | requires | buildings that must already be built |
 | excludes | buildings that make this one unavailable (and vice versa): a forced choice |
 | upgradeOf | a dwelling building this one replaces; the old dwelling's unit must `upgradesTo` this one's unit. The base building must be built first. |
-| effects | `{"type":"tavern"}`: heroes can be hired here. `{"type":"dwelling","unit":id}`: units can be recruited, weekly growth from the unit's `weeklyGrowth`. `{"type":"income","resource":id,"amount":n}`: daily income for the owner. `{"type":"mageGuild","level":n}`: teaches spells. `{"type":"defense","amount":n}`: walls, the town's defenders get +n defense in battle. `{"type":"market","amount":n}`: its owner trades at +n% better rates (all his markets add up, at most 95%). |
+| effects | `{"type":"tavern"}`: heroes can be hired here. `{"type":"dwelling","unit":id}`: units can be recruited, weekly growth from the unit's `weeklyGrowth`. `{"type":"income","resource":id,"amount":n}`: daily income for the owner. `{"type":"mageGuild","level":n}`: teaches spells. `{"type":"defense","amount":n}`: walls, the town's defenders get +n defense in battle. `{"type":"market","amount":n}`: its owner trades at +n% better rates (all his markets add up, at most 95%). `{"type":"shipyard"}`: coastal towns only; heroes there can buy a boat (`balance.json` economy `boatCost`). |
 
 A town can build one building per day.
 

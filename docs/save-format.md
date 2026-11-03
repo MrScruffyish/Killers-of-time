@@ -39,3 +39,4 @@ The save has `difficulty` (the overall level); players may have `incomePercent` 
 Army stacks may have `experience` (average per unit, veterancy).
 `victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie). Last team standing always wins too.
 `weekEvent` (optional): this week's event id.
+Heroes may have `inBoat: true` (sailing).

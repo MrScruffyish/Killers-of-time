@@ -37,7 +37,8 @@ void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& con
         if (a.id != hero->army) m_blocked.insert(a.pos);
     m_blocked.remove(m_from);
 
-    const core::MoveCostGrid grid(m_map, content, core::MoveMode::Foot, m_terrainPercent);
+    m_mode = hero->inBoat ? core::MoveMode::Boat : core::MoveMode::Foot;
+    const core::MoveCostGrid grid(m_map, content, m_mode, m_terrainPercent);
     const QHash<core::Pos, int> reach =
         core::reachableTiles(grid, m_from, m_movement, [&](core::Pos p) { return m_blocked.contains(p); });
     for (auto it = reach.cbegin(); it != reach.cend(); ++it)
@@ -47,7 +48,7 @@ void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& con
 MovePlan MovePlanner::plan(core::Pos target) const {
     MovePlan plan;
     if (!m_heroId || !m_map.inBounds(target) || target == m_from || m_unexplored.contains(target)) return plan;
-    const core::MoveCostGrid grid(m_map, *m_content, core::MoveMode::Foot, m_terrainPercent);
+    const core::MoveCostGrid grid(m_map, *m_content, m_mode, m_terrainPercent);
     const core::PathResult path =
         core::findPath(grid, m_from, target, [&](core::Pos p) { return m_blocked.contains(p); });
     if (!path.found || path.steps.isEmpty()) return plan;

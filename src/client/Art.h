@@ -22,7 +22,7 @@ int variantFor(int x, int y);
 void drawTown(QPainter& p, const QRectF& r, const QColor& owner);
 void drawMine(QPainter& p, const QRectF& r, const QColor& resource, const QColor& owner);
 void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner);
-void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected);
+void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat = false);
 void drawMonster(QPainter& p, const QRectF& r);
 void drawChest(QPainter& p, const QRectF& r, const QColor& resource);
 void drawArtifact(QPainter& p, const QRectF& r);
