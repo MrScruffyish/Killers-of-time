@@ -47,6 +47,8 @@ public:
     void replaceUnit(const UnitDef& unit) { if (m_units.contains(unit.id)) m_units[unit.id] = unit; }
     void replaceResource(const ResourceDef& r) { if (m_resources.contains(r.id)) m_resources[r.id] = r; }
     const ArtifactDef* artifact(const QString& id) const;
+    const QMap<QString, WeekEventDef>& weekEvents() const { return m_weekEvents; }
+    const WeekEventDef* weekEvent(const QString& id) const;
     const QMap<QString, ArtifactDef>& artifacts() const { return m_artifacts; }
     // The race's data, or defaults (no bonuses) for a race without a file.
     const RaceDef& race(const QString& id) const;
@@ -65,6 +67,7 @@ private:
     void loadSpells(const QString& dir, QStringList& errors);
     void loadRaces(const QString& dir, QStringList& errors);
     void loadArtifacts(const QString& dir, QStringList& errors);
+    void loadWeekEvents(const QString& dir, QStringList& errors);
     void loadProgression(const QString& dir, QStringList& errors);
     void loadBalance(const QString& dir, QStringList& errors);
     void validateReferences(QStringList& errors) const;
@@ -79,6 +82,7 @@ private:
     QMap<QString, SpellDef> m_spells;
     QMap<QString, RaceDef> m_races;
     QMap<QString, ArtifactDef> m_artifacts;
+    QMap<QString, WeekEventDef> m_weekEvents;
     RaceDef m_defaultRace;
     QString m_dataDir;
     QList<int> m_xpThresholds;

@@ -87,6 +87,7 @@ void ContentRegistry::clear() {
     m_spells.clear();
     m_races.clear();
     m_artifacts.clear();
+    m_weekEvents.clear();
     m_xpThresholds.clear();
     m_balance = Balance();
 }
@@ -101,6 +102,7 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadBuildings(dataDir, problems);
     loadRaces(dataDir, problems);
     loadArtifacts(dataDir, problems);
+    loadWeekEvents(dataDir, problems);
     loadSpells(dataDir, problems);
     loadHeroClasses(dataDir, problems);
     loadHeroTemplates(dataDir, problems);
@@ -336,6 +338,24 @@ void ContentRegistry::loadArtifacts(const QString& dir, QStringList& errors) {
                          return;
                      }
                      m_artifacts.insert(d.id, d);
+                 });
+}
+
+void ContentRegistry::loadWeekEvents(const QString& dir, QStringList& errors) {
+    if (!QFile::exists(QDir(dir).filePath(QStringLiteral("events.json")))) return;  // optional
+    forEachEntry(dir, QStringLiteral("events.json"), QStringLiteral("events"), errors,
+                 [&](const QJsonObject& o, const QString& ctx) {
+                     JsonReader r(o, ctx, &errors);
+                     WeekEventDef d;
+                     d.id = r.requireId(QStringLiteral("id"));
+                     d.name = r.requireString(QStringLiteral("name"));
+                     d.description = r.optionalString(QStringLiteral("description"));
+                     d.weight = r.optionalInt(QStringLiteral("weight"), 10, 0, 10000);
+                     d.resources = r.optionalIntMap(QStringLiteral("resources"), -1000000, 1000000);
+                     d.growthPercent = r.optionalInt(QStringLiteral("growthPercent"), 0, -100, 1000);
+                     d.unitGrowth = r.optionalIntMap(QStringLiteral("unitGrowth"), 1, 10000);
+                     r.finish();
+                     if (r.ok()) m_weekEvents.insert(d.id, d);
                  });
 }
 
@@ -658,6 +678,12 @@ void ContentRegistry::validateReferences(QStringList& errors) const {
         if (!u.spells.isEmpty() && u.spellPoints <= 0)
             errors << QStringLiteral("unit '%1': has spells but no spellPoints").arg(u.id);
     }
+    for (const WeekEventDef& e : m_weekEvents) {
+        for (auto it = e.resources.begin(); it != e.resources.end(); ++it)
+            if (!m_resources.contains(it.key())) errors << QStringLiteral("event '%1': unknown resource '%2'").arg(e.id, it.key());
+        for (auto it = e.unitGrowth.begin(); it != e.unitGrowth.end(); ++it)
+            if (!m_units.contains(it.key())) errors << QStringLiteral("event '%1': unknown unit '%2'").arg(e.id, it.key());
+    }
     for (const ArtifactDef& a : m_artifacts) {
         for (auto it = a.traits.begin(); it != a.traits.end(); ++it)
             if (!m_traits.contains(it.key()))
@@ -803,6 +829,11 @@ QStringList ContentRegistry::raceIds() const {
 const RaceDef& ContentRegistry::race(const QString& id) const {
     const auto it = m_races.constFind(id);
     return it == m_races.cend() ? m_defaultRace : it.value();
+}
+
+const WeekEventDef* ContentRegistry::weekEvent(const QString& id) const {
+    const auto it = m_weekEvents.constFind(id);
+    return it == m_weekEvents.cend() ? nullptr : &it.value();
 }
 
 const ArtifactDef* ContentRegistry::artifact(const QString& id) const {

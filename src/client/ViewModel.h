@@ -163,6 +163,7 @@ struct GameView {
     bool gameOver = false;
     QString difficulty;
     QString victory;  // what wins this game
+    QString weekEventName, weekEventText;
     QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
     core::ResourceAmounts resources;

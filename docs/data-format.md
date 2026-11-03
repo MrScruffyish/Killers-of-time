@@ -231,3 +231,12 @@ campaign starts over.
 A unit with `spells` (battle spells) and `spellPoints` may cast one instead of acting; its pool
 is full at the start of every battle and its tier is the spell power. The battle AI uses them
 (damage and curses on the most dangerous enemy, heals on badly hurt own stacks).
+
+## events.json (optional)
+```json
+{ "events": [ { "id": "plague", "name": "Plague", "description": "...", "weight": 6,
+                "resources": { "gold": -500 }, "growthPercent": -50, "unitGrowth": { "skeleton": 10 } } ] }
+```
+At the start of every week one event is drawn (by `weight`, from the game's random numbers).
+`resources` go to (or, negative, are taken from) every player; `growthPercent` changes that week's
+dwelling growth; `unitGrowth` adds units to every dwelling of those units (towns and map).

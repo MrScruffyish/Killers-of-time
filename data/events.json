@@ -1,0 +1,14 @@
+{
+  "_comment": "One is drawn at the start of every week (by weight). resources: to every player; growthPercent: this week's dwelling growth; unitGrowth: extra units per dwelling of that unit.",
+  "events": [
+    { "id": "quiet_week", "name": "A quiet week", "description": "Nothing special happens.", "weight": 40 },
+    { "id": "good_harvest", "name": "Good harvest", "description": "Fields are full: every player gets 1000 gold.", "weight": 10, "resources": { "gold": 1000 } },
+    { "id": "timber_week", "name": "Week of the woodcutter", "description": "Every player gets 10 wood and 5 stone.", "weight": 10, "resources": { "wood": 10, "stone": 5 } },
+    { "id": "plague", "name": "Plague", "description": "Sickness spreads: dwellings grow half as much this week.", "weight": 6, "growthPercent": -50 },
+    { "id": "fertile_week", "name": "Fertile week", "description": "Dwellings grow 50% more this week.", "weight": 8, "growthPercent": 50 },
+    { "id": "week_of_skeletons", "name": "Week of the skeleton", "description": "The dead stir: every skeleton dwelling gets 10 more.", "weight": 4, "unitGrowth": { "skeleton": 10, "skeleton_warrior": 10 } },
+    { "id": "week_of_militia", "name": "Week of the militia", "description": "Volunteers come: every militia dwelling gets 10 more.", "weight": 4, "unitGrowth": { "militia": 10, "pikeman": 10 } },
+    { "id": "week_of_woodsmen", "name": "Week of the woodsman", "description": "Every woodsman dwelling gets 10 more.", "weight": 4, "unitGrowth": { "woodsman": 10 } },
+    { "id": "tax_collector", "name": "The tax collector", "description": "The crown takes 500 gold from every player.", "weight": 4, "resources": { "gold": -500 } }
+  ]
+}

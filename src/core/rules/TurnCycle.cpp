@@ -59,6 +59,23 @@ void beginGame(GameState& state, const ContentRegistry& content) {
     startTurn(state, content, state.currentPlayer());
 }
 
+void startWeekEvent(GameState& state, const ContentRegistry& content) {
+    state.setWeekEvent(QString());
+    int total = 0;
+    for (const WeekEventDef& e : content.weekEvents()) total += e.weight;
+    if (total <= 0) return;
+    int roll = state.rng().nextInt(1, total);
+    for (const WeekEventDef& e : content.weekEvents()) {
+        roll -= e.weight;
+        if (roll > 0) continue;
+        state.setWeekEvent(e.id);
+        for (Player& p : state.players())
+            for (auto it = e.resources.begin(); it != e.resources.end(); ++it)
+                p.resources[it.key()] = std::max(0, p.resources.value(it.key()) + it.value());
+        return;
+    }
+}
+
 TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
     TurnInfo info;
     const int count = static_cast<int>(state.turnOrder().size());
@@ -71,6 +88,7 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
             info.newDay = true;
             state.setDay(state.day() + 1);
             if (isNewWeek(state.day())) {
+                startWeekEvent(state, content);
                 applyWeeklyGrowth(state, content);
                 refreshTavernOffers(state, content);
             }

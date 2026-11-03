@@ -3,6 +3,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Movement.h"
+#include "core/rules/TownRules.h"
 #include "core/rules/TurnCycle.h"
 #include "core/rules/Vision.h"
 
@@ -25,6 +26,37 @@ private slots:
         gs.setMap(GameMap(20, 20, "grass"));
         p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
         p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Ai, "humans", "#0000ff");
+    }
+
+    void weekEventsApply() {
+        QVERIFY(!reg.weekEvents().isEmpty());
+        gs.player(p1)->resources = {{"gold", 100}};
+        gs.addTown("T", "humans", {1, 1}, p1);
+        // Draw until a gold event comes up (the draw uses the game's Rng).
+        for (int i = 0; i < 200; ++i) {
+            startWeekEvent(gs, reg);
+            const WeekEventDef* e = reg.weekEvent(gs.weekEvent());
+            QVERIFY(e);
+            if (e->resources.value("gold") > 0) break;
+            gs.player(p1)->resources = {{"gold", 100}};
+        }
+        const WeekEventDef* e = reg.weekEvent(gs.weekEvent());
+        QVERIFY(e && e->resources.value("gold") > 0);
+        QCOMPARE(gs.player(p1)->resources.value("gold"), 100 + e->resources.value("gold"));
+        // A growth event changes this week's growth.
+        for (const WeekEventDef& ev : reg.weekEvents()) {
+            if (ev.growthPercent == 0) continue;
+            gs.setWeekEvent(ev.id);
+            const Town& t = gs.towns().first();
+            QCOMPARE(townGrowth(gs, t, *reg.unit("militia"), reg),
+                     std::max(1, (reg.unit("militia")->weeklyGrowth * (100 + ev.growthPercent) + 50) / 100));
+            break;
+        }
+        GameState loaded;
+        QStringList errors;
+        gs.setTurnOrder({p1, p2});
+        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.weekEvent(), gs.weekEvent());
     }
 
     void incomeFromTownsAndMines() {

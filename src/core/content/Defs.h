@@ -204,6 +204,17 @@ struct ArtifactDef {
     int value = 1;              // rough worth, 1 (minor) .. 3 (major); stronger guards
 };
 
+// Something that happens to everyone at the start of a week (events.json).
+struct WeekEventDef {
+    QString id;
+    QString name;
+    QString description;
+    int weight = 10;                  // how often it is drawn, relative to the others
+    ResourceAmounts resources;        // given to (or, negative, taken from) every player
+    int growthPercent = 0;            // this week's dwelling growth, +/- percent
+    QMap<QString, int> unitGrowth;    // unit id -> extra units in every dwelling of it
+};
+
 // A hero that can be hired in a tavern. The class decides the race.
 struct HeroTemplateDef {
     QString id;

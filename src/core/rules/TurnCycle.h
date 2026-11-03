@@ -15,6 +15,10 @@ ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& conte
 // team's explored map is updated.
 void startTurn(GameState& state, const ContentRegistry& content, PlayerId player);
 
+// A new week: draws this week's event (events.json, by weight, from the game's Rng)
+// and gives its resources; its growth changes apply in this week's growth.
+void startWeekEvent(GameState& state, const ContentRegistry& content);
+
 // Starts the game: the first player in turn order begins day 1.
 void beginGame(GameState& state, const ContentRegistry& content);
 

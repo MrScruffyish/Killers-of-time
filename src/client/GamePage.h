@@ -92,6 +92,7 @@ private:
     QPushButton* m_save;
     BattleView* m_battleView;
     int m_seenBattleId = 0;
+    int m_announcedWeek = 0;
     QComboBox* m_heroCombo;
     QLabel* m_heroInfo;
     QPushButton* m_levelUp;

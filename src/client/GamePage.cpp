@@ -230,6 +230,22 @@ void GamePage::onViewChanged() {
     m_heroDialog->refresh(m_view);
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) log(tr("Day %1: your turn.").arg(m_view.day));
     if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1.").arg(m_view.victory));
+    // A new week brings its event.
+    const int week = (m_view.day - 1) / 7 + 1;
+    if (week != m_announcedWeek) {
+        if (!first && week > m_announcedWeek && !m_view.weekEventName.isEmpty()) {
+            const QString text = tr("Week %1: %2. %3").arg(week).arg(m_view.weekEventName, m_view.weekEventText);
+            log(text);
+            if (m_view.weekEventName != QLatin1String("A quiet week")) {
+                auto* box = new QMessageBox(QMessageBox::Information, tr("A new week"), text, QMessageBox::Ok, this);
+                box->setObjectName("weekEventBox");
+                box->setAttribute(Qt::WA_DeleteOnClose);
+                box->setModal(false);
+                box->show();
+            }
+        }
+        m_announcedWeek = week;
+    }
     showBattle(first);
     announceEnd();
 }

@@ -216,20 +216,24 @@ ActionResult recruit(GameState& state, const ContentRegistry& content, TownId to
 
 int townGrowth(const GameState& state, const Town& town, const UnitDef& unit, const ContentRegistry& content) {
     const Player* owner = state.player(town.owner);
-    const int percent = 100 + content.race(town.race).growthPercent + (owner ? owner->growthPercent : 0);
+    const WeekEventDef* event = content.weekEvent(state.weekEvent());
+    const int percent = 100 + content.race(town.race).growthPercent + (owner ? owner->growthPercent : 0) +
+                        (event ? event->growthPercent : 0);
     return std::max(unit.weeklyGrowth > 0 ? 1 : 0, (unit.weeklyGrowth * percent + 50) / 100);
 }
 
 void applyWeeklyGrowth(GameState& state, const ContentRegistry& content) {
+    const WeekEventDef* event = content.weekEvent(state.weekEvent());
+    const auto eventExtra = [event](const UnitDef& u) { return event ? event->unitGrowth.value(u.id) : 0; };
     for (Town& town : state.towns()) {
         for (const Dwelling& d : dwellings(town, content)) {
             const UnitDef* unit = content.unit(d.unitId);
-            if (unit) town.recruitPool[d.poolKey] += townGrowth(state, town, *unit, content);
+            if (unit) town.recruitPool[d.poolKey] += townGrowth(state, town, *unit, content) + eventExtra(*unit);
         }
     }
     for (MapDwelling& d : state.mapDwellings()) {
         const UnitDef* unit = content.unit(d.unitId);
-        if (unit) d.available += unit->weeklyGrowth;
+        if (unit) d.available += unit->weeklyGrowth + eventExtra(*unit);
     }
 }
 

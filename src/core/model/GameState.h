@@ -34,6 +34,9 @@ public:
     int day() const { return m_day; }
     const QString& difficulty() const { return m_difficulty; }
     const VictoryCondition& victory() const { return m_victory; }
+    // This week's event (events.json id, empty = none).
+    const QString& weekEvent() const { return m_weekEvent; }
+    void setWeekEvent(const QString& id) { m_weekEvent = id; }
     void setVictory(const VictoryCondition& v) { m_victory = v; }
     void setDifficulty(const QString& d) { m_difficulty = d; }
     void setDay(int day) { m_day = day; }
@@ -118,6 +121,7 @@ private:
     int m_day = 1;
     QString m_difficulty = QStringLiteral("normal");
     VictoryCondition m_victory;
+    QString m_weekEvent;
     GameMap m_map;
     Rng m_rng;
     std::uint32_t m_nextId = 1;
