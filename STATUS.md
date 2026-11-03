@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-02 (session 17, first Claude Code session)
-**Current milestone:** thin playable slice done (connect -> lobby -> map -> move -> town -> end turn, all with placeholder graphics). Now: close the game loop breadth-first (see "Order of work"); M0 verified on your machine, everything since verified in sandbox
-**Next session should do:** user picks: better AI (M9), more battle depth (hero HP/morale/luck traits, flying, unit abilities), neutral treasures/artifacts (M8), or a balance/playtest round. User: try the Undead and Sylvan on screen
+**Last updated:** 2026-11-03 (session 17, Claude Code)
+**Current milestone:** first versions of every part of the game are in (M0-M10), plus content tools, scenarios, campaigns, art, sound and packaging. Now: playtesting and polish
+**Next session should do:** react to the user's playtest (balance with kot_balance_gui, bugs, feel). Open ideas: 2-hex units, surrender/sieges, a smarter battle AI, real art
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -177,7 +177,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
-- **Session 17:** Moved to Claude Code (CLAUDE.md added). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple). Three races.
+- **Session 17:** Moved to Claude Code (CLAUDE.md added). Long autonomous run: battle depth, map content, AI, difficulty, client polish, tools (kot_graph, kot_balance(_gui), kot_mapgen, kot_editor), scenarios, campaigns, veterancy, art, sound, packaging, hero screen, weekly events, boats and islands, upkeep (41 test programs). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple). Three races.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
 - **Session 15:** M4 slice B: game creation from the lobby, filtered player views, game commands and turns over the network, tests with real sockets, played a game from an external script. Starting resources/army in data.
 - **Session 14:** M4 slice A: protocol, framing, connections, lobby logic and server, lobby client, data directory finder, protocol docs, network tests (23 test programs). Verified with an external script client.
