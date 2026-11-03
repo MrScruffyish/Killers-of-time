@@ -117,20 +117,41 @@ QPointF raceRoof(QPainter& p, const QString& race, double left, double right, do
         p.drawEllipse(QPointF(chim.center().x() + wd * 0.1, chim.top() - hgt * 0.4), wd * 0.18, hgt * 0.2);
         return {cx - wd * 0.15, y - hgt * 0.2};
     }
-    if (race == "tidefolk") {  // an onion dome with a golden point
-        QPainterPath dome;
-        dome.moveTo(left, y);
-        dome.cubicTo(QPointF(left - wd * 0.1, y - hgt * 0.7), QPointF(cx - wd * 0.1, y - hgt * 0.8), QPointF(cx, y - hgt * 1.25));
-        dome.cubicTo(QPointF(cx + wd * 0.1, y - hgt * 0.8), QPointF(right + wd * 0.1, y - hgt * 0.7), QPointF(right, y));
-        dome.closeSubpath();
-        p.setBrush(cylinder(dome.boundingRect(), c));
-        p.drawPath(dome);
-        p.setPen(QPen(c.lighter(150), pw * 0.7));
-        p.drawLine(QPointF(cx, y - hgt * 1.15), QPointF(cx, y));
+    if (race == "tidefolk") {  // a scallop shell: a fan of ridges with a pearl on top
+        const double rad = std::max(wd * 0.62, hgt * 0.9);
+        QPainterPath shell;
+        shell.moveTo(left - wd * 0.08, y);
+        const int lobes = 7;
+        for (int i = 0; i < lobes; ++i) {
+            const double a0 = M_PI * i / lobes, a1 = M_PI * (i + 1) / lobes;
+            const QPointF p1(cx - std::cos(a1) * rad, y - std::sin(a1) * rad * hgt / std::max(1.0, rad) * 1.0);
+            const double am = (a0 + a1) / 2;
+            const QPointF bulge(cx - std::cos(am) * rad * 1.12, y - std::sin(am) * rad * 1.12 * hgt / std::max(1.0, rad));
+            shell.quadTo(bulge, p1);
+        }
+        shell.closeSubpath();
+        QRadialGradient g(QPointF(cx - wd * 0.1, y - hgt * 0.6), rad * 1.2);
+        const QColor coral("#e89a84");  // shell pink, whatever the roof colour
+        g.setColorAt(0, QColor("#fff6ee"));
+        g.setColorAt(0.55, coral.lighter(115));
+        g.setColorAt(1, coral.darker(140));
+        p.setBrush(g);
+        p.drawPath(shell);
+        p.setPen(QPen(coral.darker(170), pw * 0.6));
+        for (int i = 1; i < lobes; ++i) {  // the ridges, all from the hinge
+            const double a = M_PI * i / lobes;
+            p.drawLine(QPointF(cx, y), QPointF(cx - std::cos(a) * rad * 0.95, y - std::sin(a) * hgt * 0.95));
+        }
         p.setPen(QPen(kInk, pw));
-        p.setBrush(QColor("#f0c040"));
-        p.drawPolygon(QPolygonF{QPointF(cx - wd * 0.06, y - hgt * 1.2), QPointF(cx, y - hgt * 1.55), QPointF(cx + wd * 0.06, y - hgt * 1.2)});
-        return {cx, y - hgt * 1.55};
+        p.setBrush(QColor("#b8e8ff"));
+        p.drawEllipse(QPointF(cx, y), wd * 0.1, wd * 0.06);  // the hinge
+        const QPointF pearl(cx, y - hgt * 1.12);
+        QRadialGradient pg(pearl - QPointF(wd * 0.03, wd * 0.03), wd * 0.12);
+        pg.setColorAt(0, Qt::white);
+        pg.setColorAt(1, QColor("#c8d0e8"));
+        p.setBrush(pg);
+        p.drawEllipse(pearl, wd * 0.08, wd * 0.08);
+        return {cx, pearl.y() - wd * 0.08};
     }
     // Humans (and anyone else): a cone with rows of tiles.
     const QPolygonF cone{QPointF(left - wd * 0.14, y), QPointF(cx, y - hgt), QPointF(right + wd * 0.14, y)};
