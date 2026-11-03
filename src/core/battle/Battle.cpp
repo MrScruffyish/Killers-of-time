@@ -84,6 +84,7 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             m_gate = Pos{kWallColumn, hex::kHeight / 2};
             m_towers = {Pos{kWallColumn + 1, 1}, Pos{kWallColumn + 1, hex::kHeight - 2}};
             if (m_wallLevel >= 2) m_towers.append(Pos{kWallColumn + 1, hex::kHeight / 2 - 2});
+            if (m_wallLevel >= 3) m_towers.append(Pos{kWallColumn + 1, hex::kHeight / 2 + 2});  // a castle
         }
     }
     // Rocks in the middle columns (in front of the walls in a siege).

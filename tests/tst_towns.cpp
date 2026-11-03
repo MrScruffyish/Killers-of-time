@@ -92,7 +92,7 @@ private slots:
         t().race = "undead";
         QVERIFY(build("barracks").error.contains("cannot be built in"));
         t().race = "humans";
-        QVERIFY(build("castle").error.contains("unknown building"));
+        QVERIFY(build("moon_palace").error.contains("unknown building"));
     }
 
     void whyCannotBuildExplains() {
@@ -224,6 +224,15 @@ private slots:
         endTurn(gs, reg);
         endTurn(gs, reg);  // day 8
         QCOMPARE(t().recruitPool.value("barracks"), 12 + 12);  // pikeman growth is 12
+    }
+
+    void granaryMakesDwellingsGrowMore() {
+        const UnitDef& militia = *reg.unit("militia");
+        QCOMPARE(townGrowth(gs, t(), militia, reg), 12);
+        me().resources["grain"] = 10;
+        buildOnNewDay("village_hall");
+        buildOnNewDay("granary");
+        QCOMPARE(townGrowth(gs, t(), militia, reg), 14);  // +20%, rounded
     }
 
     void buildingsAddIncome() {

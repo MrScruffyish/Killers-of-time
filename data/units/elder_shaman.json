@@ -1,0 +1,24 @@
+{
+  "id": "elder_shaman",
+  "name": "Elder Shaman",
+  "race": "orcs",
+  "tier": 3,
+  "attack": 9,
+  "defense": 7,
+  "damageMin": 6,
+  "damageMax": 9,
+  "maxHp": 31,
+  "battleSpeed": 6,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 495,
+    "mercury": 1
+  },
+  "initiative": 9,
+  "range": 6,
+  "shots": 12,
+  "spellPoints": 20,
+  "spells": [
+    "haste"
+  ]
+}

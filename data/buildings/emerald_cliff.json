@@ -1,0 +1,20 @@
+{
+  "id": "emerald_cliff",
+  "name": "Emerald Cliff",
+  "race": "sylvan",
+  "cost": {
+    "gold": 4900,
+    "stone": 6,
+    "gems": 3
+  },
+  "upgradeOf": "dragon_cliff",
+  "requires": [
+    "castle"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "emerald_dragon"
+    }
+  ]
+}

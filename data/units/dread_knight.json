@@ -11,12 +11,13 @@
   "battleSpeed": 9,
   "weeklyGrowth": 1,
   "cost": {
-    "gold": 3200,
+    "gold": 2900,
     "mercury": 2
   },
   "initiative": 11,
   "abilities": [
     "undead",
     "double_attack"
-  ]
+  ],
+  "upgradesTo": "doom_lord"
 }

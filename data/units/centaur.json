@@ -15,5 +15,6 @@
   },
   "initiative": 11,
   "range": 7,
-  "shots": 10
+  "shots": 10,
+  "upgradesTo": "centaur_chief"
 }

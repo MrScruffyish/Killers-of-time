@@ -869,6 +869,20 @@ void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     else if (id == "zombie") zombie(c);
     else if (id == "wraith") wraith(c);
     else if (id == "green_dragon") dragon(c, QColor("#6ab85a"));
+    else if (id == "emerald_dragon") dragon(c, QColor("#2ad88a"));
+    else if (id == "ghost_dragon") dragon(c, QColor("#a8d8e8"));
+    else if (id == "archangel") { angel(c); c.pen(kInk, 0.02); c.p.setBrush(QColor("#ffd84a")); c.poly({{0.36, 0.08}, {0.4, 0.0}, {0.46, 0.06}, {0.5, -0.02}, {0.54, 0.06}, {0.6, 0.0}, {0.64, 0.08}}); }
+    else if (id == "halberdier") { spearman(c, true); c.pen(kInk, 0.02); c.p.setBrush(kSteel); c.poly({{0.75, 0.1}, {0.92, 0.04}, {0.92, 0.2}, {0.75, 0.18}}); }
+    else if (id == "doom_lord") { swordsman(c, QColor("#4a1418")); c.pen(kInk, 0.02); c.p.setBrush(QColor("#ff3030")); c.p.drawEllipse(c.box(0.44, 0.2, 0.04, 0.04)); c.p.drawEllipse(c.box(0.52, 0.2, 0.04, 0.04)); }
+    else if (id == "wood_nymph") { wings(c, QColor(180, 240, 200, 160)); dryad(c); }
+    else if (id == "centaur_chief") { centaur(c); c.pen(kInk, 0.02); c.p.setBrush(QColor("#ffd84a")); c.poly({{0.56, 0.1}, {0.6, 0.02}, {0.64, 0.08}, {0.68, 0.0}, {0.7, 0.1}}); }
+    else if (id == "elder_shaman") robedCaster(c, QColor("#4a3a2a"), false, QColor("#ff60ff"));
+    else if (id == "ancient_behemoth") brute(c, QColor("#5a4a3a"), false);
+    else if (id == "rune_elder") robedCaster(c, QColor("#3a2a5a"), false, QColor("#c0e8ff"));
+    else if (id == "mountain_titan") golem(c, QColor("#6a6a7a"));
+    else if (id == "pit_king") { pitLord(c); c.pen(kInk, 0.02); c.p.setBrush(QColor("#ffd84a")); c.poly({{0.4, 0.06}, {0.44, -0.02}, {0.5, 0.04}, {0.56, -0.02}, {0.6, 0.06}}); }
+    else if (id == "tide_oracle") robedCaster(c, QColor("#1a4a7a"), false, QColor("#e0ffff"));
+    else if (id == "elder_kraken") kraken(c);
     else if (id.contains("dragon")) dragon(c);
     else if (id.contains("eagle")) eagle(c);
     else if (id.contains("snail")) snail(c);

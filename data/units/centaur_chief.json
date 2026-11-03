@@ -1,0 +1,19 @@
+{
+  "id": "centaur_chief",
+  "name": "Centaur Chief",
+  "race": "sylvan",
+  "tier": 3,
+  "attack": 11,
+  "defense": 9,
+  "damageMin": 7,
+  "damageMax": 10,
+  "maxHp": 34,
+  "battleSpeed": 9,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 415
+  },
+  "initiative": 12,
+  "range": 8,
+  "shots": 12
+}

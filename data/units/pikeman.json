@@ -12,5 +12,6 @@
   "weeklyGrowth": 12,
   "cost": {
     "gold": 35
-  }
+  },
+  "upgradesTo": "halberdier"
 }

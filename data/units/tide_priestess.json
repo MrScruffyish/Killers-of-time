@@ -20,5 +20,6 @@
   "spellPoints": 14,
   "spells": [
     "cure"
-  ]
+  ],
+  "upgradesTo": "tide_oracle"
 }

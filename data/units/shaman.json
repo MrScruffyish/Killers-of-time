@@ -20,5 +20,6 @@
   "spellPoints": 14,
   "spells": [
     "haste"
-  ]
+  ],
+  "upgradesTo": "elder_shaman"
 }

@@ -1,0 +1,17 @@
+{
+  "id": "elder_lodge",
+  "name": "Elder Lodge",
+  "race": "orcs",
+  "cost": {
+    "gold": 1050,
+    "wood": 3,
+    "mercury": 1
+  },
+  "upgradeOf": "spirit_lodge",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "elder_shaman"
+    }
+  ]
+}

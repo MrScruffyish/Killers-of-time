@@ -17,5 +17,6 @@
   "initiative": 7,
   "abilities": [
     "double_attack"
-  ]
+  ],
+  "upgradesTo": "elder_kraken"
 }

@@ -11,11 +11,12 @@
   "battleSpeed": 7,
   "weeklyGrowth": 1,
   "cost": {
-    "gold": 3800,
+    "gold": 4300,
     "sulphur": 2
   },
   "initiative": 8,
   "abilities": [
     "no_retaliation"
-  ]
+  ],
+  "upgradesTo": "pit_king"
 }

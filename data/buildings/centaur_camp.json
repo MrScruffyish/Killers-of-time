@@ -1,0 +1,16 @@
+{
+  "id": "centaur_camp",
+  "name": "Centaur Camp",
+  "race": "sylvan",
+  "cost": {
+    "gold": 1000,
+    "wood": 6
+  },
+  "upgradeOf": "centaur_plain",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "centaur_chief"
+    }
+  ]
+}

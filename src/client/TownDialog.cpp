@@ -112,6 +112,7 @@ QString TownDialog::effectsText(const core::BuildingDef& b) const {
         case T::Defense: parts << tr("Walls: the town's defenders get +%1 defense").arg(e.amount); break;
         case T::Market: parts << tr("Trade resources at %1% better rates").arg(e.amount); break;
         case T::Shipyard: parts << tr("Buy boats (coastal towns)"); break;
+        case T::Growth: parts << tr("Every dwelling here grows %1% more each week").arg(e.amount); break;
         }
     }
     return parts.isEmpty() ? tr("Needed for other buildings") : parts.join("; ");
@@ -124,6 +125,9 @@ void TownDialog::drawScene(const ViewTown& town) {
     QSet<QString> replaced;
     for (const QString& id : town.buildings)
         if (const core::BuildingDef* b = m_content->building(id); b && !b->upgradeOf.isEmpty()) replaced.insert(b->upgradeOf);
+    // Only the biggest hall stands in the picture.
+    if (town.buildings.contains("town_hall") || town.buildings.contains("city_hall")) replaced.insert("village_hall");
+    if (town.buildings.contains("city_hall")) replaced.insert("town_hall");
     QList<art::SceneBuilding> scene;
     for (const QString& id : town.buildings) {
         const core::BuildingDef* b = m_content->building(id);
@@ -142,8 +146,9 @@ void TownDialog::drawScene(const ViewTown& town) {
             case core::BuildingEffect::Type::Shipyard: sb.kind = K::Shipyard; break;
             case core::BuildingEffect::Type::Defense: sb.kind = K::Walls; break;
             case core::BuildingEffect::Type::Income:
-                if (id == QLatin1String("village_hall")) sb.kind = K::Hall;
+                if (id.endsWith(QLatin1String("_hall"))) sb.kind = K::Hall;
                 break;
+            case core::BuildingEffect::Type::Growth: break;
             }
         }
         scene.append(sb);

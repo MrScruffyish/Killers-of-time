@@ -11,10 +11,11 @@
   "battleSpeed": 7,
   "weeklyGrowth": 1,
   "cost": {
-    "gold": 4290
+    "gold": 4900
   },
   "initiative": 8,
   "abilities": [
     "no_retaliation"
-  ]
+  ],
+  "upgradesTo": "ancient_behemoth"
 }

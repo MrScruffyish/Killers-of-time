@@ -1,0 +1,22 @@
+{
+  "id": "doom_lord",
+  "name": "Doom Lord",
+  "race": "undead",
+  "tier": 5,
+  "attack": 24,
+  "defense": 24,
+  "damageMin": 39,
+  "damageMax": 56,
+  "maxHp": 190,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3750,
+    "mercury": 2
+  },
+  "initiative": 12,
+  "abilities": [
+    "undead",
+    "double_attack"
+  ]
+}

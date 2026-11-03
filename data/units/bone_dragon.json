@@ -18,5 +18,6 @@
   "abilities": [
     "undead",
     "flying"
-  ]
+  ],
+  "upgradesTo": "ghost_dragon"
 }

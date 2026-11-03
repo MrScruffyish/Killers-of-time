@@ -1,0 +1,20 @@
+{
+  "id": "mountain_hall",
+  "name": "Mountain Hall",
+  "race": "dwarves",
+  "cost": {
+    "gold": 4900,
+    "stone": 12,
+    "gems": 3
+  },
+  "upgradeOf": "titan_hall",
+  "requires": [
+    "castle"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "mountain_titan"
+    }
+  ]
+}

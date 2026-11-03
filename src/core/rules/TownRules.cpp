@@ -221,8 +221,13 @@ ActionResult recruit(GameState& state, const ContentRegistry& content, TownId to
 int townGrowth(const GameState& state, const Town& town, const UnitDef& unit, const ContentRegistry& content) {
     const Player* owner = state.player(town.owner);
     const WeekEventDef* event = content.weekEvent(state.weekEvent());
+    int buildings = 0;  // granaries and the like
+    for (const QString& id : town.buildings)
+        if (const BuildingDef* b = content.building(id))
+            for (const BuildingEffect& e : b->effects)
+                if (e.type == BuildingEffect::Type::Growth) buildings += e.amount;
     const int percent = 100 + content.race(town.race).growthPercent + (owner ? owner->growthPercent : 0) +
-                        (event ? event->growthPercent : 0);
+                        (event ? event->growthPercent : 0) + buildings;
     return std::max(unit.weeklyGrowth > 0 ? 1 : 0, (unit.weeklyGrowth * percent + 50) / 100);
 }
 

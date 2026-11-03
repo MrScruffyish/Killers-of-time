@@ -1,0 +1,21 @@
+{
+  "id": "pit_king",
+  "name": "Pit King",
+  "race": "ashborn",
+  "tier": 5,
+  "attack": 26,
+  "defense": 22,
+  "damageMin": 39,
+  "damageMax": 56,
+  "maxHp": 224,
+  "battleSpeed": 7,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 5200,
+    "sulphur": 2
+  },
+  "initiative": 9,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

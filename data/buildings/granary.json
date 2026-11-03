@@ -1,0 +1,18 @@
+{
+  "id": "granary",
+  "name": "Granary",
+  "cost": {
+    "gold": 1500,
+    "wood": 5,
+    "grain": 5
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "growth",
+      "amount": 20
+    }
+  ]
+}

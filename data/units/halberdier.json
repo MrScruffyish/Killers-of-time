@@ -1,0 +1,17 @@
+{
+  "id": "halberdier",
+  "name": "Halberdier",
+  "race": "humans",
+  "tier": 1,
+  "attack": 6,
+  "defense": 6,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 11,
+  "battleSpeed": 5,
+  "weeklyGrowth": 12,
+  "cost": {
+    "gold": 45
+  },
+  "initiative": 9
+}

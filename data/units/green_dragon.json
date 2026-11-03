@@ -5,9 +5,9 @@
   "tier": 5,
   "attack": 22,
   "defense": 20,
-  "damageMin": 40,
-  "damageMax": 50,
-  "maxHp": 180,
+  "damageMin": 48,
+  "damageMax": 60,
+  "maxHp": 216,
   "battleSpeed": 10,
   "weeklyGrowth": 1,
   "cost": {
@@ -17,5 +17,6 @@
   "initiative": 12,
   "abilities": [
     "flying"
-  ]
+  ],
+  "upgradesTo": "emerald_dragon"
 }

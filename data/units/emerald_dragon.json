@@ -1,0 +1,21 @@
+{
+  "id": "emerald_dragon",
+  "name": "Emerald Dragon",
+  "race": "sylvan",
+  "tier": 5,
+  "attack": 24,
+  "defense": 22,
+  "damageMin": 54,
+  "damageMax": 67,
+  "maxHp": 242,
+  "battleSpeed": 10,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3640,
+    "gems": 2
+  },
+  "initiative": 13,
+  "abilities": [
+    "flying"
+  ]
+}

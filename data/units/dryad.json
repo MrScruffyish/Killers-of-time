@@ -20,5 +20,6 @@
   "spellPoints": 6,
   "spells": [
     "regrowth"
-  ]
+  ],
+  "upgradesTo": "wood_nymph"
 }

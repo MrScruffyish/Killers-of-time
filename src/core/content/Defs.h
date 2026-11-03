@@ -158,7 +158,8 @@ struct BuildingEffect {
         MageGuild, // heroes in this town learn all spells up to `amount` (the guild level)
         Defense,   // the town's defenders get +`amount` defense in battle (walls)
         Market,    // its owner trades at +`amount` percent better rates (less fee)
-        Shipyard   // heroes in the town can buy a boat (coastal towns only)
+        Shipyard,  // heroes in the town can buy a boat (coastal towns only)
+        Growth     // the town's dwellings grow `amount` percent more each week
     };
     Type type = Type::Income;
     QString unit;

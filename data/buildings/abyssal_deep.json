@@ -1,0 +1,20 @@
+{
+  "id": "abyssal_deep",
+  "name": "Abyssal Deep",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 4550,
+    "stone": 9,
+    "gems": 3
+  },
+  "upgradeOf": "kraken_deep",
+  "requires": [
+    "castle"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "elder_kraken"
+    }
+  ]
+}
