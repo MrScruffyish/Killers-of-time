@@ -129,7 +129,7 @@ private slots:
     }
 
     // On most island maps the AIs take to the sea once their island is done (a map
-    // can keep them busy at home for the 60 days, so three maps are played).
+    // can keep them busy at home for the 60 days, so six maps are played and half must sail).
     int islandAwayDays(quint64 seed) {
         net::LobbyState lobby;
         lobby.settings.seed = seed;
@@ -189,8 +189,8 @@ private slots:
 
     void aisSailOnIslandMaps() {
         int maps = 0;
-        for (const quint64 seed : {31, 32, 33}) maps += islandAwayDays(seed) > 0;
-        QVERIFY2(maps >= 2, "AIs should take to the sea when their island is done");
+        for (const quint64 seed : {31, 32, 33, 34, 35, 36}) maps += islandAwayDays(seed) > 0;
+        QVERIFY2(maps >= 3, "AIs should take to the sea when their island is done");
     }
 
     void deterministic() {

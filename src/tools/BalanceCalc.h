@@ -46,4 +46,19 @@ struct DuelRow {
 // Every pair of the same tier (tier 0 = all tiers, still pairs of one tier).
 QList<DuelRow> duelRows(const core::ContentRegistry& content, int tier, int gold, int runs);
 
+// Growth counts too: what a fully built town of the race grows in `weeks` (the best
+// version of each dwelling, the race's growth bonus), as unit id -> count.
+// With budgetPerWeek > 0 the race also has only that much gold a week (scaled by its
+// incomePercent) and buys the best units first, as a player would.
+QList<QPair<QString, int>> raceWeekArmy(const core::ContentRegistry& content, const QString& race, int weeks, int budgetPerWeek = 0);
+struct WeekRow {
+    QString a, b;
+    double share = 0;          // A's wins
+    double costA = 0, costB = 0;  // what each army costs to buy
+    QString note;
+};
+// Race against race, each with its weeks of growth; every pair of races.
+WeekRow weekBattle(const core::ContentRegistry& content, const QString& a, const QString& b, int weeks, int runs, int budgetPerWeek = 0);
+QList<WeekRow> weekRows(const core::ContentRegistry& content, int weeks, int runs, int budgetPerWeek = 0);
+
 }  // namespace kot::tools

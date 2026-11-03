@@ -133,4 +133,71 @@ QList<DuelRow> duelRows(const ContentRegistry& c, int tier, int gold, int runs) 
     return rows;
 }
 
+QList<QPair<QString, int>> raceWeekArmy(const ContentRegistry& c, const QString& race, int weeks, int budgetPerWeek) {
+    const RaceDef& rd = c.race(race);
+    QStringList units;
+    for (const BuildingDef& b : c.buildings()) {
+        if (b.race != race) continue;
+        for (const BuildingEffect& e : b.effects)
+            if (e.type == BuildingEffect::Type::Dwelling) units << e.unit;
+    }
+    for (const QString& id : QStringList(units)) {  // only the best version of each dwelling
+        const UnitDef* u = c.unit(id);
+        if (u && !u->upgradesTo.isEmpty() && units.contains(u->upgradesTo)) units.removeAll(id);
+    }
+    std::sort(units.begin(), units.end(), [&](const QString& x, const QString& y) {  // best first
+        const UnitDef *ux = c.unit(x), *uy = c.unit(y);
+        return ux && uy && (ux->tier != uy->tier ? ux->tier > uy->tier : x < y);
+    });
+    double gold = budgetPerWeek > 0 ? double(budgetPerWeek) * weeks * (100 + rd.incomePercent) / 100.0 : 1e18;
+    QList<QPair<QString, int>> army;
+    for (const QString& id : units) {
+        const UnitDef* u = c.unit(id);
+        if (!u) continue;
+        const int perWeek = std::max(1, int(std::lround(u->weeklyGrowth * (100.0 + rd.growthPercent) / 100.0)));
+        const double price = std::max(1.0, goldValue(c, u->cost));
+        const int n = std::min(perWeek * weeks, int(gold / price));
+        if (n <= 0) continue;
+        gold -= n * price;
+        army << qMakePair(id, n);
+    }
+    return army;
+}
+
+WeekRow weekBattle(const ContentRegistry& c, const QString& a, const QString& b, int weeks, int runs, int budgetPerWeek) {
+    WeekRow r;
+    r.a = a;
+    r.b = b;
+    const auto armyA = raceWeekArmy(c, a, weeks, budgetPerWeek), armyB = raceWeekArmy(c, b, weeks, budgetPerWeek);
+    for (const auto& [id, n] : armyA) r.costA += n * goldValue(c, c.unit(id)->cost);
+    for (const auto& [id, n] : armyB) r.costB += n * goldValue(c, c.unit(id)->cost);
+    int winsA = 0;
+    for (int i = 0; i < runs; ++i) {
+        GameState gs(2000 + i);
+        gs.setMap(GameMap(4, 4, c.terrain().firstKey()));
+        const ArmyId aa = gs.addArmy(PlayerId(), {0, 0});
+        const ArmyId bb = gs.addArmy(PlayerId(), {1, 0});
+        for (const auto& [id, n] : armyA) gs.army(aa)->addUnits(id, n, c.unit(id)->maxHp);
+        for (const auto& [id, n] : armyB) gs.army(bb)->addUnits(id, n, c.unit(id)->maxHp);
+        const bool aAttacks = (i % 2 == 0);
+        Battle battle(gs, c, aAttacks ? aa : bb, aAttacks ? bb : aa, 99 + i);
+        for (int guard = 0; guard < 5000 && !battle.isOver(); ++guard) battle.act(chooseBattleAction(battle));
+        const bool attackerWon = battle.outcome() == Battle::Outcome::AttackerWon;
+        const bool defenderWon = battle.outcome() == Battle::Outcome::DefenderWon;
+        if ((aAttacks && attackerWon) || (!aAttacks && defenderWon)) ++winsA;
+    }
+    r.share = double(winsA) / runs;
+    if (r.share > 0.75) r.note = QStringLiteral("favours the first");
+    if (r.share < 0.25) r.note = QStringLiteral("favours the second");
+    return r;
+}
+
+QList<WeekRow> weekRows(const ContentRegistry& c, int weeks, int runs, int budgetPerWeek) {
+    QList<WeekRow> rows;
+    const QStringList races = c.raceIds();
+    for (int i = 0; i < races.size(); ++i)
+        for (int j = i + 1; j < races.size(); ++j) rows << weekBattle(c, races[i], races[j], weeks, runs, budgetPerWeek);
+    return rows;
+}
+
 }  // namespace kot::tools

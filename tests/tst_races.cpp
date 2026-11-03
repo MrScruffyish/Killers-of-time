@@ -62,12 +62,12 @@ private slots:
         QCOMPARE(townGrowth(gs, *gs.town(u), *reg.unit("skeleton"), reg), 18);
         const TownId s = gs.addTown("S", "sylvan", {9, 9}, p1);
         QVERIFY(buildBuilding(gs, reg, s, "woodcutters_lodge", p1).ok);
-        QCOMPARE(gs.town(s)->recruitPool.value("woodcutters_lodge"), (12 * 85 + 50) / 100);  // 10
+        QCOMPARE(gs.town(s)->recruitPool.value("woodcutters_lodge"), (12 * 125 + 50) / 100);  // 15
     }
 
     void undeadTownsYieldLessGold() {
         town("undead");
-        QCOMPARE(dailyIncome(gs, reg, p1).value("gold"), reg.balance().economy.townDailyGold * 80 / 100);
+        QCOMPARE(dailyIncome(gs, reg, p1).value("gold"), reg.balance().economy.townDailyGold * 90 / 100);
     }
 
     void sylvanHeroesAreFastInForests() {

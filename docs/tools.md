@@ -33,6 +33,7 @@ kot_balance units [--race id] [--csv]          power and cost of every unit, out
 kot_balance races [--csv]                      a week of each race's dwellings: power and cost
 kot_balance duel <unitA> <unitB> [--gold n] [--runs n]
 kot_balance duels [--tier n] [--gold n] [--runs n] [--csv]
+kot_balance weeks [--weeks n] [--budget gold] [--runs n] [--csv]
 ```
 - Power is a rough fighting value: HP x average damage x (1 + 5% per attack + defense
   point), weighted up for ranged, flying, double attack and no retaliation.
@@ -43,6 +44,11 @@ kot_balance duels [--tier n] [--gold n] [--runs n] [--csv]
 - Duels: two armies of equal cost (the budget grows so each side has at least 6 units)
   fight with the real battle rules and the battle AI, without heroes, half of the battles
   with each side attacking. Pairs where one side wins more than 75% are marked.
+- Weeks: growth counts. Each race fights with what a fully built town grows in `--weeks`
+  (the best version of every dwelling, the race's `growthPercent`); with `--budget` it has
+  only that much gold a week (times its `incomePercent`) and buys the best units first,
+  as a player would. Prints the armies, every pair of races and each race's average wins.
+  Equal-gold duels miss a race that is cheap but grows slowly; this does not.
 
 ## kot_balance_gui: tweaking
 

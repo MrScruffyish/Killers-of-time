@@ -4,6 +4,8 @@
 //   kot_balance races  [--csv]                   weekly power and cost per race
 //   kot_balance duel A B [--gold 5000] [--runs 200]   equal-cost armies fight it out
 //   kot_balance duels  [--tier n] [--gold 5000] [--runs 100] [--csv]   every pair of a tier
+//   kot_balance weeks  [--weeks 2] [--budget gold/week] [--runs 20] [--csv]   race against race, each with its
+//                      weeks of growth (and, with a budget, only what that gold buys, best units first)
 //
 // Power is a rough fighting value: HP x average damage x (1 + 5% per attack+defense
 // point). Duels use the real battle rules and the battle AI (no heroes), half of the
@@ -90,6 +92,33 @@ int duelsReport(const ContentRegistry& c, int tier, int gold, int runs, bool csv
 
 }  // namespace
 
+int weeksReport(const ContentRegistry& c, int weeks, int runs, int budget, bool csv) {
+    if (!csv) {
+        std::printf("Armies (%d week(s)%s):\n", weeks, budget > 0 ? qPrintable(QStringLiteral(", %1 gold a week").arg(budget)) : "");
+        for (const QString& race : c.raceIds()) {
+            QStringList parts;
+            for (const auto& [id, n] : raceWeekArmy(c, race, weeks, budget)) parts << QStringLiteral("%1 %2").arg(n).arg(id);
+            std::printf("  %-10s %s\n", qPrintable(race), qPrintable(parts.join(", ")));
+        }
+        std::printf("\n");
+    }
+    const QList<int> w = {10, 10, 8, 10, 10, 18};
+    row(csv, {"race A", "race B", "A wins", "A cost", "B cost", "note"}, w);
+    QHash<QString, QList<double>> score;
+    for (const WeekRow& r : weekRows(c, weeks, runs, budget)) {
+        row(csv, {r.a, r.b, QString::number(r.share * 100, 'f', 0) + "%", QString::number(r.costA, 'f', 0), QString::number(r.costB, 'f', 0), r.note}, w);
+        score[r.a] << r.share;
+        score[r.b] << 1 - r.share;
+    }
+    if (csv) return 0;
+    std::printf("\nAverage wins (a fair race is near 50%%):\n");
+    QStringList races = score.keys();
+    const auto avg = [&](const QString& r) { double t = 0; for (double v : score[r]) t += v; return t / std::max<qsizetype>(1, score[r].size()); };
+    std::sort(races.begin(), races.end(), [&](const QString& x, const QString& y) { return avg(x) > avg(y); });
+    for (const QString& r : races) std::printf("  %-10s %3.0f%%\n", qPrintable(r), avg(r) * 100);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("kot_balance"));
@@ -99,16 +128,19 @@ int main(int argc, char** argv) {
         "  kot_balance units [--race id] [--csv]\n"
         "  kot_balance races [--csv]\n"
         "  kot_balance duel <unitA> <unitB> [--gold n] [--runs n]\n"
-        "  kot_balance duels [--tier n] [--gold n] [--runs n] [--csv]"));
+        "  kot_balance duels [--tier n] [--gold n] [--runs n] [--csv]\n"
+        "  kot_balance weeks [--weeks n] [--runs n] [--csv]"));
     parser.addHelpOption();
-    parser.addPositionalArgument(QStringLiteral("report"), QStringLiteral("units, races, duel or duels"));
+    parser.addPositionalArgument(QStringLiteral("report"), QStringLiteral("units, races, duel, duels or weeks"));
     QCommandLineOption dataOption(QStringList{"d", "data"}, QStringLiteral("Game data directory."), QStringLiteral("dir"));
     QCommandLineOption raceOption(QStringList{"r", "race"}, QStringLiteral("Only this race."), QStringLiteral("id"));
     QCommandLineOption csvOption(QStringLiteral("csv"), QStringLiteral("Comma separated output."));
     QCommandLineOption goldOption(QStringLiteral("gold"), QStringLiteral("Gold budget per army (duels)."), QStringLiteral("n"), "5000");
     QCommandLineOption runsOption(QStringLiteral("runs"), QStringLiteral("Battles per pair (duels)."), QStringLiteral("n"), "100");
     QCommandLineOption tierOption(QStringLiteral("tier"), QStringLiteral("Only this tier (duels; 0 = every tier)."), QStringLiteral("n"), "0");
-    for (auto* o : {&dataOption, &raceOption, &csvOption, &goldOption, &runsOption, &tierOption}) parser.addOption(*o);
+    QCommandLineOption budgetOption(QStringLiteral("budget"), QStringLiteral("Gold a week to buy with (weeks; 0 = buy everything)."), QStringLiteral("n"), "0");
+    QCommandLineOption weeksOption(QStringLiteral("weeks"), QStringLiteral("Weeks of growth per army (weeks)."), QStringLiteral("n"), "2");
+    for (auto* o : {&dataOption, &raceOption, &csvOption, &goldOption, &runsOption, &tierOption, &weeksOption, &budgetOption}) parser.addOption(*o);
     parser.process(app);
     const QStringList args = parser.positionalArguments();
     if (args.isEmpty()) parser.showHelp(2);
@@ -128,6 +160,9 @@ int main(int argc, char** argv) {
     if (what == QLatin1String("units")) return unitsReport(content, parser.value(raceOption), csv);
     if (what == QLatin1String("races")) return racesReport(content, csv);
     if (what == QLatin1String("duel") && args.size() == 3) return duelReport(content, args[1], args[2], gold, runs);
+    if (what == QLatin1String("weeks"))
+        return weeksReport(content, std::clamp(parser.value(weeksOption).toInt(), 1, 52), parser.isSet(runsOption) ? runs : 20,
+                           std::max(0, parser.value(budgetOption).toInt()), csv);
     if (what == QLatin1String("duels")) return duelsReport(content, parser.value(tierOption).toInt(), gold, runs, csv);
     parser.showHelp(2);
 }

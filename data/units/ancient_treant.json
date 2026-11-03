@@ -11,7 +11,7 @@
   "battleSpeed": 3,
   "weeklyGrowth": 4,
   "cost": {
-    "gold": 700,
+    "gold": 630,
     "wood": 2
   },
   "initiative": 4,

@@ -9,7 +9,7 @@
   "damageMax": 7,
   "maxHp": 28,
   "battleSpeed": 5,
-  "weeklyGrowth": 5,
+  "weeklyGrowth": 4,
   "cost": {
     "gold": 330,
     "gems": 1

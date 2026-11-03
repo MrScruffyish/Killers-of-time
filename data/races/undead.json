@@ -1,9 +1,9 @@
 {
   "id": "undead",
   "name": "Undead",
-  "description": "Endless hordes (+25% growth), but poor towns (-20% gold). At home in swamps. Dark and earth magic.",
+  "description": "Endless hordes (+25% growth), but poor towns (-10% gold). At home in swamps. Dark and earth magic.",
   "growthPercent": 25,
-  "incomePercent": -20,
+  "incomePercent": -10,
   "terrainCostPercent": {
     "swamp": 50
   },

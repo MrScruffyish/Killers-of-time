@@ -11,7 +11,7 @@
   "battleSpeed": 6,
   "weeklyGrowth": 3,
   "cost": {
-    "gold": 1455
+    "gold": 1795
   },
   "initiative": 8,
   "upgradesTo": "bear_lord"

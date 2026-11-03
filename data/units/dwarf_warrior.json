@@ -11,7 +11,7 @@
   "battleSpeed": 3,
   "weeklyGrowth": 10,
   "cost": {
-    "gold": 50
+    "gold": 60
   },
   "initiative": 5,
   "upgradesTo": "dwarf_veteran"

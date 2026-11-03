@@ -11,7 +11,7 @@
   "battleSpeed": 7,
   "weeklyGrowth": 2,
   "cost": {
-    "gold": 1600
+    "gold": 1760
   },
   "initiative": 7,
   "upgradesTo": "elder_serpent"
