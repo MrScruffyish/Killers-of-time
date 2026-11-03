@@ -13,6 +13,25 @@ double danger(const BattleUnit& u) {
     return u.stack.count() * (u.def->damageMin + u.def->damageMax) / 2.0 * (1.0 + 0.05 * u.def->attack);
 }
 
+// How good it is for `me` to strike `target` now: the danger of the units it would
+// kill (shooters count more: they hurt from afar), minus what strikes back.
+double strikeValue(const Battle& b, const BattleUnit& me, const BattleUnit& target, bool ranged) {
+    const BattleBalance& bb = b.content().balance().battle;
+    const int diff = (me.def->attack + me.modifier(QStringLiteral("attack"))) - (target.def->defense + target.modifier(QStringLiteral("defense")));
+    double mult = 1.0;
+    if (diff > 0) mult += std::min(diff * bb.attackPercentPerPoint, bb.maxAttackPercent) / 100.0;
+    if (diff < 0) mult -= std::min(-diff * bb.defensePercentPerPoint, bb.maxDefensePercent) / 100.0;
+    const double damage = me.stack.count() * (me.def->damageMin + me.def->damageMax) / 2.0 * mult * (me.def->has(QStringLiteral("double_attack")) ? 2 : 1);
+    const double kills = std::min<double>(target.stack.count(), damage / std::max(1, target.stack.maxHp()));
+    const double perUnit = danger(target) / std::max(1, target.stack.count());
+    double value = kills * perUnit * (target.def->range > 0 && target.shotsLeft > 0 ? 1.5 : 1.0);
+    if (!ranged && !target.retaliated && !me.def->has(QStringLiteral("no_retaliation"))) {
+        const double left = std::max(0.0, target.stack.count() - kills);
+        value -= 0.35 * left * perUnit;  // the counter-blow
+    }
+    return value;
+}
+
 }  // namespace
 
 BattleAction chooseBattleAction(const Battle& b) {
@@ -93,13 +112,22 @@ BattleAction chooseBattleAction(const Battle& b) {
     }
 
     if (b.canShoot(*me)) {
-        // The most dangerous enemy in range.
+        // The enemy in range it hurts most.
+        const BattleUnit* bestShot = nullptr;
+        double bestShotValue = -1e18;
         for (const BattleUnit* e : enemies)
             if (b.canShootAt(*me, *e)) {
-                a.type = BattleAction::Type::Shoot;
-                a.target = e->id;
-                return a;
+                const double v = strikeValue(b, *me, *e, true);
+                if (v > bestShotValue) {
+                    bestShotValue = v;
+                    bestShot = e;
+                }
             }
+        if (bestShot) {
+            a.type = BattleAction::Type::Shoot;
+            a.target = bestShot->id;
+            return a;
+        }
         // None in range: step to where one is, as far from the enemies as possible.
         const int range = b.shootRange(*me);
         const QHash<Pos, int> reach = b.reachable(*me);
@@ -127,15 +155,27 @@ BattleAction chooseBattleAction(const Battle& b) {
             return a;
         }
     }
+    // Of the enemies it can reach, the best blow (a bad trade is still taken when
+    // it is the only one: standing still does not win battles).
+    const BattleUnit* bestTarget = nullptr;
+    Pos bestFrom;
+    double bestValue = -1e18;
     for (const BattleUnit* e : enemies) {
         Pos from;
-        if (b.attackHex(*me, *e, &from)) {
-            a.type = BattleAction::Type::Attack;
-            a.target = e->id;
-            a.hex = from;
-            a.hasHex = true;
-            return a;
+        if (!b.attackHex(*me, *e, &from)) continue;
+        const double v = strikeValue(b, *me, *e, false);
+        if (v > bestValue) {
+            bestValue = v;
+            bestTarget = e;
+            bestFrom = from;
         }
+    }
+    if (bestTarget) {
+        a.type = BattleAction::Type::Attack;
+        a.target = bestTarget->id;
+        a.hex = bestFrom;
+        a.hasHex = true;
+        return a;
     }
     // Ranged units out of shots or blocked still walk in; everybody closes in.
     const QHash<Pos, int> reach = b.reachable(*me);

@@ -276,9 +276,13 @@ void TownDialog::rebuild() {
     }
 
     // ---- Recruit (only when there is something to recruit)
+    // (Or a hero is here and the garrison has units: then its Give all button is wanted.)
     int recruitable = 0;
     for (const RecruitChoice& rc : town->recruitOptions) recruitable += rc.available;
-    if (recruitable > 0) {
+    bool heroCanTake = false;
+    if (const ViewArmy* g = m_view.army(town->garrison); g && !g->stacks.isEmpty())
+        for (const ViewHero* h : m_view.myHeroes()) heroCanTake = heroCanTake || h->pos == town->pos;
+    if (recruitable > 0 || heroCanTake) {
         auto* page = new QWidget();
         auto* layout = new QVBoxLayout(page);
         const ViewArmy* garrison = m_view.army(town->garrison);

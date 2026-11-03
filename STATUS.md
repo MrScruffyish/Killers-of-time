@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
 **Current milestone:** first versions of every part of the game are in (M0-M10); version 0.3.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
-**Next session should do:** go on with the user's playtest notes. Graphics: more variety (next maybe a nicer minimap, map decorations, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
+**Next session should do:** go on with the user's playtest notes. New in this round: races dwarves/orcs, sieges, hot-seat, roads, three scenarios and The Great War campaign. Graphics: more variety (next maybe a nicer minimap, map decorations, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -192,6 +192,7 @@ and react to; add depth afterwards.
 - [x] Two new races: Dwarves (hills and snow, earth and water magic: warriors, axe throwers, golems, rune priests, bear riders, earth titan) and Orcs (steppe, air and dark magic: goblins, wolf riders, orc warriors, shamans, cyclopes, behemoth), each with upgrade paths, dwellings, 2 hero classes and 4 tavern heroes; new upgrades for the old races (forest warden, silver unicorn, paladin, priest, vampire lord, arch lich); neutral monsters giant spider, fire elemental, basilisk, minotaur, hydra; 14 new artifacts (24); pictures, town looks and portraits for all. Content: 5 races, 67 units, 66 buildings, 24 spells
 - [x] Random maps: roads join every town to its nearest neighbours (bridges over rivers), mountain ranges with passes, more rivers on bigger maps
 - [x] AI: a hero who walks into his town later in the turn takes the garrison (took nothing before and came back every day); fetches the garrison only when it at least doubles his army; computer heroes do not stop on sighting (that is for humans)
+- [x] Battle AI picks the best blow: kills times danger (shooters count more) minus the counter-blow; town: the Recruit tab stays while a hero can still take the garrison
 - [~] Balance: a quick pass on prices (crusader, swordsman, cavalier, vampire, ogre, troll, snail, ancient treant dearer; green dragon cheaper): power per 1000 gold now 3.2-3.5k for every race. More later with kot_balance_gui
 
 ---
