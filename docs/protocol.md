@@ -128,10 +128,7 @@ continues; his turns are skipped).
 coming back) picks one with `join_game`. After loading, all humans are free and the game waits on
 a free human's turn until someone takes him over. No passwords yet: anyone can take a free player.
 
-## Coming next
-Hex battles with a UI, spells.
-
-### Battles
+## Battles
 Moving onto a tile with hostile armies (enemy heroes, neutral monsters, a defended town)
 attacks them when the hero can pay the whole path; the hero fights from the tile before.
 Each defender is fought in turn (a visiting hero first, then the garrison).

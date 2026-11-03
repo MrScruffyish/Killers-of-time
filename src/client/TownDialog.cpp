@@ -146,9 +146,12 @@ void TownDialog::drawScene(const ViewTown& town) {
             case core::BuildingEffect::Type::Shipyard: sb.kind = K::Shipyard; break;
             case core::BuildingEffect::Type::Defense: sb.kind = K::Walls; break;
             case core::BuildingEffect::Type::Income:
-                if (id.endsWith(QLatin1String("_hall"))) sb.kind = K::Hall;
+                if (id == QLatin1String("village_hall") || id == QLatin1String("town_hall") || id == QLatin1String("city_hall")) {
+                    sb.kind = K::Hall;
+                    sb.level = id == QLatin1String("city_hall") ? 2 : id == QLatin1String("town_hall") ? 1 : 0;
+                }
                 break;
-            case core::BuildingEffect::Type::Growth: break;
+            case core::BuildingEffect::Type::Growth: sb.kind = K::Granary; break;
             }
         }
         scene.append(sb);

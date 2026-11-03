@@ -73,9 +73,9 @@ void drawTownIcon(QPainter& p, const QRectF& r, const TownLook& look);
 const QPixmap& townSprite(const TownLook& look, int size);
 // The picture on the town screen: one figure per building, walls in front.
 struct SceneBuilding {
-    enum class Kind { Hall, MageGuild, Dwelling, Tavern, Market, Other, Shipyard, Walls };
+    enum class Kind { Hall, MageGuild, Dwelling, Tavern, Market, Granary, Other, Shipyard, Walls };
     Kind kind = Kind::Other;
-    int level = 0;   // dwellings: unit rank (taller when trained), mage guild: its level
+    int level = 0;   // dwellings: unit rank (taller when trained), mage guild: its level, hall: 0 village, 1 town, 2 city
     QString unit;    // dwellings: the unit
 };
 void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QList<SceneBuilding>& buildings);

@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
 **Current milestone:** first versions of every part of the game are in (M0-M10); version 0.3.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
-**Next session should do:** go on with the user's playtest notes. New in this round: races dwarves/orcs, sieges, hot-seat, roads, three scenarios and The Great War campaign, a random scenario/campaign maker, races Ashborn (fire) and Tidefolk (sea) with a fire school of magic. Graphics: more variety (next maybe a nicer minimap, map decorations, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
+**Next session should do:** go on with the user's playtest notes. This round so far: races dwarves/orcs/ashborn/tidefolk (7), sieges with castles, hot-seat, roads, scenarios and campaigns plus a random maker, 14 more unit upgrades, town/city hall, granary, coasts and terrain features, a softer UI style, growth-aware balancing (`kot_balance weeks`). Next: pictures for the new town buildings, a nicer minimap, a smarter battle AI, a few map decorations. Later: race abilities of their own (user agreed 7 races are enough for now), balance (sylvan weakest, tidefolk strong over 3 weeks, elves out-range humans). Not wanted (user): day/night, seasons; animation for now
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user

@@ -159,9 +159,9 @@ private slots:
         }
         using K = art::SceneBuilding::Kind;
         art::drawTownScene(tp, QRectF(0, 3 * 120 + 10, towns.width(), 170), art::TownLook{QColor("#d62728"), "humans", 2, 12},
-                           {{K::Hall, 0, {}}, {K::Tavern, 0, {}}, {K::Dwelling, 1, "pikeman"}, {K::Dwelling, 2, "archer_elite"},
-                            {K::MageGuild, 2, {}}, {K::Market, 0, {}}, {K::Shipyard, 0, {}}, {K::Walls, 0, {}}, {K::Walls, 0, {}},
-                            {K::Dwelling, 0, "armoured_eagle"}});
+                           {{K::Hall, 2, {}}, {K::Tavern, 0, {}}, {K::Dwelling, 1, "pikeman"}, {K::Dwelling, 2, "archer_elite"},
+                            {K::MageGuild, 2, {}}, {K::Market, 0, {}}, {K::Granary, 0, {}}, {K::Shipyard, 0, {}}, {K::Walls, 0, {}},
+                            {K::Walls, 0, {}}, {K::Walls, 0, {}}, {K::Dwelling, 0, "armoured_eagle"}});
         tp.end();
         if (!dir.isEmpty()) towns.save(QDir(dir).filePath("0_towns.png"));
         // Hero portraits of every class.

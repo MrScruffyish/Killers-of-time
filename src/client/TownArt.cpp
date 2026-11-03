@@ -206,6 +206,58 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
             for (int i = 0; i < 3; ++i) p.drawRoundedRect(QRectF(hall.left() + unit * (0.2 + 0.4 * i), hall.top() + unit * 0.25, unit * 0.18, unit * 0.3), 3, 3);
             p.setBrush(QColor("#4a3520"));
             p.drawChord(QRectF(hall.center().x() - unit * 0.15, base - unit * 0.45, unit * 0.3, unit * 0.9), 0, 180 * 16);
+            if (b.level >= 1) {  // a town hall: a clock tower on the roof
+                const QRectF ct(hall.center().x() - unit * 0.14, hall.top() - unit * 0.62, unit * 0.28, unit * 0.42);
+                p.setBrush(pal.stone.lighter(108));
+                p.drawRect(ct);
+                p.setBrush(QColor("#f4ecd0"));
+                p.drawEllipse(ct.center(), unit * 0.09, unit * 0.09);
+                p.drawLine(ct.center(), ct.center() + QPointF(0, -unit * 0.07));
+                p.drawLine(ct.center(), ct.center() + QPointF(unit * 0.05, 0));
+                if (b.level >= 2) {  // the city hall's golden dome
+                    p.setBrush(QColor("#e8c04a"));
+                    p.drawChord(QRectF(ct.left() - unit * 0.04, ct.top() - unit * 0.16, ct.width() + unit * 0.08, unit * 0.32), 0, 180 * 16);
+                } else {
+                    p.setBrush(roof.darker(115));
+                    p.drawPolygon(QPolygonF{QPointF(ct.left() - unit * 0.05, ct.top()), QPointF(ct.center().x(), ct.top() - unit * 0.18),
+                                            QPointF(ct.right() + unit * 0.05, ct.top())});
+                }
+            }
+            if (b.level >= 2) {  // a city hall: wings, a golden dome and banners
+                for (const double side : {-1.0, 1.0}) {
+                    const QRectF wing(side < 0 ? hall.left() - unit * 0.45 : hall.right(), base - unit * 0.75, unit * 0.45, unit * 0.75);
+                    p.setBrush(pal.stone.darker(104));
+                    p.drawRect(wing);
+                    p.setBrush(pal.window);
+                    p.drawRoundedRect(QRectF(wing.center().x() - unit * 0.08, wing.top() + unit * 0.2, unit * 0.16, unit * 0.26), 3, 3);
+                    p.setBrush(roof);
+                    p.drawRect(QRectF(wing.left(), wing.top() - unit * 0.08, wing.width(), unit * 0.08));
+                    const QPointF pole(wing.center().x(), wing.top() - unit * 0.08);
+                    p.drawLine(pole, pole - QPointF(0, unit * 0.45));
+                    p.setBrush(look.owner);
+                    p.drawPolygon(QPolygonF{pole - QPointF(0, unit * 0.45), pole - QPointF(-unit * 0.22, unit * 0.37), pole - QPointF(0, unit * 0.29)});
+                }
+            }
+            break;
+        }
+        case SceneBuilding::Kind::Granary: {  // a barn with a round silo and grain sacks
+            const QRectF barn(cx - unit * 0.42, base - unit * 0.6, unit * 0.6, unit * 0.6);
+            p.setBrush(QColor("#a8402a"));
+            p.drawRect(barn);
+            p.setBrush(QColor("#7a2a1a"));
+            p.drawPolygon(QPolygonF{QPointF(barn.left() - unit * 0.05, barn.top()), QPointF(barn.center().x(), barn.top() - unit * 0.3),
+                                    QPointF(barn.right() + unit * 0.05, barn.top())});
+            p.setPen(QPen(QColor("#f0e8d8"), std::max(1.0, unit / 30)));
+            p.drawLine(barn.bottomLeft() + QPointF(unit * 0.15, 0), barn.topRight() + QPointF(-unit * 0.15, unit * 0.15));
+            p.drawLine(barn.bottomRight() + QPointF(-unit * 0.15, 0), barn.topLeft() + QPointF(unit * 0.15, unit * 0.15));
+            p.setPen(QPen(kInk, std::max(1.0, unit / 30)));
+            const QRectF silo(barn.right(), base - unit * 0.95, unit * 0.26, unit * 0.95);
+            p.setBrush(pal.stone.lighter(104));
+            p.drawRect(silo);
+            p.setBrush(pal.stone.darker(115));
+            p.drawChord(QRectF(silo.left(), silo.top() - unit * 0.13, silo.width(), unit * 0.26), 0, 180 * 16);
+            p.setBrush(QColor("#e0c070"));
+            for (int i = 0; i < 3; ++i) p.drawEllipse(QRectF(barn.left() - unit * 0.12 + i * unit * 0.13, base - unit * 0.16, unit * 0.14, unit * 0.16));
             break;
         }
         case SceneBuilding::Kind::Tavern: {
@@ -276,11 +328,26 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
                                     QPointF(X(x + 0.016), Y(1))});
         }
     } else {
-        const double top = walls >= 2 ? 0.86 : 0.9;
+        const double top = walls >= 3 ? 0.82 : walls >= 2 ? 0.86 : 0.9;
         p.setBrush(pal.stone.darker(108));
         p.drawRect(QRectF(X(0), Y(top), w * 0.88, h * (1 - top)));
         p.setBrush(pal.stone);
         battlements(p, QRectF(X(0), Y(top), w * 0.88, 1), h * 0.035);
+        if (walls >= 3) {  // a castle: a great round tower at each end with a banner
+            for (const double tx : {0.06, 0.75}) {
+                const QRectF t(X(tx), Y(top - 0.16), w * 0.06, h * (1.16 - top));
+                p.setBrush(pal.stone.darker(104));
+                p.drawRect(t);
+                p.setBrush(pal.stone);
+                battlements(p, QRectF(t.left() - w * 0.006, t.top(), t.width() + w * 0.012, 1), h * 0.04);
+                p.setBrush(QColor("#2a1a10"));
+                p.drawRoundedRect(QRectF(t.center().x() - w * 0.006, t.top() + h * 0.08, w * 0.012, h * 0.06), 2, 2);
+                const QPointF pole(t.center().x(), t.top() - h * 0.04);
+                p.drawLine(pole, pole - QPointF(0, h * 0.14));
+                p.setBrush(look.owner);
+                p.drawPolygon(QPolygonF{pole - QPointF(0, h * 0.14), pole - QPointF(-w * 0.03, h * 0.11), pole - QPointF(0, h * 0.08)});
+            }
+        }
         if (walls >= 2)
             for (const double tx : {0.01, 0.4, 0.52, 0.84})
                 tower(p, QRectF(X(tx), Y(top - 0.08), w * 0.028, h * (1.08 - top)), pal, roof, false, look.owner);
