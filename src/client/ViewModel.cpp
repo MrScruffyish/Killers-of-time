@@ -277,6 +277,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         vb.canShoot = b.value("canShoot").toBool();
         vb.canWait = b.value("canWait").toBool();
         vb.canRetreat = b.value("canRetreat").toBool();
+        vb.surrenderCost = b.contains("surrenderCost") ? b.value("surrenderCost").toInt() : -1;
         vb.townDefense = b.value("townDefense").toInt();
         vb.terrain = b.value("terrain").toString();
         const QJsonObject siege = b.value("siege").toObject();

@@ -99,6 +99,7 @@ struct BattleBalance {
     // him instead of fighting (0 = never).
     int joinStrengthRatio = 5;
     int joinCostPercent = 50;  // what joining costs: this share of the units' recruit price (gold)
+    int surrenderCostPercent = 50;  // surrendering costs this share of your surviving army's recruit price (gold)
 };
 // The overall difficulty level of a game (lobby setting) and the per-AI slot level.
 struct DifficultyLevel {
@@ -221,6 +222,7 @@ struct SpellDef {
     int requiredMagic = 1;   // hero Magic trait needed to cast it
     Scope scope = Scope::Battle;
     Target target = Target::None;
+    int area = 0;  // battle spells: also the target's side's stacks within this many hexes of it
     QList<SpellEffect> effects;
 };
 

@@ -145,6 +145,7 @@ The building effect `{"type": "tavern"}` lets a town hire heroes.
 | level | the mage guild level that teaches it |
 | cost | spell points |
 | requiredMagic | the hero's Magic trait must be at least this (default: level) |
+| area | battle spells: also hit the target's side's stacks within this many hexes (0 = only the target) |
 | scope | `battle` (needs `target`: `enemy` or `ally`) or `adventure` (no target) |
 | effects | strength = `amount + perPower * Spell Power`. Battle: `damage`, `heal` (cannot revive), `modifyStat` (`stat`: attack / defense / battleSpeed, `rounds`; negative amount = a curse). Adventure: `movement` (extra movement points, hundredths), `reveal` (explores the radius around the hero). |
 

@@ -1,0 +1,20 @@
+{
+  "id": "plague_cloud",
+  "name": "Plague Cloud",
+  "school": "dark",
+  "level": 3,
+  "cost": 12,
+  "requiredMagic": 3,
+  "scope": "battle",
+  "target": "enemy",
+  "area": 1,
+  "description": "A sickly cloud weakens an enemy stack and those next to it for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "attack",
+      "amount": -2,
+      "rounds": 3
+    }
+  ]
+}

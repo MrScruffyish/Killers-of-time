@@ -668,6 +668,17 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_retreat->setObjectName("retreatButton");
     m_retreat->setToolTip(tr("Give up the battle: your army is lost, your hero escapes"));
     buttons->addWidget(m_retreat);
+    m_surrender = new QPushButton(tr("Surrender"), this);
+    m_surrender->setObjectName("surrenderButton");
+    m_surrender->setIcon(art::buttonIcon("buy"));
+    m_surrender->setIconSize(QSize(22, 22));
+    m_surrender->setToolTip(tr("Pay the enemy and end the battle: your hero and your army stay alive"));
+    buttons->addWidget(m_surrender);
+    connect(m_surrender, &QPushButton::clicked, this, [this]() {
+        if (QMessageBox::question(this, tr("Surrender"), tr("Pay %1 gold to the enemy and end the battle? Your hero and army stay alive.")
+                                                              .arg(m_battle.surrenderCost)) == QMessageBox::Yes)
+            emit actionRequested({{"action", "surrender"}});
+    });
     m_engine = new QPushButton(this);
     m_engine->setObjectName("buildEngineButton");
     m_engine->setToolTip(tr("A catapult for this battle: it breaks the town's walls, and is gone afterwards"));
@@ -824,8 +835,10 @@ void BattleView::updateInfo() {
     m_info->setText(text);
     m_defend->setEnabled(mine);
     m_wait->setEnabled(mine && battle.canWait);
-    m_retreat->setVisible(battle.yourSide == 0);
+    m_retreat->setVisible(battle.canRetreat || battle.yourSide == 0);
     m_retreat->setEnabled(mine && battle.canRetreat);
+    m_surrender->setVisible(mine && battle.surrenderCost >= 0);
+    m_surrender->setText(tr("Surrender (%1 gold)").arg(battle.surrenderCost));
     m_auto->setEnabled(mine);
     {
         QStringList cost;

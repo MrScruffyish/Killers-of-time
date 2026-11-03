@@ -61,6 +61,7 @@ private:
     bool m_castByUnit = false;
     QPushButton* m_wait;
     QPushButton* m_retreat;
+    QPushButton* m_surrender;
     QString m_castSpell;  // chosen spell waiting for a target click
 };
 

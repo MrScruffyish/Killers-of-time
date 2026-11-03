@@ -435,6 +435,13 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     else if (action == "defend") a.type = BattleAction::Type::Defend;
     else if (action == "wait") a.type = BattleAction::Type::Wait;
     else if (action == "retreat") a.type = BattleAction::Type::Retreat;
+    else if (action == "surrender") {
+        // The gold must be there: the winner gets it when the battle is written back.
+        const int cost = b->surrenderCost(active->side);
+        if (m_state.player(player)->resources.value(QStringLiteral("gold")) < cost)
+            return failure("failed", QStringLiteral("surrendering costs %1 gold").arg(cost));
+        a.type = BattleAction::Type::Surrender;
+    }
     else if (action == "cast") {
         a.type = BattleAction::Type::Cast;
         a.spell = spell;

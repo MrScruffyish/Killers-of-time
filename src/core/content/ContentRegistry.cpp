@@ -415,6 +415,7 @@ void ContentRegistry::loadSpells(const QString& dir, QStringList& errors) {
         d.requiredMagic = r.optionalInt(QStringLiteral("requiredMagic"), d.level, 0, 100);
         const QString scope = r.requireString(QStringLiteral("scope"));
         const QString target = r.optionalString(QStringLiteral("target"), QStringLiteral("none"));
+        d.area = r.optionalInt(QStringLiteral("area"), 0, 0, 5);
         const QJsonArray effects = r.requireArray(QStringLiteral("effects"));
         r.finish();
         if (scope == QLatin1String("battle")) d.scope = SpellDef::Scope::Battle;
@@ -657,6 +658,7 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         bb.obstacles = br.optionalInt(QStringLiteral("obstacles"), bb.obstacles, 0, 30);
         bb.joinStrengthRatio = br.optionalInt(QStringLiteral("joinStrengthRatio"), bb.joinStrengthRatio, 0, 1000);
         bb.joinCostPercent = br.optionalInt(QStringLiteral("joinCostPercent"), bb.joinCostPercent, 0, 1000);
+        bb.surrenderCostPercent = br.optionalInt(QStringLiteral("surrenderCostPercent"), bb.surrenderCostPercent, 0, 1000);
         br.finish();
         if (br.ok()) m_balance.battle = bb;
     }

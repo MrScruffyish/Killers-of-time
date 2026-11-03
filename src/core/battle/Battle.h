@@ -45,7 +45,7 @@ struct BattleUnit {
 };
 
 struct BattleAction {
-    enum class Type { Move, Attack, Shoot, Defend, Cast, Wait, Retreat, UnitCast };
+    enum class Type { Move, Attack, Shoot, Defend, Cast, Wait, Retreat, UnitCast, Surrender };
     Type type = Type::Defend;
     Pos hex;               // Move: where to. Attack: hex to strike from (optional)
     bool hasHex = false;
@@ -82,7 +82,9 @@ struct BattleEvent {
 //     no retaliation,
 //   - Defend: do nothing this round,
 //   - Wait: act again at the end of this round (once per round),
-//   - Retreat (attacker only): give up; the army is lost, the hero survives.
+//   - Retreat: give up; the army is lost, the hero survives (not a town's defender),
+//   - Surrender: to another player: pay for it, keep the hero and the army.
+// Area spells (SpellDef::area) also hit the target's side's stacks around it.
 // The hero's Morale trait may give a stack an extra action (or, negative, make it
 // falter and lose its turn; undead ignore morale), his Luck may double a strike's
 // damage, his Hit Points raise the max HP of his units. Unit abilities: flying,
@@ -127,6 +129,14 @@ public:
     bool isOver() const { return m_outcome != Outcome::Running; }
     bool sideAlive(int side) const;
     bool retreated(int side) const { return m_retreated[side]; }
+    bool surrendered(int side) const { return m_surrendered[side]; }
+    // Why this side may not retreat / surrender now (empty = may). Retreating:
+    // the army is lost, the hero gets away (not a garrison in its town). Surrender:
+    // only to another player, with a hero; the side pays surrenderCost and keeps
+    // its hero and what is left of its army (the caller checks the gold).
+    QString whyNoRetreat(int side) const;
+    QString whyNoSurrender(int side) const;
+    int surrenderCost(int side) const;
     int townDefense() const { return m_townDefense; }  // walls: extra defense of the defender
     // Sieges: a town with walls (wall level = its buildings with a defense effect).
     int wallLevel() const { return m_wallLevel; }
@@ -173,6 +183,7 @@ public:
 
 private:
     QString cast(const BattleAction& action, QList<BattleEvent>* events);
+    QList<BattleUnit*> spellTargets(const SpellDef& spell, BattleUnit& target);  // the target, plus its area
     void applySpell(const SpellDef& spell, int power, BattleUnit& target, int side, int casterUnit, QList<BattleEvent>* events);
     void strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QList<BattleEvent>* events);
     void startRound(QList<BattleEvent>* events);
@@ -195,6 +206,8 @@ private:
     int m_morale[2] = {0, 0};
     int m_luck[2] = {0, 0};
     bool m_retreated[2] = {false, false};
+    bool m_surrendered[2] = {false, false};
+    bool m_defenderInTown = false;
     QList<Pos> m_obstacles;
     int m_townDefense = 0;
     int m_wallLevel = 0;

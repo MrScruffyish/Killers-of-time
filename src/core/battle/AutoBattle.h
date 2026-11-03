@@ -25,7 +25,9 @@ struct BattleReport {
     int experience = 0;       // given to the winner's hero
     int levelsGained = 0;
     bool loserHeroKilled = false;
-    bool retreated = false;   // the attacker fled: army lost, hero alive
+    bool retreated = false;   // the loser fled: army lost, hero alive
+    bool surrendered = false; // the loser surrendered: paid surrenderGold to the winner, kept hero and army
+    int surrenderGold = 0;
 
     bool attackerWon() const { return outcome == Outcome::AttackerWon; }
 };

@@ -146,6 +146,7 @@ struct ViewBattle {
     bool canShoot = false;
     bool canWait = false;
     bool canRetreat = false;
+    int surrenderCost = -1;  // -1: cannot surrender now
     int townDefense = 0;
     QString terrain;  // the ground the battle is fought on
     // A siege: wall segments (hex -> HP), the gate, the towers, the catapult.

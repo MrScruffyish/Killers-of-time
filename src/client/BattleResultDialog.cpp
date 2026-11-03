@@ -140,7 +140,10 @@ BattleResultDialog::BattleResultDialog(const core::ContentRegistry* content, con
     if (m_outcome == Outcome::Victory && b["experience"].toInt() > 0) lines << tr("+%1 experience").arg(b["experience"].toInt());
     if (m_outcome == Outcome::Victory && b["levelsGained"].toInt() > 0) lines << tr("<b>Level up!</b>");
     if (b["loserHeroKilled"].toBool()) lines << (m_outcome == Outcome::Victory ? tr("The enemy hero fell.") : tr("<b>Your hero fell.</b>"));
-    if (b["retreated"].toBool()) lines << (attacker ? tr("Your hero escaped.") : tr("The enemy fled."));
+    if (b["retreated"].toBool()) lines << (m_outcome == Outcome::Victory ? tr("The enemy fled.") : tr("Your hero escaped."));
+    if (b["surrendered"].toBool())
+        lines << (m_outcome == Outcome::Victory ? tr("The enemy surrendered and paid <b>%1 gold</b>.").arg(b["surrenderGold"].toInt())
+                                                : tr("You surrendered and paid %1 gold; your army lives.").arg(b["surrenderGold"].toInt()));
     auto* info = new QLabel(lines.join("<br>"), this);
     info->setTextFormat(Qt::RichText);
     titles->addWidget(info);

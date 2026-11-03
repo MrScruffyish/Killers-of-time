@@ -104,7 +104,7 @@ and react to; add depth afterwards.
 - [x] Unit abilities (flying, no_retaliation, double_attack, undead), rocks, wait, retreat (attacker)
 - [x] Town walls (building effect `defense`: Fort +3, Citadel +3 more)
 - [x] Unit veterancy: stacks gain experience in battle, 0-5 stars with small bonuses (morale, initiative, battle speed, attack, defense; data), averaged when merging; shown as stars. Tests: `tst_veterancy` (38 test programs)
-- [ ] Later: surrender, defender retreat (every unit takes one hex: the old `size` field is gone)
+- [x] Retreat for either side with a hero (not a town's defenders); surrender to another player (pay `surrenderCostPercent` of the surviving army's price to the winner, keep hero and army); area spells (`area`: Frost Ring, Meteor Shower, Plague Cloud)
 
 ## M7: Magic
 - [x] Effect primitive system and spell data format (`spells/<id>.json`; damage, heal, modifyStat, movement, reveal; strength = amount + perPower x Spell Power); 8 sample spells

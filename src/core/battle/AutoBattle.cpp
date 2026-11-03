@@ -69,6 +69,17 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
     }
     Army* lost = state.army(battle.army(loser));
     if (!lost) return report;
+    if (battle.surrendered(loser)) {  // he paid: hero and army stay
+        const int price = battle.surrenderCost(loser);
+        Player* payer = state.player(battle.owner(loser));
+        Player* payee = state.player(battle.owner(winner));
+        const int paid = payer ? std::min(price, payer->resources.value(QStringLiteral("gold"))) : 0;
+        if (payer) payer->resources[QStringLiteral("gold")] -= paid;
+        if (payee) payee->resources[QStringLiteral("gold")] += paid;
+        report.surrendered = true;
+        report.surrenderGold = paid;
+        return report;
+    }
     if (battle.retreated(loser)) {  // the hero got away; his army is lost
         for (const UnitStack& st : lost->stacks) {
             sides[loser]->losses[st.unitTypeId()] += st.count();
@@ -134,6 +145,10 @@ QJsonObject battleReportToJson(const BattleReport& report) {
     o.insert("levelsGained", report.levelsGained);
     o.insert("loserHeroKilled", report.loserHeroKilled);
     if (report.retreated) o.insert("retreated", true);
+    if (report.surrendered) {
+        o.insert("surrendered", true);
+        o.insert("surrenderGold", report.surrenderGold);
+    }
     return o;
 }
 

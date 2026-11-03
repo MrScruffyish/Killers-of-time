@@ -58,7 +58,10 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
         }
     }
     // The ground the battle is fought on (for the picture only): the defender's tile.
-    if (const Army* d = state.army(defender)) m_terrain = state.map().terrainAt(d->pos);
+    if (const Army* d = state.army(defender)) {
+        m_terrain = state.map().terrainAt(d->pos);
+        for (const Town& t : state.towns()) m_defenderInTown = m_defenderInTown || t.pos == d->pos;
+    }
     // Town walls: a defender standing in a town gets its buildings' defense.
     if (const Army* d = state.army(defender)) {
         for (const Town& t : state.towns()) {
@@ -135,6 +138,26 @@ bool Battle::sideAlive(int side) const {
     for (const BattleUnit& u : m_units)
         if (u.side == side && u.alive() && !u.def->has(QStringLiteral("siege_engine"))) return true;  // a catapult alone does not fight on
     return false;
+}
+
+QString Battle::whyNoRetreat(int side) const {
+    if (isOver()) return QStringLiteral("the battle is over");
+    if (!m_hero[side].isValid()) return QStringLiteral("only a hero can retreat");
+    if (side == 1 && m_defenderInTown) return QStringLiteral("a town's defenders cannot run away");
+    return {};
+}
+
+QString Battle::whyNoSurrender(int side) const {
+    if (const QString why = whyNoRetreat(side); !why.isEmpty()) return why;
+    if (!m_owner[1 - side].isValid()) return QStringLiteral("monsters do not take surrender");
+    return {};
+}
+
+int Battle::surrenderCost(int side) const {
+    long long gold = 0;
+    for (const BattleUnit& u : m_units)
+        if (u.side == side && u.alive() && u.armyIndex >= 0) gold += static_cast<long long>(u.stack.count()) * u.def->cost.value(QStringLiteral("gold"));
+    return static_cast<int>(gold * m_content.balance().battle.surrenderCostPercent / 100);
 }
 
 int Battle::wallMaxHp() const {
@@ -360,7 +383,7 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
         if (!target) return QStringLiteral("no target given");
         const SpellDef* spell = m_content.spell(action.spell);
         me->spellPoints -= spell->cost;
-        applySpell(*spell, me->def->tier, *target, me->side, me->id, events);
+        for (BattleUnit* t : spellTargets(*spell, *target)) applySpell(*spell, me->def->tier, *t, me->side, me->id, events);
         break;
     }
     case BattleAction::Type::Wait: {
@@ -373,10 +396,17 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
         return {};
     }
     case BattleAction::Type::Retreat: {
-        if (me->side != 0) return QStringLiteral("only the attacker can retreat");
-        m_retreated[0] = true;
+        if (const QString why = whyNoRetreat(me->side); !why.isEmpty()) return why;
+        m_retreated[me->side] = true;
         if (events) events->append({BattleEvent::Type::Retreat, me->id, 0, me->pos, me->pos, 0, 0, {}});
-        m_outcome = Outcome::DefenderWon;
+        m_outcome = me->side == 0 ? Outcome::DefenderWon : Outcome::AttackerWon;
+        return {};
+    }
+    case BattleAction::Type::Surrender: {
+        if (const QString why = whyNoSurrender(me->side); !why.isEmpty()) return why;
+        m_surrendered[me->side] = true;
+        if (events) events->append({BattleEvent::Type::Retreat, me->id, 0, me->pos, me->pos, 0, 0, {}});
+        m_outcome = me->side == 0 ? Outcome::DefenderWon : Outcome::AttackerWon;
         return {};
     }
     }
@@ -426,7 +456,8 @@ QString Battle::cast(const BattleAction& action, QList<BattleEvent>* events) {
     Hero& hero = m_heroCopy[side];
     hero.spellPoints -= spell->cost;
     m_heroCast[side] = true;
-    applySpell(*spell, hero.trait(QStringLiteral("spell_power")), *mutableUnit(action.target), side, 0, events);
+    for (BattleUnit* t : spellTargets(*spell, *mutableUnit(action.target)))
+        applySpell(*spell, hero.trait(QStringLiteral("spell_power")), *t, side, 0, events);
     checkOver();
     return {};
 }
@@ -443,6 +474,14 @@ QString Battle::whyUnitCannotCast(const QString& spellId, int target) const {
     if (spell->target == SpellDef::Target::Enemy && t->side == me->side) return QStringLiteral("%1 is cast on an enemy").arg(spell->name);
     if (spell->target == SpellDef::Target::Ally && t->side != me->side) return QStringLiteral("%1 is cast on your own stack").arg(spell->name);
     return {};
+}
+
+QList<BattleUnit*> Battle::spellTargets(const SpellDef& spell, BattleUnit& target) {
+    QList<BattleUnit*> targets{&target};
+    if (spell.area <= 0) return targets;
+    for (BattleUnit& u : m_units)
+        if (&u != &target && u.alive() && u.side == target.side && hex::distance(u.pos, target.pos) <= spell.area) targets.append(&u);
+    return targets;
 }
 
 void Battle::applySpell(const SpellDef& spell, int power, BattleUnit& t, int side, int casterUnit, QList<BattleEvent>* events) {
@@ -653,7 +692,8 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
                 unitSpells.append(QJsonObject{{"id", id}, {"target", sp->target == SpellDef::Target::Enemy ? "enemy" : "ally"},
                                               {"cost", sp->cost}, {"castable", b.whyUnitCannotCast(id, 0).isEmpty()}});
         if (!unitSpells.isEmpty()) o.insert("unitSpells", unitSpells);
-        o.insert("canRetreat", active->side == 0);
+        o.insert("canRetreat", b.whyNoRetreat(active->side).isEmpty());
+        if (b.whyNoSurrender(active->side).isEmpty()) o.insert("surrenderCost", b.surrenderCost(active->side));
         QJsonArray attackable;
         for (const BattleUnit& u : b.units()) {
             Pos from;

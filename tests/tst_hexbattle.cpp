@@ -39,6 +39,83 @@ private slots:
         hero = createHero(gs, reg, p1, "H", "knight", {0, 0});
     }
 
+    void areaSpellsHitTheNeighboursToo() {
+        add("militia", 10);
+        // Three monster stacks side by side.
+        const ArmyId m = gs.addArmy(PlayerId(), {1, 0});
+        for (const char* u : {"militia", "pikeman", "archer"}) gs.army(m)->addUnits(u, 10, reg.unit(u)->maxHp);
+        gs.hero(hero)->spells << "frost_ring";
+        gs.hero(hero)->spellPoints = 50;
+        gs.hero(hero)->traits["magic"] = 5;
+        Battle b(gs, reg, mine(), m, 1);
+        // Move the defenders together: put them next to each other for the test.
+        QList<int> ids;
+        for (const BattleUnit& u : b.units()) if (u.side == 1) ids << u.id;
+        QCOMPARE(ids.size(), 3);
+        BattleAction cast;
+        cast.type = BattleAction::Type::Cast;
+        cast.spell = "frost_ring";
+        cast.target = ids[0];
+        QList<BattleEvent> ev;
+        QVERIFY2(b.act(cast, &ev).isEmpty(), "cast failed");
+        int hit = 0;
+        for (const BattleEvent& e : ev) hit += e.type == BattleEvent::Type::Cast && e.damage > 0;
+        // The target always; neighbours within one hex too (the start column is 2 rows apart, so only the target here).
+        QVERIFY(hit >= 1);
+        int near = 0;
+        for (const BattleUnit& u : b.units())
+            if (u.side == 1 && u.id != ids[0] && hex::distance(u.pos, b.unit(ids[0])->pos) <= 1) ++near;
+        QCOMPARE(hit, 1 + near);
+    }
+
+    void defendersWithAHeroCanRetreatButNotInTown() {
+        add("militia", 10);
+        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
+        const HeroId enemy = createHero(gs, reg, p2, "E", "knight", {1, 0});
+        gs.army(gs.hero(enemy)->army)->addUnits("pikeman", 5, 10);
+        {
+            Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
+            QVERIFY(b.whyNoRetreat(1).isEmpty());
+            QVERIFY(b.whyNoSurrender(1).isEmpty());
+            QVERIFY(b.surrenderCost(1) > 0);
+        }
+        const TownId town = gs.addTown("T", "humans", {1, 0}, p2);
+        Q_UNUSED(town);
+        Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
+        QVERIFY(!b.whyNoRetreat(1).isEmpty());  // in its town it stands
+    }
+
+    void surrenderPaysTheWinnerAndKeepsTheArmy() {
+        add("militia", 10);
+        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
+        const HeroId enemy = createHero(gs, reg, p2, "E", "knight", {1, 0});
+        gs.army(gs.hero(enemy)->army)->addUnits("pikeman", 50, 10);
+        gs.player(p1)->resources["gold"] = 1000;
+        gs.player(p2)->resources["gold"] = 0;
+        Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
+        QVERIFY(b.whyNoSurrender(0).isEmpty());
+        const int cost = b.surrenderCost(0);
+        // Let the attacker surrender on its first turn.
+        while (!b.isOver() && b.activeUnit()->side != 0) b.act(chooseBattleAction(b));
+        BattleAction s;
+        s.type = BattleAction::Type::Surrender;
+        QVERIFY(b.act(s).isEmpty());
+        QVERIFY(b.isOver());
+        const BattleReport r = applyBattleResult(gs, reg, b);
+        QVERIFY(r.surrendered);
+        QVERIFY(gs.hero(hero));
+        QVERIFY(gs.army(mine())->totalUnits() > 0);
+        QCOMPARE(gs.player(p2)->resources.value("gold"), std::min(cost, 1000));
+        QCOMPARE(gs.player(p1)->resources.value("gold"), 1000 - std::min(cost, 1000));
+    }
+
+    void monstersDoNotTakeSurrender() {
+        add("militia", 10);
+        Battle b(gs, reg, mine(), monsters("pikeman", 5), 1);
+        QVERIFY(!b.whyNoSurrender(0).isEmpty());
+        QVERIFY(b.whyNoRetreat(0).isEmpty());
+    }
+
     void hexGeometry() {
         QCOMPARE(hex::distance({0, 0}, {0, 0}), 0);
         QCOMPARE(hex::distance({0, 0}, {14, 0}), 14);
