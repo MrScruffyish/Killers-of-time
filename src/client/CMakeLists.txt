@@ -6,6 +6,7 @@ add_library(kot_client_lib STATIC
     MapView.cpp
     Art.h
     Art.cpp
+    IconArt.cpp
     Sound.h
     Sound.cpp
     MovePlanner.h

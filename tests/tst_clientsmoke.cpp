@@ -184,6 +184,33 @@ private slots:
             bp.end();
             if (!dir.isEmpty()) bigSheet.save(QDir(dir).filePath("0_units_big.png"));
         }
+        // Icons (0_icons.png): every resource at three sizes, the special mines, every button icon.
+        {
+            const QStringList res = {"gold", "wood", "stone", "grain", "gems", "sulphur", "coal", "mercury", "papyrus"};
+            const QStringList buttons = {"build", "buy", "wagon", "end", "spell", "market", "defend", "auto", "retreat",
+                                         "catapult", "town", "army", "tavern"};
+            QImage icons(int(res.size()) * 136 + 20, 128 + 40 + 24 + 140 + 80, QImage::Format_ARGB32);
+            icons.fill(QColor("#3a2c1e"));
+            QPainter ip(&icons);
+            for (int i = 0; i < res.size(); ++i) {
+                ip.drawPixmap(10 + i * 136, 10, art::resourceIcon(res[i], 128));
+                ip.drawPixmap(10 + i * 136, 146, art::resourceIcon(res[i], 40));
+                ip.drawPixmap(56 + i * 136, 158, art::resourceIcon(res[i], 20));
+            }
+            int mx = 10;
+            for (const QString& r : {"gold", "wood", "stone", "gems", "sulphur"}) {
+                ip.drawPixmap(mx, 196, art::mineSprite(r, art::resourceColor(r), QColor("#d62728"), 128));
+                mx += 140;
+            }
+            ip.drawPixmap(mx, 196, art::mineSprite("gems", art::resourceColor("gems"), QColor("#d62728"), 64));
+            for (int i = 0; i < buttons.size(); ++i) {
+                const QPixmap pm = art::buttonIcon(buttons[i]).pixmap(64, 64);
+                QVERIFY(!pm.isNull());
+                ip.drawPixmap(10 + i * 70, 340, pm);
+            }
+            ip.end();
+            if (!dir.isEmpty()) icons.save(QDir(dir).filePath("0_icons.png"));
+        }
         // Towns: palisade / walls / citadel, small to big, for each race; and a town scene.
         QImage towns(3 * 4 * 110, 3 * 120 + 190, QImage::Format_ARGB32);
         towns.fill(QColor("#5d8a3a"));

@@ -102,6 +102,11 @@ QPixmap pointerImage(Pointer kind);
 
 void drawTown(QPainter& p, const QRectF& r, const QColor& owner);
 void drawMine(QPainter& p, const QRectF& r, const QColor& resource, const QColor& owner);
+// Special mines and resource symbols (IconArt.cpp).
+void drawSawmill(QPainter& p, const QRectF& r, const QColor& owner);
+void drawQuarry(QPainter& p, const QRectF& r, const QColor& owner);
+void drawCrystalCave(QPainter& p, const QRectF& r, const QColor& crystal, const QColor& owner);
+void drawResourceIcon(QPainter& p, const QRectF& r, const QString& id, const QColor& c);
 void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner);
 void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat = false);
 void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner);  // the knight on horseback (UnitArt.cpp)
