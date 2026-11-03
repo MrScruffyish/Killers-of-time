@@ -10,6 +10,7 @@
 #include <QResizeEvent>
 #include <QScrollBar>
 #include <QTimer>
+#include <QTransform>
 #include <QToolTip>
 #include <QWheelEvent>
 #include <algorithm>
@@ -331,7 +332,12 @@ QColor MapView::ownerColor(int owner) const {
 
 void MapView::paintEvent(QPaintEvent*) {
     QPainter p(viewport());
-    p.fillRect(viewport()->rect(), Qt::black);
+    // The unknown: dark clouds that scroll with the map.
+    {
+        QBrush fog(art::fogTexture());
+        fog.setTransform(QTransform::fromTranslate(-horizontalScrollBar()->value() * 0.6, -verticalScrollBar()->value() * 0.6));
+        p.fillRect(viewport()->rect(), fog);
+    }
     if (m_view.width == 0) return;
 
     const int hx = horizontalScrollBar()->value(), vy = verticalScrollBar()->value();

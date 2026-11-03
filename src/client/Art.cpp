@@ -215,6 +215,35 @@ const QPixmap& terrainTile(const QString& id, const QColor& base, int size, int 
     return it.value();
 }
 
+const QPixmap& fogTexture() {
+    static QPixmap tex;
+    if (!tex.isNull()) return tex;
+    constexpr int kSize = 256;
+    tex = QPixmap(kSize, kSize);
+    tex.fill(QColor(10, 9, 16));
+    QPainter p(&tex);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(Qt::NoPen);
+    Dice d(4242);
+    for (int i = 0; i < 70; ++i) {
+        const double x = d.next() * kSize, y = d.next() * kSize, rad = 14 + d.next() * 46;
+        const int shade = 18 + int(d.next() * 22);
+        QRadialGradient g(0, 0, rad);
+        g.setColorAt(0, QColor(shade, shade, shade + 14, 70));
+        g.setColorAt(1, QColor(shade, shade, shade + 14, 0));
+        p.setBrush(g);
+        // Drawn at every wrap-around position, so the texture tiles without seams.
+        for (const int ox : {-kSize, 0, kSize})
+            for (const int oy : {-kSize, 0, kSize}) {
+                p.save();
+                p.translate(x + ox, y + oy);
+                p.drawEllipse(QPointF(0, 0), rad, rad * 0.7);
+                p.restore();
+            }
+    }
+    return tex;
+}
+
 int terrainLayer(const QString& id) {
     static const QHash<QString, int> layers = {{"sea", 0}, {"river", 1}, {"lava", 2}, {"swamp", 3}, {"sand", 4},
                                                {"dirt", 5}, {"road", 6}, {"grass", 7}, {"snow", 8}, {"forest", 9},

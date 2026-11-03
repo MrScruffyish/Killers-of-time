@@ -24,6 +24,9 @@ int variantFor(int x, int y);
 // tile from one side (0 left, 1 top, 2 right, 3 bottom), slightly wavy; `foam`
 // draws a light surf line instead (water next to land).
 const QPixmap& terrainEdge(const QColor& colour, int side, int size, bool foam);
+// The unexplored world: dark drifting clouds, a seamless texture to tile with a
+// brush (align its origin with the map so it scrolls along).
+const QPixmap& fogTexture();
 // Which of two neighbouring terrains spreads over the other (higher wins).
 int terrainLayer(const QString& terrainId);
 
