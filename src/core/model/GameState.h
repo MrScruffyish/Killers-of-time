@@ -15,7 +15,10 @@ namespace kot::core {
 
 class ContentRegistry;
 
-inline constexpr int kSaveFormatVersion = 1;
+// Save format history (GameStateJson.cpp converts older saves on load):
+//   1  first format
+//   2  towns cover 2x2 tiles (v1 saves: things standing on the new walls are moved aside)
+inline constexpr int kSaveFormatVersion = 2;
 
 // How a game is won besides being the last team standing (which always counts).
 struct VictoryCondition {
@@ -27,6 +30,20 @@ struct VictoryCondition {
 
 // The complete state of one game. Plain data plus helpers; the rules live in
 // core/rules. Owned by the server (the clients only ever see filtered views).
+// What the load list shows about a save file, and whether it can be loaded.
+struct SaveInfo {
+    QString name;          // file name without .json
+    QString gameVersion;   // the game version that saved it (empty for old saves)
+    QString savedAt;       // ISO date and time (file time for old saves)
+    int formatVersion = 0;
+    int day = 0;
+    QStringList players;
+    int mapWidth = 0, mapHeight = 0;
+    enum class Status { Ok, Converted, Incompatible } status = Status::Ok;
+    QStringList problems;  // why it cannot be loaded, or what was converted
+};
+SaveInfo inspectSave(const QString& path, const class ContentRegistry& content);
+
 class GameState {
 public:
     explicit GameState(std::uint64_t seed = 1) : m_rng(seed) {}
@@ -113,13 +130,18 @@ public:
     // Save game as JSON. fromJson validates everything against the content
     // and reports all problems; on failure `out` is left untouched.
     QJsonObject toJson() const;
+    // Older formats are converted (what was changed goes to `notes`); a newer
+    // format, or one that cannot be converted, is refused with the reason.
     static bool fromJson(const QJsonObject& json, const ContentRegistry& content, GameState* out,
-                         QStringList* errors);
+                         QStringList* errors, QStringList* notes = nullptr);
+    // Files also carry the game version and the time of saving (for the load list).
     bool saveToFile(const QString& path, QString* error) const;
     static bool loadFromFile(const QString& path, const ContentRegistry& content, GameState* out,
-                             QStringList* errors);
+                             QStringList* errors, QStringList* notes = nullptr);
 
 private:
+    bool convertFromV1(const ContentRegistry& content, QStringList* notes, QStringList* errors);
+
     int m_day = 1;
     QString m_difficulty = QStringLiteral("normal");
     VictoryCondition m_victory;

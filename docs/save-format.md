@@ -30,7 +30,12 @@ Cross-checks on load: owners are players, positions are on the map, unit/trait/
 terrain/resource/class ids exist, a hero and his army point at each other, no
 duplicate ids, at most 7 stacks per army.
 
-Bump `kSaveFormatVersion` when the format changes incompatibly.
+Bump `kSaveFormatVersion` when the format changes incompatibly, and add a conversion
+from the previous format in `GameStateJson.cpp` when one is possible (a save of a newer
+format is always refused with a message). History: 1 first format; 2 towns cover 2x2
+tiles (converting a v1 save moves whatever stands on the new walls aside).
+Save files (not scenarios) also have `gameVersion` (the game that saved it) and `savedAt`
+(ISO date and time); both are shown in the load list.
 
 Heroes may have `spells` (list of spell ids, the spellbook; optional, validated against the content).
 Heroes may have `artifacts` (artifact ids; their bonuses are already in `traits`).

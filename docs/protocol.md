@@ -116,8 +116,8 @@ continues; his turns are skipped).
 |---|---|---|
 | `join_game` | `player` | `player`; then `game_started` to you and new views to all. Only a free human player (nobody plays him now). |
 | `save_game` | `name` (1-40 of `A-Za-z0-9_-`) | `name`. Any player of the running game, any time. Saved on the server (`--saves <dir>`, default the app data folder). |
-| `list_saves` | | `saves` (names, newest first) |
-| `load_game` | `name` | `name`. Host only, no game running. Then everyone gets `game_loaded` {`freePlayers`}. |
+| `list_saves` | | `saves` (names, newest first) and `games`: per save `name`, `gameVersion`, `savedAt`, `formatVersion`, `day`, `players`, `mapWidth`, `mapHeight`, `status` (`ok`, `converted` = an older format that is converted on load, `incompatible` = cannot be loaded) and `problems` (why, or what is converted) |
+| `load_game` | `name` | `name`, `converted` (notes when an older save was converted). Host only, no game running. Refused with `incompatible_save` and the reason when the save cannot be loaded. Then everyone gets `game_loaded` {`freePlayers`}. |
 
 `welcome` has `freePlayers` (`[{id, name}]`) when a game is running: a client joining late (or
 coming back) picks one with `join_game`. After loading, all humans are free and the game waits on

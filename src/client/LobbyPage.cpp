@@ -1,5 +1,6 @@
 #include "client/LobbyPage.h"
 
+#include "client/LoadDialog.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
@@ -122,15 +123,13 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
         if (replyTo == 0 || replyTo != m_listSavesSeq) return;
         m_listSavesSeq = 0;
-        QStringList saves;
-        for (const QJsonValue& v : info["saves"].toArray()) saves << v.toString();
-        if (saves.isEmpty()) {
+        const QJsonArray games = info["games"].toArray();
+        if (games.isEmpty()) {
             QMessageBox::information(this, tr("Load game"), tr("There are no saved games on the server."));
             return;
         }
-        bool ok = false;
-        const QString name = QInputDialog::getItem(this, tr("Load game"), tr("Saved game:"), saves, 0, false, &ok);
-        if (ok) m_client->loadGame(name);
+        LoadDialog dialog(games, this);
+        if (dialog.exec() == QDialog::Accepted && !dialog.chosen().isEmpty()) m_client->loadGame(dialog.chosen());
     });
     // Only send what the user really changed (editingFinished also fires when focus just moves away).
     connect(m_width, &QSpinBox::editingFinished, this, [this]() {

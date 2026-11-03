@@ -2,6 +2,8 @@
 #include <QTemporaryDir>
 #include <QtEndian>
 #include <QtTest>
+
+#include "core/Version.h"
 #include <memory>
 
 #include "core/content/ContentRegistry.h"
@@ -365,6 +367,13 @@ private slots:
         const QJsonObject savedView = b->view();
         b->listSaves();
         QTRY_COMPARE_WITH_TIMEOUT(info["saves"].toArray().size(), 1, 3000);
+        {
+            const QJsonObject g = info["games"].toArray().first().toObject();
+            QCOMPARE(g["status"].toString(), QString("ok"));
+            QCOMPARE(g["gameVersion"].toString(), QString(kot::core::kGameVersion));
+            QVERIFY(g["day"].toInt() >= 1);
+            QVERIFY(!g["players"].toArray().isEmpty());
+        }
 
         // A fresh server loads it; both players take their places again.
         a.reset();

@@ -336,12 +336,24 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
         return true;
     }
     if (message.type == net::msg::listSaves) {
+        // Newest first, with what the load list shows and whether each one loads.
         QStringList names;
+        QJsonArray games;
         if (!m_saveDir.isEmpty()) {
-            for (const QFileInfo& f : QDir(m_saveDir).entryInfoList({"*.json"}, QDir::Files, QDir::Time))
+            for (const QFileInfo& f : QDir(m_saveDir).entryInfoList({"*.json"}, QDir::Files, QDir::Time)) {
                 names << f.completeBaseName();
+                if (!m_content) continue;
+                const core::SaveInfo s = core::inspectSave(f.filePath(), *m_content);
+                static const char* status[] = {"ok", "converted", "incompatible"};
+                games.append(QJsonObject{{"name", s.name}, {"gameVersion", s.gameVersion}, {"savedAt", s.savedAt},
+                                         {"formatVersion", s.formatVersion}, {"day", s.day},
+                                         {"players", QJsonArray::fromStringList(s.players)},
+                                         {"mapWidth", s.mapWidth}, {"mapHeight", s.mapHeight},
+                                         {"status", status[int(s.status)]},
+                                         {"problems", QJsonArray::fromStringList(s.problems)}});
+            }
         }
-        reply(client, message, {{"saves", QJsonArray::fromStringList(names)}});
+        reply(client, message, {{"saves", QJsonArray::fromStringList(names)}, {"games", games}});
         return true;
     }
     if (message.type == net::msg::loadGame) {
@@ -359,15 +371,17 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
         }
         const QString path = savePath(message.body.value("name").toString(), &error);
         core::GameState state;
-        QStringList errors;
-        if (path.isEmpty() || !core::GameState::loadFromFile(path, *m_content, &state, &errors)) {
-            sendError(client, "failed", path.isEmpty() ? error : errors.join("; "), message.seq);
+        QStringList errors, notes;
+        if (path.isEmpty() || !core::GameState::loadFromFile(path, *m_content, &state, &errors, &notes)) {
+            sendError(client, "incompatible_save",
+                      path.isEmpty() ? error : QStringLiteral("this saved game cannot be loaded: ") + errors.join("; "), message.seq);
             return true;
         }
+        if (!notes.isEmpty()) qCInfo(lcKotServer) << "Converted" << path << notes;
         m_session = std::make_unique<GameSession>(*m_content);
         m_session->startFromState(std::move(state));
         qCInfo(lcKotServer) << "Loaded the game" << path;
-        reply(client, message, {{"name", message.body.value("name").toString()}});
+        reply(client, message, {{"name", message.body.value("name").toString()}, {"converted", QJsonArray::fromStringList(notes)}});
         Message loaded;
         loaded.type = net::msg::gameLoaded;
         loaded.body.insert("freePlayers", freePlayersJson());

@@ -1,7 +1,9 @@
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <QFile>
 
+#include "core/Version.h"
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 
@@ -158,8 +160,50 @@ private slots:
 
     void rejectsUnsupportedVersion() {
         GameState gs = makeState();
-        expectLoadError(edited(gs, "\"formatVersion\":1", "\"formatVersion\":99"),
-                        "unsupported formatVersion 99");
+        expectLoadError(edited(gs, "\"formatVersion\":2", "\"formatVersion\":99"),
+                        "saved by a newer version of the game");
+    }
+
+    void convertsFormat1Saves() {
+        // A v1 save: a mine on what is now the town's wall (town at 1,1 covers 1..2 x 0..1).
+        GameState gs = makeState();
+        gs.addMine("stone", 2, {2, 1});
+        QJsonObject json = edited(gs, "\"formatVersion\":2", "\"formatVersion\":1");
+        GameState loaded;
+        QStringList errors, notes;
+        QVERIFY2(GameState::fromJson(json, reg, &loaded, &errors, &notes), qPrintable(errors.join("\n")));
+        QVERIFY(notes.join("\n").contains("stone mine moved"));
+        for (const Mine& m : loaded.mines()) {
+            const Town* t = loaded.townCovering(m.pos);
+            QVERIFY(!t || t->pos == m.pos);
+        }
+        // The current format loads without notes.
+        QVERIFY(GameState::fromJson(loaded.toJson(), reg, &loaded, &errors, &notes));
+        QVERIFY(notes.isEmpty());
+    }
+
+    void saveFilesCarryVersionAndListInfo() {
+        QTemporaryDir dir;
+        GameState gs = makeState();
+        const QString path = dir.filePath("mygame.json");
+        QString error;
+        QVERIFY2(gs.saveToFile(path, &error), qPrintable(error));
+        SaveInfo info = inspectSave(path, reg);
+        QCOMPARE(info.name, QString("mygame"));
+        QCOMPARE(info.gameVersion, QString(kot::core::kGameVersion));
+        QCOMPARE(info.formatVersion, kSaveFormatVersion);
+        QVERIFY(!info.savedAt.isEmpty());
+        QCOMPARE(info.status, SaveInfo::Status::Ok);
+        QCOMPARE(info.players.size(), gs.players().size());
+        QVERIFY(GameState::loadFromFile(path, reg, &gs, nullptr));
+        // A broken one says why.
+        QFile f(dir.filePath("broken.json"));
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(QJsonDocument(edited(gs, "\"formatVersion\":2", "\"formatVersion\":7")).toJson());
+        f.close();
+        info = inspectSave(dir.filePath("broken.json"), reg);
+        QCOMPARE(info.status, SaveInfo::Status::Incompatible);
+        QVERIFY(info.problems.join(" ").contains("newer version"));
     }
 
     void rejectsUnknownTerrain() {

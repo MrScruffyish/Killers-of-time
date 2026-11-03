@@ -1,5 +1,7 @@
 // Save/load of GameState as JSON. See docs/save-format.md.
 #include <QFile>
+#include <QFileInfo>
+#include <QDateTime>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -9,6 +11,7 @@
 #include <climits>
 
 #include "core/content/ContentRegistry.h"
+#include "core/Version.h"
 #include "core/data/JsonReader.h"
 #include "core/model/GameState.h"
 
@@ -205,7 +208,8 @@ QJsonObject GameState::toJson() const {
 }
 
 bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content, GameState* out,
-                         QStringList* errors) {
+                         QStringList* errors, QStringList* notes) {
+    if (notes) notes->clear();
     QStringList errs;
     GameState gs;
     QSet<quint32> usedIds;
@@ -236,9 +240,15 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
 
     JsonReader top(json, QStringLiteral("save"), &errs);
     const int version = top.requireInt("formatVersion", 1, 1000000);
-    if (top.ok() && version != kSaveFormatVersion)
-        top.addError(QStringLiteral("unsupported formatVersion %1 (expected %2)")
-                         .arg(version).arg(kSaveFormatVersion));
+    if (top.ok() && version > kSaveFormatVersion) {
+        const QString by = json.value("gameVersion").toString();
+        top.addError(QStringLiteral("saved by a newer version of the game%1 (save format %2; this version %3 reads up to %4)")
+                         .arg(by.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(by)).arg(version).arg(kGameVersion).arg(kSaveFormatVersion));
+        if (errors) *errors = errs;
+        return false;
+    }
+    top.optionalString("gameVersion");
+    top.optionalString("savedAt");
     gs.m_day = top.requireInt("day", 1, 10000000);
     gs.m_difficulty = top.optionalString("difficulty", QStringLiteral("normal"));
     gs.m_weekEvent = top.optionalString("weekEvent");
@@ -602,9 +612,98 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         return false;
     }
     gs.m_nextId = std::max<quint32>(static_cast<quint32>(nextId), maxId + 1);
+    QStringList converted;
+    if (version < 2 && !gs.convertFromV1(content, &converted, &errs)) {
+        if (errors) *errors = errs;
+        return false;
+    }
+    if (notes) *notes = converted;
     *out = std::move(gs);
     if (errors) errors->clear();
     return true;
+}
+
+bool GameState::convertFromV1(const ContentRegistry& content, QStringList* notes, QStringList* errors) {
+    // v2: towns cover 2x2 tiles. Whatever stands on the new walls moves to the
+    // nearest free walkable tile.
+    QSet<Pos> blocked;
+    for (const Town& t : m_towns)
+        for (const Pos p : townTiles(t.pos, m_map.width(), m_map.height())) blocked.insert(p);
+    for (const Mine& m : m_mines) blocked.insert(m.pos);
+    for (const MapDwelling& d : m_mapDwellings) blocked.insert(d.pos);
+    for (const MapObject& o : m_mapObjects) blocked.insert(o.pos);
+    for (const Army& a : m_armies) blocked.insert(a.pos);
+    const auto onWall = [&](Pos p) {
+        const Town* t = townCovering(p);
+        return t && t->pos != p;
+    };
+    const auto freeSpot = [&](Pos from, Pos* out) {
+        for (int r = 1; r <= 6; ++r)
+            for (int dy = -r; dy <= r; ++dy)
+                for (int dx = -r; dx <= r; ++dx) {
+                    const Pos p{from.x + dx, from.y + dy};
+                    if (std::max(std::abs(dx), std::abs(dy)) != r || !m_map.inBounds(p) || blocked.contains(p)) continue;
+                    const TerrainDef* t = content.terrainType(m_map.terrainAt(p));
+                    if (!t || !t->walkable) continue;
+                    *out = p;
+                    blocked.insert(p);
+                    return true;
+                }
+        return false;
+    };
+    const auto move = [&](Pos& pos, const QString& what) {
+        if (!onWall(pos)) return true;
+        Pos to;
+        if (!freeSpot(pos, &to)) {
+            *errors << QStringLiteral("%1 stands on a town wall at %2,%3 and there is no room to move it").arg(what).arg(pos.x).arg(pos.y);
+            return false;
+        }
+        *notes << QStringLiteral("%1 moved from %2,%3 to %4,%5 (towns are 2x2 now)").arg(what).arg(pos.x).arg(pos.y).arg(to.x).arg(to.y);
+        pos = to;
+        return true;
+    };
+    bool ok = true;
+    for (Mine& m : m_mines) ok = move(m.pos, QStringLiteral("a %1 mine").arg(m.resourceId)) && ok;
+    for (MapDwelling& d : m_mapDwellings) ok = move(d.pos, QStringLiteral("a dwelling")) && ok;
+    for (MapObject& o : m_mapObjects) ok = move(o.pos, QStringLiteral("a treasure")) && ok;
+    for (Army& a : m_armies) ok = move(a.pos, a.hasHero() ? QStringLiteral("a hero") : QStringLiteral("an army")) && ok;
+    *notes << QStringLiteral("converted from save format 1");
+    return ok;
+}
+
+SaveInfo inspectSave(const QString& path, const ContentRegistry& content) {
+    SaveInfo info;
+    const QFileInfo fi(path);
+    info.name = fi.completeBaseName();
+    info.savedAt = fi.lastModified().toString(Qt::ISODate);
+    QFile file(path);
+    QJsonParseError pe;
+    const QJsonDocument doc = file.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(file.readAll(), &pe) : QJsonDocument();
+    if (!doc.isObject()) {
+        info.status = SaveInfo::Status::Incompatible;
+        info.problems << QStringLiteral("not a saved game");
+        return info;
+    }
+    const QJsonObject o = doc.object();
+    info.formatVersion = o.value("formatVersion").toInt();
+    info.gameVersion = o.value("gameVersion").toString();
+    if (o.contains("savedAt")) info.savedAt = o.value("savedAt").toString();
+    info.day = o.value("day").toInt();
+    for (const QJsonValue& p : o.value("players").toArray()) info.players << p.toObject().value("name").toString();
+    const QJsonObject map = o.value("map").toObject();
+    info.mapWidth = map.value("width").toInt();
+    info.mapHeight = map.value("height").toInt();
+    GameState gs;
+    QStringList errors, notes;
+    if (!GameState::fromJson(o, content, &gs, &errors, &notes)) {
+        info.status = SaveInfo::Status::Incompatible;
+        info.problems = errors.mid(0, 5);
+        if (errors.size() > 5) info.problems << QStringLiteral("... and %1 more problems").arg(errors.size() - 5);
+    } else if (!notes.isEmpty()) {
+        info.status = SaveInfo::Status::Converted;
+        info.problems = notes;
+    }
+    return info;
 }
 
 bool GameState::saveToFile(const QString& path, QString* error) const {
@@ -613,7 +712,10 @@ bool GameState::saveToFile(const QString& path, QString* error) const {
         if (error) *error = file.errorString();
         return false;
     }
-    file.write(QJsonDocument(toJson()).toJson(QJsonDocument::Compact));
+    QJsonObject root = toJson();
+    root.insert("gameVersion", QString::fromLatin1(kGameVersion));
+    root.insert("savedAt", QDateTime::currentDateTime().toString(Qt::ISODate));
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
     if (!file.commit()) {
         if (error) *error = file.errorString();
         return false;
@@ -622,7 +724,7 @@ bool GameState::saveToFile(const QString& path, QString* error) const {
 }
 
 bool GameState::loadFromFile(const QString& path, const ContentRegistry& content, GameState* out,
-                             QStringList* errors) {
+                             QStringList* errors, QStringList* notes) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         if (errors) *errors = {QStringLiteral("%1: cannot open (%2)").arg(path, file.errorString())};
@@ -635,7 +737,7 @@ bool GameState::loadFromFile(const QString& path, const ContentRegistry& content
             *errors = {QStringLiteral("%1: not a valid save file (%2)").arg(path, pe.errorString())};
         return false;
     }
-    return fromJson(doc.object(), content, out, errors);
+    return fromJson(doc.object(), content, out, errors, notes);
 }
 
 }  // namespace kot::core
