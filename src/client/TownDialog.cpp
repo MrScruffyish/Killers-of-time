@@ -186,7 +186,18 @@ void TownDialog::rebuild() {
             int rank;  // 0 now, 1 after a trade, 2 blocked, 3 built
         };
         QList<Row> rows;
+        // Left out: buildings that can never come here any more because a rival
+        // one was built (excludes, either way round).
+        const auto ruledOut = [&](const QString& id) {
+            const core::BuildingDef* b = m_content->building(id);
+            for (const QString& built : town->buildings) {
+                const core::BuildingDef* other = m_content->building(built);
+                if ((b && b->excludes.contains(built)) || (other && other->excludes.contains(id))) return true;
+            }
+            return false;
+        };
         for (const BuildOption& o : town->buildOptions) {
+            if (ruledOut(o.id)) continue;
             const int rank = o.why.isEmpty() ? 0 : o.why.startsWith("not enough") ? 1 : 2;
             rows.append({o.id, o.why, rank});
         }
