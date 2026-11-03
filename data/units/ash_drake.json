@@ -1,0 +1,21 @@
+{
+  "id": "ash_drake",
+  "name": "Ash Drake",
+  "race": "ashborn",
+  "tier": 4,
+  "attack": 17,
+  "defense": 14,
+  "damageMin": 18,
+  "damageMax": 28,
+  "maxHp": 105,
+  "battleSpeed": 9,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 1500
+  },
+  "initiative": 9,
+  "abilities": [
+    "flying"
+  ],
+  "upgradesTo": "ember_drake"
+}

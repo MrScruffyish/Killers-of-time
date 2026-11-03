@@ -1,0 +1,19 @@
+{
+  "id": "inferno",
+  "name": "Inferno",
+  "school": "fire",
+  "level": 4,
+  "cost": 22,
+  "requiredMagic": 4,
+  "scope": "battle",
+  "target": "enemy",
+  "area": 2,
+  "description": "A sea of fire burns an enemy stack and everything within two hexes.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 25,
+      "perPower": 15
+    }
+  ]
+}

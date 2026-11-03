@@ -18,7 +18,8 @@ QPixmap schoolRune(const QString& school, int size) {
     const QString key = school + QString::number(size);
     if (cache.contains(key)) return cache.value(key);
     static const QHash<QString, QColor> colours = {{"air", QColor("#8ad0ff")}, {"water", QColor("#3a8ae0")}, {"earth", QColor("#b08a4a")},
-                                                   {"nature", QColor("#5ab84a")}, {"dark", QColor("#9a4ac8")}};
+                                                   {"nature", QColor("#5ab84a")}, {"dark", QColor("#9a4ac8")},
+                                                   {"fire", QColor("#e8602a")}};
     const QColor c = colours.value(school, QColor("#ffd84a"));
     QPixmap pm(size, size);
     pm.fill(Qt::transparent);
@@ -53,6 +54,13 @@ QPixmap schoolRune(const QString& school, int size) {
         leaf.quadTo(X(0.72), X(0.66), X(0.3), X(0.72));
         p.drawPath(leaf);
         p.drawLine(QPointF(X(0.3), X(0.72)), QPointF(X(0.6), X(0.4)));
+    } else if (school == "fire") {  // a flame
+        QPainterPath flame;
+        flame.moveTo(X(0.5), X(0.78));
+        flame.cubicTo(X(0.22), X(0.7), X(0.3), X(0.42), X(0.46), X(0.22));
+        flame.cubicTo(X(0.5), X(0.4), X(0.62), X(0.4), X(0.6), X(0.3));
+        flame.cubicTo(X(0.8), X(0.48), X(0.76), X(0.72), X(0.5), X(0.78));
+        p.drawPath(flame);
     } else if (school == "dark") {  // an eye
         p.drawArc(QRectF(X(0.2), X(0.35), X(0.6), X(0.4)), 0, 180 * 16);
         p.drawArc(QRectF(X(0.2), X(0.25), X(0.6), X(0.4)), 180 * 16, 180 * 16);

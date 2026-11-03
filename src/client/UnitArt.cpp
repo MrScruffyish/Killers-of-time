@@ -585,6 +585,274 @@ void swordsman(Canvas& c, const QColor& coat) {
     c.p.drawRect(c.box(0.68, 0.6, 0.16, 0.04));
 }
 
+// ---- Ashborn: red-skinned, horned fire folk.
+const QColor kEmber("#ff8a20");
+
+void horns(Canvas& c, double x, double y, double size, const QColor& colour = QColor("#2a1a14")) {
+    c.pen(kInk, 0.02);
+    c.p.setBrush(colour);
+    c.poly({{x - size * 0.5, y + size * 0.3}, {x - size * 0.9, y - size * 0.6}, {x - size * 0.2, y + size * 0.1}});
+    c.poly({{x + size * 0.5, y + size * 0.3}, {x + size * 0.9, y - size * 0.6}, {x + size * 0.2, y + size * 0.1}});
+}
+
+void flames(Canvas& c, double x, double y, double size) {
+    // A little fire: an orange tongue with a yellow heart.
+    c.p.setPen(Qt::NoPen);
+    for (const auto& [colour, k] : {std::pair{QColor("#e04010"), 1.0}, std::pair{kEmber, 0.7}, std::pair{QColor("#ffe060"), 0.4}}) {
+        QPainterPath f;
+        f.moveTo(c.at(x, y));
+        f.cubicTo(c.at(x - size * 0.6 * k, y - size * 0.2 * k), c.at(x - size * 0.2 * k, y - size * 0.7 * k), c.at(x, y - size * k));
+        f.cubicTo(c.at(x + size * 0.2 * k, y - size * 0.6 * k), c.at(x + size * 0.6 * k, y - size * 0.3 * k), c.at(x, y));
+        c.p.setBrush(colour);
+        c.p.drawPath(f);
+    }
+}
+
+void imp(Canvas& c, bool fiend) {
+    const QColor skin(fiend ? "#a82a2a" : "#d04a3a");
+    wings(c, QColor(fiend ? "#4a1a1a" : "#6a2a2a"));
+    c.pen(skin.darker(140), 0.03);  // a tail with a barb
+    c.p.setBrush(Qt::NoBrush);
+    QPainterPath tail;
+    tail.moveTo(c.at(0.55, 0.78));
+    tail.cubicTo(c.at(0.8, 0.95), c.at(0.92, 0.75), c.at(0.86, 0.6));
+    c.p.drawPath(tail);
+    c.pen(kInk, 0.02);
+    c.p.setBrush(skin.darker(140));
+    c.poly({{0.86, 0.56}, {0.92, 0.64}, {0.8, 0.64}});
+    c.p.setBrush(skin.darker(120));
+    c.p.drawRect(c.box(0.4, 0.7, 0.07, 0.2));
+    c.p.drawRect(c.box(0.53, 0.7, 0.07, 0.2));
+    c.p.setBrush(skin);
+    c.p.drawEllipse(c.box(0.36, 0.44, 0.28, 0.3));
+    c.p.drawEllipse(c.box(0.38, 0.22, 0.24, 0.24));
+    horns(c, 0.5, 0.24, 0.12);
+    c.p.setPen(Qt::NoPen);
+    c.p.setBrush(QColor("#ffe040"));
+    c.p.drawEllipse(c.box(0.43, 0.3, 0.04, 0.04));
+    c.p.drawEllipse(c.box(0.53, 0.3, 0.04, 0.04));
+    c.pen(kInk, 0.02);  // a pitchfork
+    c.line(0.24, 0.92, 0.24, 0.28);
+    c.p.setBrush(Qt::NoBrush);
+    c.line(0.18, 0.28, 0.3, 0.28);
+    for (const double x : {0.18, 0.24, 0.3}) c.line(x, 0.28, x, 0.18);
+    if (fiend) flames(c, 0.24, 0.17, 0.12);
+}
+
+void hellhound(Canvas& c, bool threeHeads) {
+    const QColor fur(threeHeads ? "#3a1a18" : "#5a2a20");
+    c.pen(fur.darker(140), 0.045);
+    for (const double x : {0.25, 0.35, 0.6, 0.7}) c.line(x, 0.62, x, 0.9);
+    c.pen(kInk, 0.025);
+    c.p.setBrush(fur);
+    c.p.drawEllipse(c.box(0.14, 0.42, 0.6, 0.26));
+    flames(c, 0.08, 0.5, 0.22);  // a burning tail
+    const int heads = threeHeads ? 3 : 1;
+    for (int i = 0; i < heads; ++i) {
+        const double dx = heads == 1 ? 0 : (i - 1) * 0.1, dy = heads == 1 ? 0 : (i == 1 ? -0.12 : 0.02);
+        c.pen(kInk, 0.025);
+        c.p.setBrush(fur.lighter(115));
+        c.poly({{0.66 + dx, 0.5 + dy}, {0.96 + dx, 0.42 + dy}, {0.9 + dx, 0.3 + dy}, {0.74 + dx, 0.24 + dy}, {0.7 + dx, 0.12 + dy}, {0.62 + dx, 0.3 + dy}});
+        c.p.setPen(Qt::NoPen);
+        c.p.setBrush(kEmber);
+        c.p.drawEllipse(c.box(0.77 + dx, 0.31 + dy, 0.05, 0.05));
+    }
+}
+
+void witch(Canvas& c, const QColor& robe, bool pyre) {
+    robedCaster(c, robe, false, kEmber);
+    c.pen(kInk, 0.025);  // a pointed hat
+    c.p.setBrush(robe.darker(140));
+    c.poly({{0.3, 0.16}, {0.46, -0.04}, {0.56, 0.02}, {0.52, 0.14}, {0.7, 0.16}});
+    flames(c, 0.8, 0.18, pyre ? 0.22 : 0.14);
+    if (pyre) {
+        c.p.setPen(Qt::NoPen);
+        c.p.setBrush(QColor("#ffd84a"));
+        c.p.drawRect(c.box(0.3, 0.62, 0.4, 0.04));
+    }
+}
+
+void hornedBrute(Canvas& c, bool overseer) {
+    brute(c, QColor(overseer ? "#8a2a20" : "#b04a30"), false);
+    horns(c, 0.5, 0.12, 0.18, QColor("#e8dcc0"));
+    c.pen(kInk, 0.02);
+    if (overseer) {  // a whip and a spiked collar
+        c.p.setBrush(kSteel);
+        c.p.drawRect(c.box(0.34, 0.34, 0.32, 0.06));
+        c.pen(QColor("#3a2a1a"), 0.03);
+        c.p.setBrush(Qt::NoBrush);
+        QPainterPath whip;
+        whip.moveTo(c.at(0.86, 0.5));
+        whip.cubicTo(c.at(1.0, 0.2), c.at(0.7, 0.1), c.at(0.95, 0.02));
+        c.p.drawPath(whip);
+    } else {  // a heavy cleaver
+        c.pen(kWood.darker(120), 0.04);
+        c.line(0.86, 0.6, 0.86, 0.22);
+        c.pen(kInk, 0.02);
+        c.p.setBrush(kSteel);
+        c.poly({{0.86, 0.22}, {1.0, 0.18}, {1.0, 0.42}, {0.86, 0.38}});
+    }
+}
+
+void drake(Canvas& c, const QColor& scales) {
+    c.pen(kInk, 0.025);
+    c.p.setBrush(scales.darker(130));
+    c.poly({{0.45, 0.45}, {0.08, 0.06}, {0.16, 0.32}, {0.0, 0.36}, {0.22, 0.56}});
+    c.poly({{0.55, 0.45}, {0.92, 0.06}, {0.84, 0.32}, {1.0, 0.36}, {0.78, 0.56}});
+    c.p.setBrush(scales);
+    c.p.drawEllipse(c.box(0.32, 0.42, 0.36, 0.34));
+    c.poly({{0.42, 0.46}, {0.58, 0.46}, {0.62, 0.28}, {0.5, 0.2}});  // neck
+    c.p.drawEllipse(c.box(0.4, 0.1, 0.24, 0.18));  // head
+    c.p.setBrush(scales.lighter(150));
+    c.p.drawEllipse(c.box(0.42, 0.5, 0.16, 0.22));  // belly
+    c.pen(scales.darker(150), 0.05);
+    c.line(0.4, 0.74, 0.34, 0.94);
+    c.line(0.6, 0.74, 0.66, 0.94);
+    c.p.setPen(Qt::NoPen);
+    c.p.setBrush(QColor("#ffe040"));
+    c.p.drawEllipse(c.box(0.52, 0.15, 0.05, 0.05));
+    flames(c, 0.72, 0.16, 0.14);  // breath
+}
+
+void pitLord(Canvas& c) {
+    wings(c, QColor("#2a1010"));
+    brute(c, QColor("#7a1a18"), false);
+    horns(c, 0.5, 0.1, 0.22, QColor("#1a1010"));
+    c.pen(kInk, 0.02);
+    c.p.setBrush(QColor("#2a1a1a"));
+    c.p.drawRoundedRect(c.box(0.22, 0.34, 0.56, 0.2), c.s(0.06), c.s(0.06));  // dark armour
+    flames(c, 0.86, 0.36, 0.3);  // a fire in the hand
+    flames(c, 0.2, 0.98, 0.16);
+    flames(c, 0.8, 0.98, 0.16);
+}
+
+// ---- Tidefolk: sailors and sea creatures in blues and teals.
+const QColor kSea("#2a7a9a");
+
+void sailor(Canvas& c, const QColor& coat, bool hat) {
+    figure(c, coat, false);
+    c.pen(kInk, 0.02);
+    c.p.setBrush(QColor("#f0f0f0"));  // a striped shirt
+    c.p.drawRect(c.box(0.38, 0.4, 0.24, 0.14));
+    c.pen(QColor("#2a4a8a"), 0.025);
+    for (const double y : {0.44, 0.5}) c.line(0.39, y, 0.61, y);
+    c.pen(kInk, 0.02);
+    if (hat) {  // a tricorn
+        c.p.setBrush(QColor("#1a1a24"));
+        c.poly({{0.3, 0.18}, {0.5, 0.04}, {0.7, 0.18}, {0.5, 0.14}});
+        c.p.setBrush(QColor("#ffd84a"));
+        c.p.drawEllipse(c.box(0.47, 0.08, 0.06, 0.06));
+    } else {  // a bandana
+        c.p.setBrush(QColor("#c0302a"));
+        c.p.drawChord(c.box(0.39, 0.1, 0.22, 0.16), 0, 180 * 16);
+    }
+    c.p.setBrush(kSteel);  // a curved cutlass
+    QPainterPath blade;
+    blade.moveTo(c.at(0.72, 0.62));
+    blade.quadTo(c.at(0.92, 0.4), c.at(0.84, 0.16));
+    blade.quadTo(c.at(0.8, 0.42), c.at(0.68, 0.6));
+    c.p.drawPath(blade);
+    c.p.setBrush(QColor("#c9a24a"));
+    c.p.drawRect(c.box(0.64, 0.6, 0.12, 0.04));
+}
+
+void harpooner(Canvas& c, bool master) {
+    figure(c, QColor(master ? "#1a5a6a" : "#4a6a7a"), master, 0.42);
+    c.pen(kWood.darker(120), 0.035);
+    c.line(0.2, 0.8, 0.86, 0.12);  // the harpoon
+    c.pen(kInk, 0.02);
+    c.p.setBrush(kSteel);
+    c.poly({{0.92, 0.06}, {0.8, 0.12}, {0.86, 0.18}});
+    c.poly({{0.84, 0.14}, {0.82, 0.24}, {0.78, 0.18}});
+    c.pen(QColor("#d8c8a0"), 0.015);  // the rope
+    c.p.setBrush(Qt::NoBrush);
+    c.p.drawArc(c.box(0.06, 0.6, 0.2, 0.3), 90 * 16, 240 * 16);
+}
+
+void triton(Canvas& c, bool guard) {
+    const QColor scales(guard ? "#2a6a7a" : "#3a8a8a");
+    c.pen(kInk, 0.025);
+    c.p.setBrush(scales);  // a fish tail instead of legs
+    QPainterPath tail;
+    tail.moveTo(c.at(0.36, 0.6));
+    tail.cubicTo(c.at(0.3, 0.8), c.at(0.5, 0.86), c.at(0.62, 0.9));
+    tail.lineTo(c.at(0.74, 0.8));
+    tail.lineTo(c.at(0.76, 0.98));
+    tail.lineTo(c.at(0.58, 0.96));
+    tail.cubicTo(c.at(0.44, 0.9), c.at(0.6, 0.72), c.at(0.64, 0.6));
+    tail.closeSubpath();
+    c.p.drawPath(tail);
+    c.p.setBrush(QColor("#8ac8c0"));
+    c.p.drawRoundedRect(c.box(0.34, 0.34, 0.32, 0.3), c.s(0.06), c.s(0.06));
+    c.p.drawEllipse(c.box(0.4, 0.12, 0.2, 0.22));
+    if (guard) {
+        c.p.setBrush(QColor("#c9a24a"));
+        c.p.drawChord(c.box(0.38, 0.08, 0.24, 0.2), 0, 180 * 16);
+        c.p.drawEllipse(c.box(0.12, 0.38, 0.22, 0.3));  // a shell shield
+    }
+    c.pen(QColor("#c9a24a"), 0.035);  // a trident
+    c.line(0.78, 0.9, 0.78, 0.14);
+    c.line(0.7, 0.2, 0.86, 0.2);
+    for (const double x : {0.7, 0.78, 0.86}) c.line(x, 0.2, x, 0.06);
+}
+
+void serpent(Canvas& c, const QColor& scales, bool elder) {
+    // Coils rising out of the waves.
+    c.pen(QColor("#e8f4ff"), 0.025);
+    c.p.setBrush(kSea);
+    c.p.drawRect(c.box(0.0, 0.78, 1.0, 0.2));
+    c.pen(kInk, 0.025);
+    c.p.setBrush(scales);
+    c.p.drawChord(c.box(0.04, 0.6, 0.3, 0.36), 0, 180 * 16);
+    c.p.drawChord(c.box(0.36, 0.56, 0.3, 0.44), 0, 180 * 16);
+    QPainterPath neck;
+    neck.moveTo(c.at(0.68, 0.8));
+    neck.cubicTo(c.at(0.72, 0.4), c.at(0.92, 0.4), c.at(0.78, 0.12));
+    neck.lineTo(c.at(0.66, 0.2));
+    neck.cubicTo(c.at(0.76, 0.42), c.at(0.6, 0.5), c.at(0.58, 0.8));
+    neck.closeSubpath();
+    c.p.drawPath(neck);
+    c.p.setBrush(scales.lighter(115));
+    c.p.drawEllipse(c.box(0.6, 0.06, 0.28, 0.16));  // head
+    if (elder) {  // a fin crest
+        c.p.setBrush(QColor("#c84a4a"));
+        c.poly({{0.66, 0.08}, {0.6, -0.04}, {0.74, 0.04}, {0.76, -0.06}, {0.82, 0.06}});
+    }
+    c.p.setPen(Qt::NoPen);
+    c.p.setBrush(QColor("#ffe040"));
+    c.p.drawEllipse(c.box(0.76, 0.1, 0.05, 0.05));
+    c.pen(QColor(255, 255, 255, 200), 0.02);
+    c.p.setBrush(Qt::NoBrush);
+    for (const double x : {0.1, 0.42, 0.62}) c.p.drawArc(c.box(x, 0.76, 0.16, 0.08), 0, 180 * 16);
+}
+
+void kraken(Canvas& c) {
+    const QColor skin("#8a3a6a");
+    c.pen(kInk, 0.025);
+    c.p.setBrush(kSea);
+    c.p.drawRect(c.box(0.0, 0.8, 1.0, 0.18));
+    // Tentacles, then the head.
+    c.p.setBrush(skin);
+    for (int i = 0; i < 5; ++i) {
+        const double x = 0.1 + i * 0.2, bend = (i % 2 ? 0.1 : -0.1);
+        QPainterPath t;
+        t.moveTo(c.at(x - 0.05, 0.84));
+        t.cubicTo(c.at(x - 0.08 + bend, 0.55), c.at(x + bend * 2, 0.4), c.at(x + bend, 0.3));
+        t.cubicTo(c.at(x + bend * 2 + 0.04, 0.42), c.at(x + 0.04 + bend, 0.6), c.at(x + 0.05, 0.84));
+        t.closeSubpath();
+        c.p.drawPath(t);
+    }
+    c.p.drawEllipse(c.box(0.28, 0.1, 0.44, 0.5));
+    c.p.setBrush(skin.lighter(130));
+    c.p.drawEllipse(c.box(0.34, 0.14, 0.16, 0.14));
+    c.p.setBrush(QColor("#ffe040"));
+    c.p.drawEllipse(c.box(0.36, 0.38, 0.1, 0.08));
+    c.p.drawEllipse(c.box(0.54, 0.38, 0.1, 0.08));
+    c.p.setBrush(kInk);
+    c.p.drawRect(c.box(0.4, 0.39, 0.02, 0.06));
+    c.p.drawRect(c.box(0.58, 0.39, 0.02, 0.06));
+}
+
 }  // namespace
 
 void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
@@ -652,6 +920,30 @@ void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     else if (id == "hydra") lizard(c, QColor("#3a7a6a"), 5);
     else if (id == "minotaur") minotaur(c);
     else if (id == "ogre") brute(c, QColor("#c8a070"), true);
+    else if (id == "imp") imp(c, false);
+    else if (id == "fiend") imp(c, true);
+    else if (id == "hellhound") hellhound(c, false);
+    else if (id == "cerberus") hellhound(c, true);
+    else if (id == "flame_witch") witch(c, QColor("#6a1a2a"), false);
+    else if (id == "pyre_witch") witch(c, QColor("#3a0a14"), true);
+    else if (id == "horned_brute") hornedBrute(c, false);
+    else if (id == "horned_overseer") hornedBrute(c, true);
+    else if (id == "ash_drake") drake(c, QColor("#5a4a48"));
+    else if (id == "ember_drake") drake(c, QColor("#b04a20"));
+    else if (id == "pit_lord") pitLord(c);
+    else if (id == "deckhand") sailor(c, QColor("#5a6a8a"), false);
+    else if (id == "corsair") sailor(c, QColor("#6a2a3a"), true);
+    else if (id == "harpooner") harpooner(c, false);
+    else if (id == "harpoon_master") harpooner(c, true);
+    else if (id == "tide_priestess") robedCaster(c, QColor("#2a6a9a"), false, QColor("#a0f0ff"));
+    else if (id == "triton") triton(c, false);
+    else if (id == "triton_guard") triton(c, true);
+    else if (id == "sea_serpent") serpent(c, QColor("#3a7a5a"), false);
+    else if (id == "elder_serpent") serpent(c, QColor("#2a5a6a"), true);
+    else if (id == "kraken") kraken(c);
+    else if (id == "salamander") { lizard(c, QColor("#c8502a"), 1); flames(c, 0.06, 0.66, 0.16); }
+    else if (id == "sea_witch") robedCaster(c, QColor("#2a5a4a"), false, QColor("#60ffc0"));
+    else if (id == "frost_giant") { brute(c, QColor("#a8c8e0"), true); c.pen(kInk, 0.02); c.p.setBrush(QColor("#f4f8ff")); c.p.drawChord(c.box(0.34, 0.04, 0.32, 0.2), 0, 180 * 16); }
     else swordsman(c, QColor::fromHsv(int(qHash(id) % 360), 120, 160));
     p.restore();
 }

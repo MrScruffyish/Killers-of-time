@@ -1,0 +1,17 @@
+{
+  "id": "triton_guard",
+  "name": "Triton Guard",
+  "race": "tidefolk",
+  "tier": 3,
+  "attack": 13,
+  "defense": 13,
+  "damageMin": 8,
+  "damageMax": 12,
+  "maxHp": 46,
+  "battleSpeed": 6,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 560
+  },
+  "initiative": 9
+}

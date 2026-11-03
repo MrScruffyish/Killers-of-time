@@ -1,0 +1,25 @@
+{
+  "id": "battle_fury",
+  "name": "Battle Fury",
+  "school": "fire",
+  "level": 1,
+  "cost": 5,
+  "requiredMagic": 1,
+  "scope": "battle",
+  "target": "ally",
+  "description": "One of your stacks fights in a rage: more attack, less defence, for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "attack",
+      "amount": 5,
+      "rounds": 3
+    },
+    {
+      "type": "modifyStat",
+      "stat": "defense",
+      "amount": -2,
+      "rounds": 3
+    }
+  ]
+}

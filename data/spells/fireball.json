@@ -1,0 +1,19 @@
+{
+  "id": "fireball",
+  "name": "Fireball",
+  "school": "fire",
+  "level": 3,
+  "cost": 14,
+  "requiredMagic": 3,
+  "scope": "battle",
+  "target": "enemy",
+  "area": 1,
+  "description": "A fireball bursts on an enemy stack and every stack next to it.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 15,
+      "perPower": 12
+    }
+  ]
+}

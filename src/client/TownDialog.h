@@ -7,6 +7,7 @@
 
 class QTabWidget;
 class QLabel;
+class QComboBox;
 
 namespace kot::core { class ContentRegistry; }
 
@@ -30,6 +31,9 @@ signals:
 
 private:
     void rebuild();
+    // Another of my towns, keeping the open tab: +1 next, -1 previous.
+    void stepTown(int direction);
+    QList<int> myTowns() const;
     void drawScene(const ViewTown& town);
     QString costText(const core::ResourceAmounts& cost) const;
     QString unitName(const QString& id) const;
@@ -41,6 +45,7 @@ private:
     int m_townId = 0;
     QTabWidget* m_tabs;
     QLabel* m_scene;
+    QComboBox* m_townChoice;
     bool m_onlyBuildable = false;  // remembered in QSettings
 };
 

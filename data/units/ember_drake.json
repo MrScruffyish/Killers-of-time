@@ -1,0 +1,20 @@
+{
+  "id": "ember_drake",
+  "name": "Ember Drake",
+  "race": "ashborn",
+  "tier": 4,
+  "attack": 19,
+  "defense": 16,
+  "damageMin": 20,
+  "damageMax": 30,
+  "maxHp": 120,
+  "battleSpeed": 10,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 2100
+  },
+  "initiative": 10,
+  "abilities": [
+    "flying"
+  ]
+}

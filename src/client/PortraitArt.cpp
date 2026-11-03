@@ -28,13 +28,19 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     p.drawRoundedRect(r, w * 0.12, w * 0.12);
     const bool undead = classId == "death_knight" || classId == "necromancer";
     const bool orc = classId == "warlord" || classId == "shaman_chief";
-    const QColor skin = orc ? QColor("#7aa04a") : undead ? QColor("#c8d0c0") : (seed % 3 == 0 ? QColor("#e8b890") : seed % 3 == 1 ? QColor("#f0c8a0") : QColor("#b07850"));
+    const bool ash = classId == "hellknight" || classId == "pyromancer";
+    const bool tide = classId == "captain" || classId == "tidecaller";
+    const QColor skin = ash ? QColor("#c8483a") : tide && seed % 2 ? QColor("#8ac8c0") : orc ? QColor("#7aa04a") : undead ? QColor("#c8d0c0") : (seed % 3 == 0 ? QColor("#e8b890") : seed % 3 == 1 ? QColor("#f0c8a0") : QColor("#b07850"));
     // Shoulders in the class's clothes.
     QColor coat = owner.darker(120);
     if (classId == "wizard") coat = QColor("#3a4aa0");
     if (classId == "necromancer") coat = QColor("#2a2030");
     if (classId == "ranger") coat = QColor("#3e6a30");
     if (classId == "druid") coat = QColor("#6a5030");
+    if (classId == "pyromancer") coat = QColor("#5a1a1a");
+    if (classId == "hellknight") coat = QColor("#2a1a1a");
+    if (classId == "captain") coat = QColor("#1a2a4a");
+    if (classId == "tidecaller") coat = QColor("#2a6a8a");
     p.setPen(pen);
     p.setBrush(coat);
     QPainterPath shoulders;
@@ -54,7 +60,7 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     p.drawEllipse(QRectF(X(0.3), Y(0.22), w * 0.4, h * 0.42));
     // Eyes and mouth.
     p.setPen(Qt::NoPen);
-    p.setBrush(undead ? QColor("#60ff90") : ink);
+    p.setBrush(undead ? QColor("#60ff90") : ash ? QColor("#ffd040") : ink);
     p.drawEllipse(QPointF(X(0.42), Y(0.42)), w * 0.025, h * 0.025);
     p.drawEllipse(QPointF(X(0.58), Y(0.42)), w * 0.025, h * 0.025);
     p.setPen(QPen(ink, std::max(1.0, w / 80)));
@@ -86,7 +92,31 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     }
     // Headgear.
     p.setPen(pen);
-    if (classId == "wizard") {
+    if (ash) {  // horns; the pyromancer has a flame over them
+        p.setBrush(QColor("#2a1a14"));
+        p.drawPolygon(QPolygonF{QPointF(X(0.34), Y(0.3)), QPointF(X(0.2), Y(0.06)), QPointF(X(0.42), Y(0.25))});
+        p.drawPolygon(QPolygonF{QPointF(X(0.66), Y(0.3)), QPointF(X(0.8), Y(0.06)), QPointF(X(0.58), Y(0.25))});
+        if (classId == "pyromancer") {
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor("#ff8a20"));
+            p.drawEllipse(QPointF(X(0.5), Y(0.12)), w * 0.06, h * 0.09);
+            p.setBrush(QColor("#ffe060"));
+            p.drawEllipse(QPointF(X(0.5), Y(0.14)), w * 0.03, h * 0.05);
+        } else {
+            p.setBrush(QColor("#3a2a2a"));
+            p.drawRect(QRectF(X(0.27), Y(0.33), w * 0.46, h * 0.05));
+        }
+    } else if (classId == "captain") {  // a tricorn
+        p.setBrush(QColor("#1a1a24"));
+        p.drawPolygon(QPolygonF{QPointF(X(0.14), Y(0.34)), QPointF(X(0.5), Y(0.06)), QPointF(X(0.86), Y(0.34)), QPointF(X(0.5), Y(0.26))});
+        p.setBrush(QColor("#ffd84a"));
+        p.drawEllipse(QPointF(X(0.5), Y(0.18)), w * 0.04, w * 0.04);
+    } else if (classId == "tidecaller") {  // a crown of shells and coral
+        for (int i = 0; i < 5; ++i) {
+            p.setBrush(i % 2 ? QColor("#f0a0a0") : QColor("#f4ecd8"));
+            p.drawEllipse(QRectF(X(0.28 + i * 0.09), Y(0.18 - (i == 2 ? 0.05 : 0)), w * 0.09, h * 0.11));
+        }
+    } else if (classId == "wizard") {
         p.setBrush(QColor("#3a4aa0"));
         p.drawPolygon(QPolygonF{QPointF(X(0.22), Y(0.3)), QPointF(X(0.62), Y(-0.02)), QPointF(X(0.78), Y(0.3))});
         p.setBrush(QColor("#2a3a80"));

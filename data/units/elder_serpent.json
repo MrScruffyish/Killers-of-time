@@ -1,0 +1,20 @@
+{
+  "id": "elder_serpent",
+  "name": "Elder Serpent",
+  "race": "tidefolk",
+  "tier": 4,
+  "attack": 18,
+  "defense": 16,
+  "damageMin": 16,
+  "damageMax": 26,
+  "maxHp": 110,
+  "battleSpeed": 7,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 2050
+  },
+  "initiative": 8,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

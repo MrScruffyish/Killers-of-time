@@ -1,0 +1,20 @@
+{
+  "id": "burning_throne",
+  "name": "Burning Throne",
+  "race": "ashborn",
+  "cost": {
+    "gold": 6500,
+    "stone": 15,
+    "sulphur": 5
+  },
+  "requires": [
+    "drake_nest",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "pit_lord"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "tide_priestess",
+  "name": "Tide Priestess",
+  "race": "tidefolk",
+  "tier": 3,
+  "attack": 8,
+  "defense": 7,
+  "damageMin": 4,
+  "damageMax": 7,
+  "maxHp": 28,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 330,
+    "gems": 1
+  },
+  "initiative": 8,
+  "range": 6,
+  "shots": 8,
+  "spellPoints": 14,
+  "spells": [
+    "cure"
+  ]
+}

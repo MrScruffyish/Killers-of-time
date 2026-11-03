@@ -1,0 +1,15 @@
+{
+  "id": "deckhand_shacks",
+  "name": "Deckhand Shacks",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 250,
+    "wood": 5
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "deckhand"
+    }
+  ]
+}

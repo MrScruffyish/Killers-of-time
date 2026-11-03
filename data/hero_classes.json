@@ -300,6 +300,126 @@
         "haste",
         "curse"
       ]
+    },
+    {
+      "id": "hellknight",
+      "name": "Hellknight",
+      "race": "ashborn",
+      "baseTraits": {
+        "attack": 4,
+        "defense": 2,
+        "morale": 1,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 10,
+        "spell_recovery": 1,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "attack": 2,
+        "defense": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "imp": 16,
+        "hellhound": 2
+      },
+      "startingSpells": [
+        "battle_fury"
+      ]
+    },
+    {
+      "id": "pyromancer",
+      "name": "Pyromancer",
+      "race": "ashborn",
+      "baseTraits": {
+        "attack": 1,
+        "defense": 1,
+        "spell_power": 4,
+        "magic": 3,
+        "spell_points_max": 28,
+        "spell_recovery": 2,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "imp": 12,
+        "hellhound": 2
+      },
+      "startingSpells": [
+        "fire_bolt",
+        "ash_cloud"
+      ]
+    },
+    {
+      "id": "captain",
+      "name": "Captain",
+      "race": "tidefolk",
+      "baseTraits": {
+        "attack": 3,
+        "defense": 3,
+        "morale": 1,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 10,
+        "spell_recovery": 1,
+        "movement_points": 1,
+        "scouting_radius": 6
+      },
+      "pickIncrement": {
+        "attack": 1,
+        "defense": 2,
+        "scouting_radius": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "deckhand": 14,
+        "harpooner": 4
+      },
+      "startingSpells": [
+        "cure"
+      ]
+    },
+    {
+      "id": "tidecaller",
+      "name": "Tidecaller",
+      "race": "tidefolk",
+      "baseTraits": {
+        "attack": 1,
+        "defense": 2,
+        "spell_power": 3,
+        "magic": 3,
+        "spell_points_max": 30,
+        "spell_recovery": 2,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2,
+        "magic": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "deckhand": 10,
+        "harpooner": 4
+      },
+      "startingSpells": [
+        "ice_bolt",
+        "barkskin"
+      ]
     }
   ]
 }

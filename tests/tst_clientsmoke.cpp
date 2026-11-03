@@ -7,6 +7,7 @@
 #include <QTemporaryDir>
 #include <QPushButton>
 #include <QTabWidget>
+#include <QComboBox>
 #include <QtTest>
 
 #include "client/Art.h"
@@ -290,6 +291,11 @@ private slots:
         game->mapView()->centerOn(town.pos);
         QTest::mouseClick(game->mapView()->viewport(), Qt::RightButton, {}, game->mapView()->tileRect(town.pos).center());
         QVERIFY(game->townDialog()->isVisible());
+        // The town list at the bottom: one town, so nothing to step to.
+        auto* choice = game->townDialog()->findChild<QComboBox*>("townChoice");
+        QVERIFY(choice);
+        QCOMPARE(choice->count(), 1);
+        QVERIFY(!game->townDialog()->findChild<QPushButton*>("townNextButton")->isEnabled());
         QApplication::processEvents();
         shot(game->townDialog(), "4_town_buildings");
         auto* build = game->townDialog()->findChild<QPushButton*>("build_barracks");

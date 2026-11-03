@@ -1,0 +1,21 @@
+{
+  "id": "pit_lord",
+  "name": "Pit Lord",
+  "race": "ashborn",
+  "tier": 5,
+  "attack": 24,
+  "defense": 20,
+  "damageMin": 35,
+  "damageMax": 50,
+  "maxHp": 200,
+  "battleSpeed": 7,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3800,
+    "sulphur": 2
+  },
+  "initiative": 8,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

@@ -1,5 +1,7 @@
 #include "client/TownDialog.h"
 
+#include <QSignalBlocker>
+#include <QComboBox>
 #include <QCheckBox>
 #include <QSettings>
 #include <QHBoxLayout>
@@ -35,6 +37,35 @@ TownDialog::TownDialog(const core::ContentRegistry* content, QWidget* parent)
     m_tabs = new QTabWidget(this);
     layout->addWidget(m_tabs, 1);
     auto* bottom = new QHBoxLayout();
+    // Going to my other towns without closing: arrows, a list, T / PgUp / PgDn.
+    auto* prev = new QPushButton(QStringLiteral("\u25C0"), this);
+    prev->setObjectName("townPrevButton");
+    prev->setToolTip(tr("Previous town (PgUp)"));
+    auto* next = new QPushButton(QStringLiteral("\u25B6"), this);
+    next->setObjectName("townNextButton");
+    next->setToolTip(tr("Next town (T or PgDn)"));
+    for (QPushButton* b : {prev, next}) b->setMinimumSize(44, 40);
+    m_townChoice = new QComboBox(this);
+    m_townChoice->setObjectName("townChoice");
+    m_townChoice->setMinimumWidth(220);
+    m_townChoice->setToolTip(tr("Go to another of your towns"));
+    connect(prev, &QPushButton::clicked, this, [this]() { stepTown(-1); });
+    connect(next, &QPushButton::clicked, this, [this]() { stepTown(1); });
+    connect(m_townChoice, &QComboBox::activated, this, [this](int i) {
+        const int id = m_townChoice->itemData(i).toInt();
+        if (id && id != m_townId) {
+            m_townId = id;
+            rebuild();
+        }
+    });
+    for (const auto& [key, step] : {std::pair{Qt::Key_T, 1}, std::pair{Qt::Key_PageDown, 1}, std::pair{Qt::Key_PageUp, -1}}) {
+        auto* sc = new QShortcut(QKeySequence(key), this);
+        const int s = step;
+        connect(sc, &QShortcut::activated, this, [this, s]() { stepTown(s); });
+    }
+    bottom->addWidget(prev);
+    bottom->addWidget(m_townChoice);
+    bottom->addWidget(next);
     bottom->addStretch(1);
     auto* close = new QPushButton(tr("Close"), this);
     close->setObjectName("townCloseButton");
@@ -142,11 +173,36 @@ void TownDialog::refresh(const GameView& view) {
     if (isVisible() || m_townId) rebuild();
 }
 
+QList<int> TownDialog::myTowns() const {
+    QList<int> ids;
+    for (const ViewTown& t : m_view.towns)
+        if (t.mine) ids << t.id;
+    return ids;
+}
+
+void TownDialog::stepTown(int direction) {
+    const QList<int> ids = myTowns();
+    if (ids.size() < 2) return;
+    const int at = std::max(0, int(ids.indexOf(m_townId)));
+    m_townId = ids[(at + direction + ids.size()) % ids.size()];
+    rebuild();
+}
+
 void TownDialog::rebuild() {
     const ViewTown* town = m_view.town(m_townId);
     if (!town || !town->mine) {
         hide();
         return;
+    }
+    {
+        const QSignalBlocker block(m_townChoice);
+        m_townChoice->clear();
+        for (const ViewTown& t : m_view.towns)
+            if (t.mine) m_townChoice->addItem(art::townSprite(QColor(m_view.player(t.owner) ? m_view.player(t.owner)->color : QString("#cccccc")), 24), t.name, t.id);
+        m_townChoice->setCurrentIndex(m_townChoice->findData(m_townId));
+        for (const char* name : {"townPrevButton", "townNextButton"})
+            if (auto* b = findChild<QPushButton*>(name)) b->setEnabled(m_townChoice->count() > 1);
+        m_townChoice->setEnabled(m_townChoice->count() > 1);
     }
     const bool myTurn = m_view.isMyTurn();
     setWindowTitle(tr("%1 (%2)").arg(town->name, town->race));

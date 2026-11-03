@@ -130,6 +130,46 @@
       "id": "morgul",
       "name": "Morgul",
       "class": "shaman_chief"
+    },
+    {
+      "id": "vexa",
+      "name": "Vexa",
+      "class": "hellknight"
+    },
+    {
+      "id": "korrath",
+      "name": "Korrath",
+      "class": "hellknight"
+    },
+    {
+      "id": "ignis",
+      "name": "Ignis",
+      "class": "pyromancer"
+    },
+    {
+      "id": "sythra",
+      "name": "Sythra",
+      "class": "pyromancer"
+    },
+    {
+      "id": "marro",
+      "name": "Marro",
+      "class": "captain"
+    },
+    {
+      "id": "brine",
+      "name": "Brine",
+      "class": "captain"
+    },
+    {
+      "id": "nerissa",
+      "name": "Nerissa",
+      "class": "tidecaller"
+    },
+    {
+      "id": "coralie",
+      "name": "Coralie",
+      "class": "tidecaller"
     }
   ]
 }

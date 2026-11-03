@@ -95,8 +95,14 @@ private slots:
         QVERIFY2(buildings > 2, "the AIs should build");
     }
 
+    void otherRacesPlayToo_data() {
+        QTest::addColumn<QStringList>("races");
+        QTest::newRow("undead, sylvan") << QStringList{"undead", "sylvan"};
+        QTest::newRow("ashborn, tidefolk") << QStringList{"ashborn", "tidefolk"};
+    }
     void otherRacesPlayToo() {
-        auto s = startGame(21, {"undead", "sylvan"});
+        QFETCH(QStringList, races);
+        auto s = startGame(21, races);
         QVERIFY(s->active());
         playDays(*s, 14);
         QVERIFY(s->state().day() >= 15);  // an attack on the idle human can take an extra round

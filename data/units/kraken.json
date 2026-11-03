@@ -1,0 +1,21 @@
+{
+  "id": "kraken",
+  "name": "Kraken",
+  "race": "tidefolk",
+  "tier": 5,
+  "attack": 23,
+  "defense": 22,
+  "damageMin": 32,
+  "damageMax": 44,
+  "maxHp": 230,
+  "battleSpeed": 6,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3900,
+    "gems": 2
+  },
+  "initiative": 7,
+  "abilities": [
+    "double_attack"
+  ]
+}

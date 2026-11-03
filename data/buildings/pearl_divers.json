@@ -1,0 +1,19 @@
+{
+  "id": "pearl_divers",
+  "name": "Pearl Divers",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 1000,
+    "wood": 5
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "gems",
+      "amount": 1
+    }
+  ]
+}

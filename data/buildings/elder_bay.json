@@ -1,0 +1,16 @@
+{
+  "id": "elder_bay",
+  "name": "Elder Bay",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 3000,
+    "gems": 4
+  },
+  "upgradeOf": "serpent_bay",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "elder_serpent"
+    }
+  ]
+}

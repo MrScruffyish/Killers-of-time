@@ -1,0 +1,18 @@
+{
+  "id": "hound_kennel",
+  "name": "Hound Kennel",
+  "race": "ashborn",
+  "cost": {
+    "gold": 700,
+    "stone": 8
+  },
+  "requires": [
+    "imp_pit"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "hellhound"
+    }
+  ]
+}
