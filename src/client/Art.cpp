@@ -1328,6 +1328,79 @@ void drawUnitToken(QPainter& p, const QPointF& c, double rad, const QColor& side
     p.restore();
 }
 
+void drawBattleFigure(QPainter& p, const QPointF& c, double r, const QColor& side, const QString& unitId, int rank,
+                      int count, int stars, bool active, bool target, bool faceLeft) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    // The base: a shadow, a disc in the side's colour, a ring.
+    const QPointF bc(c.x(), c.y() + r * 0.42);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0, 0, 0, 90));
+    p.drawEllipse(bc + QPointF(r * 0.06, r * 0.08), r * 0.74, r * 0.28);
+    QLinearGradient base(bc - QPointF(0, r * 0.26), bc + QPointF(0, r * 0.26));
+    base.setColorAt(0, side.lighter(150));
+    base.setColorAt(1, side.darker(150));
+    p.setBrush(base);
+    p.setPen(QPen(active ? QColor("#ffd84a") : target ? QColor("#ff3030") : QColor(20, 12, 4, 220), active || target ? std::max(2.0, r * 0.1) : 1.5));
+    p.drawEllipse(bc, r * 0.7, r * 0.26);
+    if (active) {  // a soft glow around the one acting
+        QRadialGradient glow(bc, r * 1.1);
+        glow.setColorAt(0, QColor(255, 216, 74, 90));
+        glow.setColorAt(1, QColor(255, 216, 74, 0));
+        p.setPen(Qt::NoPen);
+        p.setBrush(glow);
+        p.drawEllipse(bc, r * 1.1, r * 0.5);
+    }
+    // The figure, standing on the base.
+    const int size = std::max(12, int(r * 2.45));
+    const QPixmap& pm = unitIcon(unitId, rank, size);
+    const QPointF topLeft(c.x() - size / 2.0, bc.y() + r * 0.12 - size);
+    if (faceLeft) {
+        p.save();
+        p.translate(c.x(), 0);
+        p.scale(-1, 1);
+        p.drawPixmap(QPointF(-size / 2.0, topLeft.y()), pm);
+        p.restore();
+    } else {
+        p.drawPixmap(topLeft, pm);
+    }
+    if (r >= 8) {
+        QFont f = p.font();
+        f.setPixelSize(std::max(8, int(r * 0.36)));
+        f.setBold(true);
+        p.setFont(f);
+        // The count on a plate at the front of the base.
+        const QString text = QString::number(count);
+        const double tw = std::max(r * 0.7, QFontMetrics(f).horizontalAdvance(text) + r * 0.25);
+        const QRectF plate(c.x() + (faceLeft ? -r * 0.95 : r * 0.95 - tw), bc.y() - r * 0.02, tw, r * 0.44);
+        p.setPen(QPen(QColor("#20180c"), 1.2));
+        QLinearGradient pg(plate.topLeft(), plate.bottomLeft());
+        pg.setColorAt(0, QColor("#fff4d8"));
+        pg.setColorAt(1, QColor("#d8c8a0"));
+        p.setBrush(pg);
+        p.drawRoundedRect(plate, r * 0.12, r * 0.12);
+        p.setPen(QColor("#20180c"));
+        p.drawText(plate, Qt::AlignCenter, text);
+        // Rank chevrons on the other side of the base.
+        p.setPen(QPen(QColor("#ffd84a"), std::max(1.5, r / 9), Qt::SolidLine, Qt::RoundCap));
+        const double chx = c.x() + (faceLeft ? r * 0.6 : -r * 0.6);
+        for (int i = 0; i < rank; ++i) {
+            const double y = bc.y() + r * (0.12 - 0.16 * i);
+            p.drawLine(QPointF(chx - r * 0.12, y - r * 0.08), QPointF(chx, y));
+            p.drawLine(QPointF(chx, y), QPointF(chx + r * 0.12, y - r * 0.08));
+        }
+        if (stars > 0) {  // veterancy over the head
+            p.setPen(QColor(20, 12, 4));
+            const QRectF sr(c.x() - r, topLeft.y() - r * 0.1, 2 * r, r * 0.4);
+            p.drawText(sr.translated(1, 1), Qt::AlignCenter, QString(stars, QChar(0x2605)));
+            p.setPen(QColor("#ffd84a"));
+            p.drawText(sr, Qt::AlignCenter, QString(stars, QChar(0x2605)));
+        }
+    }
+    p.restore();
+}
+
 // Small arrow images for the style sheet (it cannot draw them itself).
 QString arrowFile(bool up) {
     const QString dir = QDir::temp().filePath(QStringLiteral("kot_art"));

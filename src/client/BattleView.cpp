@@ -405,16 +405,20 @@ protected:
             p.setPen(QPen(QColor("#ffd84a"), 3, Qt::SolidLine, Qt::RoundCap));
             p.drawLine(a, a + (b - a) * 0.55);
         }
-        for (const ViewBattleUnit& u : battle.units) {
+        // Back rows first: the figures stand up out of their hexes.
+        QList<const ViewBattleUnit*> order;
+        for (const ViewBattleUnit& u : battle.units) order << &u;
+        std::stable_sort(order.begin(), order.end(), [&](const ViewBattleUnit* a, const ViewBattleUnit* b) { return drawnAt(*a).y() < drawnAt(*b).y(); });
+        for (const ViewBattleUnit* up : order) {
+            const ViewBattleUnit& u = *up;
             const bool active = (u.id == battle.active);
             const bool target = mine && u.side != battle.yourSide && (battle.shootable.contains(u.id) || battle.attackable.contains(u.id));
             const core::UnitDef* def = m_content->unit(u.unit);
             const QPointF c = drawnAt(u);
-            art::drawUnitToken(p, c, r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars, active, target,
-                               u.unit, def ? def->rank : 0);
+            art::drawBattleFigure(p, c, r, sideColor[u.side], u.unit, def ? def->rank : 0, u.count, u.stars, active, target, u.side == 1);
             if (u.maxHp > 0 && u.frontHp > 0 && u.frontHp < u.maxHp) {
-                // The front unit is hurt: a small health bar under the token.
-                const QRectF bar(c.x() - r * 0.6, c.y() + r * 0.86, r * 1.2, std::max(3.0, r * 0.12));
+                // The front unit is hurt: a small health bar under the base.
+                const QRectF bar(c.x() - r * 0.6, c.y() + r * 0.76, r * 1.2, std::max(3.0, r * 0.12));
                 p.setPen(QPen(QColor(20, 12, 4), 1));
                 p.setBrush(QColor(40, 20, 20));
                 p.drawRect(bar);
@@ -425,7 +429,7 @@ protected:
             }
             if (u.range > 0) {
                 // A bow badge with the range in hexes (grey when out of arrows).
-                const QPointF b(c.x() + r * 0.62, c.y() - r * 0.55);
+                const QPointF b(c.x() + (u.side == 1 ? r * 0.62 : -r * 0.62), c.y() + r * 0.1);  // on the base, away from the count
                 const double br = std::max(6.0, r * 0.3);
                 p.setPen(QPen(QColor("#20180c"), 1.2));
                 p.setBrush(u.shots > 0 ? QColor("#2f5d9a") : QColor("#666666"));
@@ -543,8 +547,8 @@ protected:
         for (const Ghost& g : m_ghosts) {
             const core::UnitDef* def = m_content->unit(g.unit.unit);
             p.setOpacity(std::max(0.0, 1.0 - g.age / 0.7));
-            art::drawUnitToken(p, centre(g.unit.hex), r * 0.78 * (1 + g.age * 0.3), sideColor[g.unit.side], def ? def->name : g.unit.unit, 0,
-                               0, false, false, g.unit.unit, def ? def->rank : 0);
+            art::drawBattleFigure(p, centre(g.unit.hex) + QPointF(0, r * g.age * 0.4), r, sideColor[g.unit.side], g.unit.unit,
+                                  def ? def->rank : 0, 0, 0, false, false, g.unit.side == 1);
         }
         p.setOpacity(1.0);
         QFont ff = p.font();

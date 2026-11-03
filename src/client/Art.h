@@ -117,6 +117,13 @@ const QPixmap& unitIcon(const QString& unitId, int rank, int size);
 void drawUnitToken(QPainter& p, const QPointF& centre, double radius, const QColor& side, const QString& name,
                    int count, int stars, bool active, bool target, const QString& unitId = QString(), int rank = 0);
 
+// A unit standing on the battle field: its picture big (about twice the hex) on a
+// base in its side's colour (gold ring: acting, red ring: a target), the count on
+// a plate, veterancy stars and rank chevrons. `c` is the hex centre, `r` its
+// radius; `faceLeft` mirrors the picture (the defenders). Draw back rows first.
+void drawBattleFigure(QPainter& p, const QPointF& c, double r, const QColor& side, const QString& unitId, int rank,
+                      int count, int stars, bool active, bool target, bool faceLeft);
+
 // The look of the whole client (a dark wood-and-gold style sheet).
 QString styleSheet();
 
