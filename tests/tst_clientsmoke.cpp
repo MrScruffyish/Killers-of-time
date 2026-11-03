@@ -114,6 +114,21 @@ private slots:
         mini.show();
         QApplication::processEvents();
         if (!dir.isEmpty()) mini.grab().save(QDir(dir).filePath("0_minimap.png"));
+        // Every decoration on its terrain (saved as 0_decor.png).
+        const QStringList kinds = {"grass", "dirt", "hills", "sand", "snow", "swamp", "forest", "sea"};
+        QImage decor(6 * 72, int(kinds.size()) * 72, QImage::Format_ARGB32);
+        QPainter dp(&decor);
+        for (int k = 0; k < kinds.size(); ++k) {
+            const core::TerrainDef* t = reg.terrainType(kinds[k]);
+            QVERIFY(t);
+            for (int variant = 0; variant < 6; ++variant) {
+                dp.drawPixmap(variant * 72, k * 72, art::terrainTile(kinds[k], QColor(t->color), 72, variant % 4));
+                const QPixmap& pm = art::decoration(kinds[k], variant, 72);
+                if (!pm.isNull()) dp.drawPixmap(variant * 72, k * 72, pm);
+            }
+        }
+        dp.end();
+        if (!dir.isEmpty()) decor.save(QDir(dir).filePath("0_decor.png"));
     }
 
     void artGallery() {

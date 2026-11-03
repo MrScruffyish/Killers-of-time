@@ -180,8 +180,10 @@ const QPixmap& terrainTile(const QString& id, const QColor& base, int size, int 
 
 int decorationAt(int x, int y) {
     const quint32 h = (quint32(x) * 2654435761u) ^ (quint32(y) * 40503u + 0x9e37u);
-    return (h >> 9) % 6 == 0 ? int((h >> 13) % 4) : -1;
+    return (h >> 9) % 6 == 0 ? int((h >> 13) % 6) : -1;  // variants 4 and 5 are the rarer, bigger pieces
 }
+
+const QColor kBoneColour("#ece4cc");
 
 const QPixmap& decoration(const QString& id, int variant, int size) {
     static const QPixmap none;
@@ -200,6 +202,82 @@ const QPixmap& decoration(const QString& id, int variant, int size) {
             p.setBrush(c.lighter(130));
             p.drawEllipse(QRectF(X(x + s * 0.2), Y(y + s * 0.1), w * s * 0.35, h * s * 0.2));
         };
+        // The bigger pieces (variants 4 and 5); other terrains fall back to 0-3.
+        const auto log = [&]() {
+            p.setPen(ink);
+            p.setBrush(QColor("#7a5230"));
+            p.drawRoundedRect(QRectF(X(ox), Y(oy), w * 0.42, h * 0.1), w * 0.05, w * 0.05);
+            p.setBrush(QColor("#c8a070"));
+            p.drawEllipse(QRectF(X(ox + 0.36), Y(oy), w * 0.08, h * 0.1));
+            p.setPen(QPen(QColor("#4a8a3a"), std::max(1.0, w / 50)));
+            p.drawLine(QPointF(X(ox + 0.12), Y(oy)), QPointF(X(ox + 0.1), Y(oy - 0.06)));  // a sprig
+        };
+        const auto standingStone = [&]() {
+            p.setPen(ink);
+            p.setBrush(QColor("#8a8a90"));
+            p.drawPolygon(QPolygonF{QPointF(X(ox + 0.04), Y(oy + 0.14)), QPointF(X(ox + 0.06), Y(oy - 0.2)), QPointF(X(ox + 0.14), Y(oy - 0.26)),
+                                    QPointF(X(ox + 0.2), Y(oy - 0.18)), QPointF(X(ox + 0.2), Y(oy + 0.14))});
+            p.setPen(QPen(QColor("#5a7aa8"), std::max(1.0, w / 60)));  // a faint rune
+            p.drawLine(QPointF(X(ox + 0.12), Y(oy - 0.14)), QPointF(X(ox + 0.12), Y(oy + 0.02)));
+            p.drawLine(QPointF(X(ox + 0.12), Y(oy - 0.08)), QPointF(X(ox + 0.16), Y(oy - 0.12)));
+        };
+        const auto deadBranches = [&](double x, double y, double size) {
+            p.setPen(QPen(QColor("#5a4030"), std::max(1.0, w / 40), Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(QPointF(X(x), Y(y)), QPointF(X(x), Y(y - size)));
+            p.drawLine(QPointF(X(x), Y(y - size * 0.5)), QPointF(X(x - size * 0.3), Y(y - size * 0.8)));
+            p.drawLine(QPointF(X(x), Y(y - size * 0.7)), QPointF(X(x + size * 0.3), Y(y - size)));
+        };
+        if (variant >= 4) {
+            const bool first = variant == 4;
+            if (id == "grass" || id == "road") {
+                if (first) log();
+                else {  // a ring of mushrooms
+                    for (int i = 0; i < 6; ++i) {
+                        const double a = i * 1.05;
+                        const double x = std::min(0.62, ox) + 0.16 + std::cos(a) * 0.2, y = oy + std::sin(a) * 0.1;
+                        p.setPen(ink);
+                        p.setBrush(QColor("#f0e8d8"));
+                        p.drawRect(QRectF(X(x + 0.02), Y(y), w * 0.03, h * 0.06));
+                        p.setBrush(i % 2 ? QColor("#e8c090") : QColor("#c8604a"));
+                        p.drawChord(QRectF(X(x - 0.01), Y(y - 0.05), w * 0.09, h * 0.1), 0, 180 * 16);
+                    }
+                }
+                return;
+            }
+            if (id == "dirt" || id == "hills") {
+                if (first) deadBranches(ox + 0.1, oy + 0.1, 0.22);
+                else standingStone();
+                return;
+            }
+            if (id == "sand") {  // old bones
+                p.setPen(ink);
+                p.setBrush(kBoneColour);
+                p.drawEllipse(QRectF(X(ox), Y(oy - 0.04), w * 0.14, h * 0.12));
+                p.setBrush(QColor(30, 22, 12));
+                p.drawEllipse(QRectF(X(ox + 0.03), Y(oy - 0.01), w * 0.03, h * 0.03));
+                p.drawEllipse(QRectF(X(ox + 0.08), Y(oy - 0.01), w * 0.03, h * 0.03));
+                p.setPen(QPen(kBoneColour, std::max(1.0, w / 40), Qt::SolidLine, Qt::RoundCap));
+                for (int i = 0; i < 3; ++i) p.drawLine(QPointF(X(ox + 0.18 + i * 0.05), Y(oy + 0.06)), QPointF(X(ox + 0.2 + i * 0.05), Y(oy - 0.04)));
+                return;
+            }
+            if (id == "snow") {  // a small snowy pine
+                p.setPen(ink);
+                p.setBrush(QColor("#2e5a3a"));
+                p.drawPolygon(QPolygonF{QPointF(X(ox + 0.12), Y(oy - 0.3)), QPointF(X(ox + 0.24), Y(oy + 0.06)), QPointF(X(ox), Y(oy + 0.06))});
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor("#f4f8ff"));
+                p.drawPolygon(QPolygonF{QPointF(X(ox + 0.12), Y(oy - 0.3)), QPointF(X(ox + 0.17), Y(oy - 0.15)), QPointF(X(ox + 0.07), Y(oy - 0.15))});
+                return;
+            }
+            if (id == "swamp") {
+                deadBranches(ox + 0.12, oy + 0.12, 0.3);
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(60, 90, 70, 160));  // its pool
+                p.drawEllipse(QRectF(X(ox - 0.02), Y(oy + 0.08), w * 0.3, h * 0.08));
+                return;
+            }
+            variant %= 4;
+        }
         if (id == "grass" || id == "road") {
             if (variant % 2 == 0) {  // flowers
                 for (int i = 0; i < 4; ++i) {
@@ -265,7 +343,7 @@ const QPixmap& decoration(const QString& id, int variant, int size) {
         }
     };
     static const QStringList kinds = {"grass", "road", "dirt", "hills", "sand", "snow", "swamp", "forest", "sea"};
-    if (!kinds.contains(id) || (id == "sea" && variant != 3)) return none;
+    if (!kinds.contains(id) || (id == "sea" && variant != 3) || (id == "forest" && variant >= 4)) return none;
     return sprite(QStringLiteral("decor|%1|%2").arg(id).arg(variant), size, draw);
 }
 
