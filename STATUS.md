@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
 **Current milestone:** first versions of every part of the game are in (M0-M10); version 0.2.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
-**Next session should do:** go on with the user's playtest notes. Graphics: terrain transitions, battle backgrounds by terrain, more variety. Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
+**Next session should do:** go on with the user's playtest notes. Graphics: more variety (monsters per unit on the map are done; next maybe animations, hero portraits). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -166,6 +166,8 @@ and react to; add depth afterwards.
 - [x] Battle result window: emblem (victory laurel and swords / broken sword / grey), both sides' losses as unit pictures, experience, level up, heroes fallen or fled
 - [x] Towns look like what they are: map castles by race (stone and roofs), size (more houses, taller keep, a spire) and walls (palisade, stone walls with two towers, citadel with four); the town screen has a picture of the town with one figure per building (units on the dwellings' signs, mage tower by level, market, boat at the shipyard, walls in front)
 - [x] Battle pointer: footsteps (move), crossed swords (attack from here), sword with footsteps (move, then attack: the hex to strike from is outlined in gold, chosen by the side of the enemy the mouse is on), bow (shoot), blocked
+- [x] Map: soft edges where terrains meet (the higher layer spreads over the lower), surf along coasts
+- [x] Battles are fought on the ground of the defender's tile (battle `terrain`): grass, earth, sand, snow, swamp; trees as obstacles in forests, pools in swamps, rocks elsewhere
 - [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---

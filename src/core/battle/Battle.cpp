@@ -57,6 +57,8 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             m_units.append(u);
         }
     }
+    // The ground the battle is fought on (for the picture only): the defender's tile.
+    if (const Army* d = state.army(defender)) m_terrain = state.map().terrainAt(d->pos);
     // Town walls: a defender standing in a town gets its buildings' defense.
     if (const Army* d = state.army(defender)) {
         for (const Town& t : state.towns()) {
@@ -514,6 +516,7 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
     for (const Pos p : b.obstacles()) rocks.append(QJsonArray{p.x, p.y});
     o.insert("obstacles", rocks);
     if (b.townDefense() > 0) o.insert("townDefense", b.townDefense());
+    if (!b.terrain().isEmpty()) o.insert("terrain", b.terrain());
     if (active) {
         QJsonArray reach;
         const QHash<Pos, int> r = b.reachable(*active);

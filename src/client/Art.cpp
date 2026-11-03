@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QPainter>
 #include <QPainterPath>
+#include <QTransform>
 #include <QRandomGenerator>
 #include <algorithm>
 #include <cmath>
@@ -211,6 +212,60 @@ const QPixmap& terrainTile(const QString& id, const QColor& base, int size, int 
         if (size != kMaster) pm = pm.scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         it = cache.insert(key, pm);
     }
+    return it.value();
+}
+
+int terrainLayer(const QString& id) {
+    static const QHash<QString, int> layers = {{"sea", 0}, {"river", 1}, {"lava", 2}, {"swamp", 3}, {"sand", 4},
+                                               {"dirt", 5}, {"road", 6}, {"grass", 7}, {"snow", 8}, {"forest", 9},
+                                               {"hills", 10}, {"mountains", 11}};
+    return layers.value(id, 5);
+}
+
+const QPixmap& terrainEdge(const QColor& colour, int side, int size, bool foam) {
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1|%2|%3|%4").arg(colour.name()).arg(side).arg(size).arg(foam);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it.value();
+    // Drawn for the left side, then turned.
+    constexpr int kMaster = 128;
+    QPixmap pm(kMaster, kMaster);
+    pm.fill(Qt::transparent);
+    {
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setPen(Qt::NoPen);
+        QPainterPath band;
+        band.moveTo(0, 0);
+        const double depth = foam ? kMaster * 0.16 : kMaster * 0.32;
+        for (int i = 0; i <= 8; ++i) {
+            const double y = kMaster * i / 8.0;
+            const double wobble = std::sin(i * 1.7 + colour.hue() * 0.1) * depth * 0.25;
+            band.lineTo(depth + wobble, y);
+        }
+        band.lineTo(0, kMaster);
+        band.closeSubpath();
+        QLinearGradient g(0, 0, depth * 1.25, 0);
+        if (foam) {
+            g.setColorAt(0, QColor(250, 250, 240, 170));
+            g.setColorAt(0.5, QColor(220, 235, 245, 90));
+            g.setColorAt(1, QColor(220, 235, 245, 0));
+        } else {
+            QColor c = colour;
+            c.setAlpha(210);
+            g.setColorAt(0, c);
+            c.setAlpha(120);
+            g.setColorAt(0.55, c);
+            c.setAlpha(0);
+            g.setColorAt(1, c);
+        }
+        p.setBrush(g);
+        p.drawPath(band);
+    }
+    QTransform turn;
+    turn.rotate(90 * side);
+    pm = pm.transformed(turn).scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    it = cache.insert(key, pm);
     return it.value();
 }
 

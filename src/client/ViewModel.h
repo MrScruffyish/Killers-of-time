@@ -147,6 +147,7 @@ struct ViewBattle {
     bool canWait = false;
     bool canRetreat = false;
     int townDefense = 0;
+    QString terrain;  // the ground the battle is fought on
     QList<core::Pos> obstacles;
     // Your hero in this battle (absent: no hero).
     struct Spell {

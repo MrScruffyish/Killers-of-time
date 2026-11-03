@@ -118,6 +118,7 @@ public:
     bool sideAlive(int side) const;
     bool retreated(int side) const { return m_retreated[side]; }
     int townDefense() const { return m_townDefense; }  // walls: extra defense of the defender
+    const QString& terrain() const { return m_terrain; }  // the ground (defender's tile), for the picture
     const QList<Pos>& obstacles() const { return m_obstacles; }
     bool blocked(Pos hex) const { return m_obstacles.contains(hex) || unitAt(hex); }
 
@@ -173,6 +174,7 @@ private:
     bool m_retreated[2] = {false, false};
     QList<Pos> m_obstacles;
     int m_townDefense = 0;
+    QString m_terrain;
     bool m_heroCast[2] = {false, false};
     QList<BattleUnit> m_units;
     QList<int> m_order;  // unit ids, this round

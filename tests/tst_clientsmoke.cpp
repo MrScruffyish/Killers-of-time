@@ -122,6 +122,28 @@ private slots:
                             {K::Dwelling, 0, "armoured_eagle"}});
         tp.end();
         if (!dir.isEmpty()) towns.save(QDir(dir).filePath("0_towns.png"));
+        // Battles on different ground.
+        for (const QString ground : {"forest", "snow", "swamp", "sand"}) {
+            ViewBattle vb;
+            vb.present = true;
+            vb.width = 15;
+            vb.height = 11;
+            vb.round = 1;
+            vb.terrain = ground;
+            vb.obstacles = {{5, 2}, {7, 5}, {9, 8}, {6, 9}, {10, 3}};
+            ViewBattleUnit a;
+            a.id = 1; a.side = 0; a.unit = "archer_elite"; a.count = 12; a.hex = {0, 5}; a.range = 7; a.shots = 10;
+            ViewBattleUnit b;
+            b.id = 2; b.side = 1; b.unit = "treant"; b.count = 4; b.hex = {14, 5};
+            vb.units = {a, b};
+            vb.active = 1;
+            BattleView view(&reg);
+            view.resize(1000, 620);
+            view.setBattle(vb, QColor("#d62728"), QColor("#6e5a86"));
+            view.show();
+            QApplication::processEvents();
+            if (!dir.isEmpty()) view.grab().save(QDir(dir).filePath(QStringLiteral("0_battle_%1.png").arg(ground)));
+        }
         // A lost battle as the result window shows it.
         const QJsonObject report{{"outcome", "defender"}, {"rounds", 4}, {"loserHeroKilled", true},
                                  {"attacker", QJsonObject{{"owner", 1}, {"losses", QJsonObject{{"archer", 12}, {"militia", 20}}}}},

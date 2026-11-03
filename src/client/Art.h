@@ -20,6 +20,12 @@ namespace art {
 // of copies. The terrain id chooses the pattern, `base` is the data colour.
 const QPixmap& terrainTile(const QString& terrainId, const QColor& base, int size, int variant);
 int variantFor(int x, int y);
+// Where two terrains meet: a soft band of the neighbour's colour reaching into a
+// tile from one side (0 left, 1 top, 2 right, 3 bottom), slightly wavy; `foam`
+// draws a light surf line instead (water next to land).
+const QPixmap& terrainEdge(const QColor& colour, int side, int size, bool foam);
+// Which of two neighbouring terrains spreads over the other (higher wins).
+int terrainLayer(const QString& terrainId);
 
 // Map zoom: tile sizes in pixels, smallest first, and the default.
 inline constexpr int kZoomSteps[] = {16, 24, 32, 48, 64, 96};

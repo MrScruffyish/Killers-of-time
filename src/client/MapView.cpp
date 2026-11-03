@@ -315,9 +315,38 @@ void MapView::paintEvent(QPaintEvent*) {
             const QRect r = tileRect({x, y});
             p.drawPixmap(r.topLeft(), art::terrainTile(m_view.terrainPalette.value(index), m_paletteColors.value(index, Qt::magenta),
                                                        m_tile, art::variantFor(x, y)));
-            if (!m_view.inSight({x, y})) p.fillRect(r, QColor(10, 8, 20, 140));
         }
     }
+    // Soft edges where terrains meet (the higher layer spreads over the lower one),
+    // surf where water meets land; then the fog over remembered tiles.
+    const auto terrainAt = [&](int x, int y) {
+        return m_view.inBounds({x, y}) ? m_view.tiles[y * m_view.width + x] : -1;
+    };
+    const auto isWater = [&](int index) {
+        const core::TerrainDef* t = m_content ? m_content->terrainType(m_view.terrainPalette.value(index)) : nullptr;
+        return t && t->sailable;
+    };
+    for (int y = y0; y <= y1; ++y)
+        for (int x = x0; x <= x1; ++x) {
+            const int here = terrainAt(x, y);
+            if (here < 0 || m_tile < 12) continue;
+            const QString hereId = m_view.terrainPalette.value(here);
+            const QRect r = tileRect({x, y});
+            static const int dx[] = {-1, 0, 1, 0}, dy[] = {0, -1, 0, 1};
+            for (int side = 0; side < 4; ++side) {
+                const int there = terrainAt(x + dx[side], y + dy[side]);
+                if (there < 0 || there == here) continue;
+                const QString thereId = m_view.terrainPalette.value(there);
+                if (isWater(here) && !isWater(there)) {
+                    p.drawPixmap(r.topLeft(), art::terrainEdge(Qt::white, side, m_tile, true));
+                } else if (art::terrainLayer(thereId) > art::terrainLayer(hereId) && !isWater(there)) {
+                    p.drawPixmap(r.topLeft(), art::terrainEdge(m_paletteColors.value(there, Qt::magenta), side, m_tile, false));
+                }
+            }
+        }
+    for (int y = y0; y <= y1; ++y)
+        for (int x = x0; x <= x1; ++x)
+            if (terrainAt(x, y) >= 0 && !m_view.inSight({x, y})) p.fillRect(tileRect({x, y}), QColor(10, 8, 20, 140));
     for (int y = y0; y <= y1; ++y)
         for (int x = x0; x <= x1; ++x) {
             if (m_view.tiles[y * m_view.width + x] >= 0) continue;

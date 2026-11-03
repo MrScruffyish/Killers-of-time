@@ -135,6 +135,16 @@ protected:
             return path;
         };
         const bool mine = battle.myMove();
+        // The ground of the map tile the battle is fought on (forests and hills give
+        // their grass or earth; their trees and peaks are the obstacles instead).
+        const QString where = battle.terrain.isEmpty() ? QStringLiteral("grass") : battle.terrain;
+        static const QHash<QString, QString> ground = {{"forest", "grass"}, {"hills", "dirt"}, {"mountains", "dirt"},
+                                                       {"road", "dirt"}, {"sea", "sand"}, {"river", "grass"}, {"lava", "dirt"}};
+        const QString groundId = ground.value(where, where);
+        const core::TerrainDef* gt = m_content->terrainType(groundId);
+        const core::TerrainDef* wt = m_content->terrainType(where);
+        QColor groundColour = gt ? QColor(gt->color) : QColor("#5d8a3a");
+        if (where == "forest" && wt) groundColour = QColor(wt->color).lighter(125);
         // Whose range to show: the stack under the mouse if it shoots, else your active shooter.
         const ViewBattleUnit* ranger = battle.unitAt(hover);
         if (!ranger || ranger->range <= 0 || ranger->shots <= 0) {
@@ -150,8 +160,7 @@ protected:
                 const QRectF box = path.boundingRect();
                 p.save();
                 p.setClipPath(path);
-                p.drawPixmap(box.topLeft(), art::terrainTile(QStringLiteral("grass"), QColor("#5d8a3a"), int(box.width()) + 2,
-                                                             art::variantFor(x, y)));
+                p.drawPixmap(box.topLeft(), art::terrainTile(groundId, groundColour, int(box.width()) + 2, art::variantFor(x, y)));
                 p.restore();
                 if (mine && battle.reachable.contains(h)) p.fillPath(path, QColor(255, 240, 160, 70));
                 if (ranger && core::hex::distance(ranger->hex, h) <= ranger->range)
@@ -159,11 +168,32 @@ protected:
                 p.setPen(QPen(QColor(30, 45, 20, 160), 1));
                 p.setBrush(Qt::NoBrush);
                 p.drawPath(path);
-                if (battle.obstacles.contains(h)) {
+                if (battle.obstacles.contains(h) && (where == "forest" || where == "swamp")) {
+                    // A tree (forest) or a reedy pool (swamp) instead of a rock.
+                    const QPointF c = centre(h);
+                    p.setPen(QPen(QColor(20, 30, 10), 1.5));
+                    if (where == "forest") {
+                        p.setBrush(QColor(0, 0, 0, 70));
+                        p.drawEllipse(c + QPointF(0, r * 0.55), r * 0.7, r * 0.25);
+                        p.setBrush(QColor("#5b3a1e"));
+                        p.drawRect(QRectF(c.x() - r * 0.1, c.y() + r * 0.2, r * 0.2, r * 0.4));
+                        for (int i = 0; i < 3; ++i) {  // three layers of a fir, widest at the bottom
+                            const double tw = r * (1.5 - 0.35 * i), base = c.y() + r * (0.3 - 0.42 * i);
+                            p.setBrush(QColor("#3f8a36").lighter(100 + 10 * i));
+                            p.drawPolygon(QPolygonF{QPointF(c.x(), base - r * 0.75), QPointF(c.x() + tw * 0.5, base),
+                                                    QPointF(c.x() - tw * 0.5, base)});
+                        }
+                    } else {
+                        p.setBrush(QColor("#3c5a6e"));
+                        p.drawEllipse(c, r * 0.6, r * 0.38);
+                        p.setPen(QPen(QColor("#9ab060"), 2));
+                        for (int i = -2; i <= 2; ++i) p.drawLine(c + QPointF(i * r * 0.18, -r * 0.1), c + QPointF(i * r * 0.22, -r * 0.6));
+                    }
+                } else if (battle.obstacles.contains(h)) {
                     const QPointF c = centre(h);
                     p.setPen(QPen(QColor("#3a3a3a"), 1.5));
                     QRadialGradient g(c - QPointF(r * 0.2, r * 0.3), r);
-                    g.setColorAt(0, QColor("#b8b8b0"));
+                    g.setColorAt(0, where == "snow" ? QColor("#f4f6fa") : QColor("#b8b8b0"));
                     g.setColorAt(1, QColor("#5a5a55"));
                     p.setBrush(g);
                     QPolygonF rock;
