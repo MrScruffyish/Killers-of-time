@@ -405,6 +405,15 @@ private slots:
 
     void autosavesEveryDayKeepingTheNewest() {
         QTemporaryDir saves;
+        {
+            QFile old(saves.filePath("autosave_day0070.json"));  // from an older game and version
+            QVERIFY(old.open(QIODevice::WriteOnly));
+            old.write("{}");
+            old.close();
+            QVERIFY(old.open(QIODevice::ReadWrite));
+            QVERIFY(old.setFileTime(QDateTime::currentDateTime().addDays(-1), QFileDevice::FileModificationTime));
+            old.close();
+        }
         server->setContent(&content);
         server->setSaveDir(saves.path());
         auto a = connectClient("Ann");
@@ -419,10 +428,12 @@ private slots:
             b->sendCommand(msg::endTurn);
             QTRY_COMPARE_WITH_TIMEOUT(a->view()["day"].toInt(), day, 3000);
         }
-        QTRY_COMPARE_WITH_TIMEOUT(QDir(saves.path()).entryList({"autosave_*.json"}, QDir::Files, QDir::Name),
-                                  QStringList({"autosave_day0004.json", "autosave_day0005.json"}), 3000);
+        // The old game's autosave is the oldest, so it went; this game's newest two stay.
+        QTRY_VERIFY_WITH_TIMEOUT(QDir(saves.path()).entryList({"autosave_*.json"}, QDir::Files, QDir::Name).size() == 2, 3000);
+        const QStringList names = QDir(saves.path()).entryList({"autosave_*.json"}, QDir::Files, QDir::Name);
+        QVERIFY2(names[0].endsWith("_day0004.json") && names[1].endsWith("_day0005.json"), qPrintable(names.join(" ")));
         kot::core::GameState loaded;
-        QVERIFY(kot::core::GameState::loadFromFile(saves.filePath("autosave_day0005.json"), content, &loaded, nullptr));
+        QVERIFY(kot::core::GameState::loadFromFile(saves.filePath(names[1]), content, &loaded, nullptr));
         QCOMPARE(loaded.day(), 5);
     }
 

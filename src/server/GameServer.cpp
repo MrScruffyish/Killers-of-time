@@ -1,9 +1,12 @@
 #include "server/GameServer.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QRegularExpression>
+#include <algorithm>
 
 #include "core/Version.h"
 #include "core/rules/ScenarioGen.h"
@@ -283,6 +286,7 @@ void GameServer::startGame() {
             if (c.greeted && m_session->playerOfClient(c.id).isValid()) sendGameStarted(c);
         }
         m_lastAutosaveDay = m_session->state().day();  // day 1 is the start itself
+        m_gameStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
         saveCampaignStart();
     }
     emit gameStartRequested(m_lobby.state());
@@ -295,15 +299,21 @@ void GameServer::autosave() {
     if (day <= m_lastAutosaveDay || keep <= 0) return;
     m_lastAutosaveDay = day;
     QString error;
-    const QString name = QStringLiteral("autosave_day%1").arg(day, 4, 10, QLatin1Char('0'));
+    // The game's start time in the name: autosaves of different games never mix.
+    if (m_gameStamp.isEmpty()) m_gameStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
+    const QString name = QStringLiteral("autosave_%1_day%2").arg(m_gameStamp).arg(day, 4, 10, QLatin1Char('0'));
     const QString path = savePath(name, &error);
     if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) {
         qCWarning(lcKotServer) << "Autosave failed:" << error;
         return;
     }
-    // Keep the newest `keep` autosaves (the names sort by day).
-    QStringList all = QDir(m_saveDir).entryList({QStringLiteral("autosave_day*.json")}, QDir::Files, QDir::Name);
-    while (all.size() > keep) QFile::remove(QDir(m_saveDir).filePath(all.takeFirst()));
+    // Keep the `keep` most recently written autosaves (of any game); older ones go.
+    QFileInfoList all = QDir(m_saveDir).entryInfoList({QStringLiteral("autosave_*.json")}, QDir::Files);
+    std::sort(all.begin(), all.end(), [](const QFileInfo& a, const QFileInfo& b) {
+        if (a.lastModified() != b.lastModified()) return a.lastModified() < b.lastModified();
+        return a.fileName() < b.fileName();
+    });
+    while (all.size() > keep) QFile::remove(all.takeFirst().filePath());
 }
 
 void GameServer::saveCampaignStart() {
@@ -512,6 +522,7 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
         m_session = std::make_unique<GameSession>(*m_content);
         m_session->startFromState(std::move(state));
         m_lastAutosaveDay = m_session->state().day();
+        m_gameStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
         qCInfo(lcKotServer) << "Loaded the game" << path;
         reply(client, message, {{"name", message.body.value("name").toString()}, {"converted", QJsonArray::fromStringList(notes)}});
         Message loaded;

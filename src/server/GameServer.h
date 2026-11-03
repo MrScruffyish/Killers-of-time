@@ -81,6 +81,7 @@ private:
     int m_nextClientId = 1;
     QString m_saveDir;
     int m_lastAutosaveDay = 0;
+    QString m_gameStamp;  // when this game was started or loaded: part of its autosave names
     // A save at the start of every new day, the oldest beyond the lobby's
     // `autosaves` removed; skipped (and tried again) while a battle runs.
     void autosave();
