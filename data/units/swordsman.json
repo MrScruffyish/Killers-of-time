@@ -11,7 +11,7 @@
   "battleSpeed": 5,
   "weeklyGrowth": 6,
   "cost": {
-    "gold": 300
+    "gold": 380
   },
   "initiative": 8,
   "upgradesTo": "crusader"
