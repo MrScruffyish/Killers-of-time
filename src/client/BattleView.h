@@ -54,6 +54,7 @@ private:
     QPushButton* m_defend;
     QPushButton* m_auto;
     QPushButton* m_autoPlay;
+    QPushButton* m_engine;
     bool m_autoPending = false;
     QPushButton* m_cast;
     QPushButton* m_unitCast;

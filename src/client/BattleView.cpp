@@ -19,6 +19,7 @@
 #include <cmath>
 
 #include "client/Art.h"
+#include "core/battle/Battle.h"
 #include "core/battle/HexGrid.h"
 #include "core/content/ContentRegistry.h"
 
@@ -100,7 +101,8 @@ public:
             f.spell = e["spell"].toString();
             f.lucky = e["lucky"].toBool();
             f.hex = {e["x"].toInt(), e["y"].toInt()};
-            f.duration = f.type == "shoot" ? 0.45 : f.type == "attack" || f.type == "retaliate" ? 0.4
+            if (f.type == "tower") f.from = centre(core::Pos{e["fromX"].toInt(), e["fromY"].toInt()});
+            f.duration = f.type == "shoot" || f.type == "tower" ? 0.45 : f.type == "wall_hit" ? 0.7 : f.type == "engine" ? 0.5 : f.type == "attack" || f.type == "retaliate" ? 0.4
                        : f.type == "cast" ? 0.6 : f.type == "morale" || f.type == "falter" ? 0.7 : f.type == "move" ? 0.05 : 0;
             if (f.duration > 0) m_fx.append(f);
         }
@@ -147,6 +149,11 @@ public:
         strikeFrom = {-1, -1};
         const ViewBattleUnit* me = battle.unit(battle.active);
         if (!battle.myMove() || !me || h.x < 0) return;
+        const core::UnitDef* activeDef = m_content->unit(me->unit);
+        if (activeDef && activeDef->has(QStringLiteral("siege_engine"))) {  // the catapult only shoots walls
+            intent = battle.walls.contains(h) ? Intent::Shoot : Intent::Blocked;
+            return;
+        }
         const ViewBattleUnit* there = battle.unitAt(h);
         if (there && there->side == battle.yourSide) return;  // your own stack: just look
         if (!there) {
@@ -307,6 +314,58 @@ protected:
                     p.drawPolygon(rock);
                 }
             }
+        // A siege: the wall (cracking as it takes damage, rubble where it fell), the
+        // wooden gate, and the towers behind it.
+        if (battle.wallLevel > 0) {
+            for (int y = 0; y < battle.height; ++y) {
+                const core::Pos h{core::kWallColumn, y};
+                const QPointF c = centre(h);
+                const auto it = battle.walls.constFind(h);
+                if (it == battle.walls.cend()) {  // rubble
+                    p.setPen(QPen(QColor("#3a3a3a"), 1));
+                    p.setBrush(QColor("#9a968c"));
+                    for (int i = 0; i < 5; ++i)
+                        p.drawEllipse(c + QPointF((i % 3 - 1) * r * 0.35, (i / 3 - 0.5) * r * 0.4), r * 0.16, r * 0.12);
+                    continue;
+                }
+                const double health = battle.wallMaxHp > 0 ? double(it.value()) / battle.wallMaxHp : 1.0;
+                const QPainterPath block = hexPath(h, 0.98);
+                QLinearGradient g(c - QPointF(0, r), c + QPointF(0, r));
+                const bool gate = h == battle.gate;
+                g.setColorAt(0, gate ? QColor("#8a5a2b") : QColor("#d4cdbb"));
+                g.setColorAt(1, gate ? QColor("#4a3018") : QColor("#8a8476"));
+                p.setPen(QPen(QColor("#2b2620"), 1.5));
+                p.setBrush(g);
+                p.drawPath(block);
+                p.setPen(QPen(gate ? QColor("#2a1a0c") : QColor(70, 66, 58), 1));
+                if (gate) {  // planks and iron bands
+                    for (int i = -1; i <= 1; ++i) p.drawLine(c + QPointF(i * r * 0.3, -r * 0.7), c + QPointF(i * r * 0.3, r * 0.7));
+                    p.setPen(QPen(QColor("#505058"), 2));
+                    p.drawLine(c + QPointF(-r * 0.6, -r * 0.3), c + QPointF(r * 0.6, -r * 0.3));
+                    p.drawLine(c + QPointF(-r * 0.6, r * 0.3), c + QPointF(r * 0.6, r * 0.3));
+                } else {  // stone courses
+                    for (int i = -1; i <= 1; ++i) p.drawLine(c + QPointF(-r * 0.8, i * r * 0.35), c + QPointF(r * 0.8, i * r * 0.35));
+                }
+                // Cracks as it weakens.
+                p.setPen(QPen(QColor(20, 18, 14), 1.6));
+                if (health < 0.67) p.drawPolyline(QPolygonF{c + QPointF(-r * 0.3, -r * 0.6), c + QPointF(-r * 0.1, -r * 0.2), c + QPointF(-r * 0.25, r * 0.2)});
+                if (health < 0.34) p.drawPolyline(QPolygonF{c + QPointF(r * 0.4, -r * 0.5), c + QPointF(r * 0.15, 0), c + QPointF(r * 0.35, r * 0.5)});
+            }
+            for (const core::Pos t : battle.towers) {
+                const QPointF c = centre(t);
+                p.setPen(QPen(QColor("#2b2620"), 1.5));
+                p.setBrush(QColor("#c8c0ae"));
+                p.drawEllipse(c, r * 0.62, r * 0.62);
+                p.setBrush(QColor("#a8a090"));
+                for (int i = 0; i < 8; ++i) {  // battlements around the top
+                    const double a = i * M_PI / 4;
+                    p.drawRect(QRectF(c.x() + std::cos(a) * r * 0.55 - r * 0.09, c.y() + std::sin(a) * r * 0.55 - r * 0.09, r * 0.18, r * 0.18));
+                }
+                p.setBrush(sideColor[1]);
+                p.drawPolygon(QPolygonF{c + QPointF(0, -r * 0.7), c + QPointF(r * 0.38, -r * 0.48), c + QPointF(0, -r * 0.28)});
+                p.drawLine(c + QPointF(0, -r * 0.7), c + QPointF(0, r * 0.1));
+            }
+        }
         if (ranger) {  // the edge of the range
             p.setPen(QPen(enemyRange ? QColor(255, 80, 80, 200) : QColor(120, 180, 255, 200), 2, Qt::DashLine));
             p.setBrush(Qt::NoBrush);
@@ -352,8 +411,32 @@ protected:
             const Fx& f = m_fx.first();
             const double t = std::clamp(f.age / f.duration, 0.0, 1.0);
             const QPointF at = fxPos(f.target ? f.target : f.unit);
-            if (f.type == "shoot") {
-                const QPointF from = fxPos(f.unit), to = fxPos(f.target);
+            if (f.type == "wall_hit") {
+                // A stone flies in an arc, then dust where it lands.
+                const QPointF from = fxPos(f.unit), to = centre(f.hex);
+                if (t < 0.7) {
+                    const double k = t / 0.7;
+                    const QPointF pos = from + (to - from) * k - QPointF(0, std::sin(M_PI * k) * r * 3);
+                    p.setPen(QPen(QColor(30, 30, 30), 1.2));
+                    p.setBrush(QColor("#8a8476"));
+                    p.drawEllipse(pos, r * 0.22, r * 0.22);
+                } else {
+                    const double k = (t - 0.7) / 0.3;
+                    p.setPen(Qt::NoPen);
+                    p.setBrush(QColor(200, 190, 170, int(200 * (1 - k))));
+                    for (int i = 0; i < 7; ++i) {
+                        const double a = i * M_PI * 2 / 7;
+                        p.drawEllipse(to + QPointF(std::cos(a), std::sin(a)) * r * (0.3 + 0.7 * k), r * 0.2, r * 0.2);
+                    }
+                }
+            }
+            if (f.type == "engine") {
+                p.setPen(QPen(QColor(255, 216, 74, int(255 * (1 - t))), 3));
+                p.setBrush(Qt::NoBrush);
+                p.drawEllipse(fxPos(f.unit), r * (0.5 + t), r * (0.5 + t));
+            }
+            if (f.type == "shoot" || f.type == "tower") {
+                const QPointF from = f.type == "tower" ? f.from : fxPos(f.unit), to = fxPos(f.target);
                 const QPointF pos = from + (to - from) * std::min(1.0, t / 0.75);
                 if (t < 0.75) {
                     const double angle = std::atan2(to.y() - from.y(), to.x() - from.x()) * 180 / M_PI;
@@ -372,9 +455,9 @@ protected:
                     p.restore();
                 }
             }
-            if ((f.type == "shoot" && t >= 0.7) || ((f.type == "attack" || f.type == "retaliate") && t >= 0.35 && t <= 0.85)) {
+            if (((f.type == "shoot" || f.type == "tower") && t >= 0.7) || ((f.type == "attack" || f.type == "retaliate") && t >= 0.35 && t <= 0.85)) {
                 // The hit: a bright ring and sparks on the target.
-                const double k = f.type == "shoot" ? (t - 0.7) / 0.3 : (t - 0.35) / 0.5;
+                const double k = (f.type == "shoot" || f.type == "tower") ? (t - 0.7) / 0.3 : (t - 0.35) / 0.5;
                 p.setPen(QPen(QColor(255, 255, 255, int(230 * (1 - k))), 3));
                 p.setBrush(Qt::NoBrush);
                 p.drawEllipse(at, r * (0.6 + 0.5 * k), r * (0.6 + 0.5 * k));
@@ -491,6 +574,7 @@ private:
         core::Pos hex;
         bool lucky = false;
         double age = 0, duration = 0;
+        QPointF from;  // towers: where the arrow comes from
     };
     QList<Fx> m_fx;
     QJsonArray m_pendingEvents;
@@ -550,6 +634,11 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_retreat->setObjectName("retreatButton");
     m_retreat->setToolTip(tr("Give up the battle: your army is lost, your hero escapes"));
     buttons->addWidget(m_retreat);
+    m_engine = new QPushButton(this);
+    m_engine->setObjectName("buildEngineButton");
+    m_engine->setToolTip(tr("A catapult for this battle: it breaks the town's walls, and is gone afterwards"));
+    connect(m_engine, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "build_engine"}}); });
+    buttons->addWidget(m_engine);
     buttons->addWidget(m_autoPlay);
     buttons->addWidget(m_auto);
     buttons->addStretch(1);
@@ -648,7 +737,9 @@ void BattleView::updateStats() {
     t += tr("Attack <b>%1</b> &nbsp; Defense <b>%2</b><br>").arg(d->attack).arg(d->defense);
     t += tr("Damage <b>%1-%2</b> per unit<br>").arg(d->damageMin).arg(d->damageMax);
     t += tr("Speed <b>%1</b> &nbsp; Initiative <b>%2</b><br>").arg(d->battleSpeed).arg(d->initiative);
-    if (u->range > 0) t += tr("Shoots: range <b>%1</b> hexes, %2 shots left<br>").arg(u->range).arg(u->shots);
+    if (d->has(QStringLiteral("siege_engine"))) t += tr("Hurls stones at the walls (%1-%2 damage); gone after the battle<br>")
+                                                         .arg(m_content->balance().siege.catapultDamageMin).arg(m_content->balance().siege.catapultDamageMax);
+    else if (u->range > 0) t += tr("Shoots: range <b>%1</b> hexes, %2 shots left<br>").arg(u->range).arg(u->shots);
     else t += tr("Melee only<br>");
     if (u->stars > 0) t += tr("Veteran: %1<br>").arg(QString(u->stars, QChar(0x2605)));
     if (!d->abilities.isEmpty()) t += tr("Abilities: %1<br>").arg(d->abilities.join(", ").replace('_', ' '));
@@ -672,6 +763,8 @@ void BattleView::updateInfo() {
             if (sp.id == m_castSpell) enemy = sp.targetsEnemy;
         text += tr("Cast %1: click %2 (or an empty hex to cancel).")
                     .arg(s ? s->name : m_castSpell, enemy ? tr("an enemy stack") : tr("one of your stacks"));
+    } else if (mine && def && def->has(QStringLiteral("siege_engine"))) {
+        text += tr("Your catapult: click a wall segment to hurl a stone at it.");
     } else if (mine) {
         text += tr("Your %1 (%2) acts: click a light hex to move, a red-ringed enemy to %3.")
                     .arg(def ? def->name : active->unit)
@@ -682,12 +775,22 @@ void BattleView::updateInfo() {
     }
     if (battle.hasHero) text += tr(" &nbsp; <i>Hero: %1 spell points</i>").arg(battle.heroSpellPoints);
     if (battle.townDefense > 0) text += tr(" &nbsp; <i>Town walls: defenders +%1 defense</i>").arg(battle.townDefense);
+    if (battle.wallLevel > 0) text += tr(" &nbsp; <i>Siege: %1 of %2 wall segments stand, %3 towers shoot each round</i>")
+                                          .arg(battle.walls.size()).arg(battle.height).arg(battle.towers.size());
     m_info->setText(text);
     m_defend->setEnabled(mine);
     m_wait->setEnabled(mine && battle.canWait);
     m_retreat->setVisible(battle.yourSide == 0);
     m_retreat->setEnabled(mine && battle.canRetreat);
     m_auto->setEnabled(mine);
+    {
+        QStringList cost;
+        const core::ResourceAmounts& c = m_content->balance().siege.engineCost;
+        for (auto it = c.begin(); it != c.end(); ++it) cost << QStringLiteral("%1 %2").arg(it.value()).arg(it.key());
+        m_engine->setText(tr("Build a catapult (%1)").arg(cost.join(", ")));
+        m_engine->setVisible(battle.canBuildEngine);
+        m_engine->setEnabled(mine);
+    }
     bool anyCastable = false;
     for (const ViewBattle::Spell& sp : battle.spells) anyCastable = anyCastable || sp.castable;
     m_cast->setVisible(battle.hasHero);
@@ -724,6 +827,12 @@ void BattleView::onHexClicked(core::Pos hex, core::Pos from) {
         if (const ViewBattleUnit* u = m_battle.unitAt(hex))
             emit actionRequested({{"action", m_castByUnit ? "unit_cast" : "cast"}, {"spell", spell}, {"target", u->id}});
         updateInfo();
+        return;
+    }
+    const ViewBattleUnit* active = m_battle.unit(m_battle.active);
+    const core::UnitDef* activeDef = active ? m_content->unit(active->unit) : nullptr;
+    if (activeDef && activeDef->has(QStringLiteral("siege_engine"))) {
+        if (m_battle.walls.contains(hex)) emit actionRequested({{"action", "shoot"}, {"x", hex.x}, {"y", hex.y}});
         return;
     }
     if (const ViewBattleUnit* u = m_battle.unitAt(hex)) {

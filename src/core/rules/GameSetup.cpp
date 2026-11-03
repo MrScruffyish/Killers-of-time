@@ -244,7 +244,8 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
 
     // Neutral monsters. `strength` 1 (weak) .. 3 (strong) picks the tiers and the size.
     QStringList monsterUnits;
-    for (const UnitDef& u : content.units()) monsterUnits.append(u.id);
+    for (const UnitDef& u : content.units())
+        if (!u.has(QStringLiteral("siege_engine"))) monsterUnits.append(u.id);  // no wandering catapults
     const QSet<Pos> landSet(land.begin(), land.end());
     const auto addMonsters = [&](Pos where, int strength) {
         QStringList fitting;

@@ -169,6 +169,34 @@ private slots:
                 QTest::qWait(1400);  // everything settles
             }
         }
+        // A siege: a citadel's walls (one fallen, one cracked), towers, a catapult.
+        {
+            ViewBattle vb;
+            vb.present = true;
+            vb.width = 15;
+            vb.height = 11;
+            vb.round = 3;
+            vb.wallLevel = 2;
+            vb.wallMaxHp = 100;
+            for (int y = 0; y < 11; ++y)
+                if (y != 3) vb.walls.insert(core::Pos{11, y}, y == 5 ? 30 : y == 7 ? 60 : 100);
+            vb.gate = {11, 5};
+            vb.towers = {{12, 1}, {12, 9}, {12, 3}};
+            ViewBattleUnit a;
+            a.id = 1; a.side = 0; a.unit = "pikeman"; a.count = 30; a.hex = {9, 4};
+            ViewBattleUnit c;
+            c.id = 2; c.side = 0; c.unit = "catapult"; c.count = 1; c.hex = {0, 5};
+            ViewBattleUnit d;
+            d.id = 3; d.side = 1; d.unit = "archer_elite"; d.count = 15; d.hex = {13, 5}; d.range = 7; d.shots = 10;
+            vb.units = {a, c, d};
+            vb.active = 2;
+            BattleView view(&reg);
+            view.resize(1000, 620);
+            view.setBattle(vb, QColor("#1f77b4"), QColor("#d62728"));
+            view.show();
+            QApplication::processEvents();
+            if (!dir.isEmpty()) view.grab().save(QDir(dir).filePath("0_siege.png"));
+        }
         // A lost battle as the result window shows it.
         const QJsonObject report{{"outcome", "defender"}, {"rounds", 4}, {"loserHeroKilled", true},
                                  {"attacker", QJsonObject{{"owner", 1}, {"losses", QJsonObject{{"archer", 12}, {"militia", 20}}}}},

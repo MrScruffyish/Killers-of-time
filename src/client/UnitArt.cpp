@@ -247,6 +247,28 @@ void woodsman(Canvas& c) {
     c.poly({{0.74, 0.18}, {0.92, 0.12}, {0.94, 0.34}, {0.76, 0.32}});
 }
 
+void catapult(Canvas& c) {
+    // Wheels, a frame, the throwing arm with a stone in its cup.
+    c.pen(kInk, 0.025);
+    c.p.setBrush(kWood);
+    c.poly({{0.1, 0.72}, {0.9, 0.72}, {0.86, 0.8}, {0.14, 0.8}});
+    c.poly({{0.3, 0.72}, {0.45, 0.4}, {0.52, 0.4}, {0.4, 0.72}});  // upright
+    c.pen(kWood.darker(130), 0.05);
+    c.line(0.48, 0.44, 0.88, 0.12);  // the arm
+    c.pen(kInk, 0.025);
+    c.p.setBrush(kWood.darker(120));
+    c.p.drawEllipse(c.box(0.83, 0.05, 0.12, 0.1));
+    c.p.setBrush(QColor("#8a8476"));
+    c.p.drawEllipse(c.box(0.85, 0.02, 0.09, 0.09));  // the stone
+    c.p.setBrush(kWood.darker(140));
+    for (const double x : {0.14, 0.62}) {
+        c.p.drawEllipse(c.box(x, 0.68, 0.24, 0.24));
+        c.p.setBrush(kWood);
+        c.p.drawEllipse(c.box(x + 0.08, 0.76, 0.08, 0.08));
+        c.p.setBrush(kWood.darker(140));
+    }
+}
+
 void swordsman(Canvas& c, const QColor& coat) {
     figure(c, coat, true);
     c.pen(kInk, 0.025);
@@ -277,6 +299,7 @@ void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     else if (id == "treant") treant(c);
     else if (id == "unicorn") unicorn(c);
     else if (id == "woodsman") woodsman(c);
+    else if (id == "catapult") catapult(c);
     else swordsman(c, QColor::fromHsv(int(qHash(id) % 360), 120, 160));
     p.restore();
 }

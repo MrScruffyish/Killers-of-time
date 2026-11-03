@@ -23,8 +23,9 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
     // Veterancy: survivors gain experience from the enemy HP their side destroyed.
     int lostHp[2] = {0, 0}, survivors[2] = {0, 0};
     for (const BattleUnit& u : battle.units()) {
+        if (u.armyIndex < 0) continue;  // the catapult
         const Army* army = state.army(battle.army(u.side));
-        const int before = (army && u.armyIndex < army->stacks.size()) ? army->stacks[u.armyIndex].count() : 0;
+        const int before = (army && u.armyIndex >= 0 && u.armyIndex < army->stacks.size()) ? army->stacks[u.armyIndex].count() : 0;
         lostHp[u.side] += std::max(0, before - u.stack.count()) * u.baseMaxHp;
         survivors[u.side] += u.stack.count();
     }
@@ -37,7 +38,7 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         Army* army = state.army(battle.army(s));
         if (!army) continue;
         for (const BattleUnit& u : battle.units()) {
-            if (u.side != s || u.armyIndex >= army->stacks.size()) continue;
+            if (u.side != s || u.armyIndex < 0 || u.armyIndex >= army->stacks.size()) continue;  // the catapult is not in the army
             UnitStack& stack = army->stacks[u.armyIndex];
             const int lost = stack.count() - u.stack.count();
             if (lost > 0) {
@@ -89,10 +90,24 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
     return report;
 }
 
+QString buySiegeEngine(GameState& state, const ContentRegistry& content, Battle& battle, QList<BattleEvent>* events) {
+    const QString why = battle.whyNoSiegeEngine();
+    if (!why.isEmpty()) return why;
+    Player* owner = state.player(battle.owner(0));
+    if (!owner) return QStringLiteral("only a player's army can build one");
+    const ResourceAmounts& cost = content.balance().siege.engineCost;
+    for (auto it = cost.begin(); it != cost.end(); ++it)
+        if (owner->resources.value(it.key()) < it.value())
+            return QStringLiteral("a catapult costs %1 %2, you have %3").arg(it.value()).arg(it.key()).arg(owner->resources.value(it.key()));
+    for (auto it = cost.begin(); it != cost.end(); ++it) owner->resources[it.key()] -= it.value();
+    return battle.buildSiegeEngine(events);
+}
+
 BattleReport resolveBattle(GameState& state, const ContentRegistry& content, ArmyId attackerArmy,
                            ArmyId defenderArmy) {
     if (!state.army(attackerArmy) || !state.army(defenderArmy)) return {};
     Battle battle(state, content, attackerArmy, defenderArmy, newBattleSeed(state));
+    buySiegeEngine(state, content, battle, nullptr);  // against walls, if the attacker can pay
     // Every action ends a stack's turn, so this always finishes (round limit).
     while (!battle.isOver()) battle.act(chooseBattleAction(battle));
     return applyBattleResult(state, content, battle);

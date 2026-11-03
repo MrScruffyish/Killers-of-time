@@ -69,10 +69,23 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
                         if (e.type == BuildingEffect::Type::Defense) m_townDefense += e.amount;
         }
         m_defenseBonus[1] += m_townDefense;
+        // The walls on the field: one level per defense building.
+        for (const Town& t : state.towns()) {
+            if (t.pos != d->pos) continue;
+            for (const QString& b : t.buildings)
+                if (const BuildingDef* def = content.building(b))
+                    for (const BuildingEffect& e : def->effects) m_wallLevel += e.type == BuildingEffect::Type::Defense;
+        }
+        if (m_wallLevel > 0) {
+            for (int y = 0; y < hex::kHeight; ++y) m_wallHp.insert(Pos{kWallColumn, y}, wallMaxHp());
+            m_gate = Pos{kWallColumn, hex::kHeight / 2};
+            m_towers = {Pos{kWallColumn + 1, 1}, Pos{kWallColumn + 1, hex::kHeight - 2}};
+            if (m_wallLevel >= 2) m_towers.append(Pos{kWallColumn + 1, hex::kHeight / 2 - 2});
+        }
     }
-    // Rocks in the middle columns.
+    // Rocks in the middle columns (in front of the walls in a siege).
     for (int i = 0, tries = 0; i < content.balance().battle.obstacles && tries < 100; ++tries) {
-        const Pos p{m_rng.nextInt(3, hex::kWidth - 4), m_rng.nextInt(0, hex::kHeight - 1)};
+        const Pos p{m_rng.nextInt(3, m_wallLevel > 0 ? kWallColumn - 2 : hex::kWidth - 4), m_rng.nextInt(0, hex::kHeight - 1)};
         if (m_obstacles.contains(p)) continue;
         m_obstacles.append(p);
         ++i;
@@ -120,13 +133,74 @@ const BattleUnit* Battle::activeUnit() const {
 
 bool Battle::sideAlive(int side) const {
     for (const BattleUnit& u : m_units)
-        if (u.side == side && u.alive()) return true;
+        if (u.side == side && u.alive() && !u.def->has(QStringLiteral("siege_engine"))) return true;  // a catapult alone does not fight on
     return false;
+}
+
+int Battle::wallMaxHp() const {
+    return m_content.balance().siege.wallHpPerLevel * std::max(1, m_wallLevel);
+}
+
+bool Battle::blockedFor(Pos hex, const BattleUnit& who) const {
+    if (m_obstacles.contains(hex)) return true;
+    if (m_wallHp.contains(hex) && !(who.side == 1 && hex == m_gate)) return true;
+    const BattleUnit* u = unitAt(hex);
+    return u && u->id != who.id;
+}
+
+QString Battle::whyNoSiegeEngine() const {
+    if (m_wallLevel <= 0) return QStringLiteral("there are no walls to break");
+    if (m_engineBuilt) return QStringLiteral("a catapult is already here");
+    if (isOver()) return QStringLiteral("the battle is over");
+    if (!m_content.unit(QStringLiteral("catapult"))) return QStringLiteral("no catapult in the game data");
+    return {};
+}
+
+QString Battle::buildSiegeEngine(QList<BattleEvent>* events) {
+    const QString why = whyNoSiegeEngine();
+    if (!why.isEmpty()) return why;
+    BattleUnit u;
+    u.id = static_cast<int>(m_units.size()) + 1;
+    u.side = 0;
+    u.armyIndex = -1;  // not from the army: gone after the battle
+    u.def = m_content.unit(QStringLiteral("catapult"));
+    u.stack = UnitStack(u.def->id, 1, u.def->maxHp);
+    u.baseMaxHp = u.def->maxHp;
+    // At the back of the attacker's side, on a free hex.
+    for (int y : {5, 4, 6, 3, 7, 2, 8, 1, 9, 0, 10})
+        for (int x = 0; x < 3; ++x)
+            if (!blocked(Pos{x, y}) && u.pos == Pos{}) u.pos = Pos{x, y};
+    m_units.append(u);
+    m_order.append(u.id);  // it shoots this round already
+    m_engineBuilt = true;
+    if (events) events->append({BattleEvent::Type::Engine, u.id, 0, u.pos, u.pos, 0, 0, {}});
+    return {};
+}
+
+void Battle::towersShoot(QList<BattleEvent>* events) {
+    // Each tower shoots the most dangerous attacking stack.
+    const int damage = m_content.balance().siege.towerDamagePerLevel * m_wallLevel;
+    for (const Pos tower : m_towers) {
+        BattleUnit* best = nullptr;
+        double worst = -1;
+        for (BattleUnit& u : m_units) {
+            if (u.side != 0 || !u.alive()) continue;
+            const double danger = u.stack.count() * (u.def->damageMin + u.def->damageMax + 1.0);
+            if (danger > worst) {
+                worst = danger;
+                best = &u;
+            }
+        }
+        if (!best) return;
+        const UnitStack::DamageResult r = best->stack.applyDamage(damage);
+        if (events) events->append({BattleEvent::Type::Tower, 0, best->id, tower, best->pos, r.damageDealt, r.unitsKilled, {}});
+    }
 }
 
 QHash<Pos, int> Battle::reachable(const BattleUnit& who) const {
     // Breadth-first over hexes. Walkers go around stacks and rocks; flyers pass
     // over them but must land on a free hex.
+    if (who.def->has(QStringLiteral("siege_engine"))) return {{who.pos, 0}};  // a catapult stays put
     const int speed = std::max(1, who.def->battleSpeed + who.modifier(QStringLiteral("battleSpeed")));
     const bool flying = who.def->has(QStringLiteral("flying"));
     QHash<Pos, int> dist{{who.pos, 0}};
@@ -137,14 +211,14 @@ QHash<Pos, int> Battle::reachable(const BattleUnit& who) const {
         const int d = dist.value(p);
         if (d >= speed) continue;
         for (const Pos n : hex::neighbours(p)) {
-            if (dist.contains(n) || (!flying && blocked(n))) continue;
+            if (dist.contains(n) || (!flying && blockedFor(n, who))) continue;
             dist.insert(n, d + 1);
             queue.enqueue(n);
         }
     }
     QHash<Pos, int> steps;
     for (auto it = dist.cbegin(); it != dist.cend(); ++it)
-        if (it.key() == who.pos || !blocked(it.key())) steps.insert(it.key(), it.value());
+        if (it.key() == who.pos || !blockedFor(it.key(), who)) steps.insert(it.key(), it.value());
     return steps;
 }
 
@@ -193,6 +267,8 @@ void Battle::strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QL
     if (diff > 0) mult += std::min(diff * bb.attackPercentPerPoint, bb.maxAttackPercent) / 100.0;
     if (diff < 0) mult -= std::min(-diff * bb.defensePercentPerPoint, bb.maxDefensePercent) / 100.0;
     const int roll = m_rng.nextInt(from.def->damageMin, std::max(from.def->damageMin, from.def->damageMax));
+    if (type == BattleEvent::Type::Shoot && from.side == 1 && m_wallLevel > 0)  // shooting from the walls
+        mult *= 1.0 + m_content.balance().siege.defenderShotPercentPerLevel * m_wallLevel / 100.0;
     int damage = std::max(1, static_cast<int>(std::lround(from.stack.count() * roll * mult)));
     const bool lucky = m_luck[from.side] > 0 && chance(m_luck[from.side] * bb.luckPercentPerPoint);
     if (lucky) damage *= 2;
@@ -249,6 +325,18 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
         break;
     }
     case BattleAction::Type::Shoot: {
+        if (me->def->has(QStringLiteral("siege_engine"))) {
+            // The catapult hurls a stone at a wall segment.
+            if (!action.hasHex || !m_wallHp.contains(action.hex)) return QStringLiteral("aim at a standing wall segment");
+            const SiegeBalance& sb = m_content.balance().siege;
+            const int hit = m_rng.nextInt(sb.catapultDamageMin, sb.catapultDamageMax);
+            int& hp = m_wallHp[action.hex];
+            hp -= hit;
+            const bool fell = hp <= 0;
+            if (fell) m_wallHp.remove(action.hex);
+            if (events) events->append({BattleEvent::Type::WallHit, me->id, 0, me->pos, action.hex, hit, fell ? 1 : 0, {}});
+            break;
+        }
         if (!target || !target->alive() || target->side == me->side) return QStringLiteral("no enemy to shoot");
         if (!canShoot(*me)) return QStringLiteral("this stack cannot shoot now");
         if (!canShootAt(*me, *target))
@@ -417,6 +505,10 @@ void Battle::startRound(QList<BattleEvent>* events) {
     });
     for (const BattleUnit* u : alive) m_order.append(u->id);
     m_orderPos = 0;
+    if (m_wallLevel > 0 && !m_towers.isEmpty()) {
+        towersShoot(events);
+        checkOver();
+    }
 }
 
 void Battle::advance(QList<BattleEvent>* events) {
@@ -454,7 +546,7 @@ void Battle::checkOver() {
 
 QJsonObject battleEventToJson(const BattleEvent& e) {
     static const char* names[] = {"move",  "attack", "shoot",  "retaliate", "defend", "round",
-                                  "cast",  "wait",   "morale", "falter",    "retreat"};
+                                  "cast",  "wait",   "morale", "falter",    "retreat", "tower", "wall_hit", "engine"};
     QJsonObject o;
     o.insert("type", names[static_cast<int>(e.type)]);
     if (e.type == BattleEvent::Type::NewRound) {
@@ -463,9 +555,17 @@ QJsonObject battleEventToJson(const BattleEvent& e) {
     }
     o.insert("unit", e.unit);
     if (e.target) o.insert("target", e.target);
-    if (e.type == BattleEvent::Type::Move) {
+    if (e.type == BattleEvent::Type::Move || e.type == BattleEvent::Type::WallHit) {
         o.insert("x", e.to.x);
         o.insert("y", e.to.y);
+    }
+    if (e.type == BattleEvent::Type::WallHit) {
+        o.insert("damage", e.damage);
+        if (e.killed) o.insert("fell", true);
+    }
+    if (e.type == BattleEvent::Type::Tower) {  // from the tower at fromX, fromY
+        o.insert("fromX", e.from.x);
+        o.insert("fromY", e.from.y);
     }
     if (e.target) {
         o.insert("damage", e.damage);
@@ -517,6 +617,22 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
     o.insert("obstacles", rocks);
     if (b.townDefense() > 0) o.insert("townDefense", b.townDefense());
     if (!b.terrain().isEmpty()) o.insert("terrain", b.terrain());
+    if (b.wallLevel() > 0) {
+        QJsonObject siege;
+        siege.insert("level", b.wallLevel());
+        QJsonArray walls;
+        for (auto it = b.walls().cbegin(); it != b.walls().cend(); ++it)
+            walls.append(QJsonArray{it.key().x, it.key().y, it.value()});
+        siege.insert("walls", walls);
+        siege.insert("wallMaxHp", b.wallMaxHp());
+        siege.insert("gate", QJsonArray{b.gate().x, b.gate().y});
+        QJsonArray towers;
+        for (const Pos t : b.towers()) towers.append(QJsonArray{t.x, t.y});
+        siege.insert("towers", towers);
+        siege.insert("engineBuilt", b.engineBuilt());
+        siege.insert("canBuildEngine", viewerSide == 0 && b.whyNoSiegeEngine().isEmpty());
+        o.insert("siege", siege);
+    }
     if (active) {
         QJsonArray reach;
         const QHash<Pos, int> r = b.reachable(*active);

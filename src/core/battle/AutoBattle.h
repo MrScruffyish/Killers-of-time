@@ -43,6 +43,10 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
 // A whole battle at once: both sides are played by the battle AI (BattleAi.h) on
 // the hex field, then the result is applied. Used when no human takes part.
 // An army without units loses at once.
+// The attacker pays balance.json siege.engineCost and gets a catapult for this
+// battle. Returns why not (no walls, already built, cannot pay), else empty.
+QString buySiegeEngine(GameState& state, const ContentRegistry& content, Battle& battle, QList<BattleEvent>* events = nullptr);
+
 BattleReport resolveBattle(GameState& state, const ContentRegistry& content, ArmyId attackerArmy,
                            ArmyId defenderArmy);
 

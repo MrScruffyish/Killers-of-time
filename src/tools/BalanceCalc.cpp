@@ -37,10 +37,10 @@ double median(QList<double> v) {
 QList<UnitRow> unitRows(const ContentRegistry& c, const QString& race) {
     QHash<int, QList<double>> byTier;
     for (const UnitDef& u : c.units())
-        if (goldValue(c, u.cost) > 0) byTier[u.tier].append(unitPower(u) / goldValue(c, u.cost) * 1000);
+        if (goldValue(c, u.cost) > 0 && !u.has("siege_engine")) byTier[u.tier].append(unitPower(u) / goldValue(c, u.cost) * 1000);
     QList<UnitRow> rows;
     for (const UnitDef& u : c.units()) {
-        if (!race.isEmpty() && u.race != race) continue;
+        if ((!race.isEmpty() && u.race != race) || u.has("siege_engine")) continue;  // machines do not fight
         UnitRow r;
         r.id = u.id;
         r.race = u.race;
@@ -117,7 +117,7 @@ double duel(const ContentRegistry& c, const UnitDef& a, const UnitDef& b, int go
 QList<DuelRow> duelRows(const ContentRegistry& c, int tier, int gold, int runs) {
     QList<const UnitDef*> units;
     for (const UnitDef& u : c.units())
-        if (tier == 0 || u.tier == tier) units << &u;
+        if ((tier == 0 || u.tier == tier) && !u.has("siege_engine")) units << &u;
     QList<DuelRow> rows;
     for (int i = 0; i < units.size(); ++i)
         for (int j = i + 1; j < units.size(); ++j) {

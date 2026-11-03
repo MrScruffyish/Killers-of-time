@@ -195,6 +195,16 @@ walks onto one keeps it and its trait bonuses are added to his traits.
 `aiIncomePercent` and `aiGrowthPercent` (+/- percent for AI players). `aiSlotDifficulty`: per AI
 slot level (`easy`, `normal`, `hard`), its `aiIncomePercent` / `aiGrowthPercent` are added.
 
+## balance.json "siege"
+Battles at a town with walls. Wall level = the town's buildings with a `defense` effect (Fort 1,
+Citadel 2). Column 11 of the field is a wall (`wallHpPerLevel` HP per segment and level) with a
+gate in the middle: walkers cannot pass a standing segment (defenders use the gate, flyers go
+over). Towers (2, or 3 at level 2) shoot the most dangerous attacking stack each round for
+`towerDamagePerLevel` HP per level; defending shooters do `defenderShotPercentPerLevel` percent
+more damage per level. The attacker may pay `engineCost` for a catapult (unit `catapult`,
+ability `siege_engine`) for this battle only: it shoots wall segments for
+`catapultDamageMin`-`catapultDamageMax`. Computer attackers buy one when they can.
+
 ## balance.json "scouting"
 The `scouting` trait (traits.json): per level `visionPerLevel` more vision tiles and
 `movementPercentPerLevel` percent more daily movement. **Zone of control:** a hostile army on

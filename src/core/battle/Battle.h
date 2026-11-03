@@ -55,7 +55,10 @@ struct BattleAction {
 
 // What happened, for the battle log and the client.
 struct BattleEvent {
-    enum class Type { Move, Attack, Shoot, Retaliate, Defend, NewRound, Cast, Wait, Morale, Falter, Retreat };
+    enum class Type { Move, Attack, Shoot, Retaliate, Defend, NewRound, Cast, Wait, Morale, Falter, Retreat,
+                      Tower,     // a town tower shoots (`from` = the tower, `target`)
+                      WallHit,   // the catapult hits a wall segment (`to`, `damage`, `killed` = 1 when it falls)
+                      Engine };  // the attacker builds a catapult (`unit`)
     Type type = Type::Move;
     int unit = 0;
     int target = 0;
@@ -85,6 +88,11 @@ struct BattleEvent {
 // damage, his Hit Points raise the max HP of his units. Unit abilities: flying,
 // no_retaliation, double_attack, undead (UnitDef). A few rocks block hexes.
 // Defenders in a town get the defense of its walls (building effect `defense`).
+// Sieges (balance.json "siege"): with walls, column kWallColumn is a wall with a
+// gate in the middle (walkers cannot pass until a segment falls; defenders use
+// the gate; flyers go over); towers behind it shoot the most dangerous attacker
+// each round; defending shooters do more damage. The attacker may pay for a
+// catapult (buildSiegeEngine) that shoots wall segments (Shoot with a hex).
 // Besides, the hero of the active stack's side may cast one battle spell per round
 // (Cast; it does not use up the stack's turn): damage, heal or a stat change for a
 // few rounds. Spell points are spent from a copy and written back afterwards.
@@ -97,6 +105,8 @@ struct BattleEvent {
 // The battle works on copies; applyBattleResult (AutoBattle.h) writes the outcome
 // back into the game state. Randomness comes from its own Rng (seeded by the caller
 // from the game's Rng), so a battle can be replayed from seed + actions.
+inline constexpr int kWallColumn = 11;
+
 class Battle {
 public:
     enum class Outcome { Running, AttackerWon, DefenderWon, Draw };
@@ -118,9 +128,22 @@ public:
     bool sideAlive(int side) const;
     bool retreated(int side) const { return m_retreated[side]; }
     int townDefense() const { return m_townDefense; }  // walls: extra defense of the defender
+    // Sieges: a town with walls (wall level = its buildings with a defense effect).
+    int wallLevel() const { return m_wallLevel; }
+    const QMap<Pos, int>& walls() const { return m_wallHp; }  // standing segments -> HP
+    int wallMaxHp() const;
+    Pos gate() const { return m_gate; }
+    const QList<Pos>& towers() const { return m_towers; }
+    bool engineBuilt() const { return m_engineBuilt; }
+    // Why the attacker cannot build a catapult now (empty = can; the caller pays).
+    QString whyNoSiegeEngine() const;
+    // The attacker's catapult joins the battle (once per battle; acts this round).
+    QString buildSiegeEngine(QList<BattleEvent>* events = nullptr);
+    // Does `hex` stop this unit? Rocks, stacks and standing walls; defenders pass their gate.
+    bool blockedFor(Pos hex, const BattleUnit& unit) const;
     const QString& terrain() const { return m_terrain; }  // the ground (defender's tile), for the picture
     const QList<Pos>& obstacles() const { return m_obstacles; }
-    bool blocked(Pos hex) const { return m_obstacles.contains(hex) || unitAt(hex); }
+    bool blocked(Pos hex) const { return m_obstacles.contains(hex) || m_wallHp.contains(hex) || unitAt(hex); }
 
     // The side's hero (a copy taken when the battle started), or null.
     const Hero* heroOf(int side) const { return m_heroCopy[side].id.isValid() ? &m_heroCopy[side] : nullptr; }
@@ -174,6 +197,12 @@ private:
     bool m_retreated[2] = {false, false};
     QList<Pos> m_obstacles;
     int m_townDefense = 0;
+    int m_wallLevel = 0;
+    QMap<Pos, int> m_wallHp;
+    Pos m_gate{-1, -1};
+    QList<Pos> m_towers;
+    bool m_engineBuilt = false;
+    void towersShoot(QList<BattleEvent>* events);
     QString m_terrain;
     bool m_heroCast[2] = {false, false};
     QList<BattleUnit> m_units;

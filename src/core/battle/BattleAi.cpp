@@ -19,6 +19,23 @@ BattleAction chooseBattleAction(const Battle& b) {
     BattleAction a;
     const BattleUnit* me = b.activeUnit();
     if (!me) return a;
+    if (me->def->has(QStringLiteral("siege_engine"))) {
+        // The catapult: the gate first, then the weakest segment near the middle.
+        if (b.walls().isEmpty()) return a;  // nothing left to break: wait it out
+        Pos best = b.walls().firstKey();
+        int bestScore = 1 << 30;
+        for (auto it = b.walls().cbegin(); it != b.walls().cend(); ++it) {
+            const int score = (it.key() == b.gate() ? -100000 : 0) + it.value() * 4 + std::abs(it.key().y - b.gate().y);
+            if (score < bestScore) {
+                bestScore = score;
+                best = it.key();
+            }
+        }
+        a.type = BattleAction::Type::Shoot;
+        a.hex = best;
+        a.hasHex = true;
+        return a;
+    }
 
     // Enemies, most dangerous first.
     QList<const BattleUnit*> enemies;

@@ -337,6 +337,12 @@ void GameSession::runBattles() {
             ab.battle = std::make_unique<Battle>(m_state, m_content, ab.attack.army, defender, newBattleSeed(m_state));
         }
         Battle& b = *ab.battle;
+        const Player* attacker = m_state.player(b.owner(0));
+        if (attacker && attacker->controller == Player::Controller::Ai) {  // a computer attacker builds a catapult when it can pay
+            QList<BattleEvent> ev;
+            if (buySiegeEngine(m_state, m_content, b, &ev).isEmpty())
+                for (const BattleEvent& e : ev) m_aiEvents.append(battleEventToJson(e));
+        }
         while (!b.isOver() && !humanControls(b.activeUnit()->side)) {
             // The computer's actions are kept, so the human sees them happen.
             QList<BattleEvent> ev;
@@ -420,6 +426,16 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     }
     else if (action == "auto") m_battle->autoSide[active->side] = true;
     else if (action == "ai") a = chooseBattleAction(*b);  // one move chosen by the battle AI (client auto-play)
+    else if (action == "build_engine") {
+        // The attacker pays for a catapult; it does not use up the stack's turn.
+        if (active->side != 0) return failure("failed", "only the attacker builds siege engines");
+        QList<BattleEvent> ev;
+        const QString why = buySiegeEngine(m_state, m_content, *b, &ev);
+        if (!why.isEmpty()) return failure("failed", why);
+        QJsonArray events;
+        for (const BattleEvent& e : ev) events.append(battleEventToJson(e));
+        return success({{"events", events}});
+    }
     else return failure("bad_request", "unknown battle action '" + action + "'");
 
     QJsonArray events;

@@ -120,6 +120,15 @@ struct VeterancyBalance {
 // zoneOfControlRadius tiles of it, minus one tile per levelsPerZoneStep levels of
 // Scouting, never below zoneOfControlMinRadius. Scouting also widens vision and
 // adds movement.
+// Town sieges (battles against a town with walls): wall segments, towers that
+// shoot, a bonus for the defenders' archers, and the attacker's siege engine.
+struct SiegeBalance {
+    int wallHpPerLevel = 50;            // each wall segment's HP per wall level (fort 1, citadel 2)
+    int towerDamagePerLevel = 15;       // HP a tower's shot does, per wall level
+    int defenderShotPercentPerLevel = 20;  // defending shooters do this much more damage per wall level
+    int catapultDamageMin = 30, catapultDamageMax = 45;  // per shot at a wall
+    ResourceAmounts engineCost{{"gold", 600}, {"wood", 10}};  // the catapult, for one battle
+};
 struct ScoutingBalance {
     int visionPerLevel = 1;
     int movementPercentPerLevel = 5;
@@ -130,6 +139,7 @@ struct ScoutingBalance {
 struct Balance {
     MovementBalance movement;
     ScoutingBalance scouting;
+    SiegeBalance siege;
     VisionBalance vision;
     EconomyBalance economy;
     BattleBalance battle;

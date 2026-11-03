@@ -148,6 +148,14 @@ struct ViewBattle {
     bool canRetreat = false;
     int townDefense = 0;
     QString terrain;  // the ground the battle is fought on
+    // A siege: wall segments (hex -> HP), the gate, the towers, the catapult.
+    int wallLevel = 0;
+    QMap<core::Pos, int> walls;
+    int wallMaxHp = 0;
+    core::Pos gate{-1, -1};
+    QList<core::Pos> towers;
+    bool engineBuilt = false;
+    bool canBuildEngine = false;
     QList<core::Pos> obstacles;
     // Your hero in this battle (absent: no hero).
     struct Spell {

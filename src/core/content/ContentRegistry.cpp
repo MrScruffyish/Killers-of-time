@@ -245,7 +245,8 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
         if (d.range == 0 && d.shots > 0)
             r.addError(QStringLiteral("shots > 0 but range is 0 (melee units have no shots)"));
         static const QStringList knownAbilities = {QStringLiteral("flying"), QStringLiteral("no_retaliation"),
-                                                   QStringLiteral("double_attack"), QStringLiteral("undead")};
+                                                   QStringLiteral("double_attack"), QStringLiteral("undead"),
+                                                   QStringLiteral("siege_engine")};
         for (const QString& a : d.abilities)
             if (!knownAbilities.contains(a))
                 r.addError(QStringLiteral("unknown ability '%1' (known: %2)").arg(a, knownAbilities.join(", ")));
@@ -549,6 +550,8 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         ? top.requireObject(QStringLiteral("difficulty")) : QJsonObject();
     const QJsonObject veterancy = root.contains(QStringLiteral("veterancy"))
         ? top.requireObject(QStringLiteral("veterancy")) : QJsonObject();
+    const QJsonObject siege = root.contains(QStringLiteral("siege"))
+        ? top.requireObject(QStringLiteral("siege")) : QJsonObject();
     const QJsonObject scouting = root.contains(QStringLiteral("scouting"))
         ? top.requireObject(QStringLiteral("scouting")) : QJsonObject();
     const QJsonObject aiSlot = root.contains(QStringLiteral("aiSlotDifficulty"))
@@ -575,6 +578,19 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         }
     };
     readLevels(difficulty, QStringLiteral("difficulty"), &m_balance.difficulty);
+    if (!siege.isEmpty()) {
+        JsonReader sr(siege, file + QStringLiteral("/siege"), &errors);
+        SiegeBalance sb;
+        sb.wallHpPerLevel = sr.optionalInt(QStringLiteral("wallHpPerLevel"), sb.wallHpPerLevel, 1, 100000);
+        sb.towerDamagePerLevel = sr.optionalInt(QStringLiteral("towerDamagePerLevel"), sb.towerDamagePerLevel, 0, 100000);
+        sb.defenderShotPercentPerLevel = sr.optionalInt(QStringLiteral("defenderShotPercentPerLevel"), sb.defenderShotPercentPerLevel, 0, 1000);
+        sb.catapultDamageMin = sr.optionalInt(QStringLiteral("catapultDamageMin"), sb.catapultDamageMin, 1, 100000);
+        sb.catapultDamageMax = sr.optionalInt(QStringLiteral("catapultDamageMax"), sb.catapultDamageMax, 1, 100000);
+        if (sr.has(QStringLiteral("engineCost"))) sb.engineCost = sr.optionalIntMap(QStringLiteral("engineCost"), 0, 1000000);
+        sr.finish();
+        if (sb.catapultDamageMax < sb.catapultDamageMin) sr.addError(QStringLiteral("catapultDamageMax below catapultDamageMin"));
+        if (sr.ok()) m_balance.siege = sb;
+    }
     if (!scouting.isEmpty()) {
         JsonReader sr(scouting, file + QStringLiteral("/scouting"), &errors);
         ScoutingBalance sb;

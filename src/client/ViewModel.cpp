@@ -279,6 +279,18 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         vb.canRetreat = b.value("canRetreat").toBool();
         vb.townDefense = b.value("townDefense").toInt();
         vb.terrain = b.value("terrain").toString();
+        const QJsonObject siege = b.value("siege").toObject();
+        vb.wallLevel = siege.value("level").toInt();
+        for (const QJsonValue& w : siege.value("walls").toArray()) {
+            const QJsonArray a = w.toArray();
+            vb.walls.insert(core::Pos{a[0].toInt(), a[1].toInt()}, a[2].toInt());
+        }
+        vb.wallMaxHp = siege.value("wallMaxHp").toInt();
+        const QJsonArray gate = siege.value("gate").toArray();
+        if (gate.size() == 2) vb.gate = core::Pos{gate[0].toInt(), gate[1].toInt()};
+        for (const QJsonValue& t : siege.value("towers").toArray()) vb.towers.append(core::Pos{t.toArray()[0].toInt(), t.toArray()[1].toInt()});
+        vb.engineBuilt = siege.value("engineBuilt").toBool();
+        vb.canBuildEngine = siege.value("canBuildEngine").toBool();
         for (const QJsonValue& h : b.value("obstacles").toArray())
             vb.obstacles.append({h.toArray().at(0).toInt(), h.toArray().at(1).toInt()});
         for (const QJsonValue& sv : b.value("unitSpells").toArray()) {
