@@ -44,6 +44,7 @@ private:
     QSpinBox* m_autosaves;
     QPushButton* m_quick;
     QCheckBox* m_fog;
+    bool m_defaultOpponentAdded = false;
     QLabel* m_versions;
     QComboBox* m_scenario;
     QLabel* m_scenarioInfo;

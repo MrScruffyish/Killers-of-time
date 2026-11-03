@@ -226,14 +226,15 @@ private slots:
         bob.connectToServer("127.0.0.1", server.port(), "Bob");
         QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().members.size(), 2, 5000);
         QTRY_VERIFY_WITH_TIMEOUT(bob.isConnected() && bob.lobby().members.size() == 2, 5000);  // Bob is fully in
-        w.client().setSlot(2, {{"kind", "ai"}});
-        QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList[2].kind, net::SlotKind::Ai, 5000);
+        // The host got a computer opponent by default (slot 2); Bob took the next free slot.
+        QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList[1].kind, net::SlotKind::Ai, 5000);
+        QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList[2].kind, net::SlotKind::Human, 5000);
         shot(&w, "2_lobby");
 
         // Ann hosts: she has no Ready box. Bob confirms through the protocol.
         QVERIFY(!w.lobbyPage()->findChild<QCheckBox*>("ready0"));
         bob.setReady(true);
-        QTRY_VERIFY_WITH_TIMEOUT(w.client().lobby().slotList[1].ready, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(w.client().lobby().slotList[2].ready, 5000);
 
         auto* start = w.lobbyPage()->findChild<QPushButton*>("startButton");
         QVERIFY(start && start->isEnabled());

@@ -203,6 +203,22 @@ void LobbyPage::showError(const QString& text) {
 }
 
 void LobbyPage::rebuild() {
+    // Most games are one human against the computer: a host alone in a new lobby
+    // gets one AI opponent (once; it can be changed or removed like any slot).
+    {
+        const net::LobbyState& lobby = m_client->lobby();
+        const bool host = isHostClient(lobby, m_client->clientId());
+        bool others = false;
+        for (const net::SlotInfo& s : lobby.slotList) others = others || (s.occupied() && s.clientId != m_client->clientId());
+        if (host && !m_defaultOpponentAdded && !lobby.started && lobby.members.size() == 1 && !others) {
+            for (const net::SlotInfo& s : lobby.slotList)
+                if (s.kind == net::SlotKind::Open) {
+                    m_client->setSlot(s.index, {{"kind", "ai"}});
+                    break;
+                }
+        }
+        if (host) m_defaultOpponentAdded = true;
+    }
     // Which builds are talking: the same commit on both sides is the safe case.
     const QString mine = QString::fromLatin1(core::versionText());
     const QString server = m_client->serverVersion();
