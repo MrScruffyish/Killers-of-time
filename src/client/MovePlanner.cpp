@@ -79,8 +79,16 @@ MovePlan MovePlanner::plan(core::Pos target) const {
         if (core::townCovers(gate, target)) target = gate;  // walls lead to the gate
     if (!m_heroId || !m_map.inBounds(target) || target == m_from || m_unexplored.contains(target)) return plan;
     const core::MoveCostGrid grid(m_map, *m_content, m_mode, m_terrainPercent);
-    const core::PathResult path =
-        core::findPath(grid, m_from, target, [&](core::Pos p) { return m_blocked.contains(p); });
+    // Around visible enemies when possible (as the server does), else straight on.
+    const auto dangerous = [&](core::Pos p) {
+        const auto it = m_dangerFrom.constFind(p);
+        if (it == m_dangerFrom.cend() || p == target) return false;
+        for (const core::Pos a : *it)
+            if (a != target) return true;
+        return false;
+    };
+    core::PathResult path = core::findPath(grid, m_from, target, [&](core::Pos p) { return m_blocked.contains(p) || dangerous(p); });
+    if (!path.found) path = core::findPath(grid, m_from, target, [&](core::Pos p) { return m_blocked.contains(p); });
     if (!path.found || path.steps.isEmpty()) return plan;
     plan.found = true;
     plan.steps = path.steps;

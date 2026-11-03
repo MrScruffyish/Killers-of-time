@@ -159,8 +159,29 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     const HeroClassDef* cls = content.heroClass(hero->classId);
     const MoveCostGrid grid(state.map(), content, mode,
                             cls ? content.race(cls->race).terrainCostPercent : QMap<QString, int>());
-    const PathResult path =
-        findPath(grid, army->pos, target, [&](Pos p) { return occupied.contains(p); });
+    // The way goes around the zones of control of hostile armies the team can see
+    // (not the one being attacked, not those already next to the hero), if there
+    // is such a way; else straight on.
+    QSet<Pos> danger;
+    if (!hero->inBoat) {
+        const QByteArray seenNow = visibleTiles(state, state.teamOf(hero->owner), content);
+        const int radius = zoneOfControlRadius(*hero, content);
+        QSet<Pos> townGates;
+        for (const Town& t : state.towns()) townGates.insert(t.pos);
+        QSet<ArmyId> atSea;
+        for (const Hero& h : state.heroes())
+            if (h.inBoat) atSea.insert(h.army);
+        const auto near = [](Pos a, Pos b, int r) { return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y)) <= r; };
+        for (const Army& a : state.armies()) {
+            if (a.id == army->id || a.pos == target || townGates.contains(a.pos) || atSea.contains(a.id) || a.totalUnits() == 0) continue;
+            if (!state.isHostile(a.owner, hero->owner) || !seenNow.at(a.pos.y * state.map().width() + a.pos.x)) continue;
+            if (near(a.pos, army->pos, radius)) continue;
+            for (int dy = -radius; dy <= radius; ++dy)
+                for (int dx = -radius; dx <= radius; ++dx) danger.insert(Pos{a.pos.x + dx, a.pos.y + dy});
+        }
+    }
+    PathResult path = findPath(grid, army->pos, target, [&](Pos p) { return occupied.contains(p) || (p != target && danger.contains(p)); });
+    if (!path.found) path = findPath(grid, army->pos, target, [&](Pos p) { return occupied.contains(p); });
     if (!path.found) {
         result.error = QStringLiteral("no path to target");
         return result;

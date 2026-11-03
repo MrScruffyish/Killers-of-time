@@ -130,6 +130,22 @@ void MapView::setRoute(std::optional<core::Pos> target) {
 }
 
 void MapView::mouseMoveEvent(QMouseEvent* event) {
+    // Holding the left button and dragging moves the map along.
+    if (event->buttons() & Qt::LeftButton) {
+        if (!m_dragging && (event->pos() - m_pressPos).manhattanLength() > 6) {
+            m_dragging = true;
+            m_dragLast = m_pressPos;
+            viewport()->setCursor(Qt::ClosedHandCursor);
+        }
+        if (m_dragging) {
+            const QPoint d = event->pos() - m_dragLast;
+            m_dragLast = event->pos();
+            m_wantCentre.reset();
+            horizontalScrollBar()->setValue(horizontalScrollBar()->value() - d.x());
+            verticalScrollBar()->setValue(verticalScrollBar()->value() - d.y());
+            return;
+        }
+    }
     if (!m_edgeTimer->isActive()) {
         const QRect area = viewport()->rect();
         const int band = std::clamp(area.width() / 25, 12, 40);
@@ -621,6 +637,7 @@ void MapView::drawPlan(QPainter& p, const MovePlan& plan, bool pinned) const {
 
 void MapView::mousePressEvent(QMouseEvent* event) {
     m_pressPos = event->pos();
+    m_dragging = false;
     event->accept();
 }
 
@@ -633,6 +650,10 @@ void MapView::mouseDoubleClickEvent(QMouseEvent* event) {
 }
 
 void MapView::mouseReleaseEvent(QMouseEvent* event) {
+    if (std::exchange(m_dragging, false)) {  // that was a drag, not a click
+        updatePointer();
+        return;
+    }
     if (std::exchange(m_doubleClicked, false)) return;
     if ((event->pos() - m_pressPos).manhattanLength() > 6) return;
     const core::Pos t = tileAt(event->pos());

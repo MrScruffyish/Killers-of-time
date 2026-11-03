@@ -188,6 +188,7 @@ and react to; add depth afterwards.
 - [x] Drawn icons on the side panel, battle buttons and town tabs; the battle field is centred in a wooden frame
 - [x] Lobby: one Start button (adds a computer opponent when there is nobody to play against); Home or the button next to the hero list centres the map on the hero
 - [x] Spell book: casting opens cards with a school rune, cost and description (not castable ones greyed); build list: built buildings in one line, "built today" said once, narrower columns
+- [x] Routes go around visible enemies' zones of control when there is a way (server and planner alike), even if longer; hold and drag the map to move it
 - [ ] Balance (later, user): ranges favour the elves' archers; the new tier 3-5 units are first guesses (kot_balance races: humans 62.7k, sylvan 41.8k, undead 79.1k week power)
 
 ---

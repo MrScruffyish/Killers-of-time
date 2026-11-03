@@ -95,6 +95,8 @@ private:
     MovePlan m_routePlan;  // to the plotted route's target
     std::optional<core::Pos> m_route;
     bool m_doubleClicked = false;
+    bool m_dragging = false;  // the left button is held and the map is being dragged
+    QPoint m_dragLast;
     std::optional<QPointF> m_wantCentre;  // tile coordinates to keep in the middle (centerOn)
     class QTimer* m_edgeTimer;
     // Heroes walking from their old tile to the new one (animation only).

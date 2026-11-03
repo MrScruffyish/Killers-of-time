@@ -59,6 +59,9 @@ struct MoveResult {
     std::optional<PendingAttack> pending;  // deferBattles: the battles still to fight
 };
 
+// The path goes around the zones of control of hostile armies the team can see
+// (except the army being attacked and those already next to the hero) when there
+// is such a way, even if it is longer; otherwise the cheapest path.
 // Moves a hero along the cheapest path toward `target`, as far as his
 // movement points allow. Tiles holding another army, a town or a mine cannot
 // be walked through. A mine, map dwelling or town can be the target: arriving there visits it,

@@ -157,7 +157,7 @@ private slots:
 
     // ---- zone of control and scouting
     void monstersAttackAHeroWhoComesTooClose() {
-        gs.setMap(GameMap(20, 10, "grass"));
+        gs.setMap(GameMap(20, 3, "grass"));  // a corridor: no way around them
         const HeroId h = makeHero(p1, {0, 0});
         gs.hero(h)->traits["scouting_radius"] = 12;  // sees the monsters from the start
         armyOf(h).addUnits("pikeman", 40, 10);
@@ -175,7 +175,7 @@ private slots:
     }
 
     void aHeroStopsWhenAnUnseenEnemyComesIntoSight() {
-        gs.setMap(GameMap(30, 10, "grass"));
+        gs.setMap(GameMap(30, 3, "grass"));  // a corridor
         const HeroId h = makeHero(p1, {0, 0});  // sees 5 tiles
         armyOf(h).addUnits("pikeman", 40, 10);
         const ArmyId m = gs.addArmy(PlayerId(), {12, 2});  // out of sight at the start
@@ -190,6 +190,23 @@ private slots:
         r = moveHero(gs, reg, h, {20, 0});
         QVERIFY(r.ambushed);
         QVERIFY(!r.spotted);
+    }
+
+    void theWayGoesAroundVisibleEnemies() {
+        gs.setMap(GameMap(20, 12, "grass"));
+        const HeroId h = makeHero(p1, {0, 5});
+        gs.hero(h)->traits["scouting_radius"] = 20;  // sees them from the start
+        armyOf(h).addUnits("pikeman", 10, 10);
+        const ArmyId m = gs.addArmy(PlayerId(), {8, 5});
+        gs.army(m)->addUnits("troll", 20, 45);
+        refreshHeroMovement(gs, reg, p1);
+        gs.hero(h)->movementPoints = 5000;
+        const MoveResult r = moveHero(gs, reg, h, {16, 5});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY(r.arrived);
+        QVERIFY(!r.ambushed && !r.attacked);
+        QVERIFY(r.movementSpent > 16 * 100);  // dearer than the straight way, but no fight
+        QVERIFY(gs.army(m));
     }
 
     void walkingAwayFromAnArmyAlreadyInReachIsFree() {
