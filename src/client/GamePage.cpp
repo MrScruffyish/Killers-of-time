@@ -24,6 +24,7 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
+#include "client/BattleResultDialog.h"
 #include "client/BattleView.h"
 #include "client/Art.h"
 #include "client/MapView.h"
@@ -365,13 +366,11 @@ void GamePage::showBattle(bool firstView) {
         m_seenBattleId = m_view.lastBattleId;
         if (fresh) {
             const QString text = describeBattle(m_view.lastBattleReport);
-            sound::play(text.contains(tr("battle won")) ? sound::Effect::Fanfare : sound::Effect::Defeat);
+            auto* box = new BattleResultDialog(m_content, m_view.lastBattleReport, m_view.you, this);
+            sound::play(box->outcome() == BattleResultDialog::Outcome::Victory ? sound::Effect::Fanfare : sound::Effect::Defeat);
             log(tr("Battle result: %1").arg(text));
-            auto* box = new QMessageBox(QMessageBox::Information, tr("Battle"), text, QMessageBox::Ok, this);
-            box->setObjectName("battleResultBox");
-            box->setAttribute(Qt::WA_DeleteOnClose);
-            box->setModal(false);
             box->show();
+            box->raise();
         }
     }
 }

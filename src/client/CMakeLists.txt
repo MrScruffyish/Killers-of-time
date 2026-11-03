@@ -29,6 +29,8 @@ add_library(kot_client_lib STATIC
     CrashLog.cpp
     MarketDialog.h
     MarketDialog.cpp
+    BattleResultDialog.h
+    BattleResultDialog.cpp
     TownDialog.h
     TownDialog.cpp
     HeroDialog.h

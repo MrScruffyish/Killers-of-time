@@ -1,5 +1,6 @@
 #include <QCheckBox>
 #include <QDir>
+#include <QJsonObject>
 #include <QLabel>
 #include <QPainter>
 #include <QSettings>
@@ -9,6 +10,7 @@
 #include <QtTest>
 
 #include "client/Art.h"
+#include "client/BattleResultDialog.h"
 #include "client/BattleView.h"
 #include "client/GamePage.h"
 #include "client/HeroDialog.h"
@@ -91,6 +93,15 @@ private slots:
         p.end();
         const QString dir = qEnvironmentVariable("KOT_SCREENSHOT_DIR");
         if (!dir.isEmpty()) sheet.save(QDir(dir).filePath("0_units.png"));
+        // A lost battle as the result window shows it.
+        const QJsonObject report{{"outcome", "defender"}, {"rounds", 4}, {"loserHeroKilled", true},
+                                 {"attacker", QJsonObject{{"owner", 1}, {"losses", QJsonObject{{"archer", 12}, {"militia", 20}}}}},
+                                 {"defender", QJsonObject{{"owner", 0}, {"losses", QJsonObject{{"bone_dragon", 1}}}}}};
+        BattleResultDialog lost(&reg, report, 1);
+        QCOMPARE(lost.outcome(), BattleResultDialog::Outcome::Defeat);
+        lost.show();
+        QApplication::processEvents();
+        if (!dir.isEmpty()) lost.grab().save(QDir(dir).filePath("0_defeat.png"));
     }
 
     void playThroughTheClient() {
@@ -251,8 +262,11 @@ private slots:
         }
         QTRY_VERIFY_WITH_TIMEOUT(!game->view().battle.present, 5000);
         QTRY_VERIFY_WITH_TIMEOUT(game->mapView()->isVisible(), 5000);
-        QTRY_VERIFY_WITH_TIMEOUT(game->findChild<QWidget*>("battleResultBox") != nullptr, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(game->findChild<QWidget*>("battleResult") != nullptr, 5000);
+        auto* result = game->findChild<QWidget*>("battleResult");
+        QVERIFY(result->findChild<QLabel*>("battleOutcome")->text().contains("Victory"));  // 4 militia stood no chance
         QApplication::processEvents();
+        shot(result, "8b_battle_result");
         shot(&w, "8_after_battle");
     }
 };
