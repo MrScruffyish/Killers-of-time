@@ -83,8 +83,8 @@ private slots:
             r = autoBuild(gs, reg, p1);
             for (const AutoBuildReport::Built& b : r.built) builtSoFar << b.building;
         }
-        for (const QString& id : {"pike_barracks", "archery_school", "sword_hall", "village_hall", "tavern"})
-            QVERIFY2(builtSoFar.contains(id), qPrintable(id + QString(" was not built: ") + builtSoFar.join(", ")));
+        for (const char* id : {"pike_barracks", "archery_school", "sword_hall", "village_hall", "tavern"})
+            QVERIFY2(builtSoFar.contains(id), qPrintable(QString(id) + " was not built: " + builtSoFar.join(", ")));
         QVERIFY(!builtSoFar.contains("snail_pen") && !builtSoFar.contains("eagle_roost"));
         // Then other buildings without a choice (mage guild, fort, ...), never the rival dwellings.
         const qsizetype before = gs.town(t1)->buildings.size();

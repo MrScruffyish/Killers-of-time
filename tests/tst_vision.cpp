@@ -41,18 +41,23 @@ private slots:
         QVERIFY(!seen(v, 30, {19, 15}));
     }
 
-    void withoutFogOfWarEverythingIsSeen() {
-        createHero(gs, reg, p1, "H", "knight", {2, 2});
+    void withoutFogOfWarWhatWasExploredStaysInSight() {
+        const HeroId h = createHero(gs, reg, p1, "H", "knight", {2, 2});
+        updateExplored(gs, reg, t1);
+        gs.army(gs.hero(h)->army)->pos = {25, 25};  // walked far away
+        const QByteArray fogged = visibleTiles(gs, t1, reg);
+        QVERIFY(!fogged.at(2 * 30 + 2));  // with fog: the old place is out of sight
         gs.setFogOfWar(false);
-        const QByteArray v = visibleTiles(gs, t2, reg);  // even a team with nothing at all
-        QCOMPARE(v.count(char(1)), 30 * 30);
-        updateExplored(gs, reg, t2);
-        QCOMPARE(gs.exploredMap(t2).count(char(1)), 30 * 30);
-        // Saved and loaded.
+        const QByteArray clear = visibleTiles(gs, t1, reg);
+        QVERIFY(clear.at(2 * 30 + 2));     // without: still in sight
+        QVERIFY(!clear.at(15 * 30 + 15));  // but never-explored land is not
+        // Saved and loaded, with the hidden map flag too.
+        gs.setHiddenMap(false);
         GameState loaded;
         QStringList errors;
         QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
         QVERIFY(!loaded.fogOfWar());
+        QVERIFY(!loaded.hiddenMap());
     }
 
     void biggerRadiusSeesMore() {

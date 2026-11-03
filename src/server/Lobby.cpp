@@ -269,9 +269,9 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
                 return LobbyResult::failure("invalid_value", "campaign: unknown campaign");
             s.campaign = v.toString();
             if (!s.campaign.isEmpty()) s.scenario.clear();
-        } else if (key == "fogOfWar") {
-            if (!v.isBool()) return LobbyResult::failure("invalid_value", "fogOfWar: true or false");
-            s.fogOfWar = v.toBool();
+        } else if (key == "fogOfWar" || key == "hiddenMap") {
+            if (!v.isBool()) return LobbyResult::failure("invalid_value", key + ": true or false");
+            (key == "fogOfWar" ? s.fogOfWar : s.hiddenMap) = v.toBool();
         } else if (key == "autosaves") {
             if (!v.isDouble() || v.toInt() < 0 || v.toInt() > 100)
                 return LobbyResult::failure("invalid_value", "autosaves: 0 to 100");

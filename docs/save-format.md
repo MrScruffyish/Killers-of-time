@@ -44,5 +44,5 @@ The save has `difficulty` (the overall level); players may have `incomePercent` 
 Army stacks may have `experience` (average per unit, veterancy).
 `victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie). Last team standing always wins too.
 `weekEvent` (optional): this week's event id.
-`fogOfWar: false` (optional): no fog of war, everybody sees the whole map.
+`fogOfWar: false` (optional): no fog of war, explored land stays in sight. `hiddenMap: false` (optional): the map was revealed at the start (places on explored land are always known).
 Heroes may have `inBoat: true` (sailing) and `destination: [x, y]` (the target of a move that ran out of movement; cleared on arrival).

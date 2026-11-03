@@ -55,7 +55,8 @@ struct LobbySettings {
     QString campaign;  // campaign id (data/campaigns): its next chapter is played
     QString mapType = QStringLiteral("continent");  // random maps: continent or islands
     int autosaves = 5;  // autosaves kept (one at the start of each day), 0 = none
-    bool fogOfWar = true;  // off: everyone sees the whole map
+    bool fogOfWar = true;   // off: what you explored stays in full sight (armies too)
+    bool hiddenMap = true;  // off: the whole map (land, towns, mines) is known from the start
 };
 
 // Everything a client needs to show the game setup screen.

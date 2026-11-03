@@ -140,10 +140,13 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     } else if (!createGame(m_content, params, &m_state, &ids, error)) {
         return false;
     }
-    if (!lobby.settings.fogOfWar) {  // everybody sees everything from the start
-        m_state.setFogOfWar(false);
-        for (const Player& p : m_state.players()) updateExplored(m_state, m_content, p.team);
-    }
+    m_state.setFogOfWar(lobby.settings.fogOfWar);
+    m_state.setHiddenMap(lobby.settings.hiddenMap);
+    if (!lobby.settings.hiddenMap)  // every team knows the whole map from the start
+        for (const Player& p : m_state.players()) {
+            QByteArray& explored = m_state.exploredMap(p.team);
+            explored.fill(char(1));
+        }
     if (!m_campaign.isEmpty()) {
         // The first human player's heroes continue the campaign.
         for (int i = 0; i < ids.size(); ++i)

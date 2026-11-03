@@ -107,9 +107,14 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     }
     settings->addWidget(m_difficulty);
     settings->addSpacing(20);
+    m_hidden = new QCheckBox(tr("Hidden map"), this);
+    m_hidden->setObjectName("hiddenMap");
+    m_hidden->setToolTip(tr("On: unexplored land is black until you explore it. Off: the whole map (land, towns, mines) is known from the start"));
+    settings->addWidget(m_hidden);
+    connect(m_hidden, &QCheckBox::clicked, this, [this](bool on) { m_client->setSettings({{"hiddenMap", on}}); });
     m_fog = new QCheckBox(tr("Fog of war"), this);
     m_fog->setObjectName("fogOfWar");
-    m_fog->setToolTip(tr("On: you only see what your heroes and towns see. Off: everyone sees the whole map"));
+    m_fog->setToolTip(tr("On: explored land you cannot see now is shaded and its armies are hidden. Off: what you explored stays in full view"));
     settings->addWidget(m_fog);
     connect(m_fog, &QCheckBox::clicked, this, [this](bool on) { m_client->setSettings({{"fogOfWar", on}}); });
     settings->addSpacing(20);
@@ -142,22 +147,21 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     buttons->addWidget(m_load);
     m_start = new QPushButton(tr("Start game"), this);
     m_start->setObjectName("startButton");
-    m_quick = new QPushButton(tr("Play against the computer"), this);
-    m_quick->setObjectName("quickStartButton");
-    m_quick->setToolTip(tr("Adds a computer opponent if there is none, then starts"));
+    m_start->setToolTip(tr("Starts the game (with a computer opponent if there is nobody to play against)"));
+    m_start->setMinimumHeight(42);
+    m_start->setStyleSheet("QPushButton#startButton { font-size: 13pt; font-weight: bold; padding: 6px 22px; }");
     buttons->addWidget(leave);
     buttons->addStretch(1);
-    buttons->addWidget(m_quick);
     buttons->addWidget(m_start);
     outer->addLayout(buttons);
 
     connect(leave, &QPushButton::clicked, this, &LobbyPage::leaveRequested);
-    connect(m_start, &QPushButton::clicked, this, [this]() { m_client->startGame(); });
-    connect(m_quick, &QPushButton::clicked, this, [this]() {
+    connect(m_start, &QPushButton::clicked, this, [this]() {
         // One human against the computer: the host needs no Ready, only an opponent.
         const net::LobbyState& lobby = m_client->lobby();
         bool opponent = false;
-        for (const net::SlotInfo& s : lobby.slotList) opponent = opponent || (s.occupied() && s.clientId != m_client->clientId());
+        for (const net::SlotInfo& s : lobby.slotList)
+            opponent = opponent || (s.occupied() && (s.clientId != m_client->clientId() || s.kind == net::SlotKind::HotSeat));
         if (!opponent)
             for (const net::SlotInfo& s : lobby.slotList)
                 if (s.kind == net::SlotKind::Open) {
@@ -240,6 +244,7 @@ void LobbyPage::rebuild() {
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
     m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
     m_fog->setChecked(lobby.settings.fogOfWar);
+    m_hidden->setChecked(lobby.settings.hiddenMap);
     if (!m_autosaves->hasFocus()) {
         m_autosaves->blockSignals(true);
         m_autosaves->setValue(lobby.settings.autosaves);
@@ -287,8 +292,8 @@ void LobbyPage::rebuild() {
     m_difficulty->setEnabled(host);
     m_autosaves->setEnabled(host);
     m_fog->setEnabled(host);
+    m_hidden->setEnabled(host);
     m_start->setEnabled(host);
-    m_quick->setVisible(host);
     m_load->setEnabled(host);
     m_start->setToolTip(host ? QString() : tr("Only the host can start the game"));
 

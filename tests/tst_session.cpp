@@ -97,6 +97,23 @@ private slots:
         QCOMPARE(hs.state().day(), 2);
     }
 
+    void aRevealedMapIsKnownFromTheStart() {
+        net::LobbyState lobby;
+        lobby.settings.seed = 7;
+        lobby.settings.hiddenMap = false;
+        lobby.slotList.append(human(0, 1, "Ann", 1, "#d62728"));
+        lobby.slotList.append(human(1, 2, "Bob", 2, "#1f77b4"));
+        GameSession s(reg);
+        QString error;
+        QVERIFY2(s.start(lobby, &error), qPrintable(error));
+        const QJsonObject view = s.viewFor(s.playerOfClient(1));
+        for (const QJsonValue& t : view["map"].toObject()["tiles"].toArray()) QVERIFY(t.toInt() >= 0);  // nothing black
+        int towns = 0;
+        for (const QJsonValue& t : view["towns"].toArray()) towns += t.toObject()["owner"].toInt() == int(s.playerOfClient(2).value());
+        QCOMPARE(towns, 1);  // Bob's capital is known
+        QVERIFY(s.state().fogOfWar());  // fog stays on: his armies far away are not shown
+    }
+
     void startCreatesTheGame() {
         QVERIFY(session->active());
         QCOMPARE(session->clients().size(), 2);

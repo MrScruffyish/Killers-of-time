@@ -178,7 +178,7 @@ and react to; add depth afterwards.
 - [x] Battle auto-play: A or the Auto-play button lets the battle AI move your stacks one by one (watchable, stops with A); "Finish automatically" still plays it out at once (`battle_action` `ai`)
 - [x] Level-ups are loud: fanfare and a Level up window with the portrait and "Choose now"; a gold "Level N! Choose a trait" button; End turn asks first when a pick is waiting
 - [x] T cycles through your towns (the map looks there), O opens one; a click in the town list centres the map; treasures stay on screen until the walking hero reaches them; auto-play is off at the start of every battle; buildings ruled out by a rival are not listed
-- [x] Fog of war is a lobby option (on by default); off: everyone sees the whole map from the start (saved as `fogOfWar: false`)
+- [x] Two lobby options: Hidden map (on: unexplored land is black; off: the whole map with towns, mines and dwellings is known from the start) and Fog of war (on: explored land out of sight is shaded and hides armies; off: explored land stays in sight); saved
 - [x] Weak monsters offer to join: neutral armies at least `joinStrengthRatio` (5) times weaker than the hero's army that fit into it stop him with an offer (pay / fight / leave them); joining costs `joinCostPercent` (50) of their recruit price in gold; computer players pay when they can, else fight
 - [x] Town sieges: walls by the town's defense buildings (Fort, Citadel) with a gate, rubble when a segment falls; towers shoot the most dangerous attacker each round; defending shooters do more damage; the attacker can pay for a catapult for one battle (gone afterwards; computer attackers buy one when they can). `tst_siege`
 - [x] Hot-seat: lobby slot kind "Human on this computer" (named by the host, always ready); one connection plays several players, the server acts for the one whose turn it is (or whose stack acts in a battle); the client covers the game with a "Pass to <name>" screen between them; map memory per player
@@ -186,6 +186,7 @@ and react to; add depth afterwards.
 - [x] AI: saves up for a boat when its island is done (and buys missing wood), lands only on real islands it has not left before
 - [x] Graphics: map decorations (flowers, bushes, stones, cacti, reeds, mushrooms, sea rocks), health bars on hurt battle stacks, a title picture on the start screen (castle at dusk, version), a big Host button, a Day/Week banner at the start of each day
 - [x] Drawn icons on the side panel, battle buttons and town tabs; the battle field is centred in a wooden frame
+- [x] Lobby: one Start button (adds a computer opponent when there is nobody to play against); Home or the button next to the hero list centres the map on the hero
 - [ ] Balance (later, user): ranges favour the elves' archers; the new tier 3-5 units are first guesses (kot_balance races: humans 62.7k, sylvan 41.8k, undead 79.1k week power)
 
 ---

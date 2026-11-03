@@ -39,6 +39,7 @@ QJsonObject GameState::toJson() const {
     root.insert("day", m_day);
     root.insert("difficulty", m_difficulty);
     if (!m_fogOfWar) root.insert("fogOfWar", false);
+    if (!m_hiddenMap) root.insert("hiddenMap", false);
     if (!m_weekEvent.isEmpty()) root.insert("weekEvent", m_weekEvent);
     if (m_victory.type != VictoryCondition::Type::Conquest) {
         static const char* names[] = {"conquest", "town", "gold", "days"};
@@ -253,6 +254,7 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
     gs.m_day = top.requireInt("day", 1, 10000000);
     gs.m_difficulty = top.optionalString("difficulty", QStringLiteral("normal"));
     gs.m_fogOfWar = top.optionalBool("fogOfWar", true);
+    gs.m_hiddenMap = top.optionalBool("hiddenMap", true);
     gs.m_weekEvent = top.optionalString("weekEvent");
     if (!gs.m_weekEvent.isEmpty() && !content.weekEvent(gs.m_weekEvent))
         errs << QStringLiteral("save: unknown week event '%1'").arg(gs.m_weekEvent);

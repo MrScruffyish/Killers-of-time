@@ -42,8 +42,8 @@ private:
     QComboBox* m_difficulty;
     QComboBox* m_mapType;
     QSpinBox* m_autosaves;
-    QPushButton* m_quick;
     QCheckBox* m_fog;
+    QCheckBox* m_hidden;
     bool m_defaultOpponentAdded = false;
     QLabel* m_versions;
     QComboBox* m_scenario;

@@ -79,7 +79,21 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     side->addWidget(m_miniMap);
     m_heroCombo = new QComboBox(this);
     m_heroCombo->setObjectName("heroCombo");
-    side->addWidget(m_heroCombo);
+    {
+        // The hero list and a button that brings the map back to him (Home).
+        auto* row = new QHBoxLayout();
+        row->addWidget(m_heroCombo, 1);
+        auto* home = new QToolButton(this);
+        home->setObjectName("centreOnHeroButton");
+        home->setText(tr("\u2316"));
+        home->setToolTip(tr("Look at the selected hero (Home)"));
+        home->setMinimumSize(30, 26);
+        connect(home, &QToolButton::clicked, this, [this]() {
+            if (const ViewHero* h = m_view.hero(m_selectedHero)) m_map->centerOn(h->pos);
+        });
+        row->addWidget(home);
+        side->addLayout(row);
+    }
     m_heroPanel = new HeroPanel(content, this);
     side->addWidget(m_heroPanel);
     m_heroInfo = new QLabel(this);
@@ -211,6 +225,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     shortcut("M", [this]() { openMarket(); });
     shortcut("H", [this]() {
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
+    });
+    shortcut("Home", [this]() {
+        if (const ViewHero* h = m_view.hero(m_selectedHero)) m_map->centerOn(h->pos);
     });
     shortcut("C", [this]() {
         if (const ViewHero* h = m_view.hero(m_selectedHero)) m_map->centerOn(h->pos);

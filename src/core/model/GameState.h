@@ -56,9 +56,14 @@ public:
     void setWeekEvent(const QString& id) { m_weekEvent = id; }
     void setVictory(const VictoryCondition& v) { m_victory = v; }
     void setDifficulty(const QString& d) { m_difficulty = d; }
-    // Off: everybody sees the whole map all the time (Vision.h).
+    // Fog of war on: explored tiles out of sight are shaded and their armies hidden.
+    // Off: whatever a team has explored stays in sight (Vision.h).
     bool fogOfWar() const { return m_fogOfWar; }
     void setFogOfWar(bool on) { m_fogOfWar = on; }
+    // Hidden map on: unexplored tiles are unknown (black). Off: every team knows the
+    // whole land, towns, mines and dwellings from the start.
+    bool hiddenMap() const { return m_hiddenMap; }
+    void setHiddenMap(bool on) { m_hiddenMap = on; }
     void setDay(int day) { m_day = day; }
 
     GameMap& map() { return m_map; }
@@ -148,6 +153,7 @@ private:
     int m_day = 1;
     QString m_difficulty = QStringLiteral("normal");
     bool m_fogOfWar = true;
+    bool m_hiddenMap = true;
     VictoryCondition m_victory;
     QString m_weekEvent;
     GameMap m_map;

@@ -39,6 +39,11 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
         return map.inBounds(p) && visible.size() > p.y * w + p.x && visible[p.y * w + p.x];
     };
     const auto ownTeam = [&](PlayerId owner) { return owner.isValid() && state.teamOf(owner) == team; };
+    // Places (towns, mines, dwellings, treasures) on explored land are known when the
+    // map was revealed at the start (no hidden map); else only while in sight.
+    const auto knows = [&](Pos p) {
+        return sees(p) || (!state.hiddenMap() && map.inBounds(p) && explored.size() > p.y * w + p.x && explored[p.y * w + p.x]);
+    };
 
     QJsonObject view;
     view.insert("day", state.day());
@@ -165,7 +170,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     QJsonArray towns;
     for (const Town& t : state.towns()) {
         const bool own = ownTeam(t.owner);
-        if (!own && !sees(t.pos)) continue;
+        if (!own && !knows(t.pos)) continue;
         QJsonObject o;
         o.insert("id", id(t.id.value()));
         o.insert("name", t.name);
@@ -215,7 +220,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
 
     QJsonArray mines;
     for (const Mine& m : state.mines()) {
-        if (!ownTeam(m.owner) && !sees(m.pos)) continue;
+        if (!ownTeam(m.owner) && !knows(m.pos)) continue;
         QJsonObject o;
         o.insert("id", id(m.id.value()));
         o.insert("resource", m.resourceId);
@@ -230,7 +235,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     QJsonArray dwellings;
     for (const MapDwelling& d : state.mapDwellings()) {
         const bool own = ownTeam(d.owner);
-        if (!own && !sees(d.pos)) continue;
+        if (!own && !knows(d.pos)) continue;
         QJsonObject o;
         o.insert("id", id(d.id.value()));
         o.insert("unit", d.unitId);
@@ -244,7 +249,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
 
     QJsonArray objects;
     for (const MapObject& m : state.mapObjects()) {
-        if (!sees(m.pos)) continue;
+        if (!knows(m.pos)) continue;
         QJsonObject o;
         o.insert("id", id(m.id.value()));
         o.insert("kind", m.kind == MapObject::Kind::Artifact ? "artifact" : "treasure");
