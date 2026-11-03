@@ -19,6 +19,7 @@
 #include <cmath>
 
 #include "client/Art.h"
+#include "client/SpellBook.h"
 #include "core/battle/Battle.h"
 #include "core/battle/HexGrid.h"
 #include "core/content/ContentRegistry.h"
@@ -845,19 +846,13 @@ void BattleView::updateInfo() {
 }
 
 void BattleView::chooseSpell(bool unitSpell) {
-    QStringList names;
-    QStringList ids;
-    for (const ViewBattle::Spell& sp : unitSpell ? m_battle.unitSpells : m_battle.spells) {
-        if (!sp.castable) continue;
-        const core::SpellDef* s = m_content->spell(sp.id);
-        names << tr("%1 (%2 SP)").arg(s ? s->name : sp.id).arg(sp.cost);
-        ids << sp.id;
-    }
-    if (names.isEmpty()) return;
-    bool ok = false;
-    const QString chosen = QInputDialog::getItem(this, tr("Cast spell"), tr("Spell:"), names, 0, false, &ok);
-    if (!ok) return;
-    m_castSpell = ids[names.indexOf(chosen)];
+    QList<SpellBook::Entry> entries;
+    for (const ViewBattle::Spell& sp : unitSpell ? m_battle.unitSpells : m_battle.spells)
+        entries.append({sp.id, sp.castable, sp.castable ? QString() : tr("Not now (spell points, or already cast this round)")});
+    if (entries.isEmpty()) return;
+    const QString chosen = SpellBook::chooseSpell(m_content, entries, unitSpell ? tr("The stack's spells") : tr("Your hero's spell book"), this);
+    if (chosen.isEmpty()) return;
+    m_castSpell = chosen;
     m_castByUnit = unitSpell;
     updateInfo();
 }

@@ -33,6 +33,7 @@
 #include "client/MovePlanner.h"
 #include "client/Panels.h"
 #include "client/Settings.h"
+#include "client/SpellBook.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
 #include "client/Sound.h"
@@ -782,18 +783,15 @@ void GamePage::updateHeroPanel() {
 void GamePage::castAdventureSpell() {
     const ViewHero* h = m_view.hero(m_selectedHero);
     if (!h) return;
-    QStringList names, ids;
+    QList<SpellBook::Entry> entries;
     for (const QString& id : h->spells) {
         const core::SpellDef* s = m_content->spell(id);
         if (!s || s->scope != core::SpellDef::Scope::Adventure) continue;
-        names << tr("%1 (%2 SP) - %3").arg(s->name).arg(s->cost).arg(s->description);
-        ids << id;
+        entries.append({id, h->spellPoints >= s->cost, tr("Needs %1 spell points").arg(s->cost)});
     }
-    if (names.isEmpty()) return;
-    bool ok = false;
-    const QString chosen = QInputDialog::getItem(this, tr("Cast spell"), tr("%1 casts:").arg(h->name), names, 0, false, &ok);
-    if (ok) send(net::msg::castSpell, {{"hero", h->id}, {"spell", ids[names.indexOf(chosen)]}},
-                 tr("Cast %1").arg(m_content->spell(ids[names.indexOf(chosen)])->name));
+    if (entries.isEmpty()) return;
+    const QString chosen = SpellBook::chooseSpell(m_content, entries, tr("%1's spell book").arg(h->name), this);
+    if (!chosen.isEmpty()) send(net::msg::castSpell, {{"hero", h->id}, {"spell", chosen}}, tr("Cast %1").arg(m_content->spell(chosen)->name));
 }
 
 void GamePage::selectHero(int id) {

@@ -176,6 +176,22 @@ void TownDialog::rebuild() {
             QMetaObject::invokeMethod(this, [this]() { rebuild(); }, Qt::QueuedConnection);
         });
         layout->addWidget(only);
+        // Said once here instead of on every row: built today, and what stands already.
+        const bool builtToday = town->lastBuildDay == m_view.day;
+        if (builtToday) {
+            auto* today = new QLabel(tr("<b style='color:#ffd27a'>Something was built here today.</b> One building per day: the next one tomorrow."), page);
+            today->setObjectName("builtToday");
+            layout->addWidget(today);
+        }
+        {
+            QStringList standing;
+            for (const QString& id : town->buildings)
+                if (const core::BuildingDef* b = m_content->building(id)) standing << b->name;
+            auto* built = new QLabel(tr("<i>Built here:</i> %1").arg(standing.isEmpty() ? tr("nothing yet") : standing.join(", ")), page);
+            built->setObjectName("builtList");
+            built->setWordWrap(true);
+            layout->addWidget(built);
+        }
         const auto name = [&](const QString& id) {
             const core::BuildingDef* b = m_content->building(id);
             return b ? b->name : id;
@@ -199,9 +215,9 @@ void TownDialog::rebuild() {
         for (const BuildOption& o : town->buildOptions) {
             if (ruledOut(o.id)) continue;
             const int rank = o.why.isEmpty() ? 0 : o.why.startsWith("not enough") ? 1 : 2;
-            rows.append({o.id, o.why, rank});
+            const bool todayReason = o.why.contains(QStringLiteral("today"));  // said once above
+            rows.append({o.id, todayReason ? QString() : o.why, rank});
         }
-        for (const QString& id : town->buildings) rows.append({id, tr("built"), 3});
         std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) { return a.rank < b.rank; });
         if (m_onlyBuildable) rows.erase(std::remove_if(rows.begin(), rows.end(), [](const Row& r) { return r.rank > 1; }), rows.end());
 
@@ -246,18 +262,16 @@ void TownDialog::rebuild() {
             }
         }
         table->resizeColumnsToContents();
-        table->setColumnWidth(3, std::min(table->columnWidth(3), 340));
+        table->setColumnWidth(0, std::min(table->columnWidth(0), 170));
+        table->setColumnWidth(2, std::min(table->columnWidth(2), 150));
+        table->setColumnWidth(3, std::min(table->columnWidth(3), 280));
+        table->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         table->resizeRowsToContents();
         for (int row = 0; row < table->rowCount(); ++row) table->setRowHeight(row, std::max(table->rowHeight(row), 38));
         layout->addWidget(table);
         bool any = false;
         for (const Row& r : rows) any = any || r.rank <= 1;
-        if (!any) {
-            QString why = tr("Nothing can be built here right now.");
-            for (const BuildOption& o : town->buildOptions)
-                if (o.why.contains("today")) why = tr("Nothing more can be built here today (one building per day).");
-            layout->addWidget(new QLabel(why, page));
-        }
+        if (!any && !builtToday) layout->addWidget(new QLabel(tr("Nothing can be built here right now."), page));
         m_tabs->addTab(page, art::buttonIcon("build"), tr("Buildings"));
     }
 

@@ -18,6 +18,7 @@
 #include "client/LobbyPage.h"
 #include "client/MapView.h"
 #include "client/Settings.h"
+#include "client/SpellBook.h"
 #include "client/TownDialog.h"
 #include "core/content/ContentRegistry.h"
 #include "net/LobbyClient.h"
@@ -196,6 +197,16 @@ private slots:
             view.show();
             QApplication::processEvents();
             if (!dir.isEmpty()) view.grab().save(QDir(dir).filePath("0_siege.png"));
+        }
+        // The spell runes of every school.
+        {
+            QImage runes(6 * 60, 60, QImage::Format_ARGB32);
+            runes.fill(QColor("#2b2118"));
+            QPainter rp(&runes);
+            int i = 0;
+            for (const char* school : {"air", "water", "earth", "nature", "dark", "other"}) rp.drawPixmap(i++ * 60 + 6, 6, schoolRune(school, 48));
+            rp.end();
+            if (!dir.isEmpty()) runes.save(QDir(dir).filePath("0_runes.png"));
         }
         // A lost battle as the result window shows it.
         const QJsonObject report{{"outcome", "defender"}, {"rounds", 4}, {"loserHeroKilled", true},

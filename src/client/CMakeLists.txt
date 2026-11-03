@@ -25,6 +25,8 @@ add_library(kot_client_lib STATIC
     UnitArt.cpp
     TownArt.cpp
     PortraitArt.cpp
+    SpellBook.h
+    SpellBook.cpp
     Settings.h
     Settings.cpp
     CrashLog.h
