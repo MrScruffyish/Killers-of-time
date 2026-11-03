@@ -44,6 +44,9 @@ private:
     QSpinBox* m_autosaves;
     QCheckBox* m_fog;
     QCheckBox* m_hidden;
+    QPushButton* m_makeMap;
+    int m_makeSeq = 0;
+    QJsonObject m_makeParams;
     bool m_defaultOpponentAdded = false;
     QLabel* m_versions;
     QComboBox* m_scenario;

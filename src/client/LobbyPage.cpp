@@ -2,6 +2,7 @@
 
 #include "client/Art.h"
 #include "client/LoadDialog.h"
+#include "client/MapMakerDialog.h"
 #include "core/Version.h"
 #include <QCheckBox>
 #include <QComboBox>
@@ -144,6 +145,10 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     leave->setObjectName("leaveButton");
     m_load = new QPushButton(tr("Load game..."), this);
     m_load->setObjectName("loadButton");
+    m_makeMap = new QPushButton(tr("Make a map..."), this);
+    m_makeMap->setObjectName("makeMapButton");
+    m_makeMap->setToolTip(tr("A random scenario or campaign with your settings"));
+    buttons->addWidget(m_makeMap);
     buttons->addWidget(m_load);
     m_start = new QPushButton(tr("Start game"), this);
     m_start->setObjectName("startButton");
@@ -171,6 +176,21 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
         m_client->startGame();
     });
     connect(m_load, &QPushButton::clicked, this, [this]() { m_listSavesSeq = m_client->listSaves(); });
+    connect(m_makeMap, &QPushButton::clicked, this, [this]() {
+        MapMakerDialog dialog(m_client->races(), this);
+        if (dialog.exec() != QDialog::Accepted) return;
+        m_makeParams = dialog.params();
+        m_makeSeq = m_client->generateMap(m_makeParams);
+        m_status->setStyleSheet(QString());
+        m_status->setText(tr("Making the map..."));
+    });
+    connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
+        if (replyTo == 0 || replyTo != m_makeSeq) return;
+        m_makeSeq = 0;
+        // Play it: choose the new scenario or campaign.
+        m_client->setSettings({{info["kind"].toString() == "campaign" ? "campaign" : "scenario", info["id"].toString()}});
+        m_status->setText(tr("Made \"%1\" and chose it.").arg(m_makeParams["name"].toString()));
+    });
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
         if (replyTo == 0 || replyTo != m_listSavesSeq) return;
         m_listSavesSeq = 0;
@@ -295,6 +315,7 @@ void LobbyPage::rebuild() {
     m_hidden->setEnabled(host);
     m_start->setEnabled(host);
     m_load->setEnabled(host);
+    m_makeMap->setEnabled(host);
     m_start->setToolTip(host ? QString() : tr("Only the host can start the game"));
 
     // Slot table: rebuilt from scratch every time.

@@ -1,4 +1,5 @@
 #include <QDir>
+#include <QJsonArray>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtEndian>
@@ -442,6 +443,41 @@ private slots:
         a->listSaves();
         QTRY_VERIFY_WITH_TIMEOUT(info.contains("saves"), 3000);
         for (const QJsonValue& v : info["saves"].toArray()) QVERIFY(v.toString().contains("_chapter"));
+    }
+
+    void theHostMakesARandomMap() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().members.size(), 2, 3000);
+        QJsonObject info;
+        connect(a.get(), &LobbyClient::commandResult, this, [&](int, const QJsonObject& i) { info = i; });
+        // Only the host may.
+        b->generateMap({{"kind", "scenario"}, {"id", "bobs"}, {"width", 32}, {"races", QJsonArray{"humans", "undead"}}});
+        a->generateMap({{"kind", "scenario"}, {"id", "anns"}, {"name", "Ann's map"}, {"width", 32}, {"seed", 4},
+                        {"races", QJsonArray{"humans", "random"}}});
+        QTRY_COMPARE_WITH_TIMEOUT(info["id"].toString(), QString("anns"), 5000);
+        QVERIFY(QFile::exists(saves.filePath("scenarios/anns.json")));
+        QVERIFY(!QFile::exists(saves.filePath("scenarios/bobs.json")));
+        // Everyone gets the new list, and it can be played.
+        const auto listed = [](const QJsonArray& list, const QString& id) {
+            for (const QJsonValue& v : list)
+                if (v.toObject()["id"].toString() == id) return true;
+            return false;
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(listed(b->scenarios(), "anns"), 3000);
+        // A campaign too.
+        a->generateMap({{"kind", "campaign"}, {"id", "annsc"}, {"name", "Ann's war"}, {"chapters", 2}, {"size", 32}, {"race", "humans"}});
+        QTRY_COMPARE_WITH_TIMEOUT(info["id"].toString(), QString("annsc"), 8000);
+        QVERIFY(QFile::exists(saves.filePath("campaigns/annsc.json")));
+        QVERIFY(QFile::exists(saves.filePath("scenarios/annsc_2.json")));
+        QTRY_VERIFY_WITH_TIMEOUT(listed(b->campaigns(), "annsc"), 3000);
+
+        a->setSettings({{"scenario", "anns"}});
+        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().settings.scenario, QString("anns"), 3000);
+        startTwoPlayerGame(*a, *b);
     }
 
     void connectingToNothingReportsAFailure() {

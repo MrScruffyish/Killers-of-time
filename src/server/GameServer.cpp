@@ -6,6 +6,8 @@
 #include <QRegularExpression>
 
 #include "core/Version.h"
+#include "core/rules/ScenarioGen.h"
+#include "core/rules/Scenario.h"
 #include "core/content/ContentRegistry.h"
 #include "core/rules/Campaign.h"
 #include "core/rules/Scenario.h"
@@ -23,27 +25,48 @@ GameServer::GameServer(QStringList races, QStringList aiProfiles, QObject* paren
 
 void GameServer::setContent(const core::ContentRegistry* content) {
     m_content = content;
+    refreshContentLists();
+}
+
+QStringList GameServer::contentDirs(const QString& kind) const {
+    QStringList dirs;
+    if (m_content && !m_content->dataDir().isEmpty()) dirs << QDir(m_content->dataDir()).filePath(kind);
+    if (!m_saveDir.isEmpty()) dirs << QDir(m_saveDir).filePath(kind);  // generated in the lobby
+    return dirs;
+}
+
+void GameServer::refreshContentLists() {
     m_scenarios = QJsonArray();
     QStringList ids;
-    if (content && !content->dataDir().isEmpty()) {
-        for (const core::ScenarioInfo& s : core::listScenarios(QDir(content->dataDir()).filePath("scenarios"), *content)) {
-            m_scenarios.append(QJsonObject{{"id", s.id}, {"name", s.name}, {"description", s.description},
-                                           {"width", s.width}, {"height", s.height},
-                                           {"races", QJsonArray::fromStringList(s.races)}});
-            ids << s.id;
-        }
-    }
+    if (m_content)
+        for (const QString& dir : contentDirs("scenarios"))
+            for (const core::ScenarioInfo& s : core::listScenarios(dir, *m_content)) {
+                if (ids.contains(s.id)) continue;
+                m_scenarios.append(QJsonObject{{"id", s.id}, {"name", s.name}, {"description", s.description},
+                                               {"width", s.width}, {"height", s.height},
+                                               {"races", QJsonArray::fromStringList(s.races)}});
+                ids << s.id;
+            }
     m_lobby.setScenarioIds(ids);
     QStringList campaigns;
-    if (content && !content->dataDir().isEmpty())
-        for (const core::CampaignDef& c : core::listCampaigns(QDir(content->dataDir()).filePath("campaigns"))) campaigns << c.id;
+    for (const QString& dir : contentDirs("campaigns"))
+        for (const core::CampaignDef& c : core::listCampaigns(dir))
+            if (!campaigns.contains(c.id)) campaigns << c.id;
     m_lobby.setCampaignIds(campaigns);
 }
 
 QJsonArray GameServer::campaignsJson() const {
     QJsonArray list;
-    if (!m_content || m_content->dataDir().isEmpty()) return list;
-    for (const core::CampaignDef& c : core::listCampaigns(QDir(m_content->dataDir()).filePath("campaigns"))) {
+    if (!m_content) return list;
+    QList<core::CampaignDef> all;
+    QStringList seen;
+    for (const QString& dir : contentDirs("campaigns"))
+        for (const core::CampaignDef& c : core::listCampaigns(dir))
+            if (!seen.contains(c.id)) {
+                seen << c.id;
+                all << c;
+            }
+    for (const core::CampaignDef& c : all) {
         core::CampaignProgress p;
         if (!m_saveDir.isEmpty()) core::loadProgress(QDir(m_saveDir).filePath("campaign_" + c.id + ".json"), &p);
         QJsonArray chapters;
@@ -343,6 +366,70 @@ QString GameServer::savePath(const QString& name, QString* error) const {
     return QDir(m_saveDir).filePath(name + QStringLiteral(".json"));
 }
 
+void GameServer::generateContent(Client& client, const Message& message) {
+    const QJsonObject b = message.body;
+    QString error;
+    const QString kind = b.value("kind").toString("scenario");
+    const QString id = b.value("id").toString();
+    if (!m_content || m_saveDir.isEmpty()) {
+        sendError(client, "failed", "this server cannot make maps", message.seq);
+        return;
+    }
+    if (!core::validGeneratedId(id)) {
+        sendError(client, "failed", "a name has 1-40 letters, digits, '_' or '-'", message.seq);
+        return;
+    }
+    const QString scenarioDir = QDir(m_saveDir).filePath("scenarios"), campaignDir = QDir(m_saveDir).filePath("campaigns");
+    if (kind == "campaign") {
+        core::CampaignGenParams p;
+        p.id = id;
+        p.name = b.value("name").toString(id);
+        p.chapters = b.value("chapters").toInt(3);
+        p.playerRace = b.value("race").toString("random");
+        p.startSize = b.value("size").toInt(48);
+        p.seed = static_cast<quint64>(b.value("seed").toDouble(1));
+        p.carryHeroes = b.value("carryHeroes").toInt(1);
+        p.carryArmy = b.value("carryArmy").toBool(true);
+        p.islands = b.value("islands").toBool(false);
+        if (!core::generateCampaign(*m_content, p, scenarioDir, campaignDir, &error)) {
+            sendError(client, "failed", error, message.seq);
+            return;
+        }
+    } else {
+        core::ScenarioGenParams p;
+        p.id = id;
+        p.width = b.value("width").toInt(64);
+        p.height = b.value("height").toInt(p.width);
+        p.seed = static_cast<quint64>(b.value("seed").toDouble(1));
+        for (const QJsonValue& r : b.value("races").toArray()) p.races << r.toString();
+        p.islands = b.value("islands").toBool(false);
+        p.seaLevel = b.value("seaLevel").toDouble(p.seaLevel);
+        p.mountains = b.value("mountains").toDouble(p.mountains);
+        p.rivers = b.value("rivers").toInt(-1);
+        p.roads = b.value("roads").toBool(true);
+        p.monsterPercent = b.value("monsterPercent").toInt(100);
+        p.victory = b.value("victory").toString("conquest");
+        p.victoryAmount = b.value("victoryAmount").toInt(0);
+        core::GameState gs;
+        if (!core::generateScenario(*m_content, p, &gs, &error) || !QDir().mkpath(scenarioDir) ||
+            !core::saveScenario(QDir(scenarioDir).filePath(id + ".json"), id, b.value("name").toString(id),
+                                b.value("description").toString(QStringLiteral("A random map, %1x%2, %3 players.")
+                                                                    .arg(p.width).arg(p.height).arg(p.races.size())),
+                                gs, &error)) {
+            sendError(client, "failed", error.isEmpty() ? QStringLiteral("cannot write the scenario") : error, message.seq);
+            return;
+        }
+    }
+    refreshContentLists();
+    reply(client, message, {{"id", id}, {"kind", kind}});
+    Message lists;
+    lists.type = net::msg::contentLists;
+    lists.body.insert("scenarios", m_scenarios);
+    lists.body.insert("campaigns", campaignsJson());
+    for (Client& c : m_clients)
+        if (c.greeted) c.connection->send(lists);
+}
+
 bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
     const bool running = m_session && m_session->active();
     QString error;
@@ -386,6 +473,18 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
             }
         }
         reply(client, message, {{"saves", QJsonArray::fromStringList(names)}, {"games", games}});
+        return true;
+    }
+    if (message.type == net::msg::generateMap) {
+        if (running) {
+            sendError(client, "game_running", "a game is already running", message.seq);
+            return true;
+        }
+        if (m_lobby.hostId() != client.id) {
+            sendError(client, "not_host", "only the host can make maps", message.seq);
+            return true;
+        }
+        generateContent(client, message);
         return true;
     }
     if (message.type == net::msg::loadGame) {

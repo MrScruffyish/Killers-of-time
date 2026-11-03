@@ -80,6 +80,12 @@ int LobbyClient::ping() { return send(msg::ping); }
 int LobbyClient::sendCommand(const QString& type, const QJsonObject& body) { return send(type, body); }
 
 void LobbyClient::onMessage(const Message& message) {
+    if (message.type == msg::contentLists) {  // a map was made in the lobby
+        m_scenarios = message.body.value("scenarios").toArray();
+        m_campaigns = message.body.value("campaigns").toArray();
+        emit lobbyChanged();
+        return;
+    }
     if (message.type == msg::welcome) {
         m_clientId = message.body.value("clientId").toInt();
         m_races.clear();

@@ -38,6 +38,8 @@ public:
     bool start(const net::LobbyState& lobby, QString* error);
     // Where campaign progress is kept (the server's saves folder).
     void setCampaignDir(const QString& dir) { m_campaignDir = dir; }
+    // A scenario or campaign file ("scenarios"/"campaigns"): the game's data, else the generated ones.
+    QString contentFile(const QString& kind, const QString& id) const;
     const QString& campaignId() const { return m_campaign; }  // empty: not a campaign
     int campaignChapter() const { return m_campaignChapter; }  // 0-based
     // Continues a saved game. AI players get their AI profile again; every human

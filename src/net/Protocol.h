@@ -43,6 +43,8 @@ inline const QString battleAction = QStringLiteral("battle_action");  // the bat
 inline const QString saveGame = QStringLiteral("save_game");      // a player in the running game
 inline const QString listSaves = QStringLiteral("list_saves");
 inline const QString loadGame = QStringLiteral("load_game");      // the host, in the lobby
+inline const QString generateMap = QStringLiteral("generate_map");  // the host makes a random scenario or campaign
+inline const QString contentLists = QStringLiteral("content_lists");  // server: the scenarios and campaigns changed
 inline const QString joinGame = QStringLiteral("join_game");      // take over a free human player
 // server -> client
 inline const QString welcome = QStringLiteral("welcome");

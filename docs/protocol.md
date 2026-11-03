@@ -33,6 +33,8 @@ A wrong `protocol` gives `error` with code `protocol_mismatch`, then the connect
 | client -> server | `set_ready` | `ready` (bool) |
 | client -> server | `set_settings` | host only: `mapWidth`, `mapHeight` (16-256), `seed` (number or text) |
 | client -> server | `start_game` | host only |
+| client -> server | `generate_map` | host only, no game running. A random scenario: `kind`=`scenario`, `id` (1-40 of `A-Za-z0-9_-`, the file name), `name`, `description`, `width`, `height` (24-192), `seed`, `races` (one per player, 2-8; `random` picks one; the first is meant for the human), `islands`, `seaLevel` (0.1-0.6), `mountains` (share), `rivers` (-1 = by size), `roads`, `monsterPercent`, `victory` (`conquest`/`capital`/`gold`/`days`), `victoryAmount` (gold or days; 0 = 50000 / 90). A random campaign: `kind`=`campaign`, `id`, `name`, `chapters` (2-6), `race`, `size` (first map; +16 per chapter), `seed`, `carryHeroes`, `carryArmy`, `islands`. Written to the server's saves folder (`scenarios/`, `campaigns/`); reply `id`, `kind`; then everyone gets `content_lists` |
+| server -> client | `content_lists` | `scenarios`, `campaigns` (same as in `welcome`), after a map was made |
 | client -> server | `ping` | answered with `pong` |
 | server -> client | `game_starting` | the final lobby (same fields as `lobby_state`) |
 | server -> client | `error` | `code`, `message`, `replyTo` |

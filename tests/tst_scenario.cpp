@@ -5,6 +5,8 @@
 #include "core/content/ContentRegistry.h"
 #include "core/rules/GameSetup.h"
 #include "core/rules/Scenario.h"
+#include "core/rules/ScenarioGen.h"
+#include "core/rules/Campaign.h"
 #include "server/GameSession.h"
 
 using namespace kot;
@@ -28,6 +30,70 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+    }
+
+    void generatedScenarioHasItsSettings() {
+        ScenarioGenParams p;
+        p.id = "gen";
+        p.width = p.height = 40;
+        p.seed = 5;
+        p.races = {"humans", "random", "orcs"};
+        p.victory = "gold";
+        GameState gs;
+        QString error;
+        QVERIFY2(generateScenario(reg, p, &gs, &error), qPrintable(error));
+        QCOMPARE(gs.map().width(), 40);
+        QCOMPARE(gs.players().size(), 3);
+        const QList<Player> players = gs.players().values();
+        QCOMPARE(players[0].race, QString("humans"));
+        QVERIFY(reg.races().contains(players[1].race));
+        QCOMPARE(gs.victory().type, VictoryCondition::Type::Gold);
+        QCOMPARE(gs.victory().amount, 50000);
+        // It saves and loads as a scenario like any other.
+        QTemporaryDir tmp;
+        QVERIFY(saveScenario(tmp.filePath("gen.json"), "gen", "Gen", "", gs, &error));
+        Scenario s;
+        QStringList errors;
+        QVERIFY2(loadScenario(tmp.filePath("gen.json"), reg, &s, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(s.info.races.size(), 3);
+
+        p.victory = "capital";
+        QVERIFY(generateScenario(reg, p, &gs, &error));
+        QCOMPARE(gs.victory().type, VictoryCondition::Type::HoldTown);
+        QVERIFY(gs.town(gs.victory().town));
+        // Bad settings are refused.
+        p.races = {"humans"};
+        QVERIFY(!generateScenario(reg, p, &gs, &error));
+        p.races = {"humans", "no_such_race"};
+        QVERIFY(!generateScenario(reg, p, &gs, &error));
+        QVERIFY(!validGeneratedId("../evil"));
+        QVERIFY(validGeneratedId("my_map-2"));
+    }
+
+    void generatedCampaignGrows() {
+        QTemporaryDir tmp;
+        CampaignGenParams p;
+        p.id = "gc";
+        p.name = "Generated";
+        p.chapters = 3;
+        p.playerRace = "dwarves";
+        p.seed = 3;
+        QString error;
+        QVERIFY2(generateCampaign(reg, p, tmp.filePath("scenarios"), tmp.filePath("campaigns"), &error), qPrintable(error));
+        CampaignDef def;
+        QStringList errors;
+        QVERIFY2(loadCampaign(tmp.filePath("campaigns/gc.json"), &def, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(def.scenarios, QStringList({"gc_1", "gc_2", "gc_3"}));
+        int lastWidth = 0, lastPlayers = 0;
+        for (const QString& id : def.scenarios) {
+            Scenario s;
+            QVERIFY2(loadScenario(tmp.filePath("scenarios/" + id + ".json"), reg, &s, &errors), qPrintable(errors.join("\n")));
+            QCOMPARE(s.info.races.first(), QString("dwarves"));
+            QVERIFY(s.info.width > lastWidth);
+            QVERIFY(s.info.races.size() > lastPlayers);
+            lastWidth = s.info.width;
+            lastPlayers = int(s.info.races.size());
+        }
     }
 
     void everyScenarioInTheDataLoads() {

@@ -35,7 +35,10 @@ public:
     const GameSession* session() const { return m_session.get(); }
     GameSession* session() { return m_session.get(); }  // tests set up situations
     // Folder for saved games (created when needed).
-    void setSaveDir(const QString& dir) { m_saveDir = dir; }
+    void setSaveDir(const QString& dir) {
+        m_saveDir = dir;
+        refreshContentLists();
+    }
     const QString& saveDir() const { return m_saveDir; }
 
 signals:
@@ -83,7 +86,11 @@ private:
     void autosave();
     void saveCampaignStart();
     QJsonArray m_scenarios;  // for the welcome message
-    QJsonArray campaignsJson() const;  // with each campaign's progress (saves folder)
+    QJsonArray campaignsJson() const;
+    // Scenarios and campaigns: the game's own and the generated ones (saves/scenarios, saves/campaigns).
+    void refreshContentLists();
+    QStringList contentDirs(const QString& kind) const;
+    void generateContent(Client& client, const net::Message& message);  // with each campaign's progress (saves folder)
 };
 
 }  // namespace kot::server

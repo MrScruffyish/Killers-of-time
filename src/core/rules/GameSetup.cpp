@@ -92,7 +92,11 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     mapParams.height = params.mapHeight;
     mapParams.seed = params.seed;
     if (params.islands) mapParams.islands = static_cast<int>(params.players.size());
-    mapParams.rivers = 2 + params.mapWidth * params.mapHeight / 1500;
+    mapParams.rivers = params.rivers >= 0 ? params.rivers : 2 + params.mapWidth * params.mapHeight / 1500;
+    mapParams.ridges = params.ridges;
+    if (params.seaLevel >= 0) mapParams.seaLevel = params.seaLevel;
+    if (params.hillFraction >= 0) mapParams.hillFraction = params.hillFraction;
+    if (params.mountainFraction >= 0) mapParams.mountainFraction = params.mountainFraction;
     GameMap map;
     QString mapError;
     if (!generateMap(content, mapParams, &map, &mapError)) return fail(error, mapError);
@@ -259,7 +263,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         if (fitting.isEmpty()) fitting = monsterUnits;
         if (fitting.isEmpty()) return;
         const UnitDef* unit = content.unit(fitting[gs.rng().nextInt(0, static_cast<int>(fitting.size()) - 1)]);
-        const int count = std::max(1, gs.rng().nextInt(10, 20) * strength * level.monsterPercent / (200 * unit->tier));
+        const int count = std::max(1, gs.rng().nextInt(10, 20) * strength * level.monsterPercent / 100 * params.monsterPercent / (200 * unit->tier));
         gs.army(gs.addArmy(PlayerId(), where))->addUnits(unit->id, count, unit->maxHp);
     };
     // A guard on a free land tile next to `object`.
@@ -343,7 +347,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     // Roads join the towns: each to its nearest neighbours (a spanning tree),
     // around everything standing on the map; where a road meets a river it
     // becomes a bridge.
-    {
+    if (params.roads) {
         QSet<Pos> blockedTiles;
         for (const Town& t : gs.towns())
             for (const Pos p : townTiles(t.pos, gs.map().width(), gs.map().height()))

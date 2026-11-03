@@ -26,6 +26,11 @@ struct GameSetupParams {
     QString difficulty = QStringLiteral("normal");  // overall level, see balance.json
     bool islands = false;  // one island per player, boats needed to meet
     QList<PlayerSetup> players;
+    // The map's look (MapGenerator.h); negative = the default for the map size.
+    double seaLevel = -1, hillFraction = -1, mountainFraction = -1;
+    int rivers = -1, ridges = -1;
+    bool roads = true;        // join the towns with roads
+    int monsterPercent = 100; // size of the neutral monster groups (on top of the difficulty)
 };
 
 // Creates a new game: generates the map, gives every player a start town of his

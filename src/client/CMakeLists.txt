@@ -27,6 +27,8 @@ add_library(kot_client_lib STATIC
     PortraitArt.cpp
     SpellBook.h
     SpellBook.cpp
+    MapMakerDialog.h
+    MapMakerDialog.cpp
     Settings.h
     Settings.cpp
     CrashLog.h

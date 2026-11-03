@@ -5,7 +5,7 @@
 
 **Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
 **Current milestone:** first versions of every part of the game are in (M0-M10); version 0.3.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
-**Next session should do:** go on with the user's playtest notes. New in this round: races dwarves/orcs, sieges, hot-seat, roads, three scenarios and The Great War campaign. Graphics: more variety (next maybe a nicer minimap, map decorations, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
+**Next session should do:** go on with the user's playtest notes. New in this round: races dwarves/orcs, sieges, hot-seat, roads, three scenarios and The Great War campaign, a random scenario/campaign maker. Graphics: more variety (next maybe a nicer minimap, map decorations, day/night or seasons). Later (user): balancing (the elves' archers now out-range the human ones). Open ideas: surrender/sieges, a smarter battle AI, real art
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -138,6 +138,7 @@ and react to; add depth afterwards.
 - [x] Balance tools: `kot_balance` (units, races, equal-cost duels), `kot_balance_gui` (edit and see), first balance pass with them (bone dragon, archers, snail, wraith, eagle, treant, costs)
 - [x] Packaging: install rules, desktop entries, icon, CPack DEB/TGZ (`cpack -G DEB`)
 - [x] Random maps have neutral towns with garrisons to conquer
+- [x] Random scenario and campaign maker in the lobby ("Make a map...": size, land or islands, players and races, water, mountains, rivers, roads, monster strength, goal, seed; campaigns: chapters that grow, race, carried heroes). Core `ScenarioGen`, protocol `generate_map`/`content_lists`; made maps live in the server's saves folder
 - [x] Boats: Shipyard (coastal towns), buy a boat, sail on water, land next to the shore (ends the day's movement); hull drawn under the hero. Tests: `tst_boats` (41 test programs)
 - [x] Island maps (lobby map type; sea channels, one island per player, starts near the shore) and the AI uses boats when its island is done
 - [x] Weekly events (`events.json`: resources for everyone, growth changes, extra units; announced in the client)

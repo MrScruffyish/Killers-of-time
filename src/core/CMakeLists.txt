@@ -62,6 +62,8 @@ add_library(kot_core STATIC
     rules/Campaign.cpp
     rules/Scenario.h
     rules/Scenario.cpp
+    rules/ScenarioGen.h
+    rules/ScenarioGen.cpp
     rules/GameSetup.h
     rules/GameSetup.cpp
     model/PlayerView.h

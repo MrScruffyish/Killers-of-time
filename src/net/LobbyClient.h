@@ -45,6 +45,8 @@ public:
     // Saved games and taking over a player of a running game (results: commandResult / errorReceived).
     int saveGame(const QString& name) { return send(msg::saveGame, {{"name", name}}); }
     int listSaves() { return send(msg::listSaves); }
+    // Host: a random scenario or campaign (generate_map); the lists come back as content_lists.
+    int generateMap(const QJsonObject& params) { return send(msg::generateMap, params); }
     int loadGame(const QString& name) { return send(msg::loadGame, {{"name", name}}); }
     int joinGame(int playerId) { return send(msg::joinGame, {{"player", playerId}}); }
     // Players of a running game nobody plays now: [{id, name}] (from welcome or game_loaded).

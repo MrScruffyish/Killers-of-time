@@ -4,6 +4,7 @@
 #include "core/rules/Vision.h"
 
 #include <QDir>
+#include <QFile>
 #include <QJsonArray>
 #include <climits>
 
@@ -85,6 +86,13 @@ QJsonObject buildReportJson(const AutoBuildReport& r) {
 
 GameSession::GameSession(const ContentRegistry& content) : m_content(content) {}
 
+QString GameSession::contentFile(const QString& kind, const QString& id) const {
+    // Generated scenarios and campaigns live next to the saves; the game's own in its data.
+    const QString own = QDir(m_content.dataDir()).filePath(kind + "/" + id + ".json");
+    if (QFile::exists(own) || m_campaignDir.isEmpty()) return own;
+    return QDir(m_campaignDir).filePath(kind + "/" + id + ".json");
+}
+
 bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     GameSetupParams params;
     params.mapWidth = lobby.settings.mapWidth;
@@ -113,7 +121,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     m_campaign.clear();
     if (!lobby.settings.campaign.isEmpty()) {
         QStringList problems;
-        if (!loadCampaign(QDir(m_content.dataDir()).filePath("campaigns/" + lobby.settings.campaign + ".json"), &campaign, &problems)) {
+        if (!loadCampaign(contentFile("campaigns", lobby.settings.campaign), &campaign, &problems)) {
             if (error) *error = problems.join("; ");
             return false;
         }
@@ -131,7 +139,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     if (!scenarioId.isEmpty()) {
         Scenario scenario;
         QStringList problems;
-        const QString path = QDir(m_content.dataDir()).filePath("scenarios/" + scenarioId + ".json");
+        const QString path = contentFile("scenarios", scenarioId);
         if (!loadScenario(path, m_content, &scenario, &problems)) {
             if (error) *error = problems.join("; ");
             return false;
@@ -316,7 +324,7 @@ void GameSession::recordCampaign() {
     m_campaignResult = won ? QStringLiteral("won") : QStringLiteral("lost");
     if (!won) return;  // the chapter can be tried again
     CampaignDef def;
-    if (!loadCampaign(QDir(m_content.dataDir()).filePath("campaigns/" + m_campaign + ".json"), &def, nullptr)) return;
+    if (!loadCampaign(contentFile("campaigns", m_campaign), &def, nullptr)) return;
     CampaignProgress p;
     p.campaign = m_campaign;
     p.next = m_campaignChapter + 1;
