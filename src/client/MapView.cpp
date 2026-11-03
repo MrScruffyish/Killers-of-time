@@ -441,13 +441,56 @@ void MapView::paintEvent(QPaintEvent*) {
                 if (isWater(here) && !isWater(there)) {
                     p.drawPixmap(r.topLeft(), art::terrainEdge(Qt::white, side, m_tile, true));
                 } else if (art::terrainLayer(thereId) > art::terrainLayer(hereId) && !isWater(there)) {
-                    p.drawPixmap(r.topLeft(), art::terrainEdge(m_paletteColors.value(there, Qt::magenta), side, m_tile, false));
+                    p.drawPixmap(r.topLeft(), art::terrainEdge(art::groundColor(thereId, m_paletteColors.value(there, Qt::magenta)), side, m_tile, false));
                 }
             }
         }
-    for (int y = y0; y <= y1; ++y)
-        for (int x = x0; x <= x1; ++x)
-            if (terrainAt(x, y) >= 0 && !m_view.inSight({x, y})) p.fillRect(tileRect({x, y}), QColor(10, 8, 20, 140));
+    // Trees, hills and peaks stand up out of their tiles, back rows first (one
+    // row below the screen too, since they reach upwards); never over the unknown.
+    QRegion known;
+    for (int y = y0; y <= y1; ++y) {
+        int run = -1;
+        for (int x = x0; x <= x1 + 1; ++x) {
+            const bool k = x <= x1 && terrainAt(x, y) >= 0;
+            if (k && run < 0) run = x;
+            if (!k && run >= 0) {
+                known += QRect(tileRect({run, y}).topLeft(), QSize((x - run) * m_tile, m_tile));
+                run = -1;
+            }
+        }
+    }
+    p.save();
+    p.setClipRegion(known, Qt::IntersectClip);
+    for (int y = y0; y <= std::min(m_view.height - 1, y1 + 1); ++y)
+        for (int x = std::max(0, x0 - 1); x <= std::min(m_view.width - 1, x1 + 1); ++x) {
+            const int index = terrainAt(x, y);
+            if (index < 0) continue;
+            const QPixmap& pm = art::terrainFeature(m_view.terrainPalette.value(index), m_paletteColors.value(index, Qt::magenta),
+                                                    m_tile, art::variantFor(x, y));
+            if (pm.isNull()) continue;
+            const QRect r = tileRect({x, y});
+            p.drawPixmap(r.left() - m_tile / 2, r.top() - m_tile, pm);
+        }
+    p.restore();
+    // Out of sight: dimmed, with soft edges (one pixel per tile, scaled up smoothly;
+    // pixel centres sit on tile centres).
+    {
+        const int gx0 = x0 - 1, gy0 = y0 - 1, gw = x1 - x0 + 3, gh = y1 - y0 + 3;
+        QImage dim(gw, gh, QImage::Format_ARGB32_Premultiplied);
+        for (int gy = 0; gy < gh; ++gy)
+            for (int gx = 0; gx < gw; ++gx) {
+                const core::Pos t{gx0 + gx, gy0 + gy};
+                const core::Pos c{std::clamp(t.x, 0, m_view.width - 1), std::clamp(t.y, 0, m_view.height - 1)};
+                const bool dark = terrainAt(c.x, c.y) >= 0 && !m_view.inSight(c);
+                dim.setPixel(gx, gy, dark ? qPremultiply(qRgba(10, 8, 20, 140)) : 0);
+            }
+        p.save();
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        const QRect origin = tileRect({gx0, gy0});
+        p.drawImage(QRectF(origin.left() + m_tile / 2.0, origin.top() + m_tile / 2.0, (gw - 1) * double(m_tile), (gh - 1) * double(m_tile)),
+                    dim, QRectF(0.5, 0.5, gw - 1, gh - 1));
+        p.restore();
+    }
     for (int y = y0; y <= y1; ++y)
         for (int x = x0; x <= x1; ++x) {
             if (m_view.tiles[y * m_view.width + x] >= 0) continue;

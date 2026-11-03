@@ -43,17 +43,23 @@ void speckles(QPainter& p, int s, Dice& d, const QColor& c, int count, double si
     for (int i = 0; i < count; ++i) p.drawEllipse(QPointF(d.next() * s, d.next() * s), s * size, s * size);
 }
 
-QPixmap makeTile(const QString& id, const QColor& base, int s, int variant) {
+}  // namespace
+
+QColor groundColor(const QString& id, const QColor& base) {
+    // Under the peaks: rocky earth, so the mountains' grey does not show as squares.
+    if (id == "mountains") return QColor("#8e8a6c");
+    return base;
+}
+
+namespace {
+
+QPixmap makeTile(const QString& id, const QColor& dataColour, int s, int variant) {
+    const QColor base = groundColor(id, dataColour);
     QPixmap pm(s, s);
     pm.fill(base);
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing, true);
     Dice d(qHash(id) + variant * 7919);
-    // Soft light from the top left.
-    QLinearGradient shade(0, 0, s, s);
-    shade.setColorAt(0, QColor(255, 255, 255, 18));
-    shade.setColorAt(1, QColor(0, 0, 0, 22));
-    p.fillRect(pm.rect(), shade);
     if (s < 8) return pm;
 
     if (id == "grass") {
@@ -71,59 +77,16 @@ QPixmap makeTile(const QString& id, const QColor& base, int s, int variant) {
             dune.quadTo(s * 0.5, y - s * 0.12, s, y);
             p.drawPath(dune);
         }
-    } else if (id == "forest") {
-        speckles(p, s, d, base.darker(130), 4, 0.07);
-        for (int i = 0; i < 3; ++i) {  // small conifers
-            const double x = s * (0.2 + 0.3 * i) + (d.next() - 0.5) * s * 0.12;
-            const double y = s * (0.35 + 0.35 * d.next());
-            const double h = s * 0.42, w = s * 0.2;
-            QPainterPath tree;
-            tree.moveTo(x, y - h * 0.6);
-            tree.lineTo(x + w, y + h * 0.3);
-            tree.lineTo(x - w, y + h * 0.3);
-            tree.closeSubpath();
-            p.setPen(Qt::NoPen);
-            p.setBrush(base.darker(150));
-            p.drawPath(tree.translated(s * 0.03, s * 0.03));
-            p.setBrush(base.lighter(125));
-            p.drawPath(tree);
-            p.setBrush(QColor("#5b3a1e"));
-            p.drawRect(QRectF(x - s * 0.025, y + h * 0.3, s * 0.05, s * 0.08));
-        }
+    } else if (id == "forest") {  // the forest floor; the trees are terrainFeature
+        speckles(p, s, d, base.darker(125), 6, 0.07);
+        speckles(p, s, d, base.lighter(118), 5, 0.04);
+        grassTufts(p, s, d, base.lighter(115), 3);
     } else if (id == "hills") {
-        p.setPen(Qt::NoPen);
-        for (int i = 0; i < 2; ++i) {
-            const QRectF hill(s * (0.05 + 0.45 * i), s * (0.35 + 0.2 * d.next()), s * 0.55, s * 0.5);
-            p.setBrush(base.lighter(118));
-            p.drawChord(hill, 0, 180 * 16);
-            p.setBrush(base.darker(118));
-            p.drawChord(hill.adjusted(hill.width() * 0.5, 0, 0, 0), 0, 90 * 16);
-        }
-    } else if (id == "mountains") {
-        p.setPen(Qt::NoPen);
-        const double peak = s * (0.08 + 0.1 * d.next());
-        QPainterPath m;
-        m.moveTo(s * 0.05, s * 0.92);
-        m.lineTo(s * 0.5, peak);
-        m.lineTo(s * 0.95, s * 0.92);
-        m.closeSubpath();
-        p.setBrush(base.darker(125));
-        p.drawPath(m);
-        QPainterPath lit;
-        lit.moveTo(s * 0.05, s * 0.92);
-        lit.lineTo(s * 0.5, peak);
-        lit.lineTo(s * 0.45, s * 0.92);
-        lit.closeSubpath();
-        p.setBrush(base.lighter(125));
-        p.drawPath(lit);
-        QPainterPath cap;  // snow cap
-        cap.moveTo(s * 0.5, peak);
-        cap.lineTo(s * 0.62, peak + s * 0.2);
-        cap.lineTo(s * 0.5, peak + s * 0.15);
-        cap.lineTo(s * 0.38, peak + s * 0.2);
-        cap.closeSubpath();
-        p.setBrush(QColor("#f4f6f8"));
-        p.drawPath(cap);
+        speckles(p, s, d, base.darker(112), 5, 0.06);
+        grassTufts(p, s, d, base, 4);
+    } else if (id == "mountains") {  // scree; the peaks are terrainFeature
+        speckles(p, s, d, base.darker(125), 7, 0.05);
+        speckles(p, s, d, base.lighter(125), 6, 0.035);
     } else if (id == "swamp") {
         speckles(p, s, d, QColor("#3c5a6e"), 3, 0.09);
         grassTufts(p, s, d, base.lighter(130), 5);
@@ -333,6 +296,166 @@ const QPixmap& fogTexture() {
             }
     }
     return tex;
+}
+
+namespace {
+// The outline every feature gets.
+QPen featureInk(double s) { return QPen(QColor(18, 22, 12, 220), std::max(1.0, s / 64.0), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin); }
+
+void drawConifer(QPainter& p, double x, double y, double h, const QColor& c, double s) {
+    // Three tiers on a trunk, lit from the left.
+    const double w = h * 0.36;
+    p.setPen(featureInk(s));
+    p.setBrush(QColor("#5b3a1e"));
+    p.drawRect(QRectF(x - h * 0.04, y - h * 0.14, h * 0.08, h * 0.14));
+    for (int tier = 0; tier < 3; ++tier) {
+        const double top = y - h * (1.0 - tier * 0.22), bottom = y - h * (0.42 - tier * 0.15), half = w * (0.55 + tier * 0.22);
+        QPainterPath t;
+        t.moveTo(x, top);
+        t.lineTo(x + half, bottom);
+        t.quadTo(x, bottom + h * 0.06, x - half, bottom);
+        t.closeSubpath();
+        p.setPen(featureInk(s));
+        p.setBrush(c.darker(100 + tier * 6));
+        p.drawPath(t);
+        QPainterPath lit;  // the sunny half
+        lit.moveTo(x, top);
+        lit.lineTo(x - half, bottom);
+        lit.quadTo(x - half * 0.4, bottom + h * 0.04, x - half * 0.05, bottom + h * 0.02);
+        lit.closeSubpath();
+        p.setPen(Qt::NoPen);
+        p.setBrush(c.lighter(128));
+        p.drawPath(lit);
+    }
+}
+
+void drawLeafTree(QPainter& p, double x, double y, double h, const QColor& c, double s) {
+    p.setPen(featureInk(s));
+    p.setBrush(QColor("#6a4424"));
+    p.drawRect(QRectF(x - h * 0.05, y - h * 0.4, h * 0.1, h * 0.4));
+    const double r = h * 0.3;
+    p.setBrush(c);
+    p.drawEllipse(QPointF(x, y - h * 0.62), r * 1.1, r);
+    p.setPen(Qt::NoPen);
+    p.setBrush(c.lighter(130));
+    p.drawEllipse(QPointF(x - r * 0.35, y - h * 0.72), r * 0.5, r * 0.4);
+}
+}  // namespace
+
+const QPixmap& terrainFeature(const QString& id, const QColor& base, int size, int variant) {
+    static const QPixmap none;
+    if (id != "forest" && id != "hills" && id != "mountains") return none;
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1|%2|%3|%4").arg(id, base.name()).arg(size).arg(variant);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it.value();
+    // A canvas of 2x2 tiles; the feature's own tile is the bottom middle (s/2..3s/2, s..2s).
+    constexpr int s = 128;
+    QPixmap pm(2 * s, 2 * s);
+    pm.fill(Qt::transparent);
+    {
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        Dice d(qHash(id) * 31 + variant * 104729 + 7);
+        const double left = s * 0.5, top = s;
+        if (id == "forest") {
+            struct Tree { double x, y, h; bool leaf; };
+            QList<Tree> trees;
+            const int n = 4 + variant % 3;
+            for (int i = 0; i < n; ++i)
+                trees.append({left + s * (0.12 + 0.76 * d.next()), top + s * (0.3 + 0.62 * d.next()), s * (0.55 + 0.35 * d.next()),
+                              variant == 3 && d.next() < 0.5});
+            std::sort(trees.begin(), trees.end(), [](const Tree& a, const Tree& b) { return a.y < b.y; });
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(0, 0, 0, 55));
+            for (const Tree& t : trees) p.drawEllipse(QPointF(t.x + t.h * 0.08, t.y), t.h * 0.22, t.h * 0.07);
+            for (const Tree& t : trees) {
+                const QColor c = base.lighter(105 + int(d.next() * 30));
+                if (t.leaf) drawLeafTree(p, t.x, t.y, t.h * 0.9, QColor("#4f8a32").lighter(95 + int(d.next() * 20)), s);
+                else drawConifer(p, t.x, t.y, t.h, c, s);
+            }
+        } else if (id == "hills") {
+            const int n = 2 + variant % 2;
+            for (int i = 0; i < n; ++i) {
+                const double w = s * (0.55 + 0.3 * d.next()), h = s * (0.32 + 0.2 * d.next());
+                const double cx = left + s * (0.25 + 0.5 * (n == 1 ? 0.5 : double(i) / (n - 1))) + (d.next() - 0.5) * s * 0.1;
+                const double by = top + s * (0.62 + 0.3 * (i % 2 ? d.next() : 1 - d.next()));
+                QPainterPath mound;
+                mound.moveTo(cx - w / 2, by);
+                mound.cubicTo(cx - w * 0.3, by - h * 1.1, cx + w * 0.25, by - h * 1.15, cx + w / 2, by);
+                mound.closeSubpath();
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(0, 0, 0, 50));
+                p.drawEllipse(QPointF(cx + w * 0.06, by), w * 0.5, s * 0.05);
+                QLinearGradient g(cx - w / 2, by - h, cx + w / 2, by);
+                g.setColorAt(0, base.lighter(135));
+                g.setColorAt(0.55, base);
+                g.setColorAt(1, base.darker(135));
+                p.setPen(featureInk(s));
+                p.setBrush(g);
+                p.drawPath(mound);
+                p.setPen(QPen(base.darker(140), s / 64.0));  // a few tufts on it
+                for (int k = 0; k < 3; ++k) {
+                    const double tx = cx - w * 0.25 + d.next() * w * 0.4, ty = by - h * (0.25 + 0.4 * d.next());
+                    p.drawLine(QPointF(tx, ty), QPointF(tx - s * 0.02, ty - s * 0.05));
+                    p.drawLine(QPointF(tx, ty), QPointF(tx + s * 0.02, ty - s * 0.05));
+                }
+            }
+        } else {  // mountains: one big peak and a smaller one, rocky faces and snow
+            // Behind: a smaller peak to one side; in front: the main one and a low spur.
+            for (int i = 2; i >= 0; --i) {
+                const bool main = i == 0;
+                const double side = (variant % 2 ? -1 : 1);
+                const double w = s * (main ? 1.2 : i == 1 ? 0.8 : 0.6), h = s * (main ? 1.1 + 0.2 * d.next() : i == 1 ? 0.85 : 0.45);
+                const double cx = left + s * 0.5 + (main ? (d.next() - 0.5) * s * 0.16 : side * s * (i == 1 ? 0.36 : -0.38));
+                const double by = top + s * (main ? 0.96 : i == 1 ? 0.7 : 1.0);
+                const double apex = cx + (d.next() - 0.5) * w * 0.2;
+                QPolygonF body{QPointF(cx - w / 2, by), QPointF(cx - w * 0.3, by - h * 0.45), QPointF(apex - w * 0.08, by - h * 0.9),
+                               QPointF(apex, by - h), QPointF(apex + w * 0.1, by - h * 0.86), QPointF(cx + w * 0.32, by - h * 0.5),
+                               QPointF(cx + w / 2, by)};
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(0, 0, 0, 60));
+                p.drawEllipse(QPointF(cx + w * 0.08, by), w * 0.52, s * 0.06);
+                p.setPen(featureInk(s));
+                p.setBrush(base.darker(130));
+                p.drawPolygon(body);
+                // The lit west face: from the apex down to the left foot and back along a ridge.
+                QPolygonF lit{QPointF(apex, by - h), QPointF(apex - w * 0.08, by - h * 0.9), QPointF(cx - w * 0.3, by - h * 0.45),
+                              QPointF(cx - w / 2, by), QPointF(cx - w * 0.02, by), QPointF(apex - w * 0.04, by - h * 0.5)};
+                p.setPen(Qt::NoPen);
+                QLinearGradient g(cx - w / 2, by - h, cx, by);
+                g.setColorAt(0, base.lighter(150));
+                g.setColorAt(1, base.lighter(108));
+                p.setBrush(g);
+                p.drawPolygon(lit);
+                p.setPen(QPen(base.darker(165), s / 70.0, Qt::SolidLine, Qt::RoundCap));  // cracks
+                for (int k = 0; k < 3; ++k) {
+                    const double t = 0.35 + 0.18 * k;
+                    const QPointF a(apex + w * (0.05 + 0.1 * k), by - h * (1 - t));
+                    p.drawLine(a, a + QPointF(w * 0.06, h * 0.16));
+                }
+                // The snow cap with a ragged lower edge.
+                const double snow = h * (main ? 0.3 : i == 1 ? 0.22 : 0.0);
+                if (snow <= 0) continue;
+                QPolygonF cap{QPointF(apex, by - h), QPointF(apex + w * 0.1, by - h * 0.86)};
+                const double capL = apex - w * 0.08 - (w * 0.22) * (snow / h - 0.1), capR = apex + w * 0.1 + w * 0.12 * (snow / h);
+                for (int k = 0; k <= 4; ++k) {
+                    const double x = capR + (capL - capR) * k / 4.0;
+                    cap << QPointF(x, by - h + snow * (k % 2 ? 0.75 : 1.0));
+                }
+                cap << QPointF(apex - w * 0.08, by - h * 0.9);
+                p.setPen(featureInk(s));
+                p.setBrush(QColor("#f2f5fa"));
+                p.drawPolygon(cap);
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor("#c8d4e4"));
+                p.drawPolygon(QPolygonF{QPointF(apex, by - h), QPointF(apex + w * 0.1, by - h * 0.86), QPointF(capR, by - h + snow * 0.9),
+                                        QPointF(apex + w * 0.02, by - h + snow * 0.6)});
+            }
+        }
+    }
+    it = cache.insert(key, pm.scaled(2 * size, 2 * size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+    return it.value();
 }
 
 int terrainLayer(const QString& id) {

@@ -21,6 +21,8 @@ namespace art {
 // of copies. The terrain id chooses the pattern, `base` is the data colour.
 const QPixmap& terrainTile(const QString& terrainId, const QColor& base, int size, int variant);
 int variantFor(int x, int y);
+// The colour a terrain's ground is drawn in (and spreads to its neighbours with).
+QColor groundColor(const QString& terrainId, const QColor& base);
 // Where two terrains meet: a soft band of the neighbour's colour reaching into a
 // tile from one side (0 left, 1 top, 2 right, 3 bottom), slightly wavy; `foam`
 // draws a light surf line instead (water next to land).
@@ -33,6 +35,11 @@ int decorationAt(int x, int y);  // -1 = none, else a variant
 // The unexplored world: dark drifting clouds, a seamless texture to tile with a
 // brush (align its origin with the map so it scrolls along).
 const QPixmap& fogTexture();
+// What stands on a forest, hills or mountain tile (trees, mounds, peaks), drawn
+// bigger than the tile so it overlaps its neighbours: a 2x2-tile pixmap whose
+// bottom middle is the tile itself (draw it at the tile's corner minus (size/2,
+// size)). Null for flat terrain. Draw these row by row, top to bottom.
+const QPixmap& terrainFeature(const QString& terrainId, const QColor& base, int size, int variant);
 // Which of two neighbouring terrains spreads over the other (higher wins).
 int terrainLayer(const QString& terrainId);
 
