@@ -153,6 +153,16 @@ bool Battle::canShoot(const BattleUnit& who) const {
     return true;
 }
 
+int Battle::shootRange(const BattleUnit& who) const {
+    if (who.def->range <= 0) return 0;
+    const Hero* h = heroOf(who.side);
+    return who.def->range + (h ? h->trait(QStringLiteral("attack_range")) : 0);
+}
+
+bool Battle::canShootAt(const BattleUnit& who, const BattleUnit& target) const {
+    return target.alive() && target.side != who.side && canShoot(who) && hex::distance(who.pos, target.pos) <= shootRange(who);
+}
+
 bool Battle::attackHex(const BattleUnit& attacker, const BattleUnit& target, Pos* from) const {
     if (hex::adjacent(attacker.pos, target.pos)) {
         *from = attacker.pos;
@@ -239,6 +249,8 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
     case BattleAction::Type::Shoot: {
         if (!target || !target->alive() || target->side == me->side) return QStringLiteral("no enemy to shoot");
         if (!canShoot(*me)) return QStringLiteral("this stack cannot shoot now");
+        if (!canShootAt(*me, *target))
+            return QStringLiteral("out of range (%1 hexes away, range %2)").arg(hex::distance(me->pos, target->pos)).arg(shootRange(*me));
         --me->shotsLeft;
         strike(*me, *target, BattleEvent::Type::Shoot, events);
         if (me->def->has(QStringLiteral("double_attack")) && me->shotsLeft > 0 && target->alive()) {
@@ -487,6 +499,7 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
         j.insert("x", u.pos.x);
         j.insert("y", u.pos.y);
         j.insert("shots", u.shotsLeft);
+        if (const int r = b.shootRange(u)) j.insert("range", r);
         if (u.def->spellPoints > 0) j.insert("spellPoints", u.spellPoints);
         j.insert("retaliated", u.retaliated);
         if (u.stars > 0) j.insert("stars", u.stars);
@@ -510,6 +523,10 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
             if (p != active->pos) reach.append(QJsonArray{p.x, p.y});
         o.insert("reachable", reach);
         o.insert("canShoot", b.canShoot(*active));
+        QJsonArray shootable;
+        for (const BattleUnit& u : b.units())
+            if (b.canShootAt(*active, u)) shootable.append(u.id);
+        o.insert("shootable", shootable);
         o.insert("canWait", !active->waited);
         QJsonArray unitSpells;
         for (const QString& id : active->def->spells)

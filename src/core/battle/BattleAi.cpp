@@ -76,9 +76,39 @@ BattleAction chooseBattleAction(const Battle& b) {
     }
 
     if (b.canShoot(*me)) {
-        a.type = BattleAction::Type::Shoot;
-        a.target = enemies.first()->id;
-        return a;
+        // The most dangerous enemy in range.
+        for (const BattleUnit* e : enemies)
+            if (b.canShootAt(*me, *e)) {
+                a.type = BattleAction::Type::Shoot;
+                a.target = e->id;
+                return a;
+            }
+        // None in range: step to where one is, as far from the enemies as possible.
+        const int range = b.shootRange(*me);
+        const QHash<Pos, int> reach = b.reachable(*me);
+        QList<Pos> hexes = reach.keys();
+        std::sort(hexes.begin(), hexes.end());
+        Pos best = me->pos;
+        int bestSafety = -1;
+        for (const Pos p : hexes) {
+            int nearest = 1 << 30;
+            bool inRange = false;
+            for (const BattleUnit* e : enemies) {
+                const int d = hex::distance(p, e->pos);
+                nearest = std::min(nearest, d);
+                inRange = inRange || d <= range;
+            }
+            if (inRange && nearest > 1 && nearest > bestSafety) {
+                bestSafety = nearest;
+                best = p;
+            }
+        }
+        if (best != me->pos) {
+            a.type = BattleAction::Type::Move;
+            a.hex = best;
+            a.hasHex = true;
+            return a;
+        }
     }
     for (const BattleUnit* e : enemies) {
         Pos from;

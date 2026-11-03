@@ -13,7 +13,7 @@
   "cost": {
     "gold": 110
   },
-  "range": 10,
+  "range": 6,
   "shots": 16,
   "upgradesTo": "elf_marksman"
 }

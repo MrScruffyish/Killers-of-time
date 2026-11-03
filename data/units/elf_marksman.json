@@ -14,7 +14,7 @@
     "gold": 150,
     "wood": 1
   },
-  "range": 12,
+  "range": 8,
   "shots": 24,
   "abilities": [
     "double_attack"

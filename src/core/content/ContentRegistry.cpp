@@ -110,6 +110,18 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     loadBalance(dataDir, problems);
     if (problems.isEmpty()) validateReferences(problems);
     if (problems.isEmpty()) problems << checkContentGraphs(*this);  // loops, unbuildable buildings
+    if (problems.isEmpty()) {
+        // Ranks: regular, then one more per upgrade step (no loops: checked above).
+        for (UnitDef& u : m_units) u.rank = 0;
+        for (const UnitDef& u : m_units) {
+            int rank = 0;
+            for (QString next = u.upgradesTo; !next.isEmpty() && rank < 10; next = m_units.value(next).upgradesTo) {
+                ++rank;
+                UnitDef& n = m_units[next];
+                n.rank = std::max(n.rank, rank);
+            }
+        }
+    }
     if (!problems.isEmpty()) {
         clear();
         if (errors) *errors = problems;

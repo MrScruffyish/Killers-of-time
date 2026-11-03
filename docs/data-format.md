@@ -53,7 +53,8 @@ Trait value tables and hero-class growth come in a later slice.
 | battleSpeed | int 1..100 | required | hexes per move in battle |
 | mapSpeed | int 1..100 | = battleSpeed | adventure map speed class |
 | initiative | int 1..100 | = battleSpeed | turn order in battle |
-| range, shots | int | 0, 0 | ranged unit: range > 0 and shots >= 1 |
+| upgradesTo | id | none | the trained version of this unit. Ranks follow from the chain: regular, advanced (one step), elite (two). Each rank is its own unit: stacks of different ranks never merge, and an `upgradeOf` building trains the next rank |
+| range, shots | int | 0, 0 | ranged unit: range > 0 and shots >= 1. `range` is how far it shoots in hexes (the hero's Attack Range trait adds to it); farther targets cannot be shot |
 | size | 1 or 2 | 1 | hexes occupied |
 | weeklyGrowth | int | 0 | |
 | spellPoints | int | 0 | unit's own spell point pool |

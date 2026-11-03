@@ -124,6 +124,7 @@ struct ViewBattleUnit {
     int shots = 0;
     bool retaliated = false;
     int stars = 0;
+    int range = 0;  // how far it shoots (hexes, with the hero's bonus), 0 = melee
 };
 
 // A battle you take part in (server: battleToJson).
@@ -138,6 +139,7 @@ struct ViewBattle {
     QList<ViewBattleUnit> units;
     QList<core::Pos> reachable;  // for the active unit
     QList<int> attackable;
+    QList<int> shootable;  // enemies the active stack can shoot now (in range)
     bool canShoot = false;
     bool canWait = false;
     bool canRetreat = false;

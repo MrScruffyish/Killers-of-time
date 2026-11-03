@@ -74,20 +74,25 @@ private slots:
         QCOMPARE(r.needsChoice.size(), 2);          // snail_pen would shut out eagle_roost
         QCOMPARE(r.needsChoice[0].buildings, QStringList({"snail_pen"}));
 
+        // Then the trained archers (tier 2 before tier 1), the pikemen, the village hall.
         gs.setDay(3);
         r = autoBuild(gs, reg, p1);
-        QVERIFY(builtIn(r, t1, "pike_barracks"));
+        QVERIFY(builtIn(r, t1, "archery_school"));
         QCOMPARE(r.needsChoice[0].buildings, QStringList({"eagle_roost", "snail_pen"}));
 
         gs.setDay(4);
-        QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "village_hall"));
+        QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "pike_barracks"));
 
         gs.setDay(5);
-        QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "tavern"));
+        QVERIFY(builtIn(autoBuild(gs, reg, p1), t1, "village_hall"));
+
+        gs.setDay(6);
+        autoBuild(gs, reg, p1);
+        QVERIFY(gs.town(t1)->buildings.contains("tavern"));
 
         // Then other buildings without a choice (mage guild, fort, ...), never the rival dwellings.
         const qsizetype before = gs.town(t1)->buildings.size();
-        for (int day = 6; day <= 9; ++day) {
+        for (int day = 7; day <= 10; ++day) {
             gs.setDay(day);
             r = autoBuild(gs, reg, p1);
             for (const AutoBuildReport::Built& b : r.built)

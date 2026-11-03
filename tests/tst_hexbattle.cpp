@@ -97,8 +97,31 @@ private slots:
         }
     }
 
+    void shootingNeedsTheTargetInRange() {
+        add("archer", 10);  // range 5; the armies start 14 hexes apart
+        {
+            Battle b(gs, reg, mine(), monsters("pikeman", 50), 1);
+            const BattleUnit* archer = b.activeUnit();
+            QCOMPARE(b.shootRange(*archer), 5);
+            QVERIFY(b.canShoot(*archer));
+            QVERIFY(!b.canShootAt(*archer, *b.unit(2)));
+            QVERIFY(b.act(shoot(2)).contains("out of range"));
+            // The battle AI walks toward range instead of shooting at nothing.
+            const BattleAction a = chooseBattleAction(b);
+            QCOMPARE(a.type, BattleAction::Type::Move);
+            QVERIFY(hex::distance(a.hex, b.unit(2)->pos) < hex::distance(archer->pos, b.unit(2)->pos));
+        }
+        // The hero's Attack Range trait adds to it.
+        gs.hero(hero)->traits["attack_range"] = 9;
+        Battle b(gs, reg, mine(), monsters("pikeman", 50), 1);
+        QCOMPARE(b.shootRange(*b.activeUnit()), 14);
+        QVERIFY(b.canShootAt(*b.activeUnit(), *b.unit(2)));
+        gs.hero(hero)->traits.remove("attack_range");
+    }
+
     void archersShootWithoutRetaliationUntilEnemyIsNext() {
         add("archer", 10);
+        gs.hero(hero)->traits["attack_range"] = 10;  // reach across the field
         Battle b(gs, reg, mine(), monsters("pikeman", 50), 1);
         const BattleUnit* archer = b.activeUnit();
         const int shots = archer->shotsLeft;
@@ -198,6 +221,7 @@ private slots:
 
     void marksmenShootTwice() {
         add("elf_marksman", 4);
+        gs.hero(hero)->traits["attack_range"] = 10;
         Battle b(gs, reg, mine(), monsters("treant", 3), 1);
         const int shots = b.activeUnit()->shotsLeft;
         QList<BattleEvent> ev;

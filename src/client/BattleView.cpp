@@ -8,10 +8,12 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QShortcut>
 #include <QVBoxLayout>
 #include <cmath>
 
 #include "client/Art.h"
+#include "core/battle/HexGrid.h"
 #include "core/content/ContentRegistry.h"
 
 namespace kot::client {
@@ -26,6 +28,8 @@ public:
     ViewBattle battle;
     QColor sideColor[2];
     std::function<void(core::Pos)> clicked;
+    std::function<void(core::Pos)> hovered;
+    core::Pos hover{-1, -1};
 
     double radius() const {
         const int w = std::max(1, battle.width), h = std::max(1, battle.height);
@@ -72,6 +76,13 @@ protected:
             return path;
         };
         const bool mine = battle.myMove();
+        // Whose range to show: the stack under the mouse if it shoots, else your active shooter.
+        const ViewBattleUnit* ranger = battle.unitAt(hover);
+        if (!ranger || ranger->range <= 0 || ranger->shots <= 0) {
+            ranger = battle.unit(battle.active);
+            if (!ranger || !mine || ranger->range <= 0 || !battle.canShoot) ranger = nullptr;
+        }
+        const bool enemyRange = ranger && ranger->side != battle.yourSide;
         // Grass hexes with a little texture; reachable ones lit, rocks grey.
         for (int y = 0; y < battle.height; ++y)
             for (int x = 0; x < battle.width; ++x) {
@@ -84,6 +95,8 @@ protected:
                                                              art::variantFor(x, y)));
                 p.restore();
                 if (mine && battle.reachable.contains(h)) p.fillPath(path, QColor(255, 240, 160, 70));
+                if (ranger && core::hex::distance(ranger->hex, h) <= ranger->range)
+                    p.fillPath(path, enemyRange ? QColor(255, 40, 40, 45) : QColor(80, 150, 255, 40));
                 p.setPen(QPen(QColor(30, 45, 20, 160), 1));
                 p.setBrush(Qt::NoBrush);
                 p.drawPath(path);
@@ -103,13 +116,48 @@ protected:
                     p.drawPolygon(rock);
                 }
             }
+        if (ranger) {  // the edge of the range
+            p.setPen(QPen(enemyRange ? QColor(255, 80, 80, 200) : QColor(120, 180, 255, 200), 2, Qt::DashLine));
+            p.setBrush(Qt::NoBrush);
+            for (int y = 0; y < battle.height; ++y)
+                for (int x = 0; x < battle.width; ++x)
+                    if (core::hex::distance(ranger->hex, {x, y}) == ranger->range) p.drawPath(hexPath({x, y}, 0.9));
+        }
         for (const ViewBattleUnit& u : battle.units) {
             const bool active = (u.id == battle.active);
-            const bool target = mine && u.side != battle.yourSide && (battle.canShoot || battle.attackable.contains(u.id));
+            const bool target = mine && u.side != battle.yourSide && (battle.shootable.contains(u.id) || battle.attackable.contains(u.id));
             const core::UnitDef* def = m_content->unit(u.unit);
-            art::drawUnitToken(p, centre(u.hex), r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars,
-                               active, target);
+            const QPointF c = centre(u.hex);
+            art::drawUnitToken(p, c, r * 0.78, sideColor[u.side], def ? def->name : u.unit, u.count, u.stars, active, target);
+            if (u.range > 0) {
+                // A bow badge with the range in hexes (grey when out of arrows).
+                const QPointF b(c.x() + r * 0.62, c.y() - r * 0.55);
+                const double br = std::max(6.0, r * 0.3);
+                p.setPen(QPen(QColor("#20180c"), 1.2));
+                p.setBrush(u.shots > 0 ? QColor("#2f5d9a") : QColor("#666666"));
+                p.drawEllipse(b, br, br);
+                p.setPen(QPen(QColor("#f1e4c0"), std::max(1.0, br / 6)));
+                p.setBrush(Qt::NoBrush);
+                p.drawArc(QRectF(b.x() - br * 0.75, b.y() - br * 0.7, br * 0.9, br * 1.4), -70 * 16, 140 * 16);
+                QFont f = p.font();
+                f.setPixelSize(std::max(7, int(br * 0.95)));
+                f.setBold(true);
+                p.setFont(f);
+                p.drawText(QRectF(b.x() - br * 0.2, b.y() - br, br * 1.1, br * 2), Qt::AlignCenter, QString::number(u.range));
+            }
         }
+    }
+    void mouseMoveEvent(QMouseEvent* e) override {
+        const core::Pos h = hexAt(e->position());
+        if (h == hover) return;
+        hover = h;
+        if (hovered) hovered(h);
+        update();
+    }
+    void leaveEvent(QEvent*) override {
+        hover = {-1, -1};
+        if (hovered) hovered(hover);
+        update();
     }
     void mouseReleaseEvent(QMouseEvent* e) override {
         const core::Pos h = hexAt(e->position());
@@ -129,9 +177,23 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_field = new HexField(content, this);
     m_field->setObjectName("battleField");
     m_field->clicked = [this](core::Pos h) { onHexClicked(h); };
-    layout->addWidget(m_field, 1);
+    m_field->hovered = [this](core::Pos h) {
+        m_hoverUnit = m_battle.unitAt(h) ? m_battle.unitAt(h)->id : 0;
+        updateStats();
+    };
+    auto* middle = new QHBoxLayout();
+    middle->addWidget(m_field, 1);
+    m_stats = new QLabel(this);
+    m_stats->setObjectName("battleStats");
+    m_stats->setTextFormat(Qt::RichText);
+    m_stats->setWordWrap(true);
+    m_stats->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    m_stats->setFixedWidth(230);
+    m_stats->setStyleSheet("QLabel#battleStats { background: rgba(0,0,0,70); border: 1px solid #7a6235; border-radius: 6px; padding: 8px; }");
+    middle->addWidget(m_stats);
+    layout->addLayout(middle, 1);
     auto* buttons = new QHBoxLayout();
-    m_defend = new QPushButton(tr("Defend (skip)"), this);
+    m_defend = new QPushButton(tr("Defend (D)"), this);
     m_defend->setObjectName("defendButton");
     m_auto = new QPushButton(tr("Auto: let the computer finish this battle"), this);
     m_auto->setObjectName("autoBattleButton");
@@ -139,7 +201,7 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_cast->setObjectName("castSpellButton");
     buttons->addWidget(m_cast);
     buttons->addWidget(m_defend);
-    m_wait = new QPushButton(tr("Wait"), this);
+    m_wait = new QPushButton(tr("Wait (W)"), this);
     m_wait->setObjectName("waitButton");
     m_wait->setToolTip(tr("Act again at the end of this round"));
     buttons->addWidget(m_wait);
@@ -158,6 +220,15 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     buttons->insertWidget(1, m_unitCast);
     connect(m_unitCast, &QPushButton::clicked, this, [this]() { chooseSpell(true); });
     connect(m_wait, &QPushButton::clicked, this, [this]() { emit actionRequested({{"action", "wait"}}); });
+    // Keys: D defend, W wait.
+    for (const auto& [key, button] : {std::pair{Qt::Key_D, m_defend}, std::pair{Qt::Key_W, m_wait}}) {
+        auto* s = new QShortcut(QKeySequence(key), this);
+        s->setContext(Qt::WindowShortcut);
+        QPushButton* b = button;
+        connect(s, &QShortcut::activated, this, [this, b]() {
+            if (isVisible() && b->isEnabled()) b->click();
+        });
+    }
     connect(m_retreat, &QPushButton::clicked, this, [this]() {
         if (QMessageBox::question(this, tr("Retreat"), tr("Retreat? Your army will be lost, but your hero escapes."))
             == QMessageBox::Yes)
@@ -177,8 +248,37 @@ void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, con
     m_field->sideColor[0] = attacker;
     m_field->sideColor[1] = defender;
     if (!battle.myMove()) m_castSpell.clear();
+    if (!battle.unit(m_hoverUnit)) m_hoverUnit = 0;
     updateInfo();
+    updateStats();
     m_field->update();
+}
+
+void BattleView::updateStats() {
+    // The stack under the mouse, else the one whose turn it is.
+    const ViewBattleUnit* u = m_battle.unit(m_hoverUnit);
+    if (!u) u = m_battle.unit(m_battle.active);
+    const core::UnitDef* d = u ? m_content->unit(u->unit) : nullptr;
+    if (!u || !d) {
+        m_stats->clear();
+        return;
+    }
+    static const char* ranks[] = {"regular", "advanced", "elite"};
+    const QString side = u->side == m_battle.yourSide ? tr("yours") : tr("enemy");
+    QString t = tr("<b style='font-size:13pt'>%1</b><br><i>%2, %3</i>%4<hr>")
+                    .arg(d->name.toHtmlEscaped(), tr(ranks[std::clamp(d->rank, 0, 2)]), side,
+                         u->id == m_battle.active ? tr(" &mdash; <b>acting</b>") : QString());
+    t += tr("Units: <b>%1</b> &nbsp; front HP %2 / %3<br>").arg(u->count).arg(u->frontHp).arg(u->maxHp);
+    t += tr("Attack <b>%1</b> &nbsp; Defense <b>%2</b><br>").arg(d->attack).arg(d->defense);
+    t += tr("Damage <b>%1-%2</b> per unit<br>").arg(d->damageMin).arg(d->damageMax);
+    t += tr("Speed <b>%1</b> &nbsp; Initiative <b>%2</b><br>").arg(d->battleSpeed).arg(d->initiative);
+    if (u->range > 0) t += tr("Shoots: range <b>%1</b> hexes, %2 shots left<br>").arg(u->range).arg(u->shots);
+    else t += tr("Melee only<br>");
+    if (u->stars > 0) t += tr("Veteran: %1<br>").arg(QString(u->stars, QChar(0x2605)));
+    if (!d->abilities.isEmpty()) t += tr("Abilities: %1<br>").arg(d->abilities.join(", ").replace('_', ' '));
+    if (u->retaliated) t += tr("<i>Has struck back this round</i><br>");
+    if (u->range > 0 && u->side != m_battle.yourSide) t += tr("<br><span style='color:#ff8080'>Red hexes: where it can shoot</span>");
+    m_stats->setText(t);
 }
 
 void BattleView::updateInfo() {
@@ -200,7 +300,7 @@ void BattleView::updateInfo() {
         text += tr("Your %1 (%2) acts: click a light hex to move, a red-ringed enemy to %3.")
                     .arg(def ? def->name : active->unit)
                     .arg(active->count)
-                    .arg(battle.canShoot ? tr("shoot") : tr("attack"));
+                    .arg(!battle.shootable.isEmpty() ? tr("shoot (blue hexes: in range)") : tr("attack"));
     } else {
         text += tr("The enemy is acting...");
     }
@@ -251,9 +351,10 @@ void BattleView::onHexClicked(core::Pos hex) {
         return;
     }
     if (const ViewBattleUnit* u = m_battle.unitAt(hex)) {
-        if (u->side != m_battle.yourSide && (m_battle.canShoot || m_battle.attackable.contains(u->id))) {
-            emit actionRequested({{"action", m_battle.canShoot ? "shoot" : "attack"}, {"target", u->id}});
-        }
+        if (u->side != m_battle.yourSide && m_battle.shootable.contains(u->id))
+            emit actionRequested({{"action", "shoot"}, {"target", u->id}});
+        else if (u->side != m_battle.yourSide && m_battle.attackable.contains(u->id))
+            emit actionRequested({{"action", "attack"}, {"target", u->id}});
         return;
     }
     if (m_battle.reachable.contains(hex)) emit actionRequested({{"action", "move"}, {"x", hex.x}, {"y", hex.y}});

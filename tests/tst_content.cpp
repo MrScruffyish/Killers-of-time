@@ -86,7 +86,7 @@ private slots:
         QCOMPARE(reg.unit("militia")->upgradesTo, QString("pikeman"));
         QVERIFY(reg.unit("battle_snail")->battleSpeed < reg.unit("armoured_eagle")->battleSpeed);
         QVERIFY(reg.unit("armoured_eagle")->abilities.contains("flying"));
-        QCOMPARE(reg.unit("archer")->range, 10);
+        QCOMPARE(reg.unit("archer")->range, 5);
         QCOMPARE(reg.unit("militia")->mapSpeed, reg.unit("militia")->battleSpeed);  // derived
         QCOMPARE(reg.unit("armoured_eagle")->mapSpeed, 10);                          // explicit
         QCOMPARE(reg.unit("militia")->cost.value("gold"), 20);

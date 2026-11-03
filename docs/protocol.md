@@ -141,7 +141,7 @@ once by the battle AI and `move_hero` returns the reports.
 `battle` in the view: `width`, `height`, `round`, `active` (unit id), `yourSide` (0 attacker,
 1 defender), `sides` (`owner`, `hero`), `units` (`id`, `side`, `unit`, `count`, `frontHp`, `maxHp`,
 `x`, `y` (hex, odd-r offset), `shots`, `retaliated`), `modifiers` (spell effects: `stat`, `amount`, `rounds`)), `hero` (yours only: `spellPoints`, `hasCast`, `spells` [`id`, `target`, `cost`, `castable`]), and for the active stack `reachable`
-(`[[x, y], ...]`), `attackable` (enemy ids it can reach), `canShoot`, `canWait`, `canRetreat`; `obstacles` (rock hexes). Events may also be `wait`, `morale` (extra action), `falter` (bad morale), `retreat`; strikes may have `lucky: true`.
+(`[[x, y], ...]`), `attackable` (enemy ids it can reach), `shootable` (enemy ids in its range), `canShoot`, `canWait`, `canRetreat`; `obstacles` (rock hexes); ranged units have `range` (hexes). Events may also be `wait`, `morale` (extra action), `falter` (bad morale), `retreat`; strikes may have `lucky: true`.
 
 | Type | Fields | `info` on success |
 |---|---|---|

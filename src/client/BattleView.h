@@ -37,11 +37,14 @@ private:
     void onHexClicked(core::Pos hex);
     void chooseSpell(bool unitSpell);
     void updateInfo();
+    void updateStats();  // the stats panel: hovered stack, else the acting one
 
     const core::ContentRegistry* m_content;
     ViewBattle m_battle;
     HexField* m_field;
     QLabel* m_info;
+    QLabel* m_stats;
+    int m_hoverUnit = 0;
     QPushButton* m_defend;
     QPushButton* m_auto;
     QPushButton* m_cast;

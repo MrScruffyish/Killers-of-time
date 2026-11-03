@@ -262,6 +262,9 @@ struct UnitDef {
     QStringList abilities;
     bool has(const QString& ability) const { return abilities.contains(ability); }
     QString upgradesTo;     // unit id of the upgraded version, or empty
+    // Computed when loading: 0 regular, 1 advanced, 2 elite (steps of upgradesTo
+    // that lead to this unit). Different ranks are different units and never merge.
+    int rank = 0;
 };
 
 }  // namespace kot::core

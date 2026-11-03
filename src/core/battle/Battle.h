@@ -133,7 +133,12 @@ public:
 
     // Hexes the unit can move to, with the number of steps.
     QHash<Pos, int> reachable(const BattleUnit& unit) const;
+    // Ranged stacks: has shots left and no enemy right next to it.
     bool canShoot(const BattleUnit& unit) const;
+    // How far it shoots, in hexes: the unit's range plus its hero's Attack Range (0 = melee).
+    int shootRange(const BattleUnit& unit) const;
+    // canShoot and `target` (an enemy) is within shootRange.
+    bool canShootAt(const BattleUnit& unit, const BattleUnit& target) const;
     // The hex the active unit would attack `target` from (its own hex if already
     // next to it); false if it cannot reach it.
     bool attackHex(const BattleUnit& attacker, const BattleUnit& target, Pos* from) const;

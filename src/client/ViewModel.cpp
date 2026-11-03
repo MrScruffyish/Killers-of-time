@@ -263,11 +263,13 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             bu.shots = u.value("shots").toInt();
             bu.retaliated = u.value("retaliated").toBool();
             bu.stars = u.value("stars").toInt();
+            bu.range = u.value("range").toInt();
             vb.units.append(bu);
         }
         for (const QJsonValue& h : b.value("reachable").toArray())
             vb.reachable.append({h.toArray().at(0).toInt(), h.toArray().at(1).toInt()});
         for (const QJsonValue& a : b.value("attackable").toArray()) vb.attackable.append(a.toInt());
+        for (const QJsonValue& a : b.value("shootable").toArray()) vb.shootable.append(a.toInt());
         vb.canShoot = b.value("canShoot").toBool();
         vb.canWait = b.value("canWait").toBool();
         vb.canRetreat = b.value("canRetreat").toBool();

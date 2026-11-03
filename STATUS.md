@@ -153,11 +153,9 @@ and react to; add depth afterwards.
 - [x] Side panel: hero portrait, bars for movement / spell points / experience, traits, the army in 10 slots (tooltips with unit stats; click opens the hero screen); resource bar with icons, amounts and +N per day (view: `income`, heroes' `movementMax`); armies hold up to 10 stacks
 - [x] Autosave at the start of every day (`autosave_dayNNNN`, the lobby's Autosaves setting says how many are kept, default 5, 0 = off); each campaign chapter is saved when it starts
 - [ ] Playtesting
-- [ ] **Next version, battle map** (user has more to say about it; collected so far):
-  - Ranges: `range` is in the unit data but not used yet (archers reach the whole field); give units their own ranges, longer for trained/upgraded ones
-  - Shortcuts D (defend) and W (wait)
-  - Show the enemy's range when a ranged stack is selected or hovered; a range mark on ranged units' tokens; unit stats on the battle map
-  - Unit ranks: keep "regular", "advanced" and "elite" versions (e.g. archers) as separate unit types that never merge; town buildings train 0, 1 or more levels
+- [x] Battle map: ranges are real (unit `range` in hexes + the hero's Attack Range; out of range cannot be shot, the AI walks into range), hovering a shooter shows its range (red for enemies, blue for yours), bow badges with the range on ranged tokens, a stats panel (hovered or acting stack), keys D (defend) and W (wait)
+- [x] Unit ranks: regular / advanced / elite from the upgradesTo chain (separate units, never merge); humans: Archer (range 5) -> Advanced Archer (6, Archery School) -> Elite Archer (7, Archery Academy); elf archers 6, marksmen 8
+- [ ] Balance after ranges: kot_balance duels favour the elves' archers (longer range, faster) over the human ones; tune with kot_balance_gui
 
 ---
 
