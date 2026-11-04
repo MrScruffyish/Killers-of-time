@@ -53,6 +53,8 @@ struct MoveResult {
     ResourceAmounts foundResources;  // picked up a treasure
     QStringList foundArtifacts;      // picked up artifacts
     QStringList stowedArtifacts;     // of those, the ones put in the backpack (their slot was full)
+    QString visitedSite;             // a site visited at the end of the move (MapSites.h) ...
+    QString siteResult;              // ... and what the hero got there
     bool landed = false;  // left the boat
     bool ambushed = false;  // stopped by a zone of control: the armies there attacked (see `battles`)
     bool spotted = false;   // stopped because a hostile army came into sight (destination kept)

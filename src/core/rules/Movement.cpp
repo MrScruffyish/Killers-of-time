@@ -1,5 +1,6 @@
 #include "core/rules/Movement.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/MapSites.h"
 
 #include <QSet>
 #include <algorithm>
@@ -369,8 +370,13 @@ void pickUpAt(GameState& state, const ContentRegistry& content, HeroId heroId, P
     Player* player = hero ? state.player(hero->owner) : nullptr;
     if (!player) return;
     QList<MapObjectId> taken;
+    for (MapObject& site : state.mapObjects())
+        if (site.pos == target && site.kind == MapObject::Kind::Site) {  // a place to visit: it stays
+            result->visitedSite = site.site;
+            result->siteResult = visitSite(state, content, site, *hero);
+        }
     for (const MapObject& o : state.mapObjects()) {
-        if (o.pos != target) continue;
+        if (o.pos != target || o.kind == MapObject::Kind::Site) continue;
         taken.append(o.id);
         for (auto it = o.resources.begin(); it != o.resources.end(); ++it) {
             player->resources[it.key()] += it.value();

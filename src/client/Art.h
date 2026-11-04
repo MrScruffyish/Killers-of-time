@@ -112,6 +112,10 @@ void drawResourceIcon(QPainter& p, const QRectF& r, const QString& id, const QCo
 // An artifact's own picture, by where it is worn and its name (sword, crown, boots...).
 void drawArtifactIcon(QPainter& p, const QRectF& r, const QString& id, const QString& slot);
 const QPixmap& artifactIcon(const QString& id, const QString& slot, int size);
+// A place to visit on the map (shrine, magic_well, obelisk, arena, learning_stone);
+// a visited one (nothing more for the selected hero) is drawn without its glow.
+void drawSite(QPainter& p, const QRectF& r, const QString& site, bool glowing);
+const QPixmap& siteSprite(const QString& site, bool glowing, int size);
 // A spell's picture: a medallion in its school's colour with what it does (SpellArt.cpp).
 void drawSpellIcon(QPainter& p, const QRectF& r, const QString& id, const QString& school);
 const QPixmap& spellIcon(const QString& id, const QString& school, int size);

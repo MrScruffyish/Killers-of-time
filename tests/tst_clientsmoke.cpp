@@ -213,6 +213,16 @@ private slots:
                 QVERIFY(!pm.isNull());
                 ip.drawPixmap(10 + i * 70, 340, pm);
             }
+            {  // places to visit, fresh and visited (0_sites.png)
+                QImage sites(10 * 104, 104, QImage::Format_ARGB32);
+                sites.fill(QColor("#5d8a3a"));
+                QPainter sp(&sites);
+                int sx = 0;
+                for (const QString site : {"shrine", "magic_well", "obelisk", "arena", "learning_stone"})
+                    for (const bool glow : {true, false}) sp.drawPixmap((sx++) * 104, 0, art::siteSprite(site, glow, 100));
+                sp.end();
+                if (!dir.isEmpty()) sites.save(QDir(dir).filePath("0_sites.png"));
+            }
             int si = 0;
             for (const core::SpellDef& sp : reg.spells()) {
                 ip.drawPixmap(10 + (si % 17) * 70, 590 + (si / 17) * 70, art::spellIcon(sp.id, sp.school, 64));

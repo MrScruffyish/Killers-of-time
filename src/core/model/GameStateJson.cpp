@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <climits>
 
+#include "core/rules/MapSites.h"
 #include "core/content/ContentRegistry.h"
 #include "core/Version.h"
 #include "core/data/JsonReader.h"
@@ -187,11 +188,17 @@ QJsonObject GameState::toJson() const {
     for (const MapObject& m : m_mapObjects) {
         QJsonObject o;
         o.insert("id", static_cast<int>(m.id.value()));
-        o.insert("kind", m.kind == MapObject::Kind::Artifact ? "artifact" : "treasure");
+        o.insert("kind", m.kind == MapObject::Kind::Artifact ? "artifact" : m.kind == MapObject::Kind::Site ? "site" : "treasure");
         o.insert("x", m.pos.x);
         o.insert("y", m.pos.y);
         if (!m.resources.isEmpty()) o.insert("resources", intMapToJson(m.resources));
         if (!m.artifact.isEmpty()) o.insert("artifact", m.artifact);
+        if (!m.site.isEmpty()) o.insert("site", m.site);
+        if (!m.visited.isEmpty()) {
+            QJsonObject v;
+            for (auto it = m.visited.begin(); it != m.visited.end(); ++it) v.insert(QString::number(it.key()), it.value());
+            o.insert("visited", v);
+        }
         objects.append(o);
     }
     root.insert("mapObjects", objects);
@@ -517,9 +524,14 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         m.pos.y = r.requireInt("y", 0, 100000);
         m.resources = r.optionalIntMap("resources", 1, 100000000);
         m.artifact = r.optionalString("artifact");
+        m.site = r.optionalString("site");
+        const QMap<QString, int> visited = r.optionalIntMap("visited", 0, 10000000);
+        for (auto it = visited.begin(); it != visited.end(); ++it) m.visited.insert(it.key().toInt(), it.value());
         r.finish();
         if (kind == "artifact") m.kind = MapObject::Kind::Artifact;
-        else if (kind != "treasure") r.addError(QStringLiteral("kind must be treasure or artifact"));
+        else if (kind == "site") m.kind = MapObject::Kind::Site;
+        else if (kind != "treasure") r.addError(QStringLiteral("kind must be treasure, artifact or site"));
+        if (m.kind == MapObject::Kind::Site && !siteIds().contains(m.site)) r.addError(QStringLiteral("unknown site '%1'").arg(m.site));
         if (r.ok() && m.kind == MapObject::Kind::Artifact && !content.artifact(m.artifact))
             r.addError(QStringLiteral("unknown artifact '%1'").arg(m.artifact));
         for (auto it = m.resources.begin(); it != m.resources.end(); ++it)

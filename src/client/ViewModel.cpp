@@ -240,6 +240,8 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         m.id = o.value("id").toInt();
         m.artifact = o.value("kind").toString() == "artifact";
         m.artifactId = o.value("artifact").toString();
+        m.site = o.value("site").toString();
+        for (const QJsonValue& h : o.value("giftFor").toArray()) m.giftFor << h.toInt();
         const QJsonObject res = o.value("resources").toObject();
         for (auto it = res.begin(); it != res.end(); ++it) m.resources.insert(it.key(), it.value().toInt());
         m.pos = posOf(o);

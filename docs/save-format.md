@@ -40,7 +40,9 @@ Save files (not scenarios) also have `gameVersion` (the game that saved it) and 
 Heroes may have `spells` (list of spell ids, the spellbook; optional, validated against the content).
 Heroes may have `artifacts` (worn artifact ids; their bonuses are already in `traits`) and
 `backpack` (carried, not worn, no bonus).
-`mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`), `x`, `y`, `resources` or `artifact`.
+`mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`/`site`), `x`, `y`, `resources` or `artifact`;
+sites have `site` (shrine, magic_well, obelisk, arena, learning_stone) and `visited` (hero id, or
+1000000 + team id for the obelisk -> day of the visit).
 The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses).
 Army stacks may have `experience` (average per unit, veterancy).
 `victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie). Last team standing always wins too.

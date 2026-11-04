@@ -112,8 +112,10 @@ struct ViewDwelling {
 
 struct ViewObject {
     int id = 0;
-    bool artifact = false;      // else a treasure pile
+    bool artifact = false;      // else a treasure pile (or a site)
     QString artifactId;
+    QString site;               // a place to visit (MapSites.h), else empty
+    QList<int> giftFor;         // your heroes who would still get something there
     core::ResourceAmounts resources;
     core::Pos pos;
 };

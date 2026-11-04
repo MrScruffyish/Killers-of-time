@@ -7,6 +7,7 @@
 
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/MapSites.h"
 #include "core/rules/Movement.h"
 #include "core/rules/Vision.h"
 #include "core/rules/MapGenerator.h"
@@ -335,6 +336,20 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         o.artifact = artifactIds[gs.rng().nextInt(0, static_cast<int>(artifactIds.size()) - 1)];
         gs.addMapObject(o);
         guard(where, std::clamp(content.artifact(o.artifact)->value + 1, 1, 3));
+    }
+
+    // Places to visit: a few of each (MapSites.h), unguarded.
+    for (const QString& site : siteIds()) {
+        const int n = std::max(1, area / (site == QLatin1String("obelisk") ? 2500 : 1600));
+        for (int i = 0; i < n; ++i) {
+            Pos where;
+            if (!place(&where)) break;
+            MapObject o;
+            o.kind = MapObject::Kind::Site;
+            o.pos = where;
+            o.site = site;
+            gs.addMapObject(o);
+        }
     }
 
     // Wandering monsters.

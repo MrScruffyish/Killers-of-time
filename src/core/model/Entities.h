@@ -92,12 +92,17 @@ struct MapDwelling {
 // Something lying on the map that a hero picks up by walking onto it (then it is gone):
 // a pile of resources, or an artifact.
 struct MapObject {
-    enum class Kind { Treasure, Artifact };
+    enum class Kind { Treasure, Artifact, Site };
     MapObjectId id;
     Kind kind = Kind::Treasure;
     Pos pos;
     ResourceAmounts resources;  // Treasure
     QString artifact;           // Artifact: artifact id
+    // Site: a place heroes visit (it stays): shrine (teaches a spell), magic_well
+    // (spell points back, once a day), obelisk (shows the land around it), arena
+    // (+1 attack or defense), learning_stone (experience). See MapSites.h.
+    QString site;
+    QMap<int, int> visited;     // hero id (or kTeamVisit + team id) -> the day of the visit
 };
 
 struct Mine {

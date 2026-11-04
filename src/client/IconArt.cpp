@@ -1350,3 +1350,124 @@ const QPixmap& artifactIcon(const QString& id, const QString& slot, int size) {
 }
 
 }  // namespace kot::client::art
+
+// --- map sites -------------------------------------------------------------------
+
+namespace kot::client::art {
+
+void drawSite(QPainter& p, const QRectF& r, const QString& site, bool glowing) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    groundShadow(p, r, 0.78);
+    const double w = r.width(), h = r.height();
+    const auto P = [&](double x, double y) { return QPointF(r.left() + w * x, r.top() + h * y); };
+    const double pw = w / 60;
+    const QColor stone("#a8a090");
+    const auto halo = [&](QPointF c, double rad, const QColor& col) {
+        if (!glowing) return;
+        QRadialGradient g(c, rad);
+        g.setColorAt(0, QColor(col.red(), col.green(), col.blue(), 170));
+        g.setColorAt(1, QColor(col.red(), col.green(), col.blue(), 0));
+        p.setPen(Qt::NoPen);
+        p.setBrush(g);
+        p.drawEllipse(c, rad, rad);
+    };
+    p.setPen(inkPen(pw));
+    if (site == "shrine") {  // a stone altar under a little roof, a glowing book on it
+        halo(P(0.5, 0.5), w * 0.42, QColor("#a0c8ff"));
+        p.setBrush(shine(QRectF(P(0.2, 0.74), P(0.8, 0.9)), stone));
+        p.drawRect(QRectF(P(0.16, 0.8), P(0.84, 0.9)));
+        for (const double x : {0.22, 0.7}) {
+            p.setBrush(shine(QRectF(P(x, 0.34), P(x + 0.08, 0.8)), stone.lighter(110)));
+            p.drawRect(QRectF(P(x, 0.34), P(x + 0.08, 0.8)));
+        }
+        const QPolygonF roof{P(0.1, 0.36), P(0.5, 0.08), P(0.9, 0.36)};
+        p.setBrush(shine(roof.boundingRect(), QColor("#5a6aa8")));
+        p.drawPolygon(roof);
+        p.setBrush(shine(QRectF(P(0.36, 0.58), P(0.64, 0.8)), stone));
+        p.drawRect(QRectF(P(0.36, 0.6), P(0.64, 0.8)));
+        p.setBrush(QColor("#f4ecd0"));
+        p.drawPolygon(QPolygonF{P(0.34, 0.6), P(0.5, 0.54), P(0.66, 0.6), P(0.5, 0.64)});
+        p.setPen(QPen(QColor("#5a4a30"), pw * 0.6));
+        p.drawLine(P(0.5, 0.54), P(0.5, 0.64));
+        if (glowing) glint(p, P(0.5, 0.46), w * 0.08);
+    } else if (site == "magic_well") {  // a round stone well with glowing water
+        halo(P(0.5, 0.56), w * 0.38, QColor("#60e0ff"));
+        const QRectF rim(P(0.2, 0.5), P(0.8, 0.66));
+        p.setBrush(shine(QRectF(P(0.2, 0.56), P(0.8, 0.88)), stone));
+        p.drawRect(QRectF(P(0.2, 0.58), P(0.8, 0.86)));
+        p.drawEllipse(QRectF(P(0.2, 0.78), P(0.8, 0.92)));
+        p.setPen(QPen(stone.darker(150), pw * 0.6));
+        for (const double y : {0.66, 0.74})
+            for (double x = 0.26 + (y > 0.7 ? 0.06 : 0); x < 0.8; x += 0.12) p.drawLine(P(x, y), P(x, y + 0.08));
+        p.setPen(inkPen(pw));
+        p.setBrush(shine(rim, stone.lighter(115)));
+        p.drawEllipse(rim);
+        p.setBrush(glowing ? QColor("#5ad8ff") : QColor("#3a5a6a"));
+        p.drawEllipse(rim.adjusted(w * 0.05, h * 0.025, -w * 0.05, -h * 0.025));
+        p.setPen(inkPen(pw * 1.4, QColor("#4a3018")));
+        p.drawLine(P(0.24, 0.56), P(0.24, 0.2));
+        p.drawLine(P(0.76, 0.56), P(0.76, 0.2));
+        p.drawLine(P(0.2, 0.22), P(0.8, 0.22));
+        if (glowing) glint(p, P(0.42, 0.56), w * 0.06);
+    } else if (site == "obelisk") {  // a tall stone needle with an eye
+        halo(P(0.5, 0.3), w * 0.3, QColor("#ffe27a"));
+        p.setBrush(shine(QRectF(P(0.24, 0.8), P(0.76, 0.92)), stone));
+        p.drawRect(QRectF(P(0.24, 0.82), P(0.76, 0.92)));
+        const QPolygonF needle{P(0.38, 0.82), P(0.42, 0.14), P(0.5, 0.04), P(0.58, 0.14), P(0.62, 0.82)};
+        p.setBrush(shine(needle.boundingRect(), QColor("#8a8478")));
+        p.drawPolygon(needle);
+        p.setBrush(QColor("#f4f0e0"));
+        p.drawEllipse(QRectF(P(0.43, 0.26), P(0.57, 0.34)));
+        p.setBrush(glowing ? QColor("#ffd84a") : QColor("#6a6050"));
+        p.drawEllipse(P(0.5, 0.3), w * 0.03, w * 0.03);
+        p.setPen(QPen(QColor("#4a4438"), pw * 0.6));
+        for (const double y : {0.46, 0.56, 0.66}) p.drawLine(P(0.46, y), P(0.54, y + 0.04));
+    } else if (site == "arena") {  // a ring of fence with crossed swords and a banner
+        halo(P(0.5, 0.6), w * 0.36, QColor("#ff9a5a"));
+        p.setBrush(shine(QRectF(P(0.08, 0.5), P(0.92, 0.9)), QColor("#c8a868")));
+        p.drawEllipse(QRectF(P(0.08, 0.5), P(0.92, 0.9)));
+        p.setPen(inkPen(pw * 1.2, QColor("#4a3018")));
+        for (int i = 0; i < 9; ++i) {
+            const double a = M_PI * (0.05 + 0.9 * i / 8.0);
+            const QPointF base = P(0.5 - 0.42 * std::cos(a), 0.7 + 0.2 * std::sin(a));
+            p.drawLine(base, base - QPointF(0, h * 0.12));
+        }
+        p.drawLine(P(0.1, 0.62), P(0.9, 0.62));
+        p.setPen(inkPen(pw * 2.4));
+        p.drawLine(P(0.34, 0.2), P(0.66, 0.52));
+        p.drawLine(P(0.66, 0.2), P(0.34, 0.52));
+        p.setPen(QPen(QColor("#d8dce8"), pw * 1.3, Qt::SolidLine, Qt::RoundCap));
+        p.drawLine(P(0.34, 0.2), P(0.62, 0.48));
+        p.drawLine(P(0.66, 0.2), P(0.38, 0.48));
+        p.setPen(inkPen(pw));
+        p.setBrush(QColor("#d8a838"));
+        p.drawRect(QRectF(P(0.36, 0.42), P(0.42, 0.46)));
+        p.drawRect(QRectF(P(0.58, 0.42), P(0.64, 0.46)));
+    } else {  // learning stone: a standing stone with glowing runes
+        halo(P(0.5, 0.45), w * 0.36, QColor("#9aff9a"));
+        QPainterPath stoneShape;
+        stoneShape.moveTo(P(0.28, 0.86));
+        stoneShape.cubicTo(P(0.24, 0.5), P(0.3, 0.12), P(0.5, 0.1));
+        stoneShape.cubicTo(P(0.7, 0.12), P(0.76, 0.5), P(0.72, 0.86));
+        stoneShape.closeSubpath();
+        p.setBrush(shine(stoneShape.boundingRect(), QColor("#7a7a70")));
+        p.drawPath(stoneShape);
+        p.setPen(QPen(glowing ? QColor("#a8ffa0") : QColor("#4a4a40"), pw * 1.4, Qt::SolidLine, Qt::RoundCap));
+        p.drawPolyline(QPolygonF{P(0.44, 0.26), P(0.5, 0.34), P(0.56, 0.26)});
+        p.drawLine(P(0.5, 0.4), P(0.5, 0.56));
+        p.drawPolyline(QPolygonF{P(0.42, 0.62), P(0.5, 0.7), P(0.58, 0.62)});
+        p.drawLine(P(0.44, 0.48), P(0.56, 0.48));
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(90, 130, 60, 200));
+        p.drawEllipse(QRectF(P(0.2, 0.82), P(0.4, 0.9)));
+        p.drawEllipse(QRectF(P(0.6, 0.83), P(0.8, 0.9)));
+    }
+    p.restore();
+}
+
+const QPixmap& siteSprite(const QString& site, bool glowing, int size) {
+    return sprite(QStringLiteral("site|%1|%2").arg(site).arg(glowing), size, [&](QPainter& p, const QRectF& r) { drawSite(p, r, site, glowing); });
+}
+
+}  // namespace kot::client::art

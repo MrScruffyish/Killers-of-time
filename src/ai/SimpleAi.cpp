@@ -1,5 +1,6 @@
 #include "ai/SimpleAi.h"
 
+#include "core/rules/MapSites.h"
 #include "core/rules/Movement.h"
 
 #include <QJsonObject>
@@ -382,8 +383,14 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
                 add(m.pos, (m.resourceId == QStringLiteral("gold") ? 70 : 40) * m_p.mineValue);
         for (const MapDwelling& d : state.mapDwellings())
             if (view.visible(d.pos) && state.isHostile(d.owner, me) && !risky(d.pos)) add(d.pos, 35 * m_p.mineValue);
-        for (const MapObject& o : state.mapObjects())
-            if (view.visible(o.pos) && !risky(o.pos)) add(o.pos, (o.kind == MapObject::Kind::Artifact ? 65 : 30) * m_p.treasureValue);
+        for (const MapObject& o : state.mapObjects()) {
+            if (!view.visible(o.pos) || risky(o.pos)) continue;
+            if (o.kind == MapObject::Kind::Site) {  // only where this hero still gets something
+                if (siteGivesSomething(state, o, hero)) add(o.pos, 40 * m_p.treasureValue);
+                continue;
+            }
+            add(o.pos, (o.kind == MapObject::Kind::Artifact ? 65 : 30) * m_p.treasureValue);
+        }
     }
     // Explore: the nearest edges of the known world.
     const int w = state.map().width(), hgt = state.map().height();

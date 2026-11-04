@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "client/Art.h"
+#include "core/rules/MapSites.h"
 #include "core/content/ContentRegistry.h"
 #include "core/model/Entities.h"
 
@@ -263,6 +264,12 @@ QString MapView::describeTile(core::Pos t) const {
         if (d.pos == t) lines << tr("%1 dwelling (%2)").arg(unitName(d.unit), ownerName(d.owner));
     for (const ViewObject& o : m_view.objects) {
         if (o.pos != t) continue;
+        if (!o.site.isEmpty()) {
+            const bool gift = m_selectedHero ? o.giftFor.contains(m_selectedHero) : !o.giftFor.isEmpty();
+            lines << tr("%1: %2 %3").arg(core::siteName(o.site), core::siteDescription(o.site),
+                                         gift ? tr("(something for this hero)") : tr("(nothing more for this hero)"));
+            continue;
+        }
         if (o.artifact) {
             const core::ArtifactDef* a = m_content ? m_content->artifact(o.artifactId) : nullptr;
             lines << tr("Artifact: %1 (%2)").arg(a ? a->name : o.artifactId, a ? a->description : QString());
@@ -599,7 +606,8 @@ void MapView::paintEvent(QPaintEvent*) {
     for (const Walk& w : m_walks) objects.append(w.pickups);  // not reached yet on screen
     for (const ViewObject& o : objects) {
         if (!shown(o.pos)) continue;
-        if (o.artifact) put(o.pos, art::artifactSprite(m_tile));
+        if (!o.site.isEmpty()) put(o.pos, art::siteSprite(o.site, m_selectedHero ? o.giftFor.contains(m_selectedHero) : !o.giftFor.isEmpty(), m_tile));
+        else if (o.artifact) put(o.pos, art::artifactSprite(m_tile));
         else put(o.pos, art::chestSprite(o.resources.isEmpty() ? QColor("#d4a017") : resourceColor(o.resources.firstKey()), m_tile));
     }
     // Towns cover 2x2 tiles: the gate (their position) and the tiles right of it and above it.

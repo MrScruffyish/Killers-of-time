@@ -8,6 +8,7 @@
 #include <QSet>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/MapSites.h"
 #include "core/rules/Movement.h"
 #include "core/rules/TownRules.h"
 #include "core/rules/Trade.h"
@@ -254,10 +255,18 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
         if (!knows(m.pos)) continue;
         QJsonObject o;
         o.insert("id", id(m.id.value()));
-        o.insert("kind", m.kind == MapObject::Kind::Artifact ? "artifact" : "treasure");
+        o.insert("kind", m.kind == MapObject::Kind::Artifact ? "artifact" : m.kind == MapObject::Kind::Site ? "site" : "treasure");
         o.insert("x", m.pos.x);
         o.insert("y", m.pos.y);
         if (!m.artifact.isEmpty()) o.insert("artifact", m.artifact);
+        if (m.kind == MapObject::Kind::Site) {
+            o.insert("site", m.site);
+            // Which of your heroes would still get something here.
+            QJsonArray fresh;
+            for (const Hero& h : state.heroes())
+                if (h.owner == viewer && siteGivesSomething(state, m, h)) fresh.append(static_cast<int>(h.id.value()));
+            o.insert("giftFor", fresh);
+        }
         if (!m.resources.isEmpty()) o.insert("resources", intMap(m.resources));
         objects.append(o);
     }

@@ -24,6 +24,7 @@ add_library(kot_core STATIC
     rules/Pathfinding.cpp
     rules/Movement.h
     rules/Movement.cpp
+    rules/MapSites.cpp
     rules/MapGenerator.h
     rules/MapGenerator.cpp
     rules/Vision.h

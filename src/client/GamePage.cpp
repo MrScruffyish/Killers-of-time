@@ -36,6 +36,7 @@
 #include "client/Settings.h"
 #include "client/SpellBook.h"
 #include "client/Toast.h"
+#include "core/rules/MapSites.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
 #include "client/Sound.h"
@@ -353,6 +354,13 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
                                 .arg(a->name.toHtmlEscaped(), a->description.toHtmlEscaped(), where));
             }
             if (!found.isEmpty()) sound::play(sound::Effect::Bell);
+            if (info.contains("visitedSite")) {  // a place to visit: what the hero got
+                const QJsonObject v = info["visitedSite"].toObject();
+                const QString site = v["site"].toString();
+                Toast::show(this, art::siteSprite(site, true, 128),
+                            tr("<b style='color:#ffd84a; font-size:13pt'>%1</b><br>%2").arg(core::siteName(site), v["result"].toString().toHtmlEscaped()));
+                sound::play(sound::Effect::Spell);
+            }
         }
         using sound::Effect;
         if (p.type == net::msg::moveHero) sound::play(info["battleStarted"].toBool() ? Effect::Drums : Effect::Step);

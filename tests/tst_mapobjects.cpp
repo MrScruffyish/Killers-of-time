@@ -5,6 +5,7 @@
 #include "core/model/PlayerView.h"
 #include "core/rules/GameSetup.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/MapSites.h"
 #include "core/rules/Movement.h"
 
 using namespace kot::core;
@@ -115,6 +116,44 @@ private slots:
         QVERIFY(!equipArtifact(hero, reg, "ring_of_the_sages", "iron_sword", &why));  // not the same place
         QVERIFY(equipArtifact(hero, reg, "ring_of_the_sages", "travellers_ring"));
         QVERIFY(hero.artifacts.contains("ring_of_vigor") && hero.backpack == QStringList({"travellers_ring"}));
+    }
+
+    void sitesGiveEachHeroOnce() {
+        const HeroId h = createHero(gs, reg, p1, "H", "knight", {0, 0});
+        gs.hero(h)->movementPoints = 5000;
+        const auto site = [&](Pos pos, const QString& id) {
+            MapObject o;
+            o.kind = MapObject::Kind::Site;
+            o.pos = pos;
+            o.site = id;
+            return gs.addMapObject(o);
+        };
+        const MapObjectId arena = site({3, 0}, "arena");
+        const int att = gs.hero(h)->trait("attack"), def = gs.hero(h)->trait("defense");
+        MoveResult r = moveHero(gs, reg, h, {3, 0});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QCOMPARE(r.visitedSite, QString("arena"));
+        QCOMPARE(gs.hero(h)->trait("attack") + gs.hero(h)->trait("defense"), att + def + 1);
+        QVERIFY(gs.mapObjects().contains(arena));  // it stays
+        QVERIFY(!siteGivesSomething(gs, gs.mapObjects()[arena], *gs.hero(h)));
+        // The well: once a day.
+        const MapObjectId well = site({6, 0}, "magic_well");
+        gs.hero(h)->spellPoints = 0;
+        QVERIFY(moveHero(gs, reg, h, {6, 0}).ok);
+        QCOMPARE(gs.hero(h)->spellPoints, maxSpellPoints(*gs.hero(h)));
+        QVERIFY(!siteGivesSomething(gs, gs.mapObjects()[well], *gs.hero(h)));
+        gs.setDay(gs.day() + 1);
+        QVERIFY(siteGivesSomething(gs, gs.mapObjects()[well], *gs.hero(h)));
+        // The shrine teaches a spell; saved with who visited.
+        site({9, 0}, "shrine");
+        const qsizetype spells = gs.hero(h)->spells.size();
+        r = moveHero(gs, reg, h, {9, 0});
+        QVERIFY(r.siteResult.startsWith("learned"));
+        QCOMPARE(gs.hero(h)->spells.size(), spells + 1);
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QVERIFY(!siteGivesSomething(loaded, loaded.mapObjects()[arena], *loaded.hero(h)));
     }
 
     void objectsBlockTheWay() {
