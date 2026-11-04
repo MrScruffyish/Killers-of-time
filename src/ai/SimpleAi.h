@@ -11,14 +11,18 @@ namespace kot::ai {
 // The standard AI (simple but purposeful). Each turn, in this order:
 //  1. level-up picks that fit the hero's class (might or magic traits),
 //  2. units from captured map dwellings are sent to the closest town,
-//  3. build, then buy units in all towns (trading as needed),
-//  4. hire heroes while rich enough (more as the game goes on),
+//  3. hire heroes (more as the game goes on), first of all after losing the last
+//     one: without a hero the gold is saved for one,
+//  4. build, then buy units in all towns (trading as needed),
 //  5. heroes in an own town take the garrison along, unless the town is threatened,
 //  6. movement spells, then every hero goes for the best target (heroes with nothing
 //     left on their island buy a boat at a shipyard and sail to other shores):
 //     value / distance over defending a threatened town, picking up reinforcements,
 //     enemy and neutral things it can take (towns, mines, artifacts, treasures,
-//     dwellings, weaker armies; never into a clearly stronger army) and exploring,
+//     dwellings, weaker armies; never into a clearly stronger army) and exploring.
+//     A hero within a day's reach of a stronger enemy hero goes home instead and
+//     keeps away from him; an enemy town's secret garrison is guessed from its size
+//     and walls; where a hero was lost the AI only comes back much stronger,
 //  7. end turn.
 // It only looks at what its team can see (AiView) and uses its own seeded RNG.
 // Weights that make AI personalities (profiles "simple", "aggressive", "economic",
@@ -70,6 +74,16 @@ private:
     std::uint64_t m_lastTarget = 0;
     QSet<quint32> m_boatTried;                // heroes that bought a boat this turn
     QHash<quint32, QSet<core::Pos>> m_homeLand;  // the island a hero sailed from
+    // The last attack-like move: when that hero is gone afterwards, the strength he had
+    // is remembered for that place (kept across turns).
+    struct Attempt {
+        quint32 hero = 0;
+        core::Pos pos;
+        double strength = 0;
+    };
+    Attempt m_attempt;
+    QHash<core::Pos, double> m_lostAt;  // place -> the strongest army lost there
+    void checkAttempt(const core::GameState& state);
 };
 
 }  // namespace kot::ai

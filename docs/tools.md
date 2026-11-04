@@ -65,6 +65,19 @@ duels" plays the equal-cost duels for a tier. "Save" writes the changed numbers 
 `data/units/<id>.json` and `resources.json` (other fields are kept) and reloads, so the
 game's own data checks run again.
 
+## kot_aiplay: computer players against each other
+
+```
+kot_aiplay [--games 6] [--days 56] [--players 3] [--size 64] [--map continent|islands]
+           [--profiles simple,aggressive,...] [--races humans,undead,...] [--seed 1]
+```
+Plays whole games of AI players only on random maps (races rotate over the seats from
+game to game) and prints, averaged over the games at the end of each week, what each
+seat has: heroes, towns, army strength (all its armies, garrisons too), gold and heroes
+lost so far. Then wins, eliminations, days spent without a hero, and how heroes were
+lost (attacking a town, monsters or a hero, attacked, or fled). For judging AI changes:
+run it before and after.
+
 ## kot_mapgen: random scenarios
 
 ```

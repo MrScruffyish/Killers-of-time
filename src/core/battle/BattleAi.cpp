@@ -86,6 +86,22 @@ double rangedDanger(const Battle& b, int side) {
 
 }  // namespace
 
+bool chooseGiveUp(const Battle& b, int side, int gold, BattleAction* action) {
+    double strength[2] = {0, 0};
+    for (const BattleUnit& u : b.units())
+        if (u.alive() && !u.def->has(QStringLiteral("siege_engine"))) strength[u.side] += danger(u) * u.def->maxHp;
+    if (strength[1 - side] <= 3.0 * strength[side]) return false;
+    if (b.whyNoSurrender(side).isEmpty() && gold >= b.surrenderCost(side)) {
+        action->type = BattleAction::Type::Surrender;
+        return true;
+    }
+    if (b.whyNoRetreat(side).isEmpty()) {
+        action->type = BattleAction::Type::Retreat;
+        return true;
+    }
+    return false;
+}
+
 BattleAction chooseBattleAction(const Battle& b) {
     BattleAction a;
     const BattleUnit* me = b.activeUnit();

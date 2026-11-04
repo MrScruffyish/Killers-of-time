@@ -40,7 +40,10 @@ QStringList freeHeroTemplates(const GameState& state, const ContentRegistry& con
 }
 
 void refreshTavernOffers(GameState& state, const ContentRegistry& content, TownId onlyTown) {
-    QSet<QString> taken;  // offered in an earlier town of this draw
+    QSet<QString> taken;  // offered in an earlier town of this draw (or, for one town, in the others)
+    if (onlyTown.isValid())
+        for (const Town& town : state.towns())
+            if (town.id != onlyTown) taken.unite(QSet<QString>(town.tavernOffers.begin(), town.tavernOffers.end()));
     for (Town& town : state.towns()) {
         if (onlyTown.isValid() && town.id != onlyTown) continue;
         town.tavernOffers.clear();
@@ -106,6 +109,13 @@ HireResult hireHero(GameState& state, const ContentRegistry& content, TownId tow
     ok.ok = true;
     ok.hero = id;
     return ok;
+}
+
+void refillEmptyTaverns(GameState& state, const ContentRegistry& content) {
+    QList<TownId> empty;
+    for (const Town& t : state.towns())
+        if (t.tavernOffers.isEmpty() && hasTavern(t, content)) empty.append(t.id);
+    for (const TownId id : empty) refreshTavernOffers(state, content, id);
 }
 
 }  // namespace kot::core

@@ -105,7 +105,8 @@ private slots:
         auto s = startGame(21, races);
         QVERIFY(s->active());
         playDays(*s, 14);
-        QVERIFY(s->state().day() >= 15);  // an attack on the idle human can take an extra round
+        // An attack on the idle human can take an extra round, or end him (the AIs stop there).
+        QVERIFY(s->state().day() >= 15 || core::isEliminated(s->state(), s->playerOfClient(1)));
         for (const core::Player& p : s->state().players()) {
             if (p.controller != core::Player::Controller::Ai) continue;
             int buildings = 0;
@@ -191,6 +192,32 @@ private slots:
         int maps = 0;
         for (const quint64 seed : {31, 32, 33, 34, 35, 36}) maps += islandAwayDays(seed) > 0;
         QVERIFY2(maps >= 3, "AIs should take to the sea when their island is done");
+    }
+
+    // An AI whose heroes are all gone hires a new one before it spends on buildings.
+    void aiHiresAgainAfterLosingItsHeroes() {
+        auto s = startGame(5);
+        playDays(*s, 9);  // into the second week: the taverns hire out again
+        core::GameState& st = s->state();
+        core::PlayerId bot;
+        for (const core::Player& p : st.players())
+            if (p.controller == core::Player::Controller::Ai && !core::isEliminated(st, p.id)) bot = p.id;
+        QVERIFY(bot.isValid());
+        bool hasTown = false;
+        for (const core::Town& t : st.towns()) hasTown = hasTown || t.owner == bot;
+        if (!hasTown) QSKIP("the bot lost its towns on this seed");
+        QList<core::HeroId> gone;
+        for (const core::Hero& h : st.heroes())
+            if (h.owner == bot) gone << h.id;
+        for (const core::HeroId id : gone) {
+            st.armies().remove(st.hero(id)->army);
+            st.heroes().remove(id);
+        }
+        // The empty tavern fills up the next morning; then the gold is saved for a hero.
+        playDays(*s, 4);
+        int heroes = 0;
+        for (const core::Hero& h : st.heroes()) heroes += h.owner == bot;
+        QVERIFY2(heroes >= 1, "the AI should hire a hero again");
     }
 
     void deterministic() {

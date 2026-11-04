@@ -111,6 +111,24 @@ private slots:
         QCOMPARE(gs.player(p1)->resources.value("gold"), 1000 - std::min(cost, 1000));
     }
 
+    void beatenComputerSidesGiveUp() {
+        add("militia", 2);
+        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Ai, "humans", "#0000ff");
+        const HeroId enemy = createHero(gs, reg, p2, "E", "knight", {1, 0});
+        gs.army(gs.hero(enemy)->army)->addUnits("pikeman", 50, 10);
+        Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
+        BattleAction a;
+        QVERIFY(!chooseGiveUp(b, 1, 0, &a));  // the strong side fights on
+        QVERIFY(chooseGiveUp(b, 0, 0, &a));   // no gold: retreat
+        QCOMPARE(a.type, BattleAction::Type::Retreat);
+        QVERIFY(chooseGiveUp(b, 0, b.surrenderCost(0), &a));  // gold enough: surrender
+        QCOMPARE(a.type, BattleAction::Type::Surrender);
+        // Even sides fight.
+        add("pikeman", 50);
+        Battle even(gs, reg, mine(), gs.hero(enemy)->army, 1);
+        QVERIFY(!chooseGiveUp(even, 0, 100000, &a));
+    }
+
     void monstersDoNotTakeSurrender() {
         add("militia", 10);
         Battle b(gs, reg, mine(), monsters("pikeman", 5), 1);

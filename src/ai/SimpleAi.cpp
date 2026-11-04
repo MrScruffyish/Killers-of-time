@@ -11,6 +11,8 @@
 #include "core/content/ContentRegistry.h"
 #include "core/magic/Spells.h"
 #include "core/rules/Boats.h"
+#include "core/rules/Tavern.h"
+#include "core/rules/TownRules.h"
 #include "core/rules/Trade.h"
 #include "net/Protocol.h"
 
@@ -22,6 +24,7 @@ namespace {
 
 constexpr int kMaxMovesPerHero = 4;
 constexpr int kThreatRange = 8;        // enemies this close to a town are a threat
+constexpr int kHeroReach = 10;         // about how far an enemy hero gets in a day (and attacks)
 
 net::Message command(const QString& type, QJsonObject body = {}) {
     return net::Message{type, std::move(body), 0};
@@ -81,6 +84,15 @@ void SimpleAi::beginTurn(const GameState&, const ContentRegistry&, PlayerId) {
     m_failedTargets.clear();
     m_boatTried.clear();
     m_resting.clear();
+    m_attempt = {};  // checked within the turn it was made
+}
+
+void SimpleAi::checkAttempt(const GameState& state) {
+    if (!m_attempt.hero) return;
+    bool alive = false;
+    for (const Hero& h : state.heroes()) alive = alive || h.id.value() == m_attempt.hero;
+    if (!alive) m_lostAt[m_attempt.pos] = std::max(m_lostAt.value(m_attempt.pos), m_attempt.strength);
+    m_attempt = {};
 }
 
 void SimpleAi::commandDone(const net::Message& cmd, bool ok) {
@@ -94,6 +106,7 @@ void SimpleAi::commandDone(const net::Message& cmd, bool ok) {
 net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry& content, PlayerId me) {
     const Player* player = state.player(me);
     if (!player) return command(net::msg::endTurn);
+    checkAttempt(state);
 
     // 1. Level-up picks that fit the class.
     static const QStringList mightTraits = {"attack", "defense", "hit_points", "morale", "attack", "defense"};
@@ -113,32 +126,63 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
             if (d.owner == me && d.available > 0) return command(net::msg::sendDwellingUnits);
     }
 
-    // 3. Build, then buy units everywhere (unless saving up for a boat to leave the island).
+    // 3. Hire heroes: more as the game goes on. Below two heroes (one lost) right away,
+    //    before the gold goes on buildings and units; without any hero the gold is saved.
+    int heroes = 0;
+    for (const Hero& h : state.heroes()) heroes += (h.owner == me);
+    const int wanted = (state.day() < 14 ? 2 : state.day() < 28 ? 3 : 4) + m_p.extraHeroes;
+    const int heroCost = content.balance().economy.heroCost;
+    const int reserve = heroes < 2 ? 0 : 1000;
+    bool canHireSomewhere = false;
+    if (!m_hired && heroes < wanted) {
+        m_hired = true;
+        const Town* where = nullptr;
+        double bestGarrison = -1;
+        for (const Town& t : state.towns()) {
+            if (t.owner != me || t.tavernOffers.isEmpty() || t.lastHireWeek == (state.day() - 1) / 7 + 1) continue;
+            bool heroThere = false;
+            for (const Army& a : state.armies()) heroThere = heroThere || (a.pos == t.pos && a.hasHero());
+            if (heroThere) continue;
+            canHireSomewhere = true;
+            const Army* g = state.army(t.garrison);
+            const double strength = g ? armyStrength(state, content, *g) : 0;  // the new hero takes the garrison along
+            if (strength > bestGarrison) {
+                bestGarrison = strength;
+                where = &t;
+            }
+        }
+        if (where && player->resources.value("gold") >= heroCost + reserve) {
+            const QString offer = where->tavernOffers[m_rng.nextInt(0, static_cast<int>(where->tavernOffers.size()) - 1)];
+            return command(net::msg::hireHero, {{"town", toInt(where->id.value())}, {"hero", offer}});
+        }
+    }
+    // No tavern anywhere (auto-build goes for dwellings first): build one.
+    if (heroes < wanted && !m_built) {
+        bool tavern = false;
+        for (const Town& t : state.towns()) tavern = tavern || (t.owner == me && hasTavern(t, content));
+        if (!tavern) {
+            for (const BuildingDef& b : content.buildings()) {
+                bool isTavern = false;
+                for (const BuildingEffect& e : b.effects) isTavern = isTavern || e.type == BuildingEffect::Type::Tavern;
+                if (!isTavern) continue;
+                for (const Town& t : state.towns())
+                    if (t.owner == me && b.fitsRace(t.race) && whyCannotBuild(state, content, t.id, b.id, me, false).isEmpty()) {
+                        m_built = true;  // today's building in that town; buy units tomorrow
+                        return command(net::msg::build, {{"town", toInt(t.id.value())}, {"building", b.id}, {"useTrade", true}});
+                    }
+            }
+        }
+    }
+    const bool savingForHero = heroes == 0 && canHireSomewhere;
+
+    // 4. Build, then buy units everywhere (unless saving up for a boat to leave the
+    //    island, or for a hero).
     if (!m_built) {
         m_built = true;
         bool canPayBoat = true;
         const ResourceAmounts& boat = content.balance().economy.boatCost;
         for (auto it = boat.begin(); it != boat.end(); ++it) canPayBoat = canPayBoat && player->resources.value(it.key()) >= it.value();
-        if (!m_savingForBoat || canPayBoat) return command(net::msg::buildThenBuy, {{"useTrade", true}});
-    }
-
-    // 4. Hire heroes while rich enough.
-    if (!m_hired) {
-        m_hired = true;
-        int heroes = 0;
-        for (const Hero& h : state.heroes()) heroes += (h.owner == me);
-        const int wanted = (state.day() < 14 ? 2 : state.day() < 28 ? 3 : 4) + m_p.extraHeroes;
-        const int cost = content.balance().economy.heroCost;
-        if (heroes < wanted && player->resources.value("gold") >= cost + 1000) {
-            for (const Town& t : state.towns()) {
-                if (t.owner != me || t.tavernOffers.isEmpty() || t.lastHireWeek == (state.day() - 1) / 7 + 1) continue;
-                bool heroThere = false;
-                for (const Army& a : state.armies()) heroThere = heroThere || (a.pos == t.pos && a.hasHero());
-                if (heroThere) continue;
-                const QString offer = t.tavernOffers[m_rng.nextInt(0, static_cast<int>(t.tavernOffers.size()) - 1)];
-                return command(net::msg::hireHero, {{"town", toInt(t.id.value())}, {"hero", offer}});
-            }
-        }
+        if ((!m_savingForBoat || canPayBoat) && !savingForHero) return command(net::msg::buildThenBuy, {{"useTrade", true}});
     }
 
     // 5. Heroes in an own, unthreatened town take the garrison along (one stack per command).
@@ -340,30 +384,50 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
 
     QSet<ArmyId> garrisons;
     for (const Town& t : state.towns()) garrisons.insert(t.garrison);
+    // Where a hero of ours was lost: only come back clearly stronger.
+    const auto lostThere = [&](Pos p) { return m_lostAt.contains(p) && myStrength < 1.6 * m_lostAt.value(p); };
+    QSet<Pos> hostile;  // targets that mean a fight
     // Visible hostile armies: dangerous ones are avoided, weaker ones are prey.
+    // Monsters are measured a little more carefully (they can shoot, the sum cannot tell).
     QList<const Army*> dangers;
+    QList<const Army*> hunters;  // stronger enemy heroes: they walk a day's reach and attack
     for (const Army& a : state.armies()) {
         if (garrisons.contains(a.id) || !view.visible(a.pos) || !state.isHostile(a.owner, me)) continue;
         const double theirs = armyStrength(state, content, a);
-        if (myStrength > m_p.attackMargin * theirs && army->totalUnits() > 0) add(a.pos, (a.hasHero() ? 80 : 30) * m_p.armyValue);
-        else if (theirs > myStrength) dangers.append(&a);
+        const double margin = a.hasHero() ? m_p.attackMargin : m_p.attackMargin + 0.2;
+        if (myStrength > margin * theirs && army->totalUnits() > 0 && !lostThere(a.pos)) {
+            add(a.pos, (a.hasHero() ? 80 : 30) * m_p.armyValue);
+            hostile.insert(a.pos);
+        } else if (theirs > myStrength) {
+            dangers.append(&a);
+            if (a.hasHero() && theirs > 1.2 * myStrength) hunters.append(&a);
+        }
     }
-    // Inside a strong army's zone of control it would attack us.
+    // Inside a strong army's zone of control it would attack us; a stronger hero
+    // reaches further.
     const int zone = zoneOfControlRadius(hero, content);
     const auto risky = [&](Pos p) {
         for (const Army* d : dangers)
             if (distance(d->pos, p) <= zone) return true;
+        for (const Army* d : hunters)
+            if (distance(d->pos, p) <= kHeroReach) return true;
         return false;
     };
+    const Town* ownTownHere = nullptr;
+    for (const Town& t : state.towns())
+        if (t.owner == me && t.pos == army->pos) ownTownHere = &t;
 
     // Own towns: defend when threatened, collect reinforcements when worth it.
+    bool hunted = false;  // a stronger enemy hero can reach us: go home
+    for (const Army* d : hunters) hunted = hunted || distance(d->pos, army->pos) <= kHeroReach;
+    if (hunted && ownTownHere) return {};  // stay in town, with the garrison
     for (const Town& t : state.towns()) {
         if (t.owner != me) continue;
         bool threat = false;
         for (const Army* d : dangers) threat = threat || (d->hasHero() && distance(d->pos, t.pos) <= kThreatRange);
-        if (threat) {
+        if (threat || hunted) {
             if (army->pos == t.pos) return {};  // stay and defend
-            add(t.pos, 150);
+            add(t.pos, hunted ? 400 : 150);
             continue;
         }
         const Army* g = state.army(t.garrison);
@@ -371,12 +435,35 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         if (g && army->totalUnits() > 0 && armyStrength(state, content, *g) >= myStrength) add(t.pos, 60);
         else if (g && army->totalUnits() == 0 && g->totalUnits() > 0) add(t.pos, 200);  // an empty hero gets an army
     }
-    if (army->totalUnits() > 0) {
+    if (army->totalUnits() > 0 && !hunted) {
+        // An enemy town's garrison is secret; what anyone sees is its size and walls.
+        // Guess it from our own: a rival about as far along keeps about as much at home.
+        double ownTotal = 0;
+        int ownLargest = 1;
+        for (const Army& a : state.armies())
+            if (a.owner == me) ownTotal += armyStrength(state, content, a);
+        for (const Town& t : state.towns())
+            if (t.owner == me) ownLargest = std::max(ownLargest, static_cast<int>(t.buildings.size()));
+        const auto walls = [&](const Town& t) {
+            int n = 0;
+            for (const QString& b : t.buildings)
+                if (const BuildingDef* def = content.building(b))
+                    for (const BuildingEffect& e : def->effects) n += e.type == BuildingEffect::Type::Defense;
+            return n;
+        };
         for (const Town& t : state.towns()) {
-            if (!view.visible(t.pos) || !state.isHostile(t.owner, me) || risky(t.pos)) continue;
-            // The garrison is secret: only strong heroes try.
-            if (myStrength > (2500 + 100 * state.day()) / m_p.townValue) add(t.pos, 120 * m_p.townValue);
-            else if (!t.owner.isValid() && myStrength > 1500) add(t.pos, 90 * m_p.townValue);
+            if (!view.visible(t.pos) || !state.isHostile(t.owner, me) || risky(t.pos) || lostThere(t.pos)) continue;
+            if (t.owner.isValid()) {
+                const double size = std::min(1.5, double(t.buildings.size()) / ownLargest);
+                const double guess = std::max(2500.0 + 100 * state.day(), 0.6 * ownTotal * size) * (1.0 + 0.25 * walls(t));
+                if (myStrength > guess / m_p.townValue) {
+                    add(t.pos, 120 * m_p.townValue);
+                    hostile.insert(t.pos);
+                }
+            } else if (myStrength > 1500) {
+                add(t.pos, 90 * m_p.townValue);
+                hostile.insert(t.pos);
+            }
         }
         for (const Mine& m : state.mines())
             if (view.visible(m.pos) && state.isHostile(m.owner, me) && !risky(m.pos))
@@ -419,6 +506,7 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         for (const Target& t : targets)
             if (t.pos == *hero.destination) {
                 m_lastTarget = key(hid, t.pos);
+                if (hostile.contains(t.pos)) m_attempt = {hid, t.pos, myStrength};
                 return command(net::msg::moveHero, {{"hero", toInt(hid)}, {"x", t.pos.x}, {"y", t.pos.y}});
             }
     }
@@ -436,6 +524,7 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         if (scores[i] >= best * 0.9) good.append(i);
     const Target& pick = targets[good[m_rng.nextInt(0, static_cast<int>(good.size()) - 1)]];
     m_lastTarget = key(hid, pick.pos);
+    if (hostile.contains(pick.pos)) m_attempt = {hid, pick.pos, myStrength};
     return command(net::msg::moveHero, {{"hero", toInt(hid)}, {"x", pick.pos.x}, {"y", pick.pos.y}});
 }
 

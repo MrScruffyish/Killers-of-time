@@ -372,15 +372,27 @@ void GameSession::runBattles() {
         while (!b.isOver() && !humanControls(b.activeUnit()->side)) {
             // The computer's actions are kept, so the human sees them happen.
             QList<BattleEvent> ev;
-            b.act(chooseBattleAction(b), &ev);
+            // A computer player gives up a lost battle to save its hero (not the
+            // monsters, not a human's "auto").
+            BattleAction action = chooseBattleAction(b);
+            const int side = b.activeUnit()->side;
+            const Player* owner = m_state.player(b.owner(side));
+            if (owner && owner->controller == Player::Controller::Ai) {
+                BattleAction giveUp;
+                if (chooseGiveUp(b, side, owner->resources.value(QStringLiteral("gold")), &giveUp)) action = giveUp;
+            }
+            b.act(action, &ev);
             for (const BattleEvent& e : ev)
                 if (m_aiEvents.size() < 60) m_aiEvents.append(battleEventToJson(e));
         }
         if (!b.isOver()) return;  // a human's turn in the battle
 
+        bool townDefended = false;
+        for (const Town& t : m_state.towns()) townDefended = townDefended || t.garrison == ab.attack.defenders[ab.defenderIndex];
         const BattleReport report = applyBattleResult(m_state, m_content, b);
         ab.result.battles.append(report);
         recordBattle(report);
+        if (m_battleObserver) m_battleObserver(report, townDefended);
         ab.battle.reset();
         const bool won = report.attackerWon();
         if (won && ab.defenderIndex + 1 < ab.attack.defenders.size() && m_state.army(ab.attack.army)) {

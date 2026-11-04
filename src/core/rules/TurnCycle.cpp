@@ -94,6 +94,8 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
                 applyWeeklyGrowth(state, content);
                 refreshTavernOffers(state, content);
                 recordWeekStats(state, content);
+            } else {
+                refillEmptyTaverns(state, content);
             }
         }
         if (!isEliminated(state, state.turnOrder()[next])) break;

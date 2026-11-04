@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QSet>
 #include <QString>
+#include <functional>
 #include <memory>
 
 #include "ai/IAiPlayer.h"
@@ -68,6 +69,13 @@ public:
     bool battleRunning() const { return m_battle != nullptr; }
 
     QJsonObject viewFor(core::PlayerId player) const;
+    // Plays the turns of AI players (and players who left) until a human is next, at
+    // most one full round. A game of AIs only (tools) is advanced by calling it again.
+    void playAutoTurns();
+    // Called after every battle (tools that watch AI games): the report, and whether the
+    // defender was a town's garrison.
+    using BattleObserver = std::function<void(const core::BattleReport& report, bool townDefended)>;
+    void setBattleObserver(BattleObserver observer) { m_battleObserver = std::move(observer); }
     QJsonObject youInfo(core::PlayerId player) const;
 
 private:
@@ -89,8 +97,6 @@ private:
     QJsonObject moveInfo(const core::MoveResult& move) const;
     void recordBattle(const core::BattleReport& report);
     void afterCommand();
-    // Plays the turns of AI players (and players who left) until a human is next.
-    void playAutoTurns();
     void playAiTurn(core::PlayerId player, ai::IAiPlayer& ai);
     bool isAuto(core::PlayerId p) const { return m_autoPlayers.contains(p); }
 
@@ -105,6 +111,7 @@ private:
     int m_battleCounter = 0;
     QHash<core::PlayerId, QJsonObject> m_lastBattle;  // per participant: {id, report}
     QString m_campaignDir;
+    BattleObserver m_battleObserver;
     QJsonArray m_aiEvents;
     // Monsters waiting for the player's answer to their offer to join.
     struct JoinOffer {
