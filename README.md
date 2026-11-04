@@ -37,6 +37,21 @@ ctest --test-dir build --output-on-failure
 
 Log filtering example: `QT_LOGGING_RULES="kot.*.debug=true" ./build/bin/kot_server`
 
+## Build for playing
+
+The Debug build above is for development and tests; it plays slowly. For playing, use an
+optimized build that still has debug info (so crash reports show function names and lines):
+
+```
+cmake -S . -B build-play -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo   # once
+cmake --build build-play                                            # after every change
+./build-play/bin/kot_client
+```
+
+While playing at the same time, `nice -n 19 cmake --build build-play -j2` builds without making
+the game sluggish. Saves (`~/.local/share/kot_server/saves`), settings and the crash log are
+shared by all builds.
+
 ## Playing
 
 Build everything, then run `kot_client` (from `<build dir>/bin`, so it finds `kot_server` and the
@@ -50,9 +65,8 @@ Other players join with the server address. Right-click your town on the map to 
 - **Sound**: the checkbox on the start screen or the Game menu. Off closes the audio output;
   `kot_client --no-sound` (or `KOT_NO_SOUND=1`) never opens it.
 - **Crashes**: the client prints a backtrace and appends it to
-  `~/.local/share/KillersOfTime/crash.log`; please send that file. Use a **Debug** build (Qt Creator:
-  the Debug build configuration, or the command line above) so it shows function names and lines;
-  for a full stack, `coredumpctl gdb kot_client` and then `bt`.
+  `~/.local/share/KillersOfTime/crash.log`; please send that file. Use `build-play` or a Debug build (not
+  `build-release`) so it shows function names and lines; for a full stack, `coredumpctl gdb kot_client` and then `bt`.
 
 ## Layout
 
@@ -63,8 +77,9 @@ src/ai      AI players
 src/server  headless server executable
 src/client  Qt Widgets client executable
 tests/      Qt Test unit tests
-data/       game content (JSON), later
-docs/       protocol and data format docs, later
+src/tools   content tools (kot_graph, kot_balance, kot_mapgen, kot_aiplay, ...)
+data/       game content (JSON)
+docs/       protocol, data, save format and tools docs
 ```
 
 ## Install and packages
@@ -82,18 +97,5 @@ its map editor appear in the desktop menu.
 ## Content tools
 
 `kot_graph` (structure graphs and checks), `kot_balance` / `kot_balance_gui` (balance numbers,
-tweaking), `kot_mapgen` (random scenarios) and `kot_editor` (map, scenario and campaign
-making); see `docs/tools.md`.
-
-## Commit messages
-
-Each delivery from Claude includes `COMMIT_MSG.txt` (ignored by git). One-time setup,
-run in the repo root:
-
-```
-git config commit.template COMMIT_MSG.txt
-```
-
-After that a plain `git commit` opens the editor pre-filled with the message
-(save and close to commit). Or skip the editor with `git commit -F COMMIT_MSG.txt`.
-New files must be added first: `git add -A`.
+tweaking), `kot_aiplay` (computer players against each other, to judge the AI), `kot_mapgen`
+(random scenarios) and `kot_editor` (map, scenario and campaign making); see `docs/tools.md`.
