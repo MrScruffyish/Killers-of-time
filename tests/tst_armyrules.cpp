@@ -91,7 +91,13 @@ private slots:
         const ArmyId enemy = gs.addArmy(p2, {2, 2});
         QVERIFY(moveUnits(gs, a, enemy, 0, 1).error.contains("different players"));
         const ArmyId far = gs.addArmy(p1, {7, 7});
-        QVERIFY(moveUnits(gs, a, far, 0, 1).error.contains("not on the same tile"));
+        QVERIFY(moveUnits(gs, a, far, 0, 1).error.contains("do not meet"));
+        // Two armies side by side only meet when both have a hero.
+        const ArmyId next = gs.addArmy(p1, {3, 2});
+        QVERIFY(!moveUnits(gs, a, next, 0, 1).ok);
+        gs.army(a)->hero = HeroId(1);
+        gs.army(next)->hero = HeroId(2);
+        QVERIFY(moveUnits(gs, a, next, 0, 1).ok);
         const ArmyId neutral = gs.addArmy(PlayerId(), {2, 2});
         QVERIFY(!moveUnits(gs, neutral, a, 0, 1).ok);
     }

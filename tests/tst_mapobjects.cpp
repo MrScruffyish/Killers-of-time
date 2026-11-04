@@ -3,6 +3,7 @@
 
 #include "core/content/ContentRegistry.h"
 #include "core/model/PlayerView.h"
+#include "core/rules/ArmyRules.h"
 #include "core/rules/GameSetup.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/MapSites.h"
@@ -104,6 +105,30 @@ private slots:
         QStringList errors;
         QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
         QCOMPARE(loaded.hero(h)->backpack.size(), 2);
+    }
+
+    void heroesSideBySideSwapArtifactsAndUnits() {
+        const HeroId a = createHero(gs, reg, p1, "A", "knight", {5, 5});
+        const HeroId b = createHero(gs, reg, p1, "B", "knight", {6, 6});  // diagonal neighbour
+        const int attack = gs.hero(b)->trait("attack");
+        QVERIFY(takeArtifact(*gs.hero(a), reg, "iron_sword"));  // worn
+        QString why;
+        QVERIFY2(giveArtifact(gs, reg, a, b, "iron_sword", &why), qPrintable(why));
+        QVERIFY(gs.hero(a)->artifacts.isEmpty());
+        QCOMPARE(gs.hero(b)->artifacts, QStringList({"iron_sword"}));  // worn by the other, with its bonus
+        QCOMPARE(gs.hero(b)->trait("attack"), attack + 2);
+        QVERIFY(!giveArtifact(gs, reg, a, b, "iron_sword", &why));  // a has none any more
+        // Units too.
+        gs.army(gs.hero(a)->army)->addUnits("militia", 5, 6);
+        QVERIFY(moveUnits(gs, gs.hero(a)->army, gs.hero(b)->army, 0, 5).ok);
+        // Not when they stand apart, nor with someone else's hero.
+        gs.army(gs.hero(b)->army)->pos = {8, 6};
+        QVERIFY(!giveArtifact(gs, reg, b, a, "iron_sword", &why));
+        QVERIFY(why.contains("side by side"));
+        QVERIFY(!moveUnits(gs, gs.hero(b)->army, gs.hero(a)->army, 0, 1).ok);
+        const HeroId enemy = createHero(gs, reg, p2, "E", "knight", {7, 6});
+        QVERIFY(!giveArtifact(gs, reg, b, enemy, "iron_sword", &why));
+        QVERIFY(why.contains("different players"));
     }
 
     void twoRingsAreWorn() {

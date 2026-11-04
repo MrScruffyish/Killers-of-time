@@ -48,6 +48,7 @@ QString HelpDialog::helpHtml() {
     h += row(tr("Click the goal again, or double-click"), tr("Walk there"));
     h += row(tr("Right-click"), tr("What is there (your own town: open it)"));
     h += row(tr("Shift-click"), tr("Open your town"));
+    h += row(tr("Click your hero next to the selected one"), tr("The two heroes meet: swap units and artifacts"));
     h += row(tr("Drag"), tr("Move the map; the small map also moves it"));
     h += QStringLiteral("</table>");
 

@@ -27,6 +27,7 @@
 #include "client/EquipmentView.h"
 #include "client/Toast.h"
 #include "client/GameOverDialog.h"
+#include "client/MeetDialog.h"
 #include "core/content/ContentRegistry.h"
 #include "net/LobbyClient.h"
 #include "server/GameServer.h"
@@ -286,6 +287,36 @@ private slots:
             for (int i = 0; i < classes.size(); ++i) hp.drawPixmap(i * 100, 0, art::heroSprite(QColor("#d62728"), false, 100, classes[i].id));
             hp.end();
             if (!dir.isEmpty()) heroes.save(QDir(dir).filePath("0_heroes.png"));
+        }
+        // Two heroes meet (0_meet.png): a stack and an artifact go across.
+        {
+            GameView v;
+            v.you = v.currentPlayer = 1;
+            v.players = {ViewPlayer{1, "Ann", 1, "#d62728", "humans", false, true}};
+            ViewHero a;
+            a.id = 10; a.name = "Arthur"; a.classId = "knight"; a.owner = 1; a.level = 4; a.pos = {5, 5}; a.army = 20; a.own = true;
+            a.artifacts = {"iron_sword"}; a.backpack = {"ring_of_vigor"};
+            ViewHero b = a;
+            b.id = 11; b.name = "Elaine"; b.classId = "wizard"; b.pos = {6, 5}; b.army = 21; b.artifacts.clear(); b.backpack.clear();
+            v.heroes = {a, b};
+            v.armies = {ViewArmy{20, 1, 10, {5, 5}, {ViewStack{"pikeman", 12, 120, 10, 1}, ViewStack{"archer", 8, 80, 10, 0}}},
+                        ViewArmy{21, 1, 11, {6, 5}, {ViewStack{"militia", 20, 120, 6, 0}}}};
+            MeetDialog meet(&reg, nullptr);
+            QSignalSpy sent(&meet, &MeetDialog::commandRequested);
+            meet.showMeeting(v, 10, 11);
+            QVERIFY(meet.isVisible());
+            QApplication::processEvents();
+            if (!dir.isEmpty()) meet.grab().save(QDir(dir).filePath("0_meet.png"));
+            meet.findChild<QPushButton*>("meetGive_20_1")->click();
+            QCOMPARE(sent.size(), 1);
+            QCOMPARE(sent[0][0].toString(), QString("move_units"));
+            QCOMPARE(sent[0][1].toJsonObject().value("to").toInt(), 21);
+            meet.findChild<QPushButton*>("meetArtifact_10_ring_of_vigor")->click();
+            QCOMPARE(sent[1][0].toString(), QString("give_artifact"));
+            // Apart: the window closes.
+            v.heroes[1].pos = {9, 5};
+            meet.refresh(v);
+            QVERIFY(!meet.isVisible());
         }
         // The end screen with a made-up history (0_gameover.png).
         {

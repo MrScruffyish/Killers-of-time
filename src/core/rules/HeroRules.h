@@ -39,6 +39,12 @@ bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& ar
 // Takes a worn artifact off into the backpack.
 bool unequipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId, QString* error = nullptr);
 
+// Two of a player's heroes who meet (ArmyRules armiesMeet: side by side): one gives
+// an artifact (worn or carried) to the other, who wears it when its slot has room,
+// else carries it.
+bool giveArtifact(GameState& state, const ContentRegistry& content, HeroId from, HeroId to, const QString& artifactId,
+                  QString* error = nullptr);
+
 // Daily recovery: + "spell_recovery" spell points, capped at the maximum.
 // Returns the spell points actually regained.
 int regenSpellPoints(Hero& hero);

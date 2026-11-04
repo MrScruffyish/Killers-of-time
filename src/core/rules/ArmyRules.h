@@ -13,9 +13,13 @@ struct ActionResult {
     QString error;
 };
 
+// Two armies that can swap units and artifacts: the same tile (a hero in his town
+// with its garrison), or two heroes side by side (diagonals too).
+bool armiesMeet(const Army& a, const Army& b);
+
 // Moves `count` units of stack `stackIndex` from one army to another. Both armies
-// must have the same owner and stand on the same tile (a hero meeting his town
-// garrison, two heroes side by side). Units join an existing stack of the same
+// must have the same owner and meet (armiesMeet: a hero with his town garrison, two
+// heroes side by side). Units join an existing stack of the same
 // type or take a free slot (kMaxArmyStacks). Moving a whole stack keeps its wounds; moving
 // part of a stack moves fresh units and the rest keeps the wounds.
 ActionResult moveUnits(GameState& state, ArmyId from, ArmyId to, int stackIndex, int count);

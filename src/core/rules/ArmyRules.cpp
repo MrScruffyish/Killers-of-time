@@ -15,6 +15,11 @@ ActionResult fail(const QString& message) {
 }
 }  // namespace
 
+bool armiesMeet(const Army& a, const Army& b) {
+    if (a.pos == b.pos) return true;
+    return a.hasHero() && b.hasHero() && std::max(std::abs(a.pos.x - b.pos.x), std::abs(a.pos.y - b.pos.y)) == 1;
+}
+
 ActionResult moveUnits(GameState& state, ArmyId fromId, ArmyId toId, int stackIndex, int count) {
     Army* from = state.army(fromId);
     Army* to = state.army(toId);
@@ -22,7 +27,7 @@ ActionResult moveUnits(GameState& state, ArmyId fromId, ArmyId toId, int stackIn
     if (from == to) return fail(QStringLiteral("source and target are the same army"));
     if (!from->owner.isValid() || from->owner != to->owner)
         return fail(QStringLiteral("armies belong to different players"));
-    if (from->pos != to->pos) return fail(QStringLiteral("armies are not on the same tile"));
+    if (!armiesMeet(*from, *to)) return fail(QStringLiteral("the armies do not meet (same tile, or two heroes side by side)"));
     if (stackIndex < 0 || stackIndex >= from->stacks.size())
         return fail(QStringLiteral("no such stack"));
 

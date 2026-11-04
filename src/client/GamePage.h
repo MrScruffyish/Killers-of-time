@@ -39,6 +39,7 @@ public:
     MapView* mapView() const { return m_map; }
     BattleView* battleView() const { return m_battleView; }
     HeroDialog* heroDialog() const { return m_heroDialog; }
+    class MeetDialog* meetDialog() const { return m_meetDialog; }
     TownDialog* townDialog() const { return m_townDialog; }
     QString logText() const;
 
@@ -100,6 +101,7 @@ private:
     QStackedWidget* m_centre;
     MapView* m_map;
     HeroDialog* m_heroDialog;
+    class MeetDialog* m_meetDialog = nullptr;
     MiniMap* m_miniMap;
     QLabel* m_players;  // who is who: a coloured mark per player
     // What each player (several in hot-seat) remembers of places out of sight.

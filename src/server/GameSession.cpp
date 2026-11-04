@@ -699,6 +699,16 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
                                                            : unequipArtifact(*h, m_content, artifact, &why);
         return ok ? success() : failure("failed", why);
     }
+    if (cmd.type == net::msg::giveArtifact) {
+        const HeroId from(id32("from")), to(id32("to"));
+        const QString artifact = r.requireString("artifact");
+        r.finish();
+        if (!r.ok()) return bad();
+        const Hero* h = m_state.hero(from);
+        if (!h || h->owner != player) return failure("failed", "that is not your hero");
+        QString why;
+        return giveArtifact(m_state, m_content, from, to, artifact, &why) ? success() : failure("failed", why);
+    }
     if (cmd.type == net::msg::pickTrait) {
         const HeroId hero(id32("hero"));
         const QString trait = r.requireString("trait");

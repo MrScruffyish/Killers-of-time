@@ -34,6 +34,7 @@ inline const QString answerJoin = QStringLiteral("answer_join");  // accept / fi
 inline const QString pickTrait = QStringLiteral("pick_trait");
 inline const QString equipArtifact = QStringLiteral("equip_artifact");      // wear one from the backpack
 inline const QString unequipArtifact = QStringLiteral("unequip_artifact");  // take one off into the backpack
+inline const QString giveArtifact = QStringLiteral("give_artifact");        // to a hero side by side
 inline const QString buyAllUnits = QStringLiteral("buy_all_units");
 inline const QString autoBuild = QStringLiteral("auto_build");
 inline const QString buildThenBuy = QStringLiteral("build_then_buy");

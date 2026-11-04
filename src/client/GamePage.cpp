@@ -30,6 +30,7 @@
 #include "client/BattleResultDialog.h"
 #include "client/BattleView.h"
 #include "client/HelpDialog.h"
+#include "client/MeetDialog.h"
 #include "client/Art.h"
 #include "client/MapView.h"
 #include "client/MarketDialog.h"
@@ -122,6 +123,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
     });
     connect(m_heroDialog, &HeroDialog::commandRequested, this,
+            [this](const QString& type, const QJsonObject& body, const QString& what) { send(type, body, what); });
+    m_meetDialog = new MeetDialog(content, this);
+    connect(m_meetDialog, &MeetDialog::commandRequested, this,
             [this](const QString& type, const QJsonObject& body, const QString& what) { send(type, body, what); });
     m_castSpell = new QPushButton(tr("Cast spell..."), this);
     m_castSpell->setObjectName("castAdventureSpellButton");
@@ -515,6 +519,7 @@ void GamePage::onViewChanged() {
     m_townDialog->refresh(m_view);
     if (m_market && m_market->isVisible()) m_market->setView(m_view);
     m_heroDialog->refresh(m_view);
+    m_meetDialog->refresh(m_view);
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) {
         log(tr("Day %1: your turn.").arg(m_view.day));
         const int weekDay = (m_view.day - 1) % 7 + 1;
@@ -951,6 +956,10 @@ void GamePage::selectHero(int id) {
 void GamePage::onTileClicked(core::Pos tile) {
     const ViewHero* at = m_view.heroAt(tile);
     if (at && at->owner == m_view.you) {
+        // Your other hero right next to the selected one: they meet (swap units and artifacts).
+        const ViewHero* sel = m_view.hero(m_selectedHero);
+        if (sel && sel->id != at->id && std::max(std::abs(sel->pos.x - at->pos.x), std::abs(sel->pos.y - at->pos.y)) == 1)
+            return m_meetDialog->showMeeting(m_view, sel->id, at->id);
         selectHero(at->id);
         return;
     }

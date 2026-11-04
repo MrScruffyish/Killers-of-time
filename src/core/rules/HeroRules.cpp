@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/ArmyRules.h"
 #include "core/rules/Movement.h"
 
 namespace kot::core {
@@ -159,6 +160,33 @@ bool unequipArtifact(Hero& hero, const ContentRegistry& content, const QString& 
     hero.artifacts.removeOne(artifactId);
     hero.backpack.append(artifactId);
     applyBonus(hero, *a, -1);
+    return true;
+}
+
+bool giveArtifact(GameState& state, const ContentRegistry& content, HeroId fromId, HeroId toId, const QString& artifactId,
+                  QString* error) {
+    Hero* from = state.hero(fromId);
+    Hero* to = state.hero(toId);
+    if (!from || !to || from == to) {
+        setError(error, QStringLiteral("two different heroes are needed"));
+        return false;
+    }
+    if (from->owner != to->owner) {
+        setError(error, QStringLiteral("the heroes belong to different players"));
+        return false;
+    }
+    const Army* a = state.army(from->army);
+    const Army* b = state.army(to->army);
+    if (!a || !b || !armiesMeet(*a, *b)) {
+        setError(error, QStringLiteral("the heroes must stand side by side"));
+        return false;
+    }
+    if (from->artifacts.contains(artifactId) && !unequipArtifact(*from, content, artifactId, error)) return false;
+    if (!from->backpack.removeOne(artifactId)) {
+        setError(error, QStringLiteral("the hero does not have that artifact"));
+        return false;
+    }
+    takeArtifact(*to, content, artifactId);
     return true;
 }
 

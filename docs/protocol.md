@@ -102,10 +102,11 @@ When the game is over every command is refused with code `game_over`.
 | `hire_hero` | `town`, `hero` (template id), `useTrade`? | `hero` (id); a tavern hires out one hero a week (own towns in the view: `hiredThisWeek`) |
 | `trade` | `give`, `amount`, `get` | |
 | `answer_join` | `answer`: `accept`, `fight` or `leave` | answers a `joinOffer` from the last `move_hero`: `joined`, `left`, or (fight) the attack like `move_hero` (`battleStarted`, ...). Any other command drops the offer |
-| `move_units` | `from`, `to`, `stack`, `count`; or `all: true` instead of `stack`/`count` (every stack that fits) | with `all`: `moved` (units), `left` (units that did not fit) |
+| `move_units` | `from`, `to`, `stack`, `count`; or `all: true` instead of `stack`/`count` (every stack that fits). The armies are on one tile (hero and garrison) or are two heroes side by side | with `all`: `moved` (units), `left` (units that did not fit) |
 | `pick_trait` | `hero`, `trait` | |
 | `equip_artifact` | `hero`, `artifact`, `replace`? | wears one from the backpack; when its place is full, `replace` (worn there) or else the first worn there goes to the backpack |
 | `unequip_artifact` | `hero`, `artifact` | takes a worn one off into the backpack |
+| `give_artifact` | `from`, `to` (heroes), `artifact` | two of your heroes side by side: the artifact (worn or carried) goes to the other, worn when its place has room |
 | `cast_spell` | `hero`, `spell` | an adventure-map spell (costs spell points) |
 | `buy_boat` | `hero` | in a town with a shipyard: the hero boards a boat on the water next to it; `move_hero` then sails, and moving onto the shore lands (`landed`, ends the day's movement) |
 | `buy_all_units` | `town`?, `strategy`? (`best`/`most`), `useTrade`? | `unitsBought`, `townsServed`, `spent` |
