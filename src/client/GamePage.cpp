@@ -29,6 +29,7 @@
 
 #include "client/BattleResultDialog.h"
 #include "client/BattleView.h"
+#include "client/HelpDialog.h"
 #include "client/Art.h"
 #include "client/MapView.h"
 #include "client/MarketDialog.h"
@@ -180,6 +181,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     mute->setChecked(!sound::muted());
     connect(mute, &QAction::toggled, this, [](bool on) { sound::setMuted(!on); });
     connect(menu, &QMenu::aboutToShow, this, [mute]() { mute->setChecked(!sound::muted()); });
+    QAction* help = menu->addAction(tr("Help\tF1"));
+    help->setObjectName("helpAction");
+    connect(help, &QAction::triggered, this, [this]() { showHelp(); });
     menu->addSeparator();
     QAction* where = menu->addAction(tr("Settings are saved in %1").arg(settingsFile()));
     where->setEnabled(false);
@@ -259,6 +263,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     shortcut("-", [this]() { m_map->zoomStep(-1); });
     shortcut("Enter", [this]() { goAlongRoute(); });
     shortcut("M", [this]() { openMarket(); });
+    shortcut("F1", [this]() { showHelp(); });
     shortcut("H", [this]() {
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
     });
@@ -772,6 +777,14 @@ void GamePage::showHandover(const QString& name, const QColor& colour) {
     m_curtain->setGeometry(rect());
     m_curtain->show();
     m_curtain->raise();
+}
+
+void GamePage::showHelp() {
+    auto* dialog = findChild<HelpDialog*>();
+    if (!dialog) dialog = new HelpDialog(this);
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
 }
 
 void GamePage::openMarket() {

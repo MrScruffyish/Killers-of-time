@@ -1,3 +1,4 @@
+#include <QTextBrowser>
 #include <QCheckBox>
 #include <QDir>
 #include <QJsonObject>
@@ -531,6 +532,15 @@ private slots:
         QVERIFY(game->logText().contains("Day 2"));
         QApplication::processEvents();
         shot(&w, "6_game_day2");
+
+        // The help page from the Game menu.
+        game->findChild<QAction*>("helpAction")->trigger();
+        auto* help = game->findChild<QDialog*>("helpDialog");
+        QVERIFY(help && help->isVisible());
+        QVERIFY(help->findChild<QTextBrowser*>("helpText")->toPlainText().contains("zone of control"));
+        QApplication::processEvents();
+        shot(help, "6a_help");
+        help->hide();
 
         // The hero screen.
         QTest::mouseClick(game->findChild<QWidget*>("heroPanel"), Qt::LeftButton);

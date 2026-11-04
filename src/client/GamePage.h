@@ -62,6 +62,7 @@ private:
     void updateHeroPanel();
     void selectHero(int id);
     void openMarket();  // M
+    void showHelp();    // F1
     void selectTown(int id);  // T cycles: the map looks there
     // Moves the selected hero along his plotted route (Enter, double click).
     void goAlongRoute();
