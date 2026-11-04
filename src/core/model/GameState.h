@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QJsonArray>
+
 #include <QByteArray>
 #include <QJsonObject>
 #include <QList>
@@ -53,6 +55,9 @@ public:
     const VictoryCondition& victory() const { return m_victory; }
     // This week's event (events.json id, empty = none).
     const QString& weekEvent() const { return m_weekEvent; }
+    // Each player's numbers at the start of every week (GameStats.h), for the end screen.
+    QJsonArray& history() { return m_history; }
+    const QJsonArray& history() const { return m_history; }
     void setWeekEvent(const QString& id) { m_weekEvent = id; }
     void setVictory(const VictoryCondition& v) { m_victory = v; }
     void setDifficulty(const QString& d) { m_difficulty = d; }
@@ -156,6 +161,7 @@ private:
     bool m_hiddenMap = true;
     VictoryCondition m_victory;
     QString m_weekEvent;
+    QJsonArray m_history;
     GameMap m_map;
     Rng m_rng;
     std::uint32_t m_nextId = 1;

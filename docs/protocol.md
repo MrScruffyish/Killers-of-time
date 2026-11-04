@@ -80,7 +80,7 @@ Failed commands answer with `error` (`replyTo` names the request). Codes: `not_y
 ### The view (`PlayerView`)
 The server only sends what the player may know: `day`, `currentPlayer`, `you`, own `resources`, `income` (per day) and `tradePercent` (what trading gives, percent of the fair value)
 (private), `players` (name, team, colour, race, isAi), `map`, `heroes`, `armies`, `towns`,
-`mines`, `mapDwellings`, `mapObjects` (in sight: `id`, `kind` treasure/artifact/site, `x`, `y`, `resources` or `artifact`; sites: `site` and `giftFor` (your hero ids that would still get something there)), `gameOver` (bool) and `winnerTeam` (when over; 0 = nobody). Each
+`mines`, `mapDwellings`, `mapObjects` (in sight: `id`, `kind` treasure/artifact/site, `x`, `y`, `resources` or `artifact`; sites: `site` and `giftFor` (your hero ids that would still get something there)), `gameOver` (bool) and `winnerTeam` (when over; 0 = nobody) and `history` (when over: per week `week`, `players`: player id -> `armyValue`, `towns`, `mines`, `heroes`, `gold`; the last entry is now). Each
 Own heroes have `movementPoints` and `movementMax` (a full day).
 Towns in sight have `walls` (buildings with a defense effect) and `size` (buildings), so the map can draw them. Each
 player has `eliminated` (no towns and no heroes left: out of the game, turns skipped).

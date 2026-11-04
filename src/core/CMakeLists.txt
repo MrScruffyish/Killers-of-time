@@ -25,6 +25,7 @@ add_library(kot_core STATIC
     rules/Movement.h
     rules/Movement.cpp
     rules/MapSites.cpp
+    rules/GameStats.cpp
     rules/MapGenerator.h
     rules/MapGenerator.cpp
     rules/Vision.h

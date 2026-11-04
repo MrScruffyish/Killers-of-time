@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QJsonArray>
+
 #include <optional>
 
 #include <QByteArray>
@@ -190,6 +192,7 @@ struct GameView {
     QString weekEventName, weekEventText;
     QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
+    QJsonArray history;  // at game over: every player's numbers week by week (GameStats.h)
     core::ResourceAmounts income;  // what you get each day
     int tradePercent = 0;          // share of the fair value you get when trading (markets raise it)
     core::ResourceAmounts resources;

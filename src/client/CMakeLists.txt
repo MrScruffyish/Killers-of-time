@@ -9,6 +9,8 @@ add_library(kot_client_lib STATIC
     IconArt.cpp
     Toast.cpp
     SpellArt.cpp
+    GameOverDialog.cpp
+    GameOverDialog.h
     Toast.h
     EquipmentView.cpp
     EquipmentView.h

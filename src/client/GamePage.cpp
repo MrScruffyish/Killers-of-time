@@ -36,6 +36,7 @@
 #include "client/Settings.h"
 #include "client/SpellBook.h"
 #include "client/Toast.h"
+#include "client/GameOverDialog.h"
 #include "core/rules/MapSites.h"
 #include "client/HeroDialog.h"
 #include "client/MiniMap.h"
@@ -661,6 +662,13 @@ void GamePage::announceEnd() {
     if (text.isEmpty()) return;
     sound::play(text.startsWith(tr("Victory")) ? sound::Effect::Fanfare : sound::Effect::Defeat);
     log(text);
+    if (m_view.gameOver) {  // the end screen: who won and how it went
+        auto* end = new GameOverDialog(m_view, text, this);
+        end->setAttribute(Qt::WA_DeleteOnClose);
+        end->setModal(false);
+        end->show();
+        return;
+    }
     auto* box = new QMessageBox(QMessageBox::Information, tr("Game over"), text, QMessageBox::Ok, this);
     box->setAttribute(Qt::WA_DeleteOnClose);
     box->setModal(false);

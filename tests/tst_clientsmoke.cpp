@@ -24,6 +24,7 @@
 #include "client/TownDialog.h"
 #include "client/EquipmentView.h"
 #include "client/Toast.h"
+#include "client/GameOverDialog.h"
 #include "core/content/ContentRegistry.h"
 #include "net/LobbyClient.h"
 #include "server/GameServer.h"
@@ -253,6 +254,21 @@ private slots:
             gear.show();
             Toast* t = Toast::show(&gear, art::artifactIcon("winged_boots", "feet", 128), "<b>Found the Winged Boots!</b>");
             QVERIFY(t && t->isVisible());
+        }
+        // The end screen with a made-up history (0_gameover.png).
+        {
+            GameView v;
+            v.you = 1;
+            v.winnerTeam = 2;
+            v.gameOver = true;
+            v.players = {ViewPlayer{1, "Ann", 1, "#d62728", "humans", false, true}, ViewPlayer{2, "AI 2", 2, "#1f77b4", "orcs", true, false}};
+            for (int w = 1; w <= 9; ++w)
+                v.history.append(QJsonObject{{"week", w}, {"players", QJsonObject{
+                    {"1", QJsonObject{{"armyValue", 3000 * w - (w > 6 ? 9000 : 0)}, {"towns", w < 7 ? 1 + w / 3 : 0}, {"mines", w}, {"gold", 5000 + 700 * w}}},
+                    {"2", QJsonObject{{"armyValue", 3800 * w}, {"towns", 1 + w / 2}, {"mines", w + 2}, {"gold", 400}}}}}});
+            GameOverDialog end(v, "Game over. Your team has lost.");
+            end.resize(760, 600);
+            if (!dir.isEmpty()) end.grab().save(QDir(dir).filePath("0_gameover.png"));
         }
         // Towns: palisade / walls / citadel, small to big, for each race; and a town scene.
         QImage towns(3 * 4 * 110, 7 * 120 + 190, QImage::Format_ARGB32);

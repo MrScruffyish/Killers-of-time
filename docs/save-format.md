@@ -40,6 +40,7 @@ Save files (not scenarios) also have `gameVersion` (the game that saved it) and 
 Heroes may have `spells` (list of spell ids, the spellbook; optional, validated against the content).
 Heroes may have `artifacts` (worn artifact ids; their bonuses are already in `traits`) and
 `backpack` (carried, not worn, no bonus).
+`history` (optional): one entry per week, `week` and `players` (player id -> `armyValue`, `towns`, `mines`, `heroes`, `gold`), for the end screen.
 `mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`/`site`), `x`, `y`, `resources` or `artifact`;
 sites have `site` (shrine, magic_well, obelisk, arena, learning_stone) and `visited` (hero id, or
 1000000 + team id for the obelisk -> day of the visit).

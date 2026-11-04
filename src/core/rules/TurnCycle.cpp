@@ -1,4 +1,5 @@
 #include "core/rules/TurnCycle.h"
+#include "core/rules/GameStats.h"
 
 #include <algorithm>
 
@@ -57,6 +58,7 @@ void startTurn(GameState& state, const ContentRegistry& content, PlayerId player
 void beginGame(GameState& state, const ContentRegistry& content) {
     state.setCurrentIndex(0);
     startTurn(state, content, state.currentPlayer());
+    recordWeekStats(state, content);  // week 1 as it starts
 }
 
 void startWeekEvent(GameState& state, const ContentRegistry& content) {
@@ -91,6 +93,7 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
                 startWeekEvent(state, content);
                 applyWeeklyGrowth(state, content);
                 refreshTavernOffers(state, content);
+                recordWeekStats(state, content);
             }
         }
         if (!isEliminated(state, state.turnOrder()[next])) break;

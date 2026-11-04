@@ -8,6 +8,7 @@
 #include <QSet>
 
 #include "core/content/ContentRegistry.h"
+#include "core/rules/GameStats.h"
 #include "core/rules/MapSites.h"
 #include "core/rules/Movement.h"
 #include "core/rules/TownRules.h"
@@ -74,7 +75,13 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     const GameOutcome outcome = gameOutcome(state);
     view.insert("gameOver", outcome.over);
     view.insert("victory", describeVictory(state));
-    if (outcome.over) view.insert("winnerTeam", id(outcome.winner.value()));
+    if (outcome.over) {
+        view.insert("winnerTeam", id(outcome.winner.value()));
+        // The whole story, for the end screen (hidden while the game runs).
+        QJsonArray history = state.history();
+        history.append(QJsonObject{{"week", (state.day() - 1) / 7 + 1}, {"day", state.day()}, {"players", playerStats(state, content)}});
+        view.insert("history", history);
+    }
 
     // Map: palette + indices, -1 where the team has not been.
     {

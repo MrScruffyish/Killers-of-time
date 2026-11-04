@@ -9,6 +9,7 @@
 #include "core/rules/Campaign.h"
 #include "core/rules/Movement.h"
 #include "core/rules/Pathfinding.h"
+#include "core/rules/TurnCycle.h"
 #include "server/GameSession.h"
 
 using namespace kot;
@@ -143,6 +144,26 @@ private slots:
             const QStringList cut = unreachableOnFoot(gs, reg);
             QVERIFY2(cut.isEmpty(), qPrintable(QStringLiteral("seed %1: needs a boat for %2").arg(seed).arg(cut.join(" "))));
         }
+    }
+
+    void weeklyNumbersAreKeptForTheEndScreen() {
+        GameSetupParams params;
+        params.seed = 3;
+        params.mapWidth = params.mapHeight = 40;
+        params.players = {{"A", false, {}, "humans", 1, "#ff0000"}, {"B", false, {}, "orcs", 2, "#0000ff"}};
+        GameState gs;
+        QList<PlayerId> ids;
+        QVERIFY(createGame(reg, params, &gs, &ids));
+        QCOMPARE(gs.history().size(), 1);  // week 1 as it starts
+        while (gs.day() < 15) endTurn(gs, reg);
+        QCOMPARE(gs.history().size(), 3);
+        const QJsonObject week2 = gs.history()[1].toObject();
+        QCOMPARE(week2["week"].toInt(), 2);
+        QVERIFY(week2["players"].toObject()[QString::number(ids[0].value())].toObject()["towns"].toInt() >= 1);
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.history(), gs.history());
     }
 
     void everyScenarioInTheDataLoads() {
