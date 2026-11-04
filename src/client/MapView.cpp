@@ -641,12 +641,30 @@ void MapView::paintEvent(QPaintEvent*) {
     for (const ViewArmy& a : m_view.armies) {
         if (a.hero || !shown(a.pos) || m_view.townAt(a.pos)) continue;
         if (!a.stacks.isEmpty()) {
-            const core::UnitDef* u = m_content ? m_content->unit(a.stacks.first().unit) : nullptr;
+            // A group: more figures for more monsters (1 few .. 5 a horde), back
+            // ones smaller and higher, so the size shows at a glance.
+            int total = 0;
+            for (const ViewStack& s : a.stacks) total += s.count;
+            const int figures = total < 5 ? 1 : total < 10 ? 2 : total < 20 ? 3 : total < 50 ? 4 : 5;
             const QRect r = tileRect(a.pos);
             p.setPen(Qt::NoPen);
             p.setBrush(QColor(0, 0, 0, 70));
-            p.drawEllipse(QRectF(r).adjusted(m_tile * 0.12, m_tile * 0.72, -m_tile * 0.12, -m_tile * 0.04));
-            p.drawPixmap(r.topLeft(), art::unitIcon(a.stacks.first().unit, u ? u->rank : 0, m_tile));
+            p.drawEllipse(QRectF(r).adjusted(m_tile * 0.06, m_tile * 0.7, -m_tile * 0.06, -m_tile * 0.02));
+            // Places in the tile (x, y of the feet, size), back to front.
+            static const double spots[5][5][3] = {
+                {{0.5, 1.0, 1.0}},
+                {{0.34, 0.9, 0.78}, {0.64, 1.0, 0.86}},
+                {{0.5, 0.82, 0.7}, {0.28, 0.98, 0.76}, {0.72, 1.0, 0.78}},
+                {{0.32, 0.8, 0.64}, {0.68, 0.8, 0.64}, {0.24, 0.99, 0.72}, {0.7, 1.0, 0.74}},
+                {{0.5, 0.74, 0.58}, {0.24, 0.84, 0.62}, {0.76, 0.84, 0.62}, {0.36, 1.0, 0.7}, {0.66, 1.0, 0.7}}};
+            for (int i = 0; i < figures; ++i) {
+                // The army's stacks in turn, the strongest in front.
+                const ViewStack& st = a.stacks[(figures - 1 - i) % a.stacks.size()];
+                const core::UnitDef* u = m_content ? m_content->unit(st.unit) : nullptr;
+                const int size = std::max(8, int(m_tile * spots[figures - 1][i][2]));
+                const QPointF feet(r.left() + m_tile * spots[figures - 1][i][0], r.top() + m_tile * spots[figures - 1][i][1]);
+                p.drawPixmap(QPointF(feet.x() - size / 2.0, feet.y() - size), art::unitIcon(st.unit, u ? u->rank : 0, size));
+            }
         } else {
             put(a.pos, art::monsterSprite(m_tile));
         }

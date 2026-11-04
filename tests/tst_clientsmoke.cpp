@@ -9,6 +9,7 @@
 #include <QTabWidget>
 #include <QComboBox>
 #include <QtTest>
+#include <tuple>
 
 #include "client/Art.h"
 #include "client/BattleResultDialog.h"
@@ -101,6 +102,25 @@ private slots:
         for (const QString& row : rows)
             for (const QChar c : row) v.tiles.append(c.digitValue());
         v.visible = QByteArray(v.width * v.height, '\1');
+        // Monster groups of every size, along the bottom left.
+        int armyId = 900;
+        for (const auto& [x, n, unit] : {std::tuple{0, 3, "wolf"}, std::tuple{1, 7, "skeleton"}, std::tuple{2, 15, "orc_warrior"},
+                                         std::tuple{3, 30, "pikeman"}, std::tuple{4, 80, "imp"}}) {
+            ViewArmy a;
+            a.id = armyId++;
+            a.pos = {x, 11 - (x % 2)};
+            ViewStack st;
+            st.unit = unit;
+            st.count = n;
+            a.stacks = {st};
+            if (n > 20) {
+                ViewStack second;
+                second.unit = "archer";
+                second.count = n / 3;
+                a.stacks << second;
+            }
+            v.armies << a;
+        }
         MapView map(&reg);
         map.resize(16 * 48 + 20, 12 * 48 + 20);
         map.setTileSize(48);
