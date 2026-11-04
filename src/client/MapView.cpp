@@ -711,10 +711,10 @@ void MapView::paintEvent(QPaintEvent*) {
             const int i = std::min(int(walk->progress), int(walk->steps.size()) - 2);
             const double f = walk->progress - i;
             const QPointF a = tileRect(walk->steps[i]).topLeft(), b = tileRect(walk->steps[i + 1]).topLeft();
-            p.drawPixmap(a + (b - a) * f, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile));
+            p.drawPixmap(a + (b - a) * f, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile, h.classId));
             continue;
         }
-        put(h.pos, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile));
+        put(h.pos, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile, h.classId));
     }
     // The day banner: in, hold, fade out.
     if (!m_bannerTitle.isEmpty()) {

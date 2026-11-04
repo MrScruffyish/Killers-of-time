@@ -275,6 +275,16 @@ private slots:
             Toast* t = Toast::show(&gear, art::artifactIcon("winged_boots", "feet", 128), "<b>Found the Winged Boots!</b>");
             QVERIFY(t && t->isVisible());
         }
+        // Every hero class on the map (0_heroes.png).
+        {
+            const QList<core::HeroClassDef> classes = reg.heroClasses().values();
+            QImage heroes(int(classes.size()) * 100, 100, QImage::Format_ARGB32);
+            heroes.fill(QColor("#5d8a3a"));
+            QPainter hp(&heroes);
+            for (int i = 0; i < classes.size(); ++i) hp.drawPixmap(i * 100, 0, art::heroSprite(QColor("#d62728"), false, 100, classes[i].id));
+            hp.end();
+            if (!dir.isEmpty()) heroes.save(QDir(dir).filePath("0_heroes.png"));
+        }
         // The end screen with a made-up history (0_gameover.png).
         {
             GameView v;

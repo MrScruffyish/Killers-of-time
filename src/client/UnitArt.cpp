@@ -1593,53 +1593,207 @@ void kraken(Canvas& c) {
 
 }  // namespace
 
-void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner) {
+namespace {
+// How a hero class looks on the map: mount, clothes, head and what he carries.
+struct RiderLook {
+    enum class Mount { Horse, Wolf, Bear };
+    enum class Head { Helm, HornedHelm, Hat, Hood, Antlers, Tricorn, Crown };
+    enum class Carry { Banner, Staff, Bow, Axe };
+    Mount mount = Mount::Horse;
+    QColor coat = QColor("#8a6038");     // the mount's coat
+    QColor body = kSteel;                // armour or robe
+    bool robe = false;
+    Head head = Head::Helm;
+    Carry carry = Carry::Banner;
+    QColor orb = QColor("#9ad0ff");      // a staff's stone
+    QColor skin = kSkin;
+    bool beard = false;
+};
+
+RiderLook riderLook(const QString& cls) {
+    using M = RiderLook::Mount;
+    using H = RiderLook::Head;
+    using C = RiderLook::Carry;
+    RiderLook l;
+    if (cls == "wizard") l = {M::Horse, QColor("#e8e4dc"), QColor("#3a4aa0"), true, H::Hat, C::Staff, QColor("#9ad0ff")};
+    else if (cls == "death_knight") l = {M::Horse, QColor("#2a2428"), QColor("#4a4a58"), false, H::HornedHelm, C::Banner, {}, QColor("#c8c8b8")};
+    else if (cls == "necromancer") l = {M::Horse, QColor("#2a2428"), QColor("#4a2a5a"), true, H::Hood, C::Staff, QColor("#9aff9a"), QColor("#c8c8b8")};
+    else if (cls == "ranger") l = {M::Horse, QColor("#7a5030"), QColor("#3e6a34"), false, H::Hood, C::Bow};
+    else if (cls == "druid") l = {M::Horse, QColor("#d8d0c0"), QColor("#6a5030"), true, H::Antlers, C::Staff, QColor("#7aff7a")};
+    else if (cls == "thane") l = {M::Bear, QColor("#6a4a30"), kSteel, false, H::HornedHelm, C::Axe, {}, kSkin, true};
+    else if (cls == "runesmith") l = {M::Bear, QColor("#5a4030"), QColor("#7a5a3a"), true, H::Helm, C::Staff, QColor("#60e0ff"), kSkin, true};
+    else if (cls == "warlord") l = {M::Wolf, QColor("#6a6a70"), QColor("#7a3a24"), false, H::HornedHelm, C::Axe, {}, QColor("#7aa050")};
+    else if (cls == "shaman_chief") l = {M::Wolf, QColor("#8a8478"), QColor("#7a5a3a"), true, H::Antlers, C::Staff, QColor("#ff6a4a"), QColor("#7aa050")};
+    else if (cls == "hellknight") l = {M::Horse, QColor("#3a1a14"), QColor("#2a2226"), false, H::HornedHelm, C::Banner, {}, QColor("#c06a50")};
+    else if (cls == "pyromancer") l = {M::Horse, QColor("#4a2a1a"), QColor("#a8301a"), true, H::Hood, C::Staff, QColor("#ffa030"), QColor("#d89070")};
+    else if (cls == "captain") l = {M::Horse, QColor("#8a8a90"), QColor("#2a3a6a"), false, H::Tricorn, C::Banner};
+    else if (cls == "tidecaller") l = {M::Horse, QColor("#e0e8ec"), QColor("#2a7a8a"), true, H::Crown, C::Staff, QColor("#80f0ff"), QColor("#b8d8d0")};
+    return l;
+}
+}  // namespace
+
+void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner) { drawHeroRider(p, r, owner, QStringLiteral("knight")); }
+
+void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner, const QString& heroClass) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
+    const RiderLook look = riderLook(heroClass);
     Canvas c{p, r};
-    horseBody(c, QColor("#8a6038"), true);
+    // The mount; a wolf or bear sits a little lower, so the rider moves with it.
+    double dy = 0;
+    if (look.mount == RiderLook::Mount::Horse) {
+        horseBody(c, look.coat, true);
+    } else {
+        quadruped(c, look.coat, look.mount == RiderLook::Mount::Bear);
+        dy = 0.06;
+    }
+    const auto Y = [&](double y) { return y + dy; };
     c.pen(kInk, 0.02);
     // A saddle cloth and a cape in the owner's colour.
-    c.p.setBrush(lit(c, 0.3, 0.46, 0.34, 0.2, owner));
-    c.poly({{0.3, 0.47}, {0.62, 0.47}, {0.6, 0.66}, {0.32, 0.66}});
+    c.p.setBrush(lit(c, 0.3, Y(0.46), 0.34, 0.2, owner));
+    c.poly({{0.3, Y(0.47)}, {0.62, Y(0.47)}, {0.6, Y(0.66)}, {0.32, Y(0.66)}});
     c.p.setBrush(QColor("#e8c04a"));
-    c.p.drawRect(c.box(0.3, 0.62, 0.3, 0.025));
+    c.p.drawRect(c.box(0.3, Y(0.62), 0.3, 0.025));
     QPainterPath cape;
-    cape.moveTo(c.at(0.42, 0.24));
-    cape.cubicTo(c.at(0.3, 0.3), c.at(0.24, 0.42), c.at(0.22, 0.54));
-    cape.lineTo(c.at(0.4, 0.5));
+    cape.moveTo(c.at(0.42, Y(0.24)));
+    cape.cubicTo(c.at(0.3, Y(0.3)), c.at(0.24, Y(0.42)), c.at(0.22, Y(0.54)));
+    cape.lineTo(c.at(0.4, Y(0.5)));
     cape.closeSubpath();
-    c.p.setBrush(lit(c, 0.22, 0.24, 0.2, 0.3, owner.darker(110)));
+    c.p.setBrush(lit(c, 0.22, Y(0.24), 0.2, 0.3, owner.darker(110)));
     c.p.drawPath(cape);
-    // The rider: leg, armoured body, arm, head with a crested helmet.
-    c.p.setBrush(lit(c, 0.43, 0.44, 0.07, 0.2, QColor("#4a3020")));
-    c.p.drawRoundedRect(c.box(0.43, 0.44, 0.07, 0.2), c.s(0.03), c.s(0.03));
-    c.p.setBrush(lit(c, 0.37, 0.22, 0.2, 0.26, kSteel, 135, 130));
-    c.p.drawRoundedRect(c.box(0.37, 0.22, 0.2, 0.26), c.s(0.06), c.s(0.06));
-    c.p.setBrush(owner);  // a tabard
-    c.poly({{0.41, 0.26}, {0.53, 0.26}, {0.52, 0.46}, {0.42, 0.46}});
-    c.p.setBrush(lit(c, 0.38, 0.06, 0.18, 0.18, kSkin, 115, 120));
-    c.p.drawEllipse(c.box(0.39, 0.07, 0.16, 0.17));
-    faceDetails(c, 0.48, 0.16, 0.15);
-    c.p.setBrush(lit(c, 0.38, 0.04, 0.18, 0.1, kSteel, 135, 130));
-    c.p.drawChord(c.box(0.38, 0.04, 0.18, 0.14), 0, 180 * 16);
-    c.p.setBrush(owner);
-    c.poly({{0.44, 0.05}, {0.47, -0.04}, {0.5, 0.05}});
-    // The banner on a pole.
-    c.pen(kWood.darker(130), 0.03);
-    c.line(0.62, 0.62, 0.66, -0.02);
-    c.pen(kInk, 0.015);
-    QPainterPath flag;
-    flag.moveTo(c.at(0.66, 0.0));
-    flag.cubicTo(c.at(0.78, -0.03), c.at(0.86, 0.04), c.at(0.98, 0.01));
-    flag.lineTo(c.at(0.94, 0.1));
-    flag.lineTo(c.at(0.98, 0.19));
-    flag.cubicTo(c.at(0.86, 0.22), c.at(0.78, 0.15), c.at(0.655, 0.18));
-    flag.closeSubpath();
-    c.p.setBrush(lit(c, 0.66, -0.03, 0.32, 0.22, owner, 140, 130));
-    c.p.drawPath(flag);
-    c.p.setBrush(QColor("#ffd84a"));
-    c.p.drawEllipse(c.box(0.76, 0.05, 0.06, 0.06));
+    // The rider: a leg (or a long robe), the body, the head.
+    if (look.robe) {
+        c.p.setBrush(lit(c, 0.38, Y(0.3), 0.18, 0.4, look.body, 125, 140));
+        c.poly({{0.39, Y(0.3)}, {0.55, Y(0.3)}, {0.56, Y(0.66)}, {0.4, Y(0.7)}});
+    } else {
+        c.p.setBrush(lit(c, 0.43, Y(0.44), 0.07, 0.2, QColor("#4a3020")));
+        c.p.drawRoundedRect(c.box(0.43, Y(0.44), 0.07, 0.2), c.s(0.03), c.s(0.03));
+    }
+    c.p.setBrush(lit(c, 0.37, Y(0.22), 0.2, 0.26, look.body, 135, 130));
+    c.p.drawRoundedRect(c.box(0.37, Y(0.22), 0.2, 0.26), c.s(0.06), c.s(0.06));
+    if (!look.robe) {
+        c.p.setBrush(owner);  // a tabard
+        c.poly({{0.41, Y(0.26)}, {0.53, Y(0.26)}, {0.52, Y(0.46)}, {0.42, Y(0.46)}});
+    } else {
+        c.p.setBrush(QColor("#e8c04a"));  // a sash
+        c.poly({{0.38, Y(0.3)}, {0.42, Y(0.27)}, {0.56, Y(0.42)}, {0.53, Y(0.45)}});
+    }
+    c.p.setBrush(lit(c, 0.38, Y(0.06), 0.18, 0.18, look.skin, 115, 120));
+    c.p.drawEllipse(c.box(0.39, Y(0.07), 0.16, 0.17));
+    faceDetails(c, 0.48, Y(0.16), 0.15);
+    if (look.beard) {
+        c.p.setBrush(lit(c, 0.4, Y(0.17), 0.14, 0.14, QColor("#a06a30")));
+        c.poly({{0.4, Y(0.17)}, {0.54, Y(0.17)}, {0.5, Y(0.32)}, {0.47, Y(0.28)}, {0.44, Y(0.32)}});
+    }
+    using H = RiderLook::Head;
+    switch (look.head) {
+    case H::Helm:
+        c.p.setBrush(lit(c, 0.38, Y(0.04), 0.18, 0.1, kSteel, 135, 130));
+        c.p.drawChord(c.box(0.38, Y(0.04), 0.18, 0.14), 0, 180 * 16);
+        c.p.setBrush(owner);
+        c.poly({{0.44, Y(0.05)}, {0.47, Y(-0.04)}, {0.5, Y(0.05)}});
+        break;
+    case H::HornedHelm:
+        c.p.setBrush(lit(c, 0.38, Y(0.04), 0.18, 0.1, look.body.lighter(115), 135, 130));
+        c.p.drawChord(c.box(0.38, Y(0.04), 0.18, 0.14), 0, 180 * 16);
+        c.p.setBrush(QColor("#ece4cc"));
+        c.poly({{0.39, Y(0.09)}, {0.32, Y(-0.02)}, {0.35, Y(0.1)}});
+        c.poly({{0.55, Y(0.09)}, {0.62, Y(-0.02)}, {0.59, Y(0.1)}});
+        break;
+    case H::Hat:
+        c.p.setBrush(lit(c, 0.34, Y(-0.08), 0.26, 0.2, look.body));
+        c.poly({{0.35, Y(0.1)}, {0.5, Y(-0.12)}, {0.56, Y(-0.06)}, {0.53, Y(0.1)}});
+        c.p.drawEllipse(c.box(0.33, Y(0.08), 0.28, 0.05));
+        c.p.setBrush(QColor("#ffe27a"));
+        c.p.drawEllipse(c.box(0.46, Y(0.0), 0.04, 0.04));
+        break;
+    case H::Hood: {
+        QPainterPath hood;
+        hood.moveTo(c.at(0.37, Y(0.2)));
+        hood.cubicTo(c.at(0.36, Y(0.0)), c.at(0.5, Y(-0.04)), c.at(0.57, Y(0.04)));
+        hood.cubicTo(c.at(0.59, Y(0.12)), c.at(0.57, Y(0.2)), c.at(0.56, Y(0.22)));
+        hood.lineTo(c.at(0.53, Y(0.1)));
+        hood.cubicTo(c.at(0.48, Y(0.06)), c.at(0.42, Y(0.08)), c.at(0.41, Y(0.2)));
+        hood.closeSubpath();
+        c.p.setBrush(lit(c, 0.36, Y(-0.04), 0.23, 0.26, look.body.darker(110)));
+        c.p.drawPath(hood);
+        break;
+    }
+    case H::Antlers:
+        c.pen(QColor("#5a3a18"), 0.022);
+        c.line(0.42, Y(0.08), 0.36, Y(-0.04));
+        c.line(0.38, Y(0.0), 0.32, Y(0.0));
+        c.line(0.52, Y(0.08), 0.58, Y(-0.04));
+        c.line(0.56, Y(0.0), 0.62, Y(0.0));
+        c.pen(kInk, 0.02);
+        break;
+    case H::Tricorn:
+        c.p.setBrush(lit(c, 0.33, Y(0.0), 0.28, 0.1, QColor("#1a1a24")));
+        c.poly({{0.32, Y(0.08)}, {0.4, Y(0.0)}, {0.47, Y(0.04)}, {0.54, Y(0.0)}, {0.62, Y(0.08)}, {0.47, Y(0.11)}});
+        c.p.setBrush(QColor("#e8c04a"));
+        c.p.drawEllipse(c.box(0.45, Y(0.04), 0.04, 0.04));
+        break;
+    case H::Crown:
+        c.p.setBrush(lit(c, 0.39, Y(0.01), 0.16, 0.08, QColor("#f0c040")));
+        c.poly({{0.39, Y(0.09)}, {0.39, Y(0.02)}, {0.43, Y(0.06)}, {0.47, Y(-0.01)}, {0.51, Y(0.06)}, {0.55, Y(0.02)}, {0.55, Y(0.09)}});
+        break;
+    }
+    // What he carries.
+    using C = RiderLook::Carry;
+    if (look.carry == C::Banner) {
+        c.pen(kWood.darker(130), 0.03);
+        c.line(0.62, Y(0.62), 0.66, Y(-0.02));
+        c.pen(kInk, 0.015);
+        QPainterPath flag;
+        flag.moveTo(c.at(0.66, Y(0.0)));
+        flag.cubicTo(c.at(0.78, Y(-0.03)), c.at(0.86, Y(0.04)), c.at(0.98, Y(0.01)));
+        flag.lineTo(c.at(0.94, Y(0.1)));
+        flag.lineTo(c.at(0.98, Y(0.19)));
+        flag.cubicTo(c.at(0.86, Y(0.22)), c.at(0.78, Y(0.15)), c.at(0.655, Y(0.18)));
+        flag.closeSubpath();
+        c.p.setBrush(lit(c, 0.66, Y(-0.03), 0.32, 0.22, owner, 140, 130));
+        c.p.drawPath(flag);
+        c.p.setBrush(QColor("#ffd84a"));
+        c.p.drawEllipse(c.box(0.76, Y(0.05), 0.06, 0.06));
+    } else if (look.carry == C::Staff) {
+        c.pen(kWood.darker(140), 0.03);
+        c.line(0.6, Y(0.6), 0.66, Y(0.0));
+        QRadialGradient glow(c.at(0.665, Y(-0.02)), c.s(0.12));
+        glow.setColorAt(0, QColor(look.orb.red(), look.orb.green(), look.orb.blue(), 200));
+        glow.setColorAt(1, QColor(look.orb.red(), look.orb.green(), look.orb.blue(), 0));
+        c.p.setPen(Qt::NoPen);
+        c.p.setBrush(glow);
+        c.p.drawEllipse(c.at(0.665, Y(-0.02)), c.s(0.12), c.s(0.12));
+        c.pen(kInk, 0.015);
+        c.p.setBrush(lit(c, 0.63, Y(-0.05), 0.07, 0.07, look.orb, 160, 130));
+        c.p.drawEllipse(c.box(0.63, Y(-0.055), 0.07, 0.07));
+        c.p.setBrush(owner);  // a ribbon in the owner's colour
+        c.poly({{0.6, Y(0.1)}, {0.66, Y(0.08)}, {0.68, Y(0.16)}, {0.62, Y(0.18)}});
+    } else if (look.carry == C::Bow) {
+        c.pen(kInk, 0.035);
+        c.p.setBrush(Qt::NoBrush);
+        c.p.drawArc(c.box(0.56, Y(0.02), 0.18, 0.42), -70 * 16, 140 * 16);
+        c.pen(QColor("#8a5a2c"), 0.02);
+        c.p.drawArc(c.box(0.56, Y(0.02), 0.18, 0.42), -70 * 16, 140 * 16);
+        c.pen(QColor("#f0e8d0"), 0.008);
+        c.line(0.68, Y(0.04), 0.68, Y(0.42));
+        c.pen(kInk, 0.02);
+        c.p.setBrush(owner);  // a pennant on the quiver
+        c.poly({{0.3, Y(0.22)}, {0.24, Y(0.18)}, {0.3, Y(0.14)}});
+    } else {  // an axe
+        c.pen(kWood.darker(130), 0.03);
+        c.line(0.6, Y(0.56), 0.66, Y(0.04));
+        c.pen(kInk, 0.018);
+        QPainterPath head;
+        head.moveTo(c.at(0.64, Y(0.06)));
+        head.cubicTo(c.at(0.78, Y(-0.02)), c.at(0.86, Y(0.1)), c.at(0.82, Y(0.2)));
+        head.cubicTo(c.at(0.76, Y(0.16)), c.at(0.7, Y(0.16)), c.at(0.655, Y(0.18)));
+        head.closeSubpath();
+        c.p.setBrush(lit(c, 0.64, Y(-0.02), 0.22, 0.22, kSteel, 140, 130));
+        c.p.drawPath(head);
+        c.p.setBrush(owner);  // a strip of the owner's cloth on the haft
+        c.p.drawRect(c.box(0.605, Y(0.3), 0.04, 0.06));
+    }
     p.restore();
 }
 

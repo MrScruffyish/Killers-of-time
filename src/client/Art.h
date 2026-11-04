@@ -84,7 +84,7 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
 const QPixmap& mineSprite(const QString& resource, const QColor& resourceColor, const QColor& owner, int size);
 const QPixmap& dwellingSprite(const QColor& owner, int size);
 const QPixmap& dwellingSprite(const QColor& owner, const QString& unitId, int size);  // with the unit on a sign
-const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size);
+const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size, const QString& heroClass = QStringLiteral("knight"));
 const QPixmap& monsterSprite(int size);
 const QPixmap& chestSprite(const QColor& resource, int size);
 const QPixmap& artifactSprite(int size);
@@ -120,8 +120,11 @@ const QPixmap& siteSprite(const QString& site, bool glowing, int size);
 void drawSpellIcon(QPainter& p, const QRectF& r, const QString& id, const QString& school);
 const QPixmap& spellIcon(const QString& id, const QString& school, int size);
 void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner);
-void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat = false);
+void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat = false,
+              const QString& heroClass = QStringLiteral("knight"));
 void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner);  // the knight on horseback (UnitArt.cpp)
+// A hero of a class on his mount: wizards with a hat and staff, orcs on wolves, dwarves on bears...
+void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner, const QString& heroClass);
 void drawMonster(QPainter& p, const QRectF& r);
 void drawChest(QPainter& p, const QRectF& r, const QColor& resource);
 void drawArtifact(QPainter& p, const QRectF& r);

@@ -760,9 +760,9 @@ const QPixmap& dwellingSprite(const QColor& owner, const QString& unitId, int si
         drawUnitIcon(p, sign.adjusted(sign.width() * 0.08, sign.height() * 0.06, -sign.width() * 0.08, -sign.height() * 0.06), unitId, 0);
     });
 }
-const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size) {
-    return sprite(QStringLiteral("hero|%1|%2").arg(owner.name()).arg(inBoat), size,
-                  [&](QPainter& p, const QRectF& r) { drawHero(p, r, owner, false, inBoat); });
+const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size, const QString& heroClass) {
+    return sprite(QStringLiteral("hero|%1|%2|%3").arg(owner.name()).arg(inBoat).arg(heroClass), size,
+                  [&](QPainter& p, const QRectF& r) { drawHero(p, r, owner, false, inBoat, heroClass); });
 }
 const QPixmap& monsterSprite(int size) {
     return sprite(QStringLiteral("monster"), size, [&](QPainter& p, const QRectF& r) { drawMonster(p, r); });
@@ -1054,7 +1054,7 @@ void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner) {
     p.restore();
 }
 
-void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat) {
+void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat, const QString& heroClass) {
     // A knight on a horse with a banner in the owner's colour, or in a boat.
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
@@ -1068,7 +1068,7 @@ void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, 
         p.drawEllipse(QRectF(X(0.04), Y(0.76), w * 0.92, h * 0.22));
     }
     if (!inBoat) {
-        drawHeroRider(p, r, owner);
+        drawHeroRider(p, r, owner, heroClass);
         p.restore();
         return;
     }
