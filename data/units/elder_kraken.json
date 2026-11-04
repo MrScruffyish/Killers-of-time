@@ -1,0 +1,21 @@
+{
+  "id": "elder_kraken",
+  "name": "Elder Kraken",
+  "race": "tidefolk",
+  "tier": 5,
+  "attack": 25,
+  "defense": 24,
+  "damageMin": 36,
+  "damageMax": 49,
+  "maxHp": 258,
+  "battleSpeed": 6,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 5485,
+    "gems": 2
+  },
+  "initiative": 8,
+  "abilities": [
+    "double_attack"
+  ]
+}

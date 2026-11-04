@@ -1,0 +1,20 @@
+{
+  "id": "ancient_behemoth",
+  "name": "Ancient Behemoth",
+  "race": "orcs",
+  "tier": 5,
+  "attack": 26,
+  "defense": 18,
+  "damageMin": 50,
+  "damageMax": 67,
+  "maxHp": 235,
+  "battleSpeed": 7,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 5810
+  },
+  "initiative": 9,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

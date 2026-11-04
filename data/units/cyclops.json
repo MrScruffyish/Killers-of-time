@@ -1,0 +1,20 @@
+{
+  "id": "cyclops",
+  "name": "Cyclops",
+  "race": "orcs",
+  "tier": 4,
+  "attack": 16,
+  "defense": 12,
+  "damageMin": 16,
+  "damageMax": 24,
+  "maxHp": 90,
+  "battleSpeed": 5,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1555
+  },
+  "initiative": 6,
+  "range": 6,
+  "shots": 8,
+  "upgradesTo": "cyclops_king"
+}

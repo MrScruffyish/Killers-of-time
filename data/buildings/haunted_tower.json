@@ -1,0 +1,19 @@
+{
+  "id": "haunted_tower",
+  "name": "Haunted Tower",
+  "race": "undead",
+  "cost": {
+    "gold": 1200,
+    "stone": 5,
+    "wood": 5
+  },
+  "requires": [
+    "crypt"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "wraith"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "overseer_hall",
+  "name": "Overseer Hall",
+  "race": "ashborn",
+  "cost": {
+    "gold": 1600,
+    "stone": 5
+  },
+  "requires": [
+    "fort"
+  ],
+  "upgradeOf": "brute_forge",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "horned_overseer"
+    }
+  ]
+}

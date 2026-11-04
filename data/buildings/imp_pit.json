@@ -1,0 +1,15 @@
+{
+  "id": "imp_pit",
+  "name": "Imp Pit",
+  "race": "ashborn",
+  "cost": {
+    "gold": 250,
+    "stone": 5
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "imp"
+    }
+  ]
+}

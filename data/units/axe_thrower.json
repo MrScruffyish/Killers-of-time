@@ -1,0 +1,20 @@
+{
+  "id": "axe_thrower",
+  "name": "Axe Thrower",
+  "race": "dwarves",
+  "tier": 2,
+  "attack": 8,
+  "defense": 6,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 18,
+  "battleSpeed": 4,
+  "weeklyGrowth": 7,
+  "cost": {
+    "gold": 215
+  },
+  "initiative": 6,
+  "range": 5,
+  "shots": 10,
+  "upgradesTo": "axe_master"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "regrowth",
+  "name": "Regrowth",
+  "school": "nature",
+  "level": 2,
+  "cost": 8,
+  "requiredMagic": 2,
+  "scope": "battle",
+  "target": "ally",
+  "description": "Strong healing for one of your stacks.",
+  "effects": [
+    {
+      "type": "heal",
+      "amount": 30,
+      "perPower": 15
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "halberd_hall",
+  "name": "Halberd Hall",
+  "race": "humans",
+  "cost": {
+    "gold": 300,
+    "wood": 3
+  },
+  "upgradeOf": "pike_barracks",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "halberdier"
+    }
+  ]
+}

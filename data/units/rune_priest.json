@@ -1,0 +1,25 @@
+{
+  "id": "rune_priest",
+  "name": "Rune Priest",
+  "race": "dwarves",
+  "tier": 3,
+  "attack": 9,
+  "defense": 9,
+  "damageMin": 6,
+  "damageMax": 10,
+  "maxHp": 32,
+  "battleSpeed": 4,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 490,
+    "gems": 1
+  },
+  "initiative": 7,
+  "range": 6,
+  "shots": 10,
+  "spellPoints": 14,
+  "spells": [
+    "stone_skin"
+  ],
+  "upgradesTo": "rune_elder"
+}

@@ -1,0 +1,94 @@
+# kot_core: data model and rules. No GUI, no networking. Only QtCore.
+add_library(kot_core STATIC
+    Version.h
+    util/StrongId.h
+    util/Ids.h
+    util/Rng.h
+    util/Rng.cpp
+    util/Log.h
+    util/Log.cpp
+    model/UnitStack.h
+    model/UnitStack.cpp
+    model/Position.h
+    model/GameMap.h
+    model/GameMap.cpp
+    model/Army.h
+    model/Army.cpp
+    model/Entities.h
+    model/GameState.h
+    model/GameState.cpp
+    model/GameStateJson.cpp
+    rules/HeroRules.h
+    rules/HeroRules.cpp
+    rules/Pathfinding.h
+    rules/Pathfinding.cpp
+    rules/Movement.h
+    rules/Movement.cpp
+    rules/MapSites.cpp
+    rules/GameStats.cpp
+    rules/MapGenerator.h
+    rules/MapGenerator.cpp
+    rules/Vision.h
+    rules/Vision.cpp
+    rules/TurnCycle.h
+    rules/TurnCycle.cpp
+    rules/ArmyRules.h
+    rules/ArmyRules.cpp
+    rules/TownRules.h
+    rules/TownRules.cpp
+    rules/Boats.h
+    rules/Boats.cpp
+    rules/Trade.h
+    rules/Trade.cpp
+    rules/Dwellings.h
+    rules/Dwellings.cpp
+    rules/Automation.h
+    rules/Automation.cpp
+    rules/Tavern.h
+    rules/Tavern.cpp
+    magic/Spells.h
+    magic/Spells.cpp
+    battle/HexGrid.h
+    battle/HexGrid.cpp
+    battle/Battle.h
+    battle/Battle.cpp
+    battle/BattleAi.h
+    battle/BattleAi.cpp
+    battle/AutoBattle.h
+    battle/AutoBattle.cpp
+    rules/Veterancy.h
+    rules/Veterancy.cpp
+    rules/Victory.h
+    rules/Victory.cpp
+    rules/Campaign.h
+    rules/Campaign.cpp
+    rules/Scenario.h
+    rules/Scenario.cpp
+    rules/ScenarioGen.h
+    rules/ScenarioGen.cpp
+    rules/GameSetup.h
+    rules/GameSetup.cpp
+    model/PlayerView.h
+    model/PlayerView.cpp
+    data/JsonReader.h
+    data/JsonReader.cpp
+    data/DataDir.h
+    data/DataDir.cpp
+    content/Defs.h
+    content/ContentRegistry.h
+    content/ContentRegistry.cpp
+    content/ContentChecks.h
+    content/ContentChecks.cpp
+)
+target_include_directories(kot_core PUBLIC ${KOT_SRC_DIR})
+target_link_libraries(kot_core PUBLIC Qt6::Core PRIVATE kot_warnings)
+
+# The version (from the project) and the git commit, refreshed at every build.
+set(KOT_BUILDINFO ${CMAKE_BINARY_DIR}/generated/BuildInfo.h)
+add_custom_target(kot_buildinfo
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -DOUTPUT=${KOT_BUILDINFO} -DVERSION=${PROJECT_VERSION}
+            -P ${CMAKE_SOURCE_DIR}/cmake/BuildInfo.cmake
+    BYPRODUCTS ${KOT_BUILDINFO}
+    COMMENT "Build info (version, git commit)")
+add_dependencies(kot_core kot_buildinfo)
+target_include_directories(kot_core PUBLIC ${CMAKE_BINARY_DIR}/generated)

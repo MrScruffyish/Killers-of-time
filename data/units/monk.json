@@ -1,0 +1,25 @@
+{
+  "id": "monk",
+  "name": "Monk",
+  "race": "humans",
+  "tier": 3,
+  "attack": 9,
+  "defense": 8,
+  "damageMin": 7,
+  "damageMax": 10,
+  "maxHp": 30,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 355,
+    "gems": 1
+  },
+  "initiative": 9,
+  "range": 6,
+  "shots": 12,
+  "spellPoints": 12,
+  "spells": [
+    "cure"
+  ],
+  "upgradesTo": "priest"
+}

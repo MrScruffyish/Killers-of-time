@@ -1,0 +1,17 @@
+{
+  "id": "rune_sanctum",
+  "name": "Rune Sanctum",
+  "race": "dwarves",
+  "cost": {
+    "gold": 1250,
+    "stone": 6,
+    "gems": 1
+  },
+  "upgradeOf": "rune_temple",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "rune_elder"
+    }
+  ]
+}

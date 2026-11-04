@@ -1,0 +1,410 @@
+#include "core/rules/Movement.h"
+#include "core/rules/HeroRules.h"
+#include "core/rules/MapSites.h"
+
+#include <QSet>
+#include <algorithm>
+#include <climits>
+
+#include "core/content/ContentRegistry.h"
+#include "core/battle/AutoBattle.h"
+#include "core/magic/Spells.h"
+#include "core/rules/ArmyRules.h"
+#include "core/rules/Vision.h"
+
+namespace kot::core {
+
+int armyMovementPoints(const Army& army, const Hero* hero, const ContentRegistry& content) {
+    const MovementBalance& mb = content.balance().movement;
+    int points = mb.base;
+    if (hero) points += mb.perTraitLevel * hero->trait(QStringLiteral("movement_points"));
+
+    int slowest = INT_MAX;
+    for (const UnitStack& stack : army.stacks) {
+        const UnitDef* unit = content.unit(stack.unitTypeId());
+        if (unit && !stack.isEliminated()) slowest = std::min(slowest, unit->mapSpeed);
+    }
+    if (slowest != INT_MAX) {
+        for (const SlowPenaltyStep& step : mb.slowPenalties) {
+            if (slowest <= step.mapSpeedAtMost) {
+                points -= step.penalty;
+                break;
+            }
+        }
+    }
+    points = std::max(points, mb.minimum);
+    if (hero) points += points * hero->trait(QStringLiteral("scouting")) * content.balance().scouting.movementPercentPerLevel / 100;
+    return points;
+}
+
+int zoneOfControlRadius(int scoutingLevel, const ContentRegistry& content) {
+    const ScoutingBalance& sb = content.balance().scouting;
+    return std::max(sb.zoneOfControlMinRadius, sb.zoneOfControlRadius - scoutingLevel / sb.levelsPerZoneStep);
+}
+
+int zoneOfControlRadius(const Hero& hero, const ContentRegistry& content) {
+    return zoneOfControlRadius(hero.trait(QStringLiteral("scouting")), content);
+}
+
+QList<ArmyId> zoneOfControlAt(const GameState& state, const ContentRegistry& content, const Hero& hero, Pos tile) {
+    QList<ArmyId> result;
+    if (hero.inBoat) return result;
+    const int radius = zoneOfControlRadius(hero, content);
+    if (radius <= 0) return result;
+    QSet<Pos> towns;
+    for (const Town& t : state.towns()) towns.insert(t.pos);
+    QSet<ArmyId> atSea;
+    for (const Hero& h : state.heroes())
+        if (h.inBoat) atSea.insert(h.army);
+    for (const Army& a : state.armies()) {
+        if (a.id == hero.army || towns.contains(a.pos) || atSea.contains(a.id) || a.totalUnits() == 0) continue;
+        if (!state.isHostile(a.owner, hero.owner)) continue;
+        if (std::max(std::abs(a.pos.x - tile.x), std::abs(a.pos.y - tile.y)) <= radius) result.append(a.id);
+    }
+    return result;
+}
+
+void refreshHeroMovement(GameState& state, const ContentRegistry& content, PlayerId owner) {
+    for (Hero& hero : state.heroes()) {
+        if (hero.owner != owner) continue;
+        const Army* army = state.army(hero.army);
+        if (army) hero.movementPoints = armyMovementPoints(*army, &hero, content);
+    }
+}
+
+MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target,
+                    MoveMode mode, bool deferBattles, bool offerJoins, bool stopWhenSpotted) {
+    MoveResult result;
+    Hero* hero = state.hero(heroId);
+    Army* army = hero ? state.army(hero->army) : nullptr;
+    if (!hero || !army) {
+        result.error = QStringLiteral("unknown hero");
+        return result;
+    }
+    if (!state.map().inBounds(target)) {
+        result.error = QStringLiteral("target is outside the map");
+        return result;
+    }
+    if (hero->inBoat) {
+        mode = MoveMode::Boat;
+        // Landing: step onto the land next to the boat; that ends today's movement.
+        const TerrainDef* t = content.terrainType(state.map().terrainAt(target));
+        if (t && t->walkable && !t->sailable) {
+            if (std::max(std::abs(target.x - army->pos.x), std::abs(target.y - army->pos.y)) != 1) {
+                result.error = QStringLiteral("sail next to the shore to land");
+                return result;
+            }
+            for (const Army& a : state.armies())
+                if (a.id != army->id && a.pos == target) {
+                    result.error = QStringLiteral("cannot land there: the tile is occupied");
+                    return result;
+                }
+            if (hero->movementPoints <= 0) {
+                result.error = QStringLiteral("not enough movement points");
+                return result;
+            }
+            army->pos = target;
+            hero->inBoat = false;
+            hero->movementPoints = 0;
+            hero->destination.reset();
+            result.ok = result.arrived = true;
+            result.stepsTaken = 1;
+            const PlayerId owner = hero->owner;
+            captureAt(state, owner, target, &result);
+            pickUpAt(state, content, heroId, target, &result);
+            result.landed = true;
+            updateExplored(state, content, state.teamOf(owner));
+            return result;
+        }
+    }
+
+    // A town's walls stand for the town: walk to its gate.
+    if (const Town* t = state.townCovering(target)) target = t->pos;
+
+    // Things that block walking through a tile.
+    QSet<Pos> occupied;
+    for (const Army& a : state.armies()) {
+        if (a.id != army->id) occupied.insert(a.pos);
+    }
+    for (const Town& t : state.towns())
+        for (const Pos p : townTiles(t.pos, state.map().width(), state.map().height())) occupied.insert(p);
+    for (const Mine& m : state.mines()) occupied.insert(m.pos);
+    for (const MapDwelling& d : state.mapDwellings()) occupied.insert(d.pos);
+    for (const MapObject& o : state.mapObjects()) occupied.insert(o.pos);
+
+    // What stands on the target tile?
+    Town* targetTown = nullptr;
+
+    for (Town& t : state.towns()) {
+        if (t.pos == target) targetTown = &t;
+    }
+    // Hostile armies on the target are attacked: visiting heroes first, then a town's garrison.
+    QList<ArmyId> defenders;
+    for (const Army& a : state.armies()) {
+        if (a.id == army->id || a.pos != target) continue;
+        if (targetTown && a.id == targetTown->garrison) continue;  // checked below
+        if (!state.isHostile(a.owner, hero->owner)) {
+            result.error = QStringLiteral("target tile is occupied");
+            return result;
+        }
+        defenders.append(a.id);
+    }
+    if (targetTown && state.isHostile(targetTown->owner, hero->owner)) {
+        const Army* garrison = state.army(targetTown->garrison);
+        if (garrison && garrison->totalUnits() > 0) defenders.append(garrison->id);
+    }
+    if (!defenders.isEmpty() && army->totalUnits() == 0) {
+        result.error = QStringLiteral("the hero has no units to fight with");
+        return result;
+    }
+
+    const HeroClassDef* cls = content.heroClass(hero->classId);
+    const MoveCostGrid grid(state.map(), content, mode,
+                            cls ? content.race(cls->race).terrainCostPercent : QMap<QString, int>());
+    // The way goes around the zones of control of hostile armies the team can see
+    // (not the one being attacked, not those already next to the hero), if there
+    // is such a way; else straight on.
+    QSet<Pos> danger;
+    if (!hero->inBoat) {
+        const QByteArray seenNow = visibleTiles(state, state.teamOf(hero->owner), content);
+        const int radius = zoneOfControlRadius(*hero, content);
+        QSet<Pos> townGates;
+        for (const Town& t : state.towns()) townGates.insert(t.pos);
+        QSet<ArmyId> atSea;
+        for (const Hero& h : state.heroes())
+            if (h.inBoat) atSea.insert(h.army);
+        const auto near = [](Pos a, Pos b, int r) { return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y)) <= r; };
+        for (const Army& a : state.armies()) {
+            if (a.id == army->id || a.pos == target || townGates.contains(a.pos) || atSea.contains(a.id) || a.totalUnits() == 0) continue;
+            if (!state.isHostile(a.owner, hero->owner) || !seenNow.at(a.pos.y * state.map().width() + a.pos.x)) continue;
+            if (near(a.pos, army->pos, radius)) continue;
+            for (int dy = -radius; dy <= radius; ++dy)
+                for (int dx = -radius; dx <= radius; ++dx) danger.insert(Pos{a.pos.x + dx, a.pos.y + dy});
+        }
+    }
+    PathResult path = findPath(grid, army->pos, target, [&](Pos p) { return occupied.contains(p) || (p != target && danger.contains(p)); });
+    if (!path.found) path = findPath(grid, army->pos, target, [&](Pos p) { return occupied.contains(p); });
+    if (!path.found) {
+        result.error = QStringLiteral("no path to target");
+        return result;
+    }
+    if (path.steps.isEmpty()) {
+        result.error = QStringLiteral("already there");
+        return result;
+    }
+
+    int steps = affordableSteps(path, hero->movementPoints);
+    if (steps == 0) {
+        result.error = QStringLiteral("not enough movement points");
+        return result;
+    }
+    // Zones of control along the way (armies already in reach at the start do not count).
+    QList<ArmyId> ambushers;
+    if (army->totalUnits() > 0) {
+        const QList<ArmyId> atStart = zoneOfControlAt(state, content, *hero, army->pos);
+        // Hostile field armies the team cannot see yet (they may come into sight on the way).
+        const QByteArray seen = visibleTiles(state, state.teamOf(hero->owner), content);
+        QSet<Pos> townTilesSet;
+        for (const Town& t : state.towns()) townTilesSet.insert(t.pos);
+        QList<Pos> unseen;
+        if (!hero->inBoat)
+            for (const Army& a : state.armies())
+                if (a.id != army->id && a.totalUnits() > 0 && !townTilesSet.contains(a.pos) && state.isHostile(a.owner, hero->owner) &&
+                    !seen.at(a.pos.y * state.map().width() + a.pos.x))
+                    unseen.append(a.pos);
+        const int sight = heroVisionRadius(*hero, content);
+        // Stop where something new comes into sight, before walking on into danger.
+        for (int i = 0; stopWhenSpotted && i + 1 < steps; ++i) {
+            bool newSight = false;
+            for (const Pos p : unseen) newSight = newSight || (p != target && withinVision(path.steps[i], p, sight));
+            if (newSight) {
+                steps = i + 1;
+                result.spotted = true;
+                break;
+            }
+        }
+        for (int i = 0; i < steps; ++i) {
+            QList<ArmyId> here;
+            for (const ArmyId a : zoneOfControlAt(state, content, *hero, path.steps[i]))
+                if (!atStart.contains(a)) here.append(a);
+            if (here.isEmpty()) continue;
+            bool onlyTheTarget = steps == path.steps.size() && !defenders.isEmpty();
+            for (const ArmyId a : here) onlyTheTarget = onlyTheTarget && defenders.contains(a);
+            if (onlyTheTarget) break;  // the attack below fights them anyway
+            ambushers = here;
+            steps = i + 1;
+            result.spotted = false;
+            break;
+        }
+    }
+    // Much weaker monsters would rather join: stop next to them and ask.
+    const auto offerJoin = [&](ArmyId monsters, int stopAfter) {
+        result.ok = true;
+        result.stepsTaken = stopAfter;
+        result.movementSpent = stopAfter > 0 ? path.cumulativeCost[stopAfter - 1] : 0;
+        hero->movementPoints -= result.movementSpent;
+        if (stopAfter > 0) army->pos = path.steps[stopAfter - 1];
+        hero->destination.reset();
+        result.joinOffer = monsters;
+        updateExplored(state, content, state.teamOf(hero->owner));
+        return result;
+    };
+    if (offerJoins && ambushers.size() == 1 && wouldJoin(state, content, army->id, ambushers.first())) {
+        // Walk on until right next to them.
+        int stop = steps;
+        const Pos m = state.army(ambushers.first())->pos;
+        for (int i = steps - 1; i < path.steps.size(); ++i) {
+            stop = i + 1;
+            if (std::max(std::abs(path.steps[i].x - m.x), std::abs(path.steps[i].y - m.y)) <= 1 || path.steps[i] == target) break;
+        }
+        stop = std::min(stop, affordableSteps(path, hero->movementPoints));
+        if (stop > 0 && path.steps[stop - 1] == m) --stop;  // never onto them
+        return offerJoin(ambushers.first(), stop);
+    }
+    if (!ambushers.isEmpty()) {
+        result.ok = result.attacked = result.ambushed = true;
+        result.stepsTaken = steps;
+        result.movementSpent = path.cumulativeCost[steps - 1];
+        hero->movementPoints -= result.movementSpent;
+        hero->destination = target;
+        army->pos = path.steps[steps - 1];
+        // The nearest one leads the attack.
+        std::sort(ambushers.begin(), ambushers.end(), [&](ArmyId a, ArmyId b) {
+            const auto d = [&](ArmyId x) {
+                const Pos p = state.army(x)->pos;
+                return std::max(std::abs(p.x - army->pos.x), std::abs(p.y - army->pos.y));
+            };
+            return d(a) < d(b);
+        });
+        PendingAttack attack{hero->id, hero->owner, army->id, state.army(ambushers.first())->pos, ambushers};
+        if (deferBattles) {
+            result.pending = attack;
+            updateExplored(state, content, state.teamOf(attack.owner));
+            return result;
+        }
+        bool won = true;
+        for (const ArmyId d : ambushers) {
+            if (!state.army(d) || !state.army(attack.army)) continue;
+            const BattleReport b = resolveBattle(state, content, attack.army, d);
+            result.battles.append(b);
+            if (!b.attackerWon()) {
+                won = false;
+                break;
+            }
+        }
+        finishAttack(state, content, attack, won, &result);
+        return result;
+    }
+    result.ok = true;
+    result.stepsTaken = steps;
+    result.movementSpent = path.cumulativeCost[steps - 1];
+    const bool reached = (steps == path.steps.size());
+    hero->movementPoints -= result.movementSpent;
+    if (reached) hero->destination.reset();
+    else hero->destination = target;
+    const PlayerId owner = hero->owner;
+    const HeroId heroIdCopy = hero->id;
+    const ArmyId armyId = army->id;
+
+    if (offerJoins && reached && defenders.size() == 1 && !targetTown && wouldJoin(state, content, army->id, defenders.first())) {
+        hero->movementPoints += result.movementSpent;  // offerJoin charges the walk itself
+        return offerJoin(defenders.first(), steps - 1);
+    }
+    if (reached && !defenders.isEmpty()) {
+        // Attacking costs the last step; the attacker fights from the tile before.
+        if (steps >= 2) army->pos = path.steps[steps - 2];
+        result.attacked = true;
+        PendingAttack attack{heroIdCopy, owner, armyId, target, defenders};
+        if (deferBattles) {
+            result.pending = attack;
+            updateExplored(state, content, state.teamOf(owner));
+            return result;
+        }
+        bool won = true;
+        for (const ArmyId d : defenders) {
+            const BattleReport b = resolveBattle(state, content, armyId, d);
+            result.battles.append(b);
+            if (!b.attackerWon()) {
+                won = false;
+                break;
+            }
+        }
+        finishAttack(state, content, attack, won, &result);
+        return result;
+    }
+    army->pos = path.steps[steps - 1];
+    result.arrived = reached;
+    if (result.arrived) {
+        captureAt(state, owner, target, &result);
+        pickUpAt(state, content, heroIdCopy, target, &result);
+        result.learnedSpells = learnSpellsInTown(state, content, heroIdCopy);
+    }
+    updateExplored(state, content, state.teamOf(owner));
+    return result;
+}
+
+void captureAt(GameState& state, PlayerId owner, Pos target, MoveResult* result) {
+    for (Mine& m : state.mines()) {
+        if (m.pos == target && state.isHostile(m.owner, owner)) {
+            m.owner = owner;
+            result->capturedMine = m.id;
+        }
+    }
+    for (MapDwelling& d : state.mapDwellings()) {
+        if (d.pos == target && state.isHostile(d.owner, owner)) {
+            d.owner = owner;
+            result->capturedDwelling = d.id;
+        }
+    }
+    for (Town& t : state.towns()) {
+        if (t.pos == target && state.isHostile(t.owner, owner)) {
+            t.owner = owner;
+            if (Army* garrison = state.army(t.garrison)) garrison->owner = owner;
+            result->capturedTown = t.id;
+        }
+    }
+}
+
+void pickUpAt(GameState& state, const ContentRegistry& content, HeroId heroId, Pos target, MoveResult* result) {
+    Hero* hero = state.hero(heroId);
+    Player* player = hero ? state.player(hero->owner) : nullptr;
+    if (!player) return;
+    QList<MapObjectId> taken;
+    for (MapObject& site : state.mapObjects())
+        if (site.pos == target && site.kind == MapObject::Kind::Site) {  // a place to visit: it stays
+            result->visitedSite = site.site;
+            result->siteResult = visitSite(state, content, site, *hero);
+        }
+    for (const MapObject& o : state.mapObjects()) {
+        if (o.pos != target || o.kind == MapObject::Kind::Site) continue;
+        taken.append(o.id);
+        for (auto it = o.resources.begin(); it != o.resources.end(); ++it) {
+            player->resources[it.key()] += it.value();
+            result->foundResources[it.key()] += it.value();
+        }
+        if (const ArtifactDef* a = content.artifact(o.artifact)) {
+            if (!takeArtifact(*hero, content, a->id)) result->stowedArtifacts.append(a->id);
+            result->foundArtifacts.append(a->id);
+        }
+    }
+    for (const MapObjectId id : taken) state.mapObjects().remove(id);
+}
+
+void finishAttack(GameState& state, const ContentRegistry& content, const PendingAttack& attack, bool won,
+                  MoveResult* result) {
+    Army* army = state.army(attack.army);
+    result->heroKilled = (state.hero(attack.hero) == nullptr);
+    bool town = false;
+    for (const Town& t : state.towns()) town = town || t.pos == attack.target;
+    // A field army stays where it fought from; a won town is entered.
+    if (won && army && town) army->pos = attack.target;
+    result->arrived = won && army && army->pos == attack.target;
+    if (result->arrived) {
+        captureAt(state, attack.owner, attack.target, result);
+        pickUpAt(state, content, attack.hero, attack.target, result);
+        result->learnedSpells = learnSpellsInTown(state, content, attack.hero);
+    }
+    updateExplored(state, content, state.teamOf(attack.owner));
+}
+
+}  // namespace kot::core

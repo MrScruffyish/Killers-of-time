@@ -1,0 +1,102 @@
+{
+  "traits": [
+    {
+      "id": "attack",
+      "name": "Attack",
+      "group": "battle",
+      "pickable": true,
+      "description": "Bonus to the attack of every unit in the army."
+    },
+    {
+      "id": "defense",
+      "name": "Defense",
+      "group": "battle",
+      "pickable": true,
+      "description": "Bonus to the defense of every unit in the army."
+    },
+    {
+      "id": "hit_points",
+      "name": "Hit Points",
+      "group": "battle",
+      "pickable": true,
+      "description": "Bonus to the max HP of every unit, flat and percentage."
+    },
+    {
+      "id": "morale",
+      "name": "Morale",
+      "group": "battle",
+      "pickable": true,
+      "description": "Extra or lost actions and similar effects."
+    },
+    {
+      "id": "luck",
+      "name": "Luck",
+      "group": "battle",
+      "pickable": true,
+      "description": "Chance of bonus damage or avoiding a bad outcome."
+    },
+    {
+      "id": "attack_range",
+      "name": "Attack Range",
+      "group": "battle",
+      "pickable": true,
+      "description": "Bonus range in hexes for ranged units."
+    },
+    {
+      "id": "battle_speed",
+      "name": "Battle Speed",
+      "group": "battle",
+      "pickable": true,
+      "description": "Small tiered bonus to unit speed in battle."
+    },
+    {
+      "id": "magic",
+      "name": "Magic",
+      "group": "magic",
+      "pickable": true,
+      "description": "Magic skill level; spells require a minimum level."
+    },
+    {
+      "id": "spell_power",
+      "name": "Spell Power",
+      "group": "magic",
+      "pickable": true,
+      "description": "Scales the strength of spells."
+    },
+    {
+      "id": "spell_points_max",
+      "name": "Spell Points",
+      "group": "magic",
+      "pickable": false,
+      "description": "Size of the spell point pool. Grows automatically on level-up."
+    },
+    {
+      "id": "spell_recovery",
+      "name": "Spell Recovery",
+      "group": "magic",
+      "pickable": true,
+      "description": "Spell points regained per day on the adventure map."
+    },
+    {
+      "id": "movement_points",
+      "name": "Movement Points",
+      "group": "explore",
+      "pickable": true,
+      "description": "Adventure map movement per day."
+    },
+    {
+      "id": "scouting_radius",
+      "name": "Scouting Radius",
+      "group": "explore",
+      "pickable": true,
+      "description": "Vision radius on the adventure map."
+    },
+    {
+      "id": "scouting",
+      "name": "Scouting",
+      "group": "explore",
+      "pickable": true,
+      "description": "Sees farther, moves a little faster and can pass closer by monsters and enemy heroes without being attacked (zone of control)."
+    }
+  ]
+}

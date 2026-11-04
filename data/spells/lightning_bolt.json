@@ -1,0 +1,3 @@
+{ "id": "lightning_bolt", "name": "Lightning Bolt", "school": "air", "level": 3, "cost": 12, "requiredMagic": 3,
+  "scope": "battle", "target": "enemy", "description": "Heavy damage to one enemy stack.",
+  "effects": [ { "type": "damage", "amount": 25, "perPower": 25 } ] }

@@ -1,0 +1,22 @@
+{
+  "id": "ancient_treant",
+  "name": "Ancient Treant",
+  "race": "sylvan",
+  "tier": 3,
+  "attack": 11,
+  "defense": 16,
+  "damageMin": 8,
+  "damageMax": 12,
+  "maxHp": 70,
+  "battleSpeed": 3,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 605,
+    "wood": 2
+  },
+  "initiative": 4,
+  "spellPoints": 10,
+  "spells": [
+    "entangle"
+  ]
+}

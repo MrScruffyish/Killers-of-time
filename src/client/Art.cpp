@@ -1,0 +1,1491 @@
+#include "client/Art.h"
+
+#include <QDir>
+#include <QFile>
+#include <QHash>
+#include <QMap>
+#include <QPainter>
+#include <QPainterPath>
+#include <QTransform>
+#include <QRandomGenerator>
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+
+namespace kot::client::art {
+
+namespace {
+
+// A small deterministic random sequence (art only; the game rules never use it).
+struct Dice {
+    quint32 state;
+    explicit Dice(quint32 seed) : state(seed * 2654435761u + 1) {}
+    double next() {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        return (state % 10000) / 10000.0;
+    }
+};
+
+void grassTufts(QPainter& p, int s, Dice& d, const QColor& c, int count) {
+    p.setPen(QPen(c.darker(135), std::max(1.0, s / 24.0)));
+    for (int i = 0; i < count; ++i) {
+        const double x = d.next() * s, y = d.next() * s, h = s * (0.08 + 0.06 * d.next());
+        p.drawLine(QPointF(x, y), QPointF(x - h * 0.3, y - h));
+        p.drawLine(QPointF(x, y), QPointF(x + h * 0.3, y - h));
+    }
+}
+
+void speckles(QPainter& p, int s, Dice& d, const QColor& c, int count, double size) {
+    p.setPen(Qt::NoPen);
+    p.setBrush(c);
+    for (int i = 0; i < count; ++i) p.drawEllipse(QPointF(d.next() * s, d.next() * s), s * size, s * size);
+}
+
+}  // namespace
+
+QColor groundColor(const QString& id, const QColor& base) {
+    // Under the peaks: rocky earth, so the mountains' grey does not show as squares.
+    if (id == "mountains") return QColor("#8e8a6c");
+    return base;
+}
+
+namespace {
+
+QPixmap makeTile(const QString& id, const QColor& dataColour, int s, int variant) {
+    const QColor base = groundColor(id, dataColour);
+    QPixmap pm(s, s);
+    pm.fill(base);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    Dice d(qHash(id) + variant * 7919);
+    if (s < 8) return pm;
+    // A fine grain over every tile: tiny lighter and darker flecks, so no ground
+    // is one flat colour (wrapped at the edges, so it has no seams of its own).
+    {
+        Dice g(qHash(id) * 3 + variant * 104729 + 11);
+        const bool water = id == "sea" || id == "river";
+        p.setPen(Qt::NoPen);
+        for (int i = 0; i < 260; ++i) {
+            const double x = g.next() * s, y = g.next() * s, rad = s * (0.006 + 0.01 * g.next());
+            const int shade = int(g.next() * 2);
+            QColor f = shade ? base.lighter(110 + int(g.next() * 12)) : base.darker(110 + int(g.next() * 12));
+            f.setAlpha(water ? 60 : 110);
+            p.setBrush(f);
+            for (const int ox : {-s, 0, s})
+                for (const int oy : {-s, 0, s})
+                    if (x + ox > -rad && x + ox < s + rad && y + oy > -rad && y + oy < s + rad) p.drawEllipse(QPointF(x + ox, y + oy), rad, rad);
+        }
+    }
+
+    if (id == "grass") {
+        speckles(p, s, d, base.lighter(115), 8, 0.04);
+        speckles(p, s, d, base.darker(112), 6, 0.035);
+        grassTufts(p, s, d, base, 5);
+        grassTufts(p, s, d, base.lighter(125), 4);
+    } else if (id == "dirt" || id == "road") {
+        speckles(p, s, d, base.darker(120), id == "road" ? 4 : 10, 0.035);
+        speckles(p, s, d, base.lighter(115), 6, 0.025);
+        // Small pebbles with a light top.
+        for (int i = 0; i < (id == "road" ? 2 : 5); ++i) {
+            const double x = d.next() * s, y = d.next() * s, rad = s * (0.015 + 0.02 * d.next());
+            p.setPen(QPen(base.darker(150), std::max(1.0, s / 128.0)));
+            p.setBrush(base.lighter(125));
+            p.drawEllipse(QPointF(x, y), rad * 1.3, rad);
+        }
+    } else if (id == "sand") {
+        // Short wind ripples here and there, a shadow line under a light one.
+        for (int i = 0; i < 5; ++i) {
+            const double x = d.next() * s * 0.75, y = s * (0.1 + 0.8 * d.next()), len = s * (0.18 + 0.2 * d.next());
+            QPainterPath dune;
+            dune.moveTo(x, y);
+            dune.quadTo(x + len / 2, y - s * 0.05, x + len, y);
+            p.setPen(QPen(base.darker(115), std::max(1.0, s / 40.0), Qt::SolidLine, Qt::RoundCap));
+            p.drawPath(dune);
+            p.setPen(QPen(base.lighter(112), std::max(1.0, s / 60.0), Qt::SolidLine, Qt::RoundCap));
+            p.drawPath(dune.translated(0, -s * 0.02));
+        }
+    } else if (id == "forest") {  // the forest floor; the trees are terrainFeature
+        speckles(p, s, d, base.darker(125), 6, 0.07);
+        speckles(p, s, d, base.lighter(118), 5, 0.04);
+        grassTufts(p, s, d, base.lighter(115), 3);
+    } else if (id == "hills") {
+        speckles(p, s, d, base.darker(112), 5, 0.06);
+        grassTufts(p, s, d, base, 4);
+    } else if (id == "mountains") {  // scree; the peaks are terrainFeature
+        speckles(p, s, d, base.darker(125), 7, 0.05);
+        speckles(p, s, d, base.lighter(125), 6, 0.035);
+    } else if (id == "swamp") {
+        // Dark pools with a light rim, reeds between them.
+        for (int i = 0; i < 3; ++i) {
+            const double x = d.next() * s * 0.8 + s * 0.1, y = d.next() * s * 0.8 + s * 0.1, rw = s * (0.08 + 0.06 * d.next());
+            p.setPen(QPen(base.lighter(125), std::max(1.0, s / 90.0)));
+            QRadialGradient pool(QPointF(x, y), rw);
+            pool.setColorAt(0, QColor("#2a4a5e"));
+            pool.setColorAt(1, QColor("#3c5a6e"));
+            p.setBrush(pool);
+            p.drawEllipse(QPointF(x, y), rw, rw * 0.55);
+        }
+        grassTufts(p, s, d, base.lighter(130), 6);
+    } else if (id == "snow") {
+        speckles(p, s, d, QColor("#d0dbe6"), 8, 0.045);
+        // Wind-blown drifts and a few sparkles.
+        p.setPen(QPen(QColor("#c4d0de"), std::max(1.0, s / 40.0), Qt::SolidLine, Qt::RoundCap));
+        for (int i = 0; i < 3; ++i) {
+            const double y = s * (0.2 + 0.3 * i) + d.next() * s * 0.1, x = d.next() * s * 0.5;
+            QPainterPath drift;
+            drift.moveTo(x, y);
+            drift.quadTo(x + s * 0.15, y - s * 0.05, x + s * 0.32, y);
+            p.drawPath(drift);
+        }
+        p.setPen(QPen(QColor(255, 255, 255), std::max(1.0, s / 100.0)));
+        for (int i = 0; i < 5; ++i) {
+            const QPointF c(d.next() * s, d.next() * s);
+            p.drawLine(c - QPointF(s * 0.015, 0), c + QPointF(s * 0.015, 0));
+            p.drawLine(c - QPointF(0, s * 0.015), c + QPointF(0, s * 0.015));
+        }
+    } else if (id == "sea" || id == "river") {
+        // Light glints on the water, then a couple of wave crests.
+        p.setPen(Qt::NoPen);
+        for (int i = 0; i < 6; ++i) {
+            QColor glint = base.lighter(150);
+            glint.setAlpha(90);
+            p.setBrush(glint);
+            p.drawEllipse(QPointF(d.next() * s, d.next() * s), s * 0.04, s * 0.012);
+        }
+        p.setPen(QPen(base.lighter(135), std::max(1.0, s / 22.0)));
+        for (int i = 0; i < 2; ++i) {
+            const double x = d.next() * s * 0.6, y = s * (0.3 + 0.4 * i) + d.next() * s * 0.1;
+            QPainterPath wave;
+            wave.moveTo(x, y);
+            wave.quadTo(x + s * 0.1, y - s * 0.08, x + s * 0.2, y);
+            wave.quadTo(x + s * 0.3, y + s * 0.08, x + s * 0.4, y);
+            p.drawPath(wave);
+        }
+    } else if (id == "lava") {
+        speckles(p, s, d, QColor("#ffb000"), 4, 0.07);
+        speckles(p, s, d, base.darker(150), 4, 0.06);
+    } else {
+        speckles(p, s, d, base.darker(115), 5, 0.04);
+    }
+    return pm;
+}
+
+void shadow(QPainter& p, const QRectF& r) {
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0, 0, 0, 70));
+    p.drawEllipse(QRectF(r.left() + r.width() * 0.1, r.bottom() - r.height() * 0.18, r.width() * 0.8, r.height() * 0.2));
+}
+
+}  // namespace
+
+int variantFor(int x, int y) {
+    quint32 h = quint32(x) * 73856093u ^ quint32(y) * 19349663u;
+    return int((h >> 7) % 4);
+}
+
+const QPixmap& terrainTile(const QString& id, const QColor& base, int size, int variant) {
+    // Drawn once big, then scaled down: the same look at every zoom step.
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1|%2|%3|%4").arg(id, base.name()).arg(size).arg(variant);
+    auto it = cache.find(key);
+    if (it == cache.end()) {
+        constexpr int kMaster = 256;
+        QPixmap pm = makeTile(id, base, kMaster, variant);
+        if (size != kMaster) pm = pm.scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        it = cache.insert(key, pm);
+    }
+    return it.value();
+}
+
+int decorationAt(int x, int y) {
+    const quint32 h = (quint32(x) * 2654435761u) ^ (quint32(y) * 40503u + 0x9e37u);
+    return (h >> 9) % 6 == 0 ? int((h >> 13) % 6) : -1;  // variants 4 and 5 are the rarer, bigger pieces
+}
+
+const QColor kBoneColour("#ece4cc");
+
+const QPixmap& decoration(const QString& id, int variant, int size) {
+    static const QPixmap none;
+    const auto draw = [&](QPainter& p, const QRectF& r) {
+        const double w = r.width(), h = r.height();
+        const auto X = [&](double f) { return r.left() + w * f; };
+        const auto Y = [&](double f) { return r.top() + h * f; };
+        const QPen ink(QColor(30, 22, 12), std::max(1.0, w / 60));
+        Dice d(qHash(id) + variant * 31);
+        const double ox = 0.15 + d.next() * 0.5, oy = 0.35 + d.next() * 0.4;  // where in the tile
+        const auto stone = [&](double x, double y, double s, const QColor& c) {
+            p.setPen(ink);
+            p.setBrush(c);
+            p.drawEllipse(QRectF(X(x), Y(y), w * s, h * s * 0.7));
+            p.setPen(Qt::NoPen);
+            p.setBrush(c.lighter(130));
+            p.drawEllipse(QRectF(X(x + s * 0.2), Y(y + s * 0.1), w * s * 0.35, h * s * 0.2));
+        };
+        // The bigger pieces (variants 4 and 5); other terrains fall back to 0-3.
+        const auto log = [&]() {
+            p.setPen(ink);
+            p.setBrush(QColor("#7a5230"));
+            p.drawRoundedRect(QRectF(X(ox), Y(oy), w * 0.42, h * 0.1), w * 0.05, w * 0.05);
+            p.setBrush(QColor("#c8a070"));
+            p.drawEllipse(QRectF(X(ox + 0.36), Y(oy), w * 0.08, h * 0.1));
+            p.setPen(QPen(QColor("#4a8a3a"), std::max(1.0, w / 50)));
+            p.drawLine(QPointF(X(ox + 0.12), Y(oy)), QPointF(X(ox + 0.1), Y(oy - 0.06)));  // a sprig
+        };
+        const auto standingStone = [&]() {
+            p.setPen(ink);
+            p.setBrush(QColor("#8a8a90"));
+            p.drawPolygon(QPolygonF{QPointF(X(ox + 0.04), Y(oy + 0.14)), QPointF(X(ox + 0.06), Y(oy - 0.2)), QPointF(X(ox + 0.14), Y(oy - 0.26)),
+                                    QPointF(X(ox + 0.2), Y(oy - 0.18)), QPointF(X(ox + 0.2), Y(oy + 0.14))});
+            p.setPen(QPen(QColor("#5a7aa8"), std::max(1.0, w / 60)));  // a faint rune
+            p.drawLine(QPointF(X(ox + 0.12), Y(oy - 0.14)), QPointF(X(ox + 0.12), Y(oy + 0.02)));
+            p.drawLine(QPointF(X(ox + 0.12), Y(oy - 0.08)), QPointF(X(ox + 0.16), Y(oy - 0.12)));
+        };
+        const auto deadBranches = [&](double x, double y, double size) {
+            p.setPen(QPen(QColor("#5a4030"), std::max(1.0, w / 40), Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(QPointF(X(x), Y(y)), QPointF(X(x), Y(y - size)));
+            p.drawLine(QPointF(X(x), Y(y - size * 0.5)), QPointF(X(x - size * 0.3), Y(y - size * 0.8)));
+            p.drawLine(QPointF(X(x), Y(y - size * 0.7)), QPointF(X(x + size * 0.3), Y(y - size)));
+        };
+        if (variant >= 4) {
+            const bool first = variant == 4;
+            if (id == "grass" || id == "road") {
+                if (first) log();
+                else {  // a ring of mushrooms
+                    for (int i = 0; i < 6; ++i) {
+                        const double a = i * 1.05;
+                        const double x = std::min(0.62, ox) + 0.16 + std::cos(a) * 0.2, y = oy + std::sin(a) * 0.1;
+                        p.setPen(ink);
+                        p.setBrush(QColor("#f0e8d8"));
+                        p.drawRect(QRectF(X(x + 0.02), Y(y), w * 0.03, h * 0.06));
+                        p.setBrush(i % 2 ? QColor("#e8c090") : QColor("#c8604a"));
+                        p.drawChord(QRectF(X(x - 0.01), Y(y - 0.05), w * 0.09, h * 0.1), 0, 180 * 16);
+                    }
+                }
+                return;
+            }
+            if (id == "dirt" || id == "hills") {
+                if (first) deadBranches(ox + 0.1, oy + 0.1, 0.22);
+                else standingStone();
+                return;
+            }
+            if (id == "sand") {  // old bones
+                p.setPen(ink);
+                p.setBrush(kBoneColour);
+                p.drawEllipse(QRectF(X(ox), Y(oy - 0.04), w * 0.14, h * 0.12));
+                p.setBrush(QColor(30, 22, 12));
+                p.drawEllipse(QRectF(X(ox + 0.03), Y(oy - 0.01), w * 0.03, h * 0.03));
+                p.drawEllipse(QRectF(X(ox + 0.08), Y(oy - 0.01), w * 0.03, h * 0.03));
+                p.setPen(QPen(kBoneColour, std::max(1.0, w / 40), Qt::SolidLine, Qt::RoundCap));
+                for (int i = 0; i < 3; ++i) p.drawLine(QPointF(X(ox + 0.18 + i * 0.05), Y(oy + 0.06)), QPointF(X(ox + 0.2 + i * 0.05), Y(oy - 0.04)));
+                return;
+            }
+            if (id == "snow") {  // a small snowy pine
+                p.setPen(ink);
+                p.setBrush(QColor("#2e5a3a"));
+                p.drawPolygon(QPolygonF{QPointF(X(ox + 0.12), Y(oy - 0.3)), QPointF(X(ox + 0.24), Y(oy + 0.06)), QPointF(X(ox), Y(oy + 0.06))});
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor("#f4f8ff"));
+                p.drawPolygon(QPolygonF{QPointF(X(ox + 0.12), Y(oy - 0.3)), QPointF(X(ox + 0.17), Y(oy - 0.15)), QPointF(X(ox + 0.07), Y(oy - 0.15))});
+                return;
+            }
+            if (id == "swamp") {
+                deadBranches(ox + 0.12, oy + 0.12, 0.3);
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(60, 90, 70, 160));  // its pool
+                p.drawEllipse(QRectF(X(ox - 0.02), Y(oy + 0.08), w * 0.3, h * 0.08));
+                return;
+            }
+            variant %= 4;
+        }
+        if (id == "grass" || id == "road") {
+            if (variant % 2 == 0) {  // flowers
+                for (int i = 0; i < 4; ++i) {
+                    const double x = ox + d.next() * 0.3, y = oy + d.next() * 0.2;
+                    p.setPen(QPen(QColor("#3e6a2a"), std::max(1.0, w / 50)));
+                    p.drawLine(QPointF(X(x), Y(y)), QPointF(X(x), Y(y + 0.1)));
+                    p.setPen(Qt::NoPen);
+                    p.setBrush(i % 3 == 0 ? QColor("#ffe060") : i % 3 == 1 ? QColor("#ff8ab0") : QColor("#f4f4ff"));
+                    p.drawEllipse(QPointF(X(x), Y(y)), w * 0.035, w * 0.035);
+                }
+            } else if (variant == 1) {  // a bush
+                p.setPen(ink);
+                p.setBrush(QColor("#4a8a3a"));
+                p.drawEllipse(QRectF(X(ox), Y(oy), w * 0.3, h * 0.22));
+                p.setBrush(QColor("#5aa04a"));
+                p.drawEllipse(QRectF(X(ox + 0.06), Y(oy - 0.06), w * 0.18, h * 0.16));
+            } else {
+                stone(ox, oy, 0.18, QColor("#9a968c"));
+            }
+        } else if (id == "dirt" || id == "hills") {
+            stone(ox, oy, 0.2, QColor("#a8987a"));
+            if (variant > 1) stone(ox + 0.18, oy + 0.08, 0.12, QColor("#8a7a60"));
+        } else if (id == "sand") {
+            if (variant % 2) {  // a cactus
+                p.setPen(ink);
+                p.setBrush(QColor("#5a9a4a"));
+                p.drawRoundedRect(QRectF(X(ox + 0.1), Y(oy - 0.2), w * 0.08, h * 0.32), w * 0.04, w * 0.04);
+                p.drawRoundedRect(QRectF(X(ox), Y(oy - 0.08), w * 0.06, h * 0.14), w * 0.03, w * 0.03);
+                p.drawRoundedRect(QRectF(X(ox + 0.2), Y(oy - 0.14), w * 0.06, h * 0.12), w * 0.03, w * 0.03);
+            } else {
+                stone(ox, oy, 0.16, QColor("#d8c08a"));
+            }
+        } else if (id == "snow") {
+            stone(ox, oy, 0.2, QColor("#c8ccd8"));
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor("#ffffff"));
+            p.drawEllipse(QRectF(X(ox + 0.03), Y(oy - 0.01), w * 0.14, h * 0.06));
+        } else if (id == "swamp") {
+            p.setPen(QPen(QColor("#6a8a3a"), std::max(1.0, w / 40)));
+            for (int i = 0; i < 4; ++i) {
+                const double x = ox + i * 0.06;
+                p.drawLine(QPointF(X(x), Y(oy + 0.12)), QPointF(X(x - 0.03 + d.next() * 0.06), Y(oy - 0.1)));
+            }
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor("#6a4a28"));
+            p.drawRoundedRect(QRectF(X(ox + 0.05), Y(oy - 0.14), w * 0.04, h * 0.08), w * 0.02, w * 0.02);  // a cattail
+        } else if (id == "forest") {
+            p.setPen(ink);  // mushrooms
+            for (int i = 0; i < 2; ++i) {
+                const double x = ox + i * 0.12, y = oy + i * 0.06;
+                p.setBrush(QColor("#f0e8d8"));
+                p.drawRect(QRectF(X(x + 0.025), Y(y), w * 0.03, h * 0.07));
+                p.setBrush(i ? QColor("#c03a2a") : QColor("#a87a4a"));
+                p.drawChord(QRectF(X(x), Y(y - 0.05), w * 0.08, h * 0.1), 0, 180 * 16);
+            }
+        } else if (id == "sea") {
+            if (variant == 3) {  // a rock in the waves
+                stone(ox, oy, 0.18, QColor("#6a6a70"));
+                p.setPen(QPen(QColor(255, 255, 255, 150), std::max(1.0, w / 50)));
+                p.setBrush(Qt::NoBrush);
+                p.drawArc(QRectF(X(ox - 0.04), Y(oy + 0.04), w * 0.26, h * 0.12), 200 * 16, 140 * 16);
+            }
+        }
+    };
+    static const QStringList kinds = {"grass", "road", "dirt", "hills", "sand", "snow", "swamp", "forest", "sea"};
+    if (!kinds.contains(id) || (id == "sea" && variant != 3) || (id == "forest" && variant >= 4)) return none;
+    return sprite(QStringLiteral("decor|%1|%2").arg(id).arg(variant), size, draw);
+}
+
+const QPixmap& fogTexture() {
+    static QPixmap tex;
+    if (!tex.isNull()) return tex;
+    constexpr int kSize = 256;
+    tex = QPixmap(kSize, kSize);
+    tex.fill(QColor(10, 9, 16));
+    QPainter p(&tex);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(Qt::NoPen);
+    Dice d(4242);
+    for (int i = 0; i < 70; ++i) {
+        const double x = d.next() * kSize, y = d.next() * kSize, rad = 14 + d.next() * 46;
+        const int shade = 18 + int(d.next() * 22);
+        QRadialGradient g(0, 0, rad);
+        g.setColorAt(0, QColor(shade, shade, shade + 14, 70));
+        g.setColorAt(1, QColor(shade, shade, shade + 14, 0));
+        p.setBrush(g);
+        // Drawn at every wrap-around position, so the texture tiles without seams.
+        for (const int ox : {-kSize, 0, kSize})
+            for (const int oy : {-kSize, 0, kSize}) {
+                p.save();
+                p.translate(x + ox, y + oy);
+                p.drawEllipse(QPointF(0, 0), rad, rad * 0.7);
+                p.restore();
+            }
+    }
+    return tex;
+}
+
+namespace {
+// The outline every feature gets.
+QPen featureInk(double s) { return QPen(QColor(18, 22, 12, 220), std::max(1.0, s / 64.0), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin); }
+
+void drawConifer(QPainter& p, double x, double y, double h, const QColor& c, double s) {
+    // Three tiers on a trunk, lit from the left.
+    const double w = h * 0.36;
+    p.setPen(featureInk(s));
+    p.setBrush(QColor("#5b3a1e"));
+    p.drawRect(QRectF(x - h * 0.04, y - h * 0.14, h * 0.08, h * 0.14));
+    for (int tier = 0; tier < 3; ++tier) {
+        const double top = y - h * (1.0 - tier * 0.22), bottom = y - h * (0.42 - tier * 0.15), half = w * (0.55 + tier * 0.22);
+        QPainterPath t;
+        t.moveTo(x, top);
+        t.lineTo(x + half, bottom);
+        t.quadTo(x, bottom + h * 0.06, x - half, bottom);
+        t.closeSubpath();
+        p.setPen(featureInk(s));
+        p.setBrush(c.darker(100 + tier * 6));
+        p.drawPath(t);
+        QPainterPath lit;  // the sunny half
+        lit.moveTo(x, top);
+        lit.lineTo(x - half, bottom);
+        lit.quadTo(x - half * 0.4, bottom + h * 0.04, x - half * 0.05, bottom + h * 0.02);
+        lit.closeSubpath();
+        p.setPen(Qt::NoPen);
+        p.setBrush(c.lighter(128));
+        p.drawPath(lit);
+    }
+}
+
+void drawLeafTree(QPainter& p, double x, double y, double h, const QColor& c, double s) {
+    p.setPen(featureInk(s));
+    p.setBrush(QColor("#6a4424"));
+    p.drawRect(QRectF(x - h * 0.05, y - h * 0.4, h * 0.1, h * 0.4));
+    const double r = h * 0.3;
+    p.setBrush(c);
+    p.drawEllipse(QPointF(x, y - h * 0.62), r * 1.1, r);
+    p.setPen(Qt::NoPen);
+    p.setBrush(c.lighter(130));
+    p.drawEllipse(QPointF(x - r * 0.35, y - h * 0.72), r * 0.5, r * 0.4);
+}
+}  // namespace
+
+const QPixmap& terrainFeature(const QString& id, const QColor& base, int size, int variant) {
+    static const QPixmap none;
+    if (id != "forest" && id != "hills" && id != "mountains") return none;
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1|%2|%3|%4").arg(id, base.name()).arg(size).arg(variant);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it.value();
+    // A canvas of 2x2 tiles; the feature's own tile is the bottom middle (s/2..3s/2, s..2s).
+    constexpr int s = 256;
+    QPixmap pm(2 * s, 2 * s);
+    pm.fill(Qt::transparent);
+    {
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        Dice d(qHash(id) * 31 + variant * 104729 + 7);
+        const double left = s * 0.5, top = s;
+        if (id == "forest") {
+            struct Tree { double x, y, h; bool leaf; };
+            QList<Tree> trees;
+            const int n = 4 + variant % 3;
+            for (int i = 0; i < n; ++i)
+                trees.append({left + s * (0.12 + 0.76 * d.next()), top + s * (0.3 + 0.62 * d.next()), s * (0.55 + 0.35 * d.next()),
+                              variant == 3 && d.next() < 0.5});
+            std::sort(trees.begin(), trees.end(), [](const Tree& a, const Tree& b) { return a.y < b.y; });
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(0, 0, 0, 55));
+            for (const Tree& t : trees) p.drawEllipse(QPointF(t.x + t.h * 0.08, t.y), t.h * 0.22, t.h * 0.07);
+            for (const Tree& t : trees) {
+                const QColor c = base.lighter(105 + int(d.next() * 30));
+                if (t.leaf) drawLeafTree(p, t.x, t.y, t.h * 0.9, QColor("#4f8a32").lighter(95 + int(d.next() * 20)), s);
+                else drawConifer(p, t.x, t.y, t.h, c, s);
+            }
+        } else if (id == "hills") {
+            const int n = 2 + variant % 2;
+            for (int i = 0; i < n; ++i) {
+                const double w = s * (0.55 + 0.3 * d.next()), h = s * (0.32 + 0.2 * d.next());
+                const double cx = left + s * (0.25 + 0.5 * (n == 1 ? 0.5 : double(i) / (n - 1))) + (d.next() - 0.5) * s * 0.1;
+                const double by = top + s * (0.62 + 0.3 * (i % 2 ? d.next() : 1 - d.next()));
+                QPainterPath mound;
+                mound.moveTo(cx - w / 2, by);
+                mound.cubicTo(cx - w * 0.3, by - h * 1.1, cx + w * 0.25, by - h * 1.15, cx + w / 2, by);
+                mound.closeSubpath();
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(0, 0, 0, 50));
+                p.drawEllipse(QPointF(cx + w * 0.06, by), w * 0.5, s * 0.05);
+                QLinearGradient g(cx - w / 2, by - h, cx + w / 2, by);
+                g.setColorAt(0, base.lighter(135));
+                g.setColorAt(0.55, base);
+                g.setColorAt(1, base.darker(135));
+                p.setPen(featureInk(s));
+                p.setBrush(g);
+                p.drawPath(mound);
+                p.setPen(QPen(base.darker(140), s / 64.0));  // a few tufts on it
+                for (int k = 0; k < 3; ++k) {
+                    const double tx = cx - w * 0.25 + d.next() * w * 0.4, ty = by - h * (0.25 + 0.4 * d.next());
+                    p.drawLine(QPointF(tx, ty), QPointF(tx - s * 0.02, ty - s * 0.05));
+                    p.drawLine(QPointF(tx, ty), QPointF(tx + s * 0.02, ty - s * 0.05));
+                }
+            }
+        } else {  // mountains: one big peak and a smaller one, rocky faces and snow
+            // Behind: a smaller peak to one side; in front: the main one and a low spur.
+            for (int i = 2; i >= 0; --i) {
+                const bool main = i == 0;
+                const double side = (variant % 2 ? -1 : 1);
+                const double w = s * (main ? 1.2 : i == 1 ? 0.8 : 0.6), h = s * (main ? 1.1 + 0.2 * d.next() : i == 1 ? 0.85 : 0.45);
+                const double cx = left + s * 0.5 + (main ? (d.next() - 0.5) * s * 0.16 : side * s * (i == 1 ? 0.36 : -0.38));
+                const double by = top + s * (main ? 0.96 : i == 1 ? 0.7 : 1.0);
+                const double apex = cx + (d.next() - 0.5) * w * 0.2;
+                QPolygonF body{QPointF(cx - w / 2, by), QPointF(cx - w * 0.3, by - h * 0.45), QPointF(apex - w * 0.08, by - h * 0.9),
+                               QPointF(apex, by - h), QPointF(apex + w * 0.1, by - h * 0.86), QPointF(cx + w * 0.32, by - h * 0.5),
+                               QPointF(cx + w / 2, by)};
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor(0, 0, 0, 60));
+                p.drawEllipse(QPointF(cx + w * 0.08, by), w * 0.52, s * 0.06);
+                p.setPen(featureInk(s));
+                p.setBrush(base.darker(130));
+                p.drawPolygon(body);
+                // The lit west face: from the apex down to the left foot and back along a ridge.
+                QPolygonF lit{QPointF(apex, by - h), QPointF(apex - w * 0.08, by - h * 0.9), QPointF(cx - w * 0.3, by - h * 0.45),
+                              QPointF(cx - w / 2, by), QPointF(cx - w * 0.02, by), QPointF(apex - w * 0.04, by - h * 0.5)};
+                p.setPen(Qt::NoPen);
+                QLinearGradient g(cx - w / 2, by - h, cx, by);
+                g.setColorAt(0, base.lighter(150));
+                g.setColorAt(1, base.lighter(108));
+                p.setBrush(g);
+                p.drawPolygon(lit);
+                p.setPen(QPen(base.darker(165), s / 70.0, Qt::SolidLine, Qt::RoundCap));  // cracks
+                for (int k = 0; k < 3; ++k) {
+                    const double t = 0.35 + 0.18 * k;
+                    const QPointF a(apex + w * (0.05 + 0.1 * k), by - h * (1 - t));
+                    p.drawLine(a, a + QPointF(w * 0.06, h * 0.16));
+                }
+                // The snow cap with a ragged lower edge.
+                const double snow = h * (main ? 0.3 : i == 1 ? 0.22 : 0.0);
+                if (snow <= 0) continue;
+                QPolygonF cap{QPointF(apex, by - h), QPointF(apex + w * 0.1, by - h * 0.86)};
+                const double capL = apex - w * 0.08 - (w * 0.22) * (snow / h - 0.1), capR = apex + w * 0.1 + w * 0.12 * (snow / h);
+                for (int k = 0; k <= 4; ++k) {
+                    const double x = capR + (capL - capR) * k / 4.0;
+                    cap << QPointF(x, by - h + snow * (k % 2 ? 0.75 : 1.0));
+                }
+                cap << QPointF(apex - w * 0.08, by - h * 0.9);
+                p.setPen(featureInk(s));
+                p.setBrush(QColor("#f2f5fa"));
+                p.drawPolygon(cap);
+                p.setPen(Qt::NoPen);
+                p.setBrush(QColor("#c8d4e4"));
+                p.drawPolygon(QPolygonF{QPointF(apex, by - h), QPointF(apex + w * 0.1, by - h * 0.86), QPointF(capR, by - h + snow * 0.9),
+                                        QPointF(apex + w * 0.02, by - h + snow * 0.6)});
+            }
+        }
+    }
+    it = cache.insert(key, pm.scaled(2 * size, 2 * size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+    return it.value();
+}
+
+QPainterPath shorePiece(int dir, int variant, int size) {
+    const double s = size, depth = s * 0.24;
+    QPainterPath path;
+    if (dir < 4) {
+        // A band along one side; its inner edge waves but meets the next tile's at `depth`.
+        const int waves = 2 + variant % 2;
+        const double amp = s * 0.07 * ((variant & 2) ? 1 : -1);
+        QPolygonF pts;
+        pts << QPointF(0, 0);
+        for (int i = 0; i <= 16; ++i) {
+            const double t = i / 16.0;
+            pts << QPointF(depth + amp * std::sin(M_PI * waves * t) * (dir % 2 ? -1 : 1), t * s);
+        }
+        pts << QPointF(0, s);
+        path.addPolygon(pts);
+        path.closeSubpath();
+        QTransform turn;  // drawn for the left side, turned about the centre
+        turn.translate(s / 2, s / 2);
+        turn.rotate(90 * dir);
+        turn.translate(-s / 2, -s / 2);
+        return turn.map(path);
+    }
+    // A quarter disc in a corner, joining the bands of the two tiles beside it.
+    static const QPointF corners[] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    const QPointF c = corners[dir - 4] * s;
+    path.addEllipse(c, depth, depth);  // the tile's clip keeps the quarter inside
+    return path;
+}
+
+const QPixmap& shoreUnder(int mask, int variant, int size) {
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1|%2|%3").arg(mask).arg(variant).arg(size);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it.value();
+    QPixmap pm(size, size);
+    pm.fill(Qt::transparent);
+    {
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setClipRect(QRectF(0, 0, size, size));
+        QPainterPath land;
+        for (int d = 0; d < 8; ++d)
+            if (mask & (1 << d)) land = land.united(shorePiece(d, variant, size));
+        const double s = size;
+        // Foam (two lines, the outer one fainter), then the wet sand of the beach.
+        p.setBrush(Qt::NoBrush);
+        p.setPen(QPen(QColor(235, 245, 255, 70), s * 0.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawPath(land);
+        p.setPen(QPen(QColor(250, 252, 255, 190), s * 0.09, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawPath(land);
+        p.setPen(QPen(QColor("#d8c48a"), s * 0.05, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(QColor("#d8c48a"));
+        p.drawPath(land);
+    }
+    it = cache.insert(key, pm);
+    return it.value();
+}
+
+int terrainLayer(const QString& id) {
+    static const QHash<QString, int> layers = {{"sea", 0}, {"river", 1}, {"lava", 2}, {"swamp", 3}, {"sand", 4},
+                                               {"dirt", 5}, {"road", 6}, {"grass", 7}, {"snow", 8}, {"forest", 9},
+                                               {"hills", 10}, {"mountains", 11}};
+    return layers.value(id, 5);
+}
+
+const QPixmap& terrainEdge(const QColor& colour, int side, int size, bool foam) {
+    static QHash<QString, QPixmap> cache;
+    const QString key = QStringLiteral("%1|%2|%3|%4").arg(colour.name()).arg(side).arg(size).arg(foam);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it.value();
+    // Drawn for the left side, then turned.
+    constexpr int kMaster = 256;
+    QPixmap pm(kMaster, kMaster);
+    pm.fill(Qt::transparent);
+    {
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setPen(Qt::NoPen);
+        QPainterPath band;
+        band.moveTo(0, 0);
+        const double depth = foam ? kMaster * 0.16 : kMaster * 0.32;
+        for (int i = 0; i <= 8; ++i) {
+            const double y = kMaster * i / 8.0;
+            const double wobble = std::sin(i * 1.7 + colour.hue() * 0.1) * depth * 0.25;
+            band.lineTo(depth + wobble, y);
+        }
+        band.lineTo(0, kMaster);
+        band.closeSubpath();
+        QLinearGradient g(0, 0, depth * 1.25, 0);
+        if (foam) {
+            g.setColorAt(0, QColor(250, 250, 240, 170));
+            g.setColorAt(0.5, QColor(220, 235, 245, 90));
+            g.setColorAt(1, QColor(220, 235, 245, 0));
+        } else {
+            QColor c = colour;
+            c.setAlpha(210);
+            g.setColorAt(0, c);
+            c.setAlpha(120);
+            g.setColorAt(0.55, c);
+            c.setAlpha(0);
+            g.setColorAt(1, c);
+        }
+        p.setBrush(g);
+        p.drawPath(band);
+    }
+    QTransform turn;
+    turn.rotate(90 * side);
+    pm = pm.transformed(turn).scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    it = cache.insert(key, pm);
+    return it.value();
+}
+
+int nextZoom(int tile, int direction) {
+    const int n = int(std::size(kZoomSteps));
+    int index = 0;
+    for (int i = 0; i < n; ++i)
+        if (kZoomSteps[i] <= tile) index = i;
+    return kZoomSteps[std::clamp(index + direction, 0, n - 1)];
+}
+
+const QPixmap& sprite(const QString& key, int size, const std::function<void(QPainter&, const QRectF&)>& draw) {
+    static QHash<QString, QPixmap> cache;
+    const QString full = key + QLatin1Char('|') + QString::number(size);
+    auto it = cache.find(full);
+    if (it != cache.end()) return it.value();
+    // Drawn big (more room for detail), then scaled down.
+    constexpr int kMaster = 512;
+    QPixmap art(kMaster, kMaster);
+    art.fill(Qt::transparent);
+    {
+        QPainter p(&art);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        draw(p, QRectF(kMaster * 0.06, kMaster * 0.06, kMaster * 0.88, kMaster * 0.88));
+        // Light from the top left on whatever was drawn: a soft sheen there and
+        // shade towards the bottom right, so flat shapes get some volume.
+        p.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+        QLinearGradient light(0, 0, kMaster, kMaster);
+        light.setColorAt(0.0, QColor(255, 250, 230, 70));
+        light.setColorAt(0.42, QColor(255, 250, 230, 0));
+        light.setColorAt(0.6, QColor(0, 0, 0, 0));
+        light.setColorAt(1.0, QColor(10, 5, 20, 90));
+        p.fillRect(QRect(0, 0, kMaster, kMaster), light);
+        QRadialGradient rim(QPointF(kMaster * 0.38, kMaster * 0.3), kMaster * 0.75);  // a little glow in the middle
+        rim.setColorAt(0, QColor(255, 255, 255, 18));
+        rim.setColorAt(1, QColor(255, 255, 255, 0));
+        p.fillRect(QRect(0, 0, kMaster, kMaster), rim);
+    }
+    // A dark outline around the shape so it stands out from the terrain.
+    QPixmap mask = art;
+    {
+        QPainter p(&mask);
+        p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        p.fillRect(mask.rect(), QColor(20, 12, 4, 230));
+    }
+    QPixmap out(kMaster, kMaster);
+    out.fill(Qt::transparent);
+    {
+        QPainter p(&out);
+        // A soft shadow, offset down and right, under everything.
+        QPixmap shade = mask;
+        {
+            QPainter sp(&shade);
+            sp.setCompositionMode(QPainter::CompositionMode_SourceIn);
+            sp.fillRect(shade.rect(), QColor(0, 0, 0, 70));
+        }
+        p.drawPixmap(kMaster / 40, kMaster / 32, shade);
+        const int w = kMaster / 48;
+        for (int dy = -w; dy <= w; dy += w)
+            for (int dx = -w; dx <= w; dx += w)
+                if (dx || dy) p.drawPixmap(dx, dy, mask);
+        p.drawPixmap(0, 0, art);
+    }
+    it = cache.insert(full, out.scaled(size, size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+    return it.value();
+}
+
+const QPixmap& townSprite(const QColor& owner, int size) {
+    return sprite(QStringLiteral("town|") + owner.name(), size, [&](QPainter& p, const QRectF& r) { drawTown(p, r, owner); });
+}
+const QPixmap& mineSprite(const QString& resource, const QColor& resourceColor, const QColor& owner, int size) {
+    return sprite(QStringLiteral("mine|%1|%2").arg(resource, owner.name()), size, [&](QPainter& p, const QRectF& r) {
+        if (resource == "wood") return drawSawmill(p, r, owner);
+        if (resource == "stone") return drawQuarry(p, r, owner);
+        if (resource == "gems") return drawCrystalCave(p, r, resourceColor, owner);
+        drawMine(p, r, resourceColor, owner);
+        drawResourceIcon(p, QRectF(r.left() + r.width() * 0.58, r.top() - r.height() * 0.02, r.width() * 0.42, r.height() * 0.42),
+                         resource, resourceColor);
+    });
+}
+const QPixmap& dwellingSprite(const QColor& owner, int size) {
+    return sprite(QStringLiteral("dwelling|") + owner.name(), size, [&](QPainter& p, const QRectF& r) { drawDwelling(p, r, owner); });
+}
+const QPixmap& dwellingSprite(const QColor& owner, const QString& unitId, int size) {
+    return sprite(QStringLiteral("dwelling|%1|%2").arg(owner.name(), unitId), size, [&](QPainter& p, const QRectF& r) {
+        drawDwelling(p, r.adjusted(0, r.height() * 0.08, -r.width() * 0.2, 0), owner);
+        // A round sign with the unit that lives there.
+        const QRectF sign(r.left() + r.width() * 0.52, r.top(), r.width() * 0.48, r.height() * 0.48);
+        p.setPen(QPen(QColor(30, 20, 8), std::max(1.0, r.width() / 40)));
+        p.setBrush(QColor(240, 228, 192));
+        p.drawEllipse(sign);
+        drawUnitIcon(p, sign.adjusted(sign.width() * 0.08, sign.height() * 0.06, -sign.width() * 0.08, -sign.height() * 0.06), unitId, 0);
+    });
+}
+const QPixmap& heroSprite(const QColor& owner, bool inBoat, int size, const QString& heroClass) {
+    return sprite(QStringLiteral("hero|%1|%2|%3").arg(owner.name()).arg(inBoat).arg(heroClass), size,
+                  [&](QPainter& p, const QRectF& r) { drawHero(p, r, owner, false, inBoat, heroClass); });
+}
+const QPixmap& monsterSprite(int size) {
+    return sprite(QStringLiteral("monster"), size, [&](QPainter& p, const QRectF& r) { drawMonster(p, r); });
+}
+const QPixmap& chestSprite(const QColor& resource, int size) {
+    return sprite(QStringLiteral("chest|") + resource.name(), size, [&](QPainter& p, const QRectF& r) { drawChest(p, r, resource); });
+}
+const QPixmap& artifactSprite(int size) {
+    return sprite(QStringLiteral("artifact"), size, [&](QPainter& p, const QRectF& r) { drawArtifact(p, r); });
+}
+
+QColor resourceColor(const QString& id) {
+    static const QMap<QString, QColor> colors = {
+        {"gold", "#ffd700"}, {"wood", "#8b5a2b"}, {"stone", "#aaaaaa"}, {"grain", "#e6c35c"},
+        {"gems", "#ff4fd8"}, {"sulphur", "#e8e800"}, {"coal", "#333333"}, {"mercury", "#a0a0ff"},
+        {"papyrus", "#d2b48c"}};
+    return colors.value(id, QColor::fromHsv(static_cast<int>(qHash(id) % 360), 200, 220));
+}
+
+const QPixmap& resourceIcon(const QString& id, int size) {
+    return sprite(QStringLiteral("res|") + id, size, [&](QPainter& p, const QRectF& r) { drawResourceIcon(p, r, id, resourceColor(id)); });
+}
+
+QPixmap pointerImage(Pointer kind) {
+    QPixmap pm(32, 32);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    const QPen outline(QColor(20, 12, 4), 2.2);
+    const auto foot = [&](double x, double y, double angle, const QColor& c) {
+        p.save();
+        p.translate(x, y);
+        p.rotate(angle);
+        p.setPen(outline);
+        p.setBrush(c);
+        p.drawEllipse(QRectF(-3.2, -6, 6.4, 9));    // sole
+        p.drawEllipse(QRectF(-2.6, 3.6, 5.2, 4.4));  // heel
+        p.restore();
+    };
+    switch (kind) {
+    case Pointer::Move:
+    case Pointer::MoveLater: {
+        const QColor c = kind == Pointer::Move ? QColor("#ffffff") : QColor("#ff7060");
+        foot(10, 21, -12, c);
+        foot(21, 11, 12, c);
+        break;
+    }
+    case Pointer::MoveAttack: {  // a sword with footsteps under it: walk there, then strike
+        foot(8, 25, -12, QColor("#ffffff"));
+        foot(15, 20, 12, QColor("#ffffff"));
+        p.save();
+        p.translate(21, 13);
+        p.rotate(40);
+        p.setPen(outline);
+        p.setBrush(QColor("#e8e8f0"));
+        p.drawRect(QRectF(-2, -12, 4, 17));
+        p.setBrush(QColor("#c9a24a"));
+        p.drawRect(QRectF(-5.5, 4, 11, 3));
+        p.drawRect(QRectF(-1.5, 7, 3, 5));
+        p.restore();
+        break;
+    }
+    case Pointer::Shoot: {  // a bow with an arrow
+        p.setPen(QPen(QColor(20, 12, 4), 4));
+        p.setBrush(Qt::NoBrush);
+        p.drawArc(QRectF(4, 4, 20, 24), 40 * 16, 190 * 16);
+        p.setPen(QPen(QColor("#a06a2a"), 2.2));
+        p.drawArc(QRectF(4, 4, 20, 24), 40 * 16, 190 * 16);
+        p.setPen(QPen(QColor(240, 230, 210), 1));
+        p.drawLine(QPointF(20, 6), QPointF(9, 26));
+        p.setPen(QPen(QColor(20, 12, 4), 2.4));
+        p.drawLine(QPointF(8, 24), QPointF(28, 4));
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#e8e8f0"));
+        p.drawPolygon(QPolygonF{QPointF(30, 2), QPointF(23, 5), QPointF(27, 9)});
+        break;
+    }
+    case Pointer::Attack: {  // two crossed swords
+        for (const int side : {-1, 1}) {
+            p.save();
+            p.translate(16, 16);
+            p.rotate(45 * side);
+            p.setPen(outline);
+            p.setBrush(QColor("#e8e8f0"));
+            p.drawRect(QRectF(-2, -14, 4, 20));
+            p.setBrush(QColor("#c9a24a"));
+            p.drawRect(QRectF(-6, 5, 12, 3));
+            p.drawRect(QRectF(-1.5, 8, 3, 6));
+            p.restore();
+        }
+        break;
+    }
+    case Pointer::Enter: {  // a little gate
+        p.setPen(outline);
+        p.setBrush(QColor("#d8cdb4"));
+        p.drawRect(QRectF(5, 8, 22, 20));
+        p.setBrush(QColor("#4a3520"));
+        p.drawChord(QRectF(11, 14, 10, 24), 0, 180 * 16);
+        p.setBrush(QColor("#c03030"));
+        p.drawPolygon(QPolygonF{QPointF(16, 1), QPointF(26, 8), QPointF(6, 8)});
+        break;
+    }
+    case Pointer::Select: {  // a pointing gauntlet: an arrow with a gold ring
+        p.setPen(outline);
+        p.setBrush(QColor("#ffd84a"));
+        p.drawPolygon(QPolygonF{QPointF(3, 2), QPointF(3, 25), QPointF(9, 19), QPointF(14, 29), QPointF(18, 27),
+                                QPointF(13, 17), QPointF(21, 17)});
+        break;
+    }
+    case Pointer::Blocked: {
+        p.setPen(QPen(QColor(20, 12, 4), 6));
+        p.drawEllipse(QRectF(6, 6, 20, 20));
+        p.drawLine(QPointF(9, 23), QPointF(23, 9));
+        p.setPen(QPen(QColor("#e04040"), 3));
+        p.drawEllipse(QRectF(6, 6, 20, 20));
+        p.drawLine(QPointF(9, 23), QPointF(23, 9));
+        break;
+    }
+    case Pointer::Normal:
+        p.setPen(outline);
+        p.setBrush(QColor("#f6e7c1"));
+        p.drawPolygon(QPolygonF{QPointF(3, 2), QPointF(3, 25), QPointF(9, 19), QPointF(14, 29), QPointF(18, 27),
+                                QPointF(13, 17), QPointF(21, 17)});
+        break;
+    }
+    return pm;
+}
+
+void drawTown(QPainter& p, const QRectF& r, const QColor& owner) {
+    // A castle filling a 2x2 block; the gate is in the bottom left quarter (the town's tile).
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QColor stone("#cfc6b2"), dark("#3a3328");
+    const QPen pen(dark, std::max(1.0, w / 90));
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0, 0, 0, 70));
+    p.drawEllipse(QRectF(X(0.02), Y(0.78), w * 0.96, h * 0.2));
+    p.setPen(pen);
+    // Curtain wall with battlements.
+    const QRectF wall(X(0.06), Y(0.52), w * 0.88, h * 0.4);
+    p.setBrush(stone.darker(105));
+    p.drawRect(wall);
+    p.setBrush(stone);
+    for (double x = wall.left(); x < wall.right() - w * 0.02; x += w * 0.08)
+        p.drawRect(QRectF(x, wall.top() - h * 0.04, w * 0.045, h * 0.045));
+    // The keep in the middle back.
+    const QRectF keep(X(0.36), Y(0.2), w * 0.36, h * 0.5);
+    p.setBrush(stone.lighter(106));
+    p.drawRect(keep);
+    for (double x = keep.left(); x < keep.right() - w * 0.02; x += w * 0.07)
+        p.drawRect(QRectF(x, keep.top() - h * 0.04, w * 0.04, h * 0.04));
+    p.setBrush(QColor("#2a2018"));
+    for (const double fx : {0.44, 0.58}) p.drawRoundedRect(QRectF(X(fx), Y(0.3), w * 0.05, h * 0.09), w * 0.02, w * 0.02);
+    // Banner on the keep in the owner's colour.
+    p.drawLine(QPointF(X(0.54), keep.top() - h * 0.04), QPointF(X(0.54), Y(0.0)));
+    p.setBrush(owner);
+    p.drawPolygon(QPolygonF{QPointF(X(0.54), Y(0.0)), QPointF(X(0.74), Y(0.045)), QPointF(X(0.54), Y(0.1))});
+    // Corner towers with roofs in the owner's colour.
+    for (const double fx : {0.0, 0.8}) {
+        const QRectF tower(X(fx), Y(0.38), w * 0.2, h * 0.56);
+        p.setBrush(stone.lighter(110));
+        p.drawRect(tower);
+        p.setBrush(owner);
+        p.drawPolygon(QPolygonF{QPointF(tower.left() - w * 0.02, tower.top()), QPointF(tower.center().x(), tower.top() - h * 0.2),
+                                QPointF(tower.right() + w * 0.02, tower.top())});
+        p.setBrush(QColor("#2a2018"));
+        p.drawRect(QRectF(tower.center().x() - w * 0.015, Y(0.55), w * 0.03, h * 0.07));
+    }
+    // The gate (bottom left quarter) with a road out.
+    const QRectF gate(X(0.12), Y(0.66), w * 0.2, h * 0.28);
+    p.setBrush(QColor("#4a3520"));
+    p.drawChord(QRectF(gate.left(), gate.top(), gate.width(), gate.height() * 1.6), 0, 180 * 16);
+    p.setPen(QPen(QColor("#2a1d10"), std::max(1.0, w / 120)));
+    for (double x = gate.left() + gate.width() * 0.2; x < gate.right(); x += gate.width() * 0.2)
+        p.drawLine(QPointF(x, gate.top() + h * 0.03), QPointF(x, gate.bottom()));
+    p.restore();
+}
+
+void drawMine(QPainter& p, const QRectF& r, const QColor& resource, const QColor& owner) {
+    // A rocky hill with a timbered entrance, rails and a cart of what it gives.
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    shadow(p, r);
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#2b2218"), std::max(1.0, w / 40));
+    p.setPen(ink);
+    QPainterPath hill;
+    hill.moveTo(X(0.02), Y(0.9));
+    hill.cubicTo(X(0.04), Y(0.5), X(0.2), Y(0.22), X(0.42), Y(0.2));
+    hill.lineTo(X(0.5), Y(0.12));
+    hill.lineTo(X(0.58), Y(0.22));
+    hill.cubicTo(X(0.8), Y(0.24), X(0.96), Y(0.5), X(0.98), Y(0.9));
+    hill.closeSubpath();
+    QLinearGradient rock(QPointF(X(0.1), Y(0.15)), QPointF(X(0.9), Y(0.9)));
+    rock.setColorAt(0, QColor("#a89a84"));
+    rock.setColorAt(1, QColor("#5e5240"));
+    p.setBrush(rock);
+    p.drawPath(hill);
+    p.setPen(QPen(QColor("#4a4030"), std::max(1.0, w / 70)));  // cracks and ledges
+    p.drawLine(QPointF(X(0.2), Y(0.5)), QPointF(X(0.32), Y(0.44)));
+    p.drawLine(QPointF(X(0.7), Y(0.4)), QPointF(X(0.82), Y(0.5)));
+    p.drawLine(QPointF(X(0.62), Y(0.3)), QPointF(X(0.68), Y(0.36)));
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(90, 130, 60, 160));  // a little grass on top
+    p.drawEllipse(QRectF(X(0.36), Y(0.18), w * 0.12, h * 0.05));
+    // The entrance: dark, framed with timber.
+    p.setPen(ink);
+    p.setBrush(QColor("#140e08"));
+    p.drawChord(QRectF(X(0.32), Y(0.48), w * 0.36, h * 0.8), 0, 180 * 16);
+    p.setBrush(QColor("#8a5a2b"));
+    p.drawRect(QRectF(X(0.3), Y(0.5), w * 0.06, h * 0.4));
+    p.drawRect(QRectF(X(0.64), Y(0.5), w * 0.06, h * 0.4));
+    p.drawRect(QRectF(X(0.28), Y(0.46), w * 0.44, h * 0.06));
+    // Rails leading out and a cart full of the resource.
+    p.setPen(QPen(QColor("#5a5a60"), std::max(1.0, w / 50)));
+    p.drawLine(QPointF(X(0.44), Y(0.88)), QPointF(X(0.62), Y(0.98)));
+    p.drawLine(QPointF(X(0.54), Y(0.88)), QPointF(X(0.76), Y(0.98)));
+    p.setPen(ink);
+    p.setBrush(resource);
+    p.drawChord(QRectF(X(0.66), Y(0.66), w * 0.28, h * 0.16), 0, 180 * 16);
+    p.setBrush(QColor("#6a5a48"));
+    p.drawPolygon(QPolygonF{QPointF(X(0.64), Y(0.74)), QPointF(X(0.96), Y(0.74)), QPointF(X(0.92), Y(0.88)), QPointF(X(0.68), Y(0.88))});
+    p.setBrush(QColor("#2a2a2a"));
+    p.drawEllipse(QRectF(X(0.68), Y(0.86), w * 0.08, h * 0.08));
+    p.drawEllipse(QRectF(X(0.84), Y(0.86), w * 0.08, h * 0.08));
+    // The owner's flag on the hilltop.
+    p.setPen(QPen(QColor("#3b2a17"), std::max(1.5, w / 30)));
+    p.drawLine(QPointF(X(0.5), Y(0.14)), QPointF(X(0.5), Y(-0.06)));
+    p.setPen(ink);
+    p.setBrush(owner);
+    p.drawPolygon(QPolygonF{QPointF(X(0.5), Y(-0.06)), QPointF(X(0.72), Y(-0.01)), QPointF(X(0.5), Y(0.05))});
+    p.restore();
+}
+
+void drawDwelling(QPainter& p, const QRectF& r, const QColor& owner) {
+    // A timbered cottage with a thatched roof in the owner's colour and a chimney.
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    shadow(p, r);
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#3a2a18"), std::max(1.0, w / 40));
+    p.setPen(ink);
+    p.setBrush(QColor("#8a8478"));  // the chimney
+    p.drawRect(QRectF(X(0.62), Y(0.16), w * 0.1, h * 0.24));
+    QLinearGradient plaster(QPointF(X(0.18), Y(0.5)), QPointF(X(0.82), Y(0.9)));
+    plaster.setColorAt(0, QColor("#efe2c4"));
+    plaster.setColorAt(1, QColor("#b8a888"));
+    p.setBrush(plaster);
+    p.drawRect(QRectF(X(0.18), Y(0.5), w * 0.64, h * 0.4));
+    p.setPen(QPen(QColor("#5a3a20"), std::max(1.5, w / 30)));  // timbers
+    p.drawLine(QPointF(X(0.18), Y(0.62)), QPointF(X(0.82), Y(0.62)));
+    p.drawLine(QPointF(X(0.32), Y(0.5)), QPointF(X(0.32), Y(0.9)));
+    p.drawLine(QPointF(X(0.68), Y(0.5)), QPointF(X(0.68), Y(0.9)));
+    p.drawLine(QPointF(X(0.18), Y(0.5)), QPointF(X(0.32), Y(0.62)));
+    p.drawLine(QPointF(X(0.82), Y(0.5)), QPointF(X(0.68), Y(0.62)));
+    p.setPen(ink);
+    QPainterPath roof;
+    roof.moveTo(X(0.08), Y(0.54));
+    roof.quadTo(X(0.3), Y(0.3), X(0.5), Y(0.12));
+    roof.quadTo(X(0.7), Y(0.3), X(0.92), Y(0.54));
+    roof.closeSubpath();
+    QLinearGradient thatch(QPointF(X(0.2), Y(0.12)), QPointF(X(0.8), Y(0.54)));
+    thatch.setColorAt(0, owner.lighter(140));
+    thatch.setColorAt(1, owner.darker(140));
+    p.setBrush(thatch);
+    p.drawPath(roof);
+    p.setPen(QPen(owner.darker(170), std::max(1.0, w / 70)));  // straw strokes
+    for (int i = 0; i < 7; ++i) {
+        const double sx = 0.18 + i * 0.1;
+        p.drawLine(QPointF(X(sx), Y(0.5)), QPointF(X(sx + (0.5 - sx) * 0.3), Y(0.36)));
+    }
+    p.setPen(ink);
+    p.setBrush(QColor("#2a1d10"));  // the door, a window with light
+    p.drawRoundedRect(QRectF(X(0.44), Y(0.68), w * 0.13, h * 0.22), w * 0.04, w * 0.04);
+    p.setBrush(QColor("#ffd27a"));
+    p.drawRect(QRectF(X(0.22), Y(0.68), w * 0.08, h * 0.08));
+    p.drawRect(QRectF(X(0.7), Y(0.68), w * 0.08, h * 0.08));
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(220, 220, 220, 150));  // smoke
+    p.drawEllipse(QRectF(X(0.62), Y(0.04), w * 0.1, h * 0.08));
+    p.drawEllipse(QRectF(X(0.7), Y(-0.04), w * 0.12, h * 0.09));
+    p.restore();
+}
+
+void drawHero(QPainter& p, const QRectF& r, const QColor& owner, bool selected, bool inBoat, const QString& heroClass) {
+    // A knight on a horse with a banner in the owner's colour, or in a boat.
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen pen(QColor("#20150a"), std::max(1.0, w / 50));
+    if (selected) {
+        p.setPen(QPen(QColor("#ffd84a"), std::max(2.0, w / 14)));
+        p.setBrush(QColor(255, 216, 74, 60));
+        p.drawEllipse(QRectF(X(0.04), Y(0.76), w * 0.92, h * 0.22));
+    }
+    if (!inBoat) {
+        drawHeroRider(p, r, owner, heroClass);
+        p.restore();
+        return;
+    }
+    // The boat: a planked hull, a mast with a sail bearing the owner's colour.
+    p.setPen(pen);
+    QPainterPath hull;
+    hull.moveTo(X(0.02), Y(0.62));
+    hull.lineTo(X(0.98), Y(0.6));
+    hull.cubicTo(X(0.92), Y(0.86), X(0.8), Y(0.96), X(0.6), Y(0.96));
+    hull.lineTo(X(0.32), Y(0.96));
+    hull.cubicTo(X(0.16), Y(0.96), X(0.06), Y(0.84), X(0.02), Y(0.62));
+    QLinearGradient wood(QPointF(X(0), Y(0.6)), QPointF(X(0), Y(0.96)));
+    wood.setColorAt(0, QColor("#a8743c"));
+    wood.setColorAt(1, QColor("#5a3818"));
+    p.setBrush(wood);
+    p.drawPath(hull);
+    p.setPen(QPen(QColor("#4a2c10"), std::max(1.0, w / 80)));
+    for (const double py : {0.7, 0.78, 0.86}) p.drawLine(QPointF(X(0.08), Y(py)), QPointF(X(0.92), Y(py - 0.01)));
+    p.setPen(pen);
+    p.setBrush(owner);
+    p.drawRect(QRectF(X(0.04), Y(0.6), w * 0.92, h * 0.04));  // a painted rail
+    p.setPen(QPen(QColor("#3b2a17"), std::max(1.5, w / 30)));
+    p.drawLine(QPointF(X(0.5), Y(0.62)), QPointF(X(0.5), Y(0.02)));
+    p.setPen(pen);
+    QPainterPath sail;
+    sail.moveTo(X(0.52), Y(0.06));
+    sail.cubicTo(X(0.8), Y(0.12), X(0.86), Y(0.36), X(0.84), Y(0.54));
+    sail.lineTo(X(0.52), Y(0.54));
+    sail.closeSubpath();
+    QLinearGradient cloth(QPointF(X(0.52), Y(0.06)), QPointF(X(0.86), Y(0.54)));
+    cloth.setColorAt(0, QColor("#fbf6e8"));
+    cloth.setColorAt(1, QColor("#d8ccb0"));
+    p.setBrush(cloth);
+    p.drawPath(sail);
+    p.setBrush(owner);
+    p.drawEllipse(QRectF(X(0.6), Y(0.24), w * 0.14, h * 0.14));
+    p.drawPolygon(QPolygonF{QPointF(X(0.5), Y(0.02)), QPointF(X(0.3), Y(0.06)), QPointF(X(0.5), Y(0.1))});  // a pennant
+    // The hero aboard.
+    p.setBrush(QColor("#c8ccd8"));
+    p.drawRoundedRect(QRectF(X(0.26), Y(0.44), w * 0.14, h * 0.18), w * 0.04, w * 0.04);
+    p.setBrush(QColor("#f0c8a0"));
+    p.drawEllipse(QRectF(X(0.27), Y(0.32), w * 0.12, h * 0.12));
+    p.setBrush(QColor("#c8ccd8"));
+    p.drawChord(QRectF(X(0.265), Y(0.3), w * 0.13, h * 0.1), 0, 180 * 16);
+    // Water at the waterline.
+    p.setPen(QPen(QColor(255, 255, 255, 180), std::max(1.0, w / 40), Qt::SolidLine, Qt::RoundCap));
+    p.setBrush(Qt::NoBrush);
+    for (const double wx : {0.06, 0.4, 0.74}) p.drawArc(QRectF(X(wx), Y(0.9), w * 0.2, h * 0.08), 0, 180 * 16);
+    p.restore();
+}
+
+void drawMonster(QPainter& p, const QRectF& r) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    shadow(p, r);
+    const double w = r.width(), h = r.height();
+    p.setPen(QPen(QColor("#2a0a0a"), std::max(1.0, w / 16)));
+    p.setBrush(QColor("#8b1a1a"));
+    p.drawEllipse(QRectF(r.left() + w * 0.12, r.top() + h * 0.2, w * 0.76, h * 0.7));
+    p.setBrush(QColor("#e8d9a8"));  // horns
+    for (const double side : {-1.0, 1.0}) {
+        QPainterPath horn;
+        const double x = r.center().x() + side * w * 0.22;
+        horn.moveTo(x - w * 0.07, r.top() + h * 0.3);
+        horn.lineTo(x + side * w * 0.12, r.top() + h * 0.02);
+        horn.lineTo(x + w * 0.07, r.top() + h * 0.3);
+        horn.closeSubpath();
+        p.drawPath(horn);
+    }
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor("#ffe14a"));  // eyes
+    p.drawEllipse(QPointF(r.center().x() - w * 0.13, r.top() + h * 0.5), w * 0.07, w * 0.07);
+    p.drawEllipse(QPointF(r.center().x() + w * 0.13, r.top() + h * 0.5), w * 0.07, w * 0.07);
+    p.restore();
+}
+
+void drawChest(QPainter& p, const QRectF& r, const QColor& resource) {
+    // A banded wooden chest, lid open, its treasure glinting.
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    shadow(p, r);
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#3a2410"), std::max(1.0, w / 36));
+    p.setPen(ink);
+    // The open lid behind.
+    QLinearGradient lidWood(QPointF(X(0.2), Y(0.12)), QPointF(X(0.2), Y(0.42)));
+    lidWood.setColorAt(0, QColor("#6a4220"));
+    lidWood.setColorAt(1, QColor("#9a6a34"));
+    p.setBrush(lidWood);
+    p.drawPolygon(QPolygonF{QPointF(X(0.16), Y(0.44)), QPointF(X(0.22), Y(0.14)), QPointF(X(0.78), Y(0.14)), QPointF(X(0.84), Y(0.44))});
+    // The treasure heaped up.
+    QRadialGradient heap(QPointF(X(0.45), Y(0.38)), w * 0.4);
+    heap.setColorAt(0, resource.lighter(150));
+    heap.setColorAt(1, resource.darker(120));
+    p.setBrush(heap);
+    p.drawChord(QRectF(X(0.16), Y(0.28), w * 0.68, h * 0.34), 0, 180 * 16);
+    p.setPen(QPen(resource.darker(150), std::max(1.0, w / 80)));
+    for (int i = 0; i < 6; ++i) {  // coins or pieces
+        const double cx = 0.24 + i * 0.1, cy = 0.38 + (i % 2) * 0.04;
+        p.setBrush(resource.lighter(120 + (i % 3) * 15));
+        p.drawEllipse(QRectF(X(cx), Y(cy), w * 0.08, h * 0.05));
+    }
+    // The box: planks, iron bands, a lock.
+    p.setPen(ink);
+    QLinearGradient wood(QPointF(X(0.14), Y(0.44)), QPointF(X(0.86), Y(0.88)));
+    wood.setColorAt(0, QColor("#a87440"));
+    wood.setColorAt(1, QColor("#5a3818"));
+    p.setBrush(wood);
+    p.drawRect(QRectF(X(0.14), Y(0.44), w * 0.72, h * 0.42));
+    p.setPen(QPen(QColor("#4a2c10"), std::max(1.0, w / 90)));
+    p.drawLine(QPointF(X(0.14), Y(0.58)), QPointF(X(0.86), Y(0.58)));
+    p.drawLine(QPointF(X(0.14), Y(0.72)), QPointF(X(0.86), Y(0.72)));
+    p.setPen(ink);
+    p.setBrush(QColor("#6a6a72"));
+    for (const double bx : {0.2, 0.74}) p.drawRect(QRectF(X(bx), Y(0.44), w * 0.06, h * 0.42));
+    p.setBrush(QColor("#d4a017"));
+    p.drawRoundedRect(QRectF(X(0.45), Y(0.5), w * 0.1, h * 0.12), w * 0.02, w * 0.02);
+    p.setBrush(QColor("#2a1a08"));
+    p.drawEllipse(QRectF(X(0.485), Y(0.54), w * 0.03, h * 0.04));
+    // A glint.
+    p.setPen(QPen(QColor(255, 255, 240, 230), std::max(1.0, w / 50), Qt::SolidLine, Qt::RoundCap));
+    const QPointF g(X(0.66), Y(0.3));
+    p.drawLine(g - QPointF(w * 0.06, 0), g + QPointF(w * 0.06, 0));
+    p.drawLine(g - QPointF(0, h * 0.06), g + QPointF(0, h * 0.06));
+    p.restore();
+}
+
+void drawArtifact(QPainter& p, const QRectF& r) {
+    // A relic on a small stone plinth: a golden, gem-set amulet in a glow.
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    const double w = r.width(), h = r.height();
+    const auto X = [&](double f) { return r.left() + w * f; };
+    const auto Y = [&](double f) { return r.top() + h * f; };
+    const QPen ink(QColor("#2a1a08"), std::max(1.0, w / 40));
+    p.setPen(Qt::NoPen);
+    QRadialGradient glow(QPointF(X(0.5), Y(0.42)), w * 0.5);
+    glow.setColorAt(0, QColor(255, 235, 140, 190));
+    glow.setColorAt(1, QColor(255, 235, 140, 0));
+    p.setBrush(glow);
+    p.drawEllipse(QPointF(X(0.5), Y(0.42)), w * 0.5, h * 0.46);
+    p.setPen(ink);
+    QLinearGradient stone(QPointF(X(0.3), Y(0.7)), QPointF(X(0.7), Y(0.95)));
+    stone.setColorAt(0, QColor("#b0aca4"));
+    stone.setColorAt(1, QColor("#6a665e"));
+    p.setBrush(stone);
+    p.drawRect(QRectF(X(0.32), Y(0.72), w * 0.36, h * 0.2));
+    p.drawRect(QRectF(X(0.26), Y(0.88), w * 0.48, h * 0.08));
+    // The chain, the golden frame and its gem.
+    p.setPen(QPen(QColor("#c89a20"), std::max(1.0, w / 50)));
+    p.setBrush(Qt::NoBrush);
+    p.drawArc(QRectF(X(0.34), Y(0.08), w * 0.32, h * 0.4), 20 * 16, 140 * 16);
+    p.setPen(ink);
+    QRadialGradient gold(QPointF(X(0.44), Y(0.36)), w * 0.24);
+    gold.setColorAt(0, QColor("#fff0a0"));
+    gold.setColorAt(1, QColor("#c08a10"));
+    p.setBrush(gold);
+    QPolygonF frame;
+    for (int i = 0; i < 16; ++i) {
+        const double a = M_PI / 8 * i - M_PI / 2, rad = (i % 2 ? 0.17 : 0.22) * w;
+        frame << QPointF(X(0.5) + rad * std::cos(a), Y(0.46) + rad * std::sin(a));
+    }
+    p.drawPolygon(frame);
+    QRadialGradient gem(QPointF(X(0.47), Y(0.43)), w * 0.12);
+    gem.setColorAt(0, QColor("#f0c0ff"));
+    gem.setColorAt(1, QColor("#7a20b0"));
+    p.setBrush(gem);
+    p.drawEllipse(QPointF(X(0.5), Y(0.46)), w * 0.1, h * 0.1);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(255, 255, 255, 220));
+    p.drawEllipse(QPointF(X(0.47), Y(0.43)), w * 0.03, h * 0.03);
+    p.restore();
+}
+
+void drawUnitToken(QPainter& p, const QPointF& c, double rad, const QColor& side, const QString& name, int count,
+                   int stars, bool active, bool target, const QString& unitId, int rank) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0, 0, 0, 80));
+    p.drawEllipse(c + QPointF(rad * 0.08, rad * 0.12), rad, rad);
+    QRadialGradient g(c - QPointF(rad * 0.3, rad * 0.3), rad * 1.4);
+    g.setColorAt(0, side.lighter(150));
+    g.setColorAt(1, side.darker(140));
+    p.setBrush(g);
+    p.setPen(QPen(active ? QColor("#ffd84a") : target ? QColor("#ff3030") : QColor("#20180c"), active || target ? 3 : 1.5));
+    p.drawEllipse(c, rad, rad);
+    p.setPen(QPen(QColor(255, 255, 255, 90), 1));
+    p.setBrush(Qt::NoBrush);
+    p.drawEllipse(c, rad * 0.8, rad * 0.8);
+    if (!unitId.isEmpty()) {
+        // The unit's picture inside the shield.
+        const int size = std::max(8, int(rad * 1.5));
+        p.drawPixmap(QPointF(c.x() - size / 2.0, c.y() - rad * 0.92), unitIcon(unitId, rank, size));
+    }
+    if (rad >= 10) {
+        QFont f = p.font();
+        f.setPixelSize(std::max(7, int(rad * 0.36)));
+        f.setBold(true);
+        p.setFont(f);
+        if (unitId.isEmpty()) {
+            p.setPen(Qt::white);
+            p.drawText(QRectF(c.x() - rad, c.y() - rad * 0.7, 2 * rad, rad * 0.8), Qt::AlignCenter, name.left(8));
+        }
+        // Rank chevrons (advanced one, elite two) on the left.
+        p.setPen(QPen(QColor("#ffd84a"), std::max(1.5, rad / 9)));
+        for (int i = 0; i < rank; ++i) {
+            const double y = c.y() + rad * (0.05 - 0.22 * i);
+            p.drawLine(QPointF(c.x() - rad * 0.92, y - rad * 0.1), QPointF(c.x() - rad * 0.78, y));
+            p.drawLine(QPointF(c.x() - rad * 0.78, y), QPointF(c.x() - rad * 0.64, y - rad * 0.1));
+        }
+        // The count on a small plate.
+        const QRectF plate(c.x() - rad * 0.55, c.y() + rad * 0.42, rad * 1.1, rad * 0.5);
+        p.setPen(QPen(QColor("#20180c"), 1));
+        p.setBrush(QColor("#f1e4c0"));
+        p.drawRoundedRect(plate, 3, 3);
+        p.setPen(QColor("#20180c"));
+        p.drawText(plate, Qt::AlignCenter, QString::number(count));
+        if (stars > 0) {
+            p.setPen(QColor("#ffd84a"));
+            p.drawText(QRectF(c.x() - rad, c.y() - rad * 1.15, 2 * rad, rad * 0.5), Qt::AlignCenter, QString(stars, QChar(0x2605)));
+        }
+    }
+    p.restore();
+}
+
+void drawBattleFigure(QPainter& p, const QPointF& c, double r, const QColor& side, const QString& unitId, int rank,
+                      int count, int stars, bool active, bool target, bool faceLeft) {
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    // The base: a shadow, a disc in the side's colour, a ring.
+    const QPointF bc(c.x(), c.y() + r * 0.42);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0, 0, 0, 90));
+    p.drawEllipse(bc + QPointF(r * 0.06, r * 0.08), r * 0.74, r * 0.28);
+    QLinearGradient base(bc - QPointF(0, r * 0.26), bc + QPointF(0, r * 0.26));
+    base.setColorAt(0, side.lighter(150));
+    base.setColorAt(1, side.darker(150));
+    p.setBrush(base);
+    p.setPen(QPen(active ? QColor("#ffd84a") : target ? QColor("#ff3030") : QColor(20, 12, 4, 220), active || target ? std::max(2.0, r * 0.1) : 1.5));
+    p.drawEllipse(bc, r * 0.7, r * 0.26);
+    if (active) {  // a soft glow around the one acting
+        QRadialGradient glow(bc, r * 1.1);
+        glow.setColorAt(0, QColor(255, 216, 74, 90));
+        glow.setColorAt(1, QColor(255, 216, 74, 0));
+        p.setPen(Qt::NoPen);
+        p.setBrush(glow);
+        p.drawEllipse(bc, r * 1.1, r * 0.5);
+    }
+    // The figure, standing on the base.
+    const int size = std::max(12, int(r * 2.45));
+    const QPixmap& pm = unitIcon(unitId, rank, size);
+    const QPointF topLeft(c.x() - size / 2.0, bc.y() + r * 0.12 - size);
+    if (faceLeft) {
+        p.save();
+        p.translate(c.x(), 0);
+        p.scale(-1, 1);
+        p.drawPixmap(QPointF(-size / 2.0, topLeft.y()), pm);
+        p.restore();
+    } else {
+        p.drawPixmap(topLeft, pm);
+    }
+    if (r >= 8) {
+        QFont f = p.font();
+        f.setPixelSize(std::max(8, int(r * 0.36)));
+        f.setBold(true);
+        p.setFont(f);
+        // The count on a plate at the front of the base.
+        const QString text = QString::number(count);
+        const double tw = std::max(r * 0.7, QFontMetrics(f).horizontalAdvance(text) + r * 0.25);
+        const QRectF plate(c.x() + (faceLeft ? -r * 0.95 : r * 0.95 - tw), bc.y() - r * 0.02, tw, r * 0.44);
+        p.setPen(QPen(QColor("#20180c"), 1.2));
+        QLinearGradient pg(plate.topLeft(), plate.bottomLeft());
+        pg.setColorAt(0, QColor("#fff4d8"));
+        pg.setColorAt(1, QColor("#d8c8a0"));
+        p.setBrush(pg);
+        p.drawRoundedRect(plate, r * 0.12, r * 0.12);
+        p.setPen(QColor("#20180c"));
+        p.drawText(plate, Qt::AlignCenter, text);
+        // Rank chevrons on the other side of the base.
+        p.setPen(QPen(QColor("#ffd84a"), std::max(1.5, r / 9), Qt::SolidLine, Qt::RoundCap));
+        const double chx = c.x() + (faceLeft ? r * 0.6 : -r * 0.6);
+        for (int i = 0; i < rank; ++i) {
+            const double y = bc.y() + r * (0.12 - 0.16 * i);
+            p.drawLine(QPointF(chx - r * 0.12, y - r * 0.08), QPointF(chx, y));
+            p.drawLine(QPointF(chx, y), QPointF(chx + r * 0.12, y - r * 0.08));
+        }
+        if (stars > 0) {  // veterancy over the head
+            p.setPen(QColor(20, 12, 4));
+            const QRectF sr(c.x() - r, topLeft.y() - r * 0.1, 2 * r, r * 0.4);
+            p.drawText(sr.translated(1, 1), Qt::AlignCenter, QString(stars, QChar(0x2605)));
+            p.setPen(QColor("#ffd84a"));
+            p.drawText(sr, Qt::AlignCenter, QString(stars, QChar(0x2605)));
+        }
+    }
+    p.restore();
+}
+
+// Small arrow images for the style sheet (it cannot draw them itself).
+QString arrowFile(bool up) {
+    const QString dir = QDir::temp().filePath(QStringLiteral("kot_art"));
+    QDir().mkpath(dir);
+    const QString path = QDir(dir).filePath(up ? QStringLiteral("up.png") : QStringLiteral("down.png"));
+    if (!QFile::exists(path)) {
+        QPixmap pm(20, 20);
+        pm.fill(Qt::transparent);
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#e0c070"));
+        QPolygonF tri;
+        if (up) tri << QPointF(2, 15) << QPointF(18, 15) << QPointF(10, 5);
+        else tri << QPointF(2, 5) << QPointF(18, 5) << QPointF(10, 15);
+        p.drawPolygon(tri);
+        p.end();
+        pm.save(path);
+    }
+    return path;
+}
+
+QString styleSheet() {
+    QString css = QStringLiteral(R"(
+QWidget { background-color: #2b2118; color: #eadfc8; font-size: 10pt; }
+QLabel { background: transparent; }
+QPushButton {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6e4e2f, stop:0.5 #5a3d22, stop:1 #48301a);
+    border: 1px solid #9a7a3a; border-top-color: #c9a24a; border-bottom-color: #6a5028;
+    border-radius: 8px; padding: 6px 14px; color: #f6e7c1;
+}
+QPushButton:hover { border-color: #e0bc62; color: #fff4d8; }
+QPushButton:pressed { background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3a2614, stop:1 #4a3119); padding-top: 7px; padding-bottom: 5px; }
+QPushButton:focus { outline: none; }
+QPushButton:default { border-color: #d8b45a; }
+QPushButton:disabled { color: #857660; border-color: #4e4228; background-color: #352819; }
+QPushButton#endTurnButton { font-weight: bold; padding: 8px 10px; }
+QPushButton#levelUpButton {
+    font-weight: bold; color: #2b1a08; border: 2px solid #fff0b0;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffe27a, stop:1 #d8a020);
+}
+QPushButton#endTurnButton[ready="true"] {
+    font-size: 12pt; color: #2b1a08; border: 2px solid #fff0b0;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffd75a, stop:1 #c98a12);
+}
+QPushButton#endTurnButton[ready="true"][pulse="true"] {
+    border: 2px solid #ffffff;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #fff09a, stop:1 #e8a820);
+}
+QTableView QPushButton { padding: 2px 8px; border-radius: 6px; margin: 2px; }
+QToolButton { background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 3px; }
+QToolButton:hover { border-color: #9a7a3a; }
+QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QTextEdit, QListWidget {
+    background-color: #1f1812; border: 1px solid #6a5530; border-radius: 6px; color: #eadfc8;
+    selection-background-color: #7a5a24; padding: 2px 4px;
+}
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus { border-color: #c9a24a; }
+QComboBox QAbstractItemView { background-color: #1f1812; color: #eadfc8; border: 1px solid #6a5530; outline: none;
+                              selection-background-color: #6a4a22; }
+QListWidget { outline: none; }
+QListWidget::item { padding: 3px 4px; border-radius: 4px; }
+QListWidget::item:selected { background: #6a4a22; color: #fff0c8; }
+QListWidget::item:hover { background: #3a2c1e; }
+QTableWidget, QTableView {
+    background-color: #241b13; alternate-background-color: #2c2218; border: 1px solid #5e4a2a; border-radius: 8px;
+    gridline-color: transparent; color: #eadfc8; selection-background-color: #5a4020; outline: none;
+}
+QTableView::item { padding: 4px 6px; border: none; border-bottom: 1px solid #33281c; }
+QTableView::item:selected { background: #4a3620; color: #fff0c8; }
+QTableCornerButton::section { background: transparent; border: none; }
+QHeaderView { background: transparent; }
+QHeaderView::section {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #45341f, stop:1 #382a1a);
+    color: #f0d898; border: none; border-bottom: 1px solid #7a6235; padding: 5px 6px; font-weight: bold;
+}
+QTabWidget::pane { border: 1px solid #6a5530; border-radius: 8px; top: -1px; background: #2b2118; }
+QTabBar::tab {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3e2f20, stop:1 #33271a);
+    border: 1px solid #5e4a2a; border-bottom: none; border-top-left-radius: 8px; border-top-right-radius: 8px;
+    padding: 6px 16px; margin-right: 3px; color: #cdbd9c;
+}
+QTabBar::tab:hover { color: #f0e0c0; }
+QTabBar::tab:selected {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6a4a2a, stop:1 #2b2118);
+    border-color: #a8873e; color: #ffe9b0;
+}
+QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 2px; }
+QScrollBar::handle { background: #6b4a2b; border-radius: 4px; min-height: 24px; min-width: 24px; }
+QScrollBar::handle:hover { background: #8a643a; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
+QToolTip { background-color: #f1e4c0; color: #20180c; border: 1px solid #a8873e; border-radius: 6px; padding: 4px 6px; }
+QComboBox { min-width: 7em; padding: 3px 22px 3px 8px; }
+QComboBox::drop-down { width: 18px; border: none; }
+QComboBox::down-arrow { image: url(%DOWN%); width: 10px; height: 10px; }
+QSpinBox { padding-right: 18px; min-width: 3em; }
+QSpinBox::up-button, QSpinBox::down-button { width: 16px; background: transparent; border: none; }
+QSpinBox::up-arrow { image: url(%UP%); width: 8px; height: 8px; }
+QSpinBox::down-arrow { image: url(%DOWN%); width: 8px; height: 8px; }
+QCheckBox { spacing: 6px; }
+QCheckBox::indicator { width: 15px; height: 15px; border: 1px solid #c9a24a; border-radius: 4px; background: #1d1610; }
+QCheckBox::indicator:checked { background: qradialgradient(cx:0.5, cy:0.5, radius:0.6, fx:0.5, fy:0.5,
+                               stop:0 #ffe07a, stop:0.55 #c9a24a, stop:0.6 #1d1610); }
+QCheckBox::indicator:disabled { border-color: #5e5030; }
+QGroupBox { border: 1px solid #5e4a2a; border-radius: 8px; margin-top: 14px; padding-top: 6px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: #f0d898; }
+QMenu { background-color: #2b2118; border: 1px solid #7a6235; border-radius: 6px; padding: 4px; }
+QMenu::item { padding: 5px 22px 5px 22px; border-radius: 4px; }
+QMenu::item:selected { background: #5a4020; color: #fff0c8; }
+QMenu::separator { height: 1px; background: #5e4a2a; margin: 4px 8px; }
+QDialog, QMessageBox { background-color: #2b2118; }
+)");
+    css.replace(QStringLiteral("%UP%"), arrowFile(true));
+    css.replace(QStringLiteral("%DOWN%"), arrowFile(false));
+    return css;
+}
+
+}  // namespace kot::client::art

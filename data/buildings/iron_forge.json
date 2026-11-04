@@ -1,0 +1,20 @@
+{
+  "id": "iron_forge",
+  "name": "Iron Forge",
+  "race": "dwarves",
+  "cost": {
+    "gold": 2000,
+    "stone": 10,
+    "mercury": 2
+  },
+  "requires": [
+    "fort"
+  ],
+  "upgradeOf": "golem_forge",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "iron_golem"
+    }
+  ]
+}

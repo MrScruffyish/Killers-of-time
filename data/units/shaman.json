@@ -1,0 +1,25 @@
+{
+  "id": "shaman",
+  "name": "Shaman",
+  "race": "orcs",
+  "tier": 3,
+  "attack": 8,
+  "defense": 6,
+  "damageMin": 5,
+  "damageMax": 8,
+  "maxHp": 28,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 350,
+    "mercury": 1
+  },
+  "initiative": 8,
+  "range": 5,
+  "shots": 10,
+  "spellPoints": 14,
+  "spells": [
+    "haste"
+  ],
+  "upgradesTo": "elder_shaman"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "wood_nymph",
+  "name": "Wood Nymph",
+  "race": "sylvan",
+  "tier": 1,
+  "attack": 4,
+  "defense": 4,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 9,
+  "battleSpeed": 7,
+  "weeklyGrowth": 10,
+  "cost": {
+    "gold": 50
+  },
+  "initiative": 11,
+  "abilities": [
+    "flying"
+  ],
+  "spellPoints": 12,
+  "spells": [
+    "regrowth"
+  ]
+}

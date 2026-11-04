@@ -1,0 +1,18 @@
+{
+  "id": "harpoon_wharf",
+  "name": "Harpoon Wharf",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 600,
+    "wood": 8
+  },
+  "requires": [
+    "deckhand_shacks"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "harpooner"
+    }
+  ]
+}

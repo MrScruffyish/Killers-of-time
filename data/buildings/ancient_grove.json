@@ -1,0 +1,16 @@
+{
+  "id": "ancient_grove",
+  "name": "Ancient Grove",
+  "race": "sylvan",
+  "cost": {
+    "gold": 1800,
+    "wood": 15
+  },
+  "upgradeOf": "treant_grove",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "ancient_treant"
+    }
+  ]
+}

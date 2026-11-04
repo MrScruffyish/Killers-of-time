@@ -1,0 +1,18 @@
+{
+  "id": "archer_elite",
+  "name": "Elite Archer",
+  "race": "humans",
+  "tier": 2,
+  "attack": 8,
+  "defense": 5,
+  "damageMin": 3,
+  "damageMax": 5,
+  "maxHp": 12,
+  "battleSpeed": 5,
+  "range": 7,
+  "shots": 16,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 155
+  }
+}

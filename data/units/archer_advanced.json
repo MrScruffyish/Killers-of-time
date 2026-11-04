@@ -1,0 +1,19 @@
+{
+  "id": "archer_advanced",
+  "name": "Advanced Archer",
+  "race": "humans",
+  "tier": 2,
+  "attack": 7,
+  "defense": 4,
+  "damageMin": 2,
+  "damageMax": 5,
+  "maxHp": 11,
+  "battleSpeed": 4,
+  "range": 6,
+  "shots": 14,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 125
+  },
+  "upgradesTo": "archer_elite"
+}

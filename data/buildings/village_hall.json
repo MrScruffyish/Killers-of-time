@@ -1,0 +1,14 @@
+{
+  "id": "village_hall",
+  "name": "Village Hall",
+  "cost": {
+    "gold": 500
+  },
+  "effects": [
+    {
+      "type": "income",
+      "resource": "gold",
+      "amount": 250
+    }
+  ]
+}

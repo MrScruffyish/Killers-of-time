@@ -1,0 +1,18 @@
+{
+  "id": "fire_bolt",
+  "name": "Fire Bolt",
+  "school": "fire",
+  "level": 1,
+  "cost": 5,
+  "requiredMagic": 1,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "A bolt of flame scorches one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 12,
+      "perPower": 10
+    }
+  ]
+}

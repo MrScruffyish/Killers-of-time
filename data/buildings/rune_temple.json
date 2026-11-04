@@ -1,0 +1,19 @@
+{
+  "id": "rune_temple",
+  "name": "Rune Temple",
+  "race": "dwarves",
+  "cost": {
+    "gold": 1800,
+    "stone": 10,
+    "gems": 2
+  },
+  "requires": [
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "rune_priest"
+    }
+  ]
+}

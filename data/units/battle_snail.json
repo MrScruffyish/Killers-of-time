@@ -1,0 +1,16 @@
+{
+  "id": "battle_snail",
+  "name": "Battle Snail",
+  "race": "neutral",
+  "tier": 1,
+  "attack": 3,
+  "defense": 9,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 30,
+  "battleSpeed": 1,
+  "weeklyGrowth": 6,
+  "cost": {
+    "gold": 80
+  }
+}

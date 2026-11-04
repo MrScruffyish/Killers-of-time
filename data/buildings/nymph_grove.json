@@ -1,0 +1,16 @@
+{
+  "id": "nymph_grove",
+  "name": "Nymph Grove",
+  "race": "sylvan",
+  "cost": {
+    "gold": 350,
+    "wood": 3
+  },
+  "upgradeOf": "dryad_glade",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "wood_nymph"
+    }
+  ]
+}

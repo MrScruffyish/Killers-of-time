@@ -1,0 +1,21 @@
+{
+  "id": "snail_pen",
+  "name": "Snail Pen",
+  "race": "humans",
+  "cost": {
+    "gold": 600,
+    "stone": 3
+  },
+  "requires": [
+    "barracks"
+  ],
+  "excludes": [
+    "eagle_roost"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "battle_snail"
+    }
+  ]
+}

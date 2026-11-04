@@ -1,0 +1,20 @@
+{
+  "id": "kraken_deep",
+  "name": "Kraken Deep",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 6500,
+    "stone": 15,
+    "gems": 5
+  },
+  "requires": [
+    "serpent_bay",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "kraken"
+    }
+  ]
+}

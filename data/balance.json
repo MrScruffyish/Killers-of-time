@@ -1,0 +1,53 @@
+{
+  "_comment": "Tunable numbers. Movement is in hundredths of a movement point (100 = one grass tile).",
+  "vision": { "townRadius": 5, "mineRadius": 2 },
+  "economy": { "townDailyGold": 500, "tradeEfficiencyPercent": 80,
+               "heroCost": 2500, "tavernOffers": 2, "maxHeroesPerPlayer": 8,
+               "startingResources": { "gold": 10000, "wood": 20, "stone": 20 } },
+  "_difficulty": "Overall level (lobby): human starting resources, monster group size, AI income and growth bonus.",
+  "difficulty": {
+    "easy":   { "humanStartPercent": 150, "monsterPercent": 70,  "aiIncomePercent": -20, "aiGrowthPercent": -10 },
+    "normal": { "humanStartPercent": 100, "monsterPercent": 100, "aiIncomePercent": 0,   "aiGrowthPercent": 0 },
+    "hard":   { "humanStartPercent": 75,  "monsterPercent": 130, "aiIncomePercent": 20,  "aiGrowthPercent": 10 },
+    "expert": { "humanStartPercent": 50,  "monsterPercent": 160, "aiIncomePercent": 40,  "aiGrowthPercent": 25 }
+  },
+  "_aiSlotDifficulty": "Added for one AI player on top of the overall level (lobby slot setting).",
+  "aiSlotDifficulty": {
+    "easy":   { "aiIncomePercent": -15, "aiGrowthPercent": -10 },
+    "normal": { },
+    "hard":   { "aiIncomePercent": 15,  "aiGrowthPercent": 10 }
+  },
+  "_veterancy": "Units gain experience in battle (per unit: killed enemy HP x xpPercent / surviving units). Stars 1..5 at the thresholds; each star adds its bonus.",
+  "veterancy": { "xpPercent": 50, "thresholds": [20, 60, 150, 350, 800],
+                 "starBonuses": [ { "morale": 1 }, { "initiative": 1 }, { "battleSpeed": 1 }, { "attack": 1 }, { "defense": 1 } ] },
+  "battle": { "maxRounds": 30, "experiencePerHp": 2,
+              "attackPercentPerPoint": 5, "maxAttackPercent": 300,
+              "defensePercentPerPoint": 3, "maxDefensePercent": 70,
+              "moralePercentPerPoint": 5, "luckPercentPerPoint": 5, "hpPercentPerTraitLevel": 5, "obstacles": 4,
+              "_joinStrengthRatio": "neutral monsters this many times weaker than the hero's army offer to join him (0 = never)",
+              "joinStrengthRatio": 5,
+              "_joinCostPercent": "joining costs this percent of the units' gold recruit price",
+              "joinCostPercent": 50,
+              "_surrenderCostPercent": "surrendering to another player costs this percent of your surviving army's gold price; you keep hero and army",
+              "surrenderCostPercent": 50 },
+  "_siege": "Battles at a town with walls (fort = level 1, citadel = 2): wall segments with HP, towers that shoot each round, more damage for the defenders' shooters, and a catapult the attacker can pay for, for one battle.",
+  "siege": { "wallHpPerLevel": 50, "towerDamagePerLevel": 15, "defenderShotPercentPerLevel": 20,
+             "catapultDamageMin": 30, "catapultDamageMax": 45, "engineCost": { "gold": 600, "wood": 10 } },
+  "_neutralTowns": "Towns nobody owns: no recruits pile up; the garrison grows growthPercent of a week's units of each dwelling a week (at least 1), up to capWeeks weeks of that unit.",
+  "neutralTowns": { "growthPercent": 25, "capWeeks": 4 },
+  "_scouting": "Scouting trait: +vision tiles and +movement percent per level. Monsters and enemy heroes on the map attack a hero within zoneOfControlRadius tiles, one tile less per levelsPerZoneStep Scouting levels (not below the minimum).",
+  "scouting": { "visionPerLevel": 1, "movementPercentPerLevel": 5,
+                "zoneOfControlRadius": 2, "zoneOfControlMinRadius": 1, "levelsPerZoneStep": 2 },
+  "movement": {
+    "base": 1000,
+    "perTraitLevel": 100,
+    "minimum": 300,
+    "_comment2": "The slowest unit lowers the army's daily movement a little: first step whose mapSpeedAtMost >= slowest map speed applies.",
+    "slowPenalties": [
+      { "mapSpeedAtMost": 1, "penalty": 300 },
+      { "mapSpeedAtMost": 3, "penalty": 200 },
+      { "mapSpeedAtMost": 5, "penalty": 100 },
+      { "mapSpeedAtMost": 7, "penalty": 50 }
+    ]
+  }
+}

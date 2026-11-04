@@ -1,0 +1,17 @@
+{
+  "id": "oracle_pool",
+  "name": "Oracle Pool",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 1050,
+    "stone": 3,
+    "gems": 1
+  },
+  "upgradeOf": "tide_temple",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "tide_oracle"
+    }
+  ]
+}

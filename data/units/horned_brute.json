@@ -1,0 +1,18 @@
+{
+  "id": "horned_brute",
+  "name": "Horned Brute",
+  "race": "ashborn",
+  "tier": 3,
+  "attack": 12,
+  "defense": 9,
+  "damageMin": 7,
+  "damageMax": 11,
+  "maxHp": 40,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 495
+  },
+  "initiative": 7,
+  "upgradesTo": "horned_overseer"
+}

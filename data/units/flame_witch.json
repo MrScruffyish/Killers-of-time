@@ -1,0 +1,20 @@
+{
+  "id": "flame_witch",
+  "name": "Flame Witch",
+  "race": "ashborn",
+  "tier": 3,
+  "attack": 9,
+  "defense": 6,
+  "damageMin": 6,
+  "damageMax": 9,
+  "maxHp": 26,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 410
+  },
+  "initiative": 8,
+  "range": 6,
+  "shots": 10,
+  "upgradesTo": "pyre_witch"
+}

@@ -1,0 +1,17 @@
+{
+  "_comment": "moveCost: 100 = one standard tile. walkable = on foot, sailable = by boat.",
+  "terrain": [
+    { "id": "grass",     "name": "Grass",     "moveCost": 100, "color": "#5fa04e" },
+    { "id": "dirt",      "name": "Dirt",      "moveCost": 100, "color": "#9b7b4f" },
+    { "id": "road",      "name": "Road",      "moveCost": 70,  "color": "#c2b280" },
+    { "id": "sand",      "name": "Desert",    "moveCost": 150, "color": "#e3cf8a" },
+    { "id": "forest",    "name": "Forest",    "moveCost": 150, "color": "#2f6b3a", "blocksVision": false },
+    { "id": "hills",     "name": "Hills",     "moveCost": 150, "color": "#8a9a5b" },
+    { "id": "swamp",     "name": "Swamp",     "moveCost": 175, "color": "#4f6b50" },
+    { "id": "snow",      "name": "Snow",      "moveCost": 150, "color": "#eef3f7" },
+    { "id": "mountains", "name": "Mountains", "walkable": false, "color": "#7d7d7d", "blocksVision": true },
+    { "id": "river",     "name": "River",     "walkable": false, "sailable": true, "color": "#6fa8dc" },
+    { "id": "sea",       "name": "Sea",       "walkable": false, "sailable": true, "color": "#2c5aa0" },
+    { "id": "lava",      "name": "Lava",      "walkable": false, "color": "#c0392b" }
+  ]
+}

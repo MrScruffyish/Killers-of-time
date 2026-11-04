@@ -1,0 +1,20 @@
+{
+  "id": "titan_hall",
+  "name": "Hall of the Titans",
+  "race": "dwarves",
+  "cost": {
+    "gold": 7000,
+    "stone": 20,
+    "gems": 5
+  },
+  "requires": [
+    "bear_den",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "earth_titan"
+    }
+  ]
+}

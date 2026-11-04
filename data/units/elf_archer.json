@@ -1,0 +1,19 @@
+{
+  "id": "elf_archer",
+  "name": "Elf Archer",
+  "race": "sylvan",
+  "tier": 2,
+  "attack": 7,
+  "defense": 3,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 12,
+  "battleSpeed": 6,
+  "weeklyGrowth": 7,
+  "cost": {
+    "gold": 110
+  },
+  "range": 6,
+  "shots": 16,
+  "upgradesTo": "elf_marksman"
+}

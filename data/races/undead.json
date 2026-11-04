@@ -1,0 +1,17 @@
+{
+  "id": "undead",
+  "name": "Undead",
+  "description": "Endless hordes (+25% growth), but poor towns (-10% gold). At home in swamps. Dark and earth magic.",
+  "growthPercent": 13,
+  "incomePercent": -10,
+  "terrainCostPercent": {
+    "swamp": 50
+  },
+  "spellSchools": [
+    "dark",
+    "earth"
+  ],
+  "raiseDeadUnit": "skeleton",
+  "raiseDeadPercent": 15,
+  "ability": "Raise the dead: after a won battle, skeletons rise from the fallen (15% of the enemy HP killed)."
+}

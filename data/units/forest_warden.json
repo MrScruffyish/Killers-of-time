@@ -1,0 +1,17 @@
+{
+  "id": "forest_warden",
+  "name": "Forest Warden",
+  "race": "sylvan",
+  "tier": 1,
+  "attack": 5,
+  "defense": 4,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 11,
+  "battleSpeed": 7,
+  "weeklyGrowth": 12,
+  "cost": {
+    "gold": 40
+  },
+  "initiative": 10
+}

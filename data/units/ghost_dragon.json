@@ -1,0 +1,22 @@
+{
+  "id": "ghost_dragon",
+  "name": "Ghost Dragon",
+  "race": "undead",
+  "tier": 4,
+  "attack": 17,
+  "defense": 14,
+  "damageMin": 13,
+  "damageMax": 22,
+  "maxHp": 123,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 1900,
+    "mercury": 1
+  },
+  "initiative": 11,
+  "abilities": [
+    "undead",
+    "flying"
+  ]
+}

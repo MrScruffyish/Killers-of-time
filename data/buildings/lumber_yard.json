@@ -1,0 +1,18 @@
+{
+  "id": "lumber_yard",
+  "name": "Lumber Yard",
+  "cost": {
+    "gold": 800,
+    "stone": 5
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "wood",
+      "amount": 2
+    }
+  ]
+}

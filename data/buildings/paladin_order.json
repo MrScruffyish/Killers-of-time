@@ -1,0 +1,17 @@
+{
+  "id": "paladin_order",
+  "name": "Order of Paladins",
+  "race": "humans",
+  "cost": {
+    "gold": 3000,
+    "wood": 5,
+    "gems": 2
+  },
+  "upgradeOf": "stables",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "paladin"
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "_comment": "Heroes that can be hired in a tavern. The class decides the race.",
+  "heroes": [
+    {
+      "id": "arthur",
+      "name": "Arthur",
+      "class": "knight"
+    },
+    {
+      "id": "gawain",
+      "name": "Gawain",
+      "class": "knight"
+    },
+    {
+      "id": "lancelot",
+      "name": "Lancelot",
+      "class": "knight"
+    },
+    {
+      "id": "merlin",
+      "name": "Merlin",
+      "class": "wizard"
+    },
+    {
+      "id": "morgana",
+      "name": "Morgana",
+      "class": "wizard"
+    },
+    {
+      "id": "elaine",
+      "name": "Elaine",
+      "class": "wizard"
+    },
+    {
+      "id": "mordred",
+      "name": "Mordred",
+      "class": "death_knight"
+    },
+    {
+      "id": "valka",
+      "name": "Valka",
+      "class": "death_knight"
+    },
+    {
+      "id": "ossian",
+      "name": "Ossian",
+      "class": "death_knight"
+    },
+    {
+      "id": "lich_varn",
+      "name": "Varn",
+      "class": "necromancer"
+    },
+    {
+      "id": "sabine",
+      "name": "Sabine",
+      "class": "necromancer"
+    },
+    {
+      "id": "morwen",
+      "name": "Morwen",
+      "class": "necromancer"
+    },
+    {
+      "id": "aelin",
+      "name": "Aelin",
+      "class": "ranger"
+    },
+    {
+      "id": "thalion",
+      "name": "Thalion",
+      "class": "ranger"
+    },
+    {
+      "id": "ivy",
+      "name": "Ivy",
+      "class": "ranger"
+    },
+    {
+      "id": "elowen",
+      "name": "Elowen",
+      "class": "druid"
+    },
+    {
+      "id": "oakheart",
+      "name": "Oakheart",
+      "class": "druid"
+    },
+    {
+      "id": "faelan",
+      "name": "Faelan",
+      "class": "druid"
+    },
+    {
+      "id": "borin",
+      "name": "Borin",
+      "class": "thane"
+    },
+    {
+      "id": "dagna",
+      "name": "Dagna",
+      "class": "thane"
+    },
+    {
+      "id": "thorek",
+      "name": "Thorek",
+      "class": "runesmith"
+    },
+    {
+      "id": "helga",
+      "name": "Helga",
+      "class": "runesmith"
+    },
+    {
+      "id": "grosh",
+      "name": "Grosh",
+      "class": "warlord"
+    },
+    {
+      "id": "urka",
+      "name": "Urka",
+      "class": "warlord"
+    },
+    {
+      "id": "zugra",
+      "name": "Zugra",
+      "class": "shaman_chief"
+    },
+    {
+      "id": "morgul",
+      "name": "Morgul",
+      "class": "shaman_chief"
+    },
+    {
+      "id": "vexa",
+      "name": "Vexa",
+      "class": "hellknight"
+    },
+    {
+      "id": "korrath",
+      "name": "Korrath",
+      "class": "hellknight"
+    },
+    {
+      "id": "ignis",
+      "name": "Ignis",
+      "class": "pyromancer"
+    },
+    {
+      "id": "sythra",
+      "name": "Sythra",
+      "class": "pyromancer"
+    },
+    {
+      "id": "marro",
+      "name": "Marro",
+      "class": "captain"
+    },
+    {
+      "id": "brine",
+      "name": "Brine",
+      "class": "captain"
+    },
+    {
+      "id": "nerissa",
+      "name": "Nerissa",
+      "class": "tidecaller"
+    },
+    {
+      "id": "coralie",
+      "name": "Coralie",
+      "class": "tidecaller"
+    }
+  ]
+}

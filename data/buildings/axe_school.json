@@ -1,0 +1,16 @@
+{
+  "id": "axe_school",
+  "name": "Axe School",
+  "race": "dwarves",
+  "cost": {
+    "gold": 900,
+    "wood": 5
+  },
+  "upgradeOf": "axe_range",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "axe_master"
+    }
+  ]
+}

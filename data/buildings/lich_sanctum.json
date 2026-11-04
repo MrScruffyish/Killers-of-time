@@ -1,0 +1,20 @@
+{
+  "id": "lich_sanctum",
+  "name": "Lich Sanctum",
+  "race": "undead",
+  "cost": {
+    "gold": 2000,
+    "stone": 10,
+    "mercury": 2
+  },
+  "requires": [
+    "haunted_tower",
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "lich"
+    }
+  ]
+}

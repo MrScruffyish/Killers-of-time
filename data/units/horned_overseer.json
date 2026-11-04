@@ -1,0 +1,17 @@
+{
+  "id": "horned_overseer",
+  "name": "Horned Overseer",
+  "race": "ashborn",
+  "tier": 3,
+  "attack": 14,
+  "defense": 11,
+  "damageMin": 9,
+  "damageMax": 14,
+  "maxHp": 46,
+  "battleSpeed": 6,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 660
+  },
+  "initiative": 8
+}

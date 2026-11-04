@@ -1,0 +1,20 @@
+{
+  "id": "doom_citadel",
+  "name": "Doom Citadel",
+  "race": "undead",
+  "cost": {
+    "gold": 4550,
+    "stone": 9,
+    "mercury": 3
+  },
+  "upgradeOf": "dread_keep",
+  "requires": [
+    "castle"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "doom_lord"
+    }
+  ]
+}

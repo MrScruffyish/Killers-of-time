@@ -1,0 +1,27 @@
+{
+  "id": "spectre",
+  "name": "Spectre",
+  "race": "undead",
+  "tier": 3,
+  "attack": 10,
+  "defense": 8,
+  "damageMin": 6,
+  "damageMax": 9,
+  "maxHp": 30,
+  "battleSpeed": 8,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 395,
+    "stone": 1
+  },
+  "initiative": 10,
+  "abilities": [
+    "undead",
+    "flying",
+    "no_retaliation"
+  ],
+  "spellPoints": 12,
+  "spells": [
+    "curse"
+  ]
+}

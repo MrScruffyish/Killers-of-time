@@ -1,0 +1,18 @@
+{
+  "id": "bear_den",
+  "name": "Bear Den",
+  "race": "dwarves",
+  "cost": {
+    "gold": 2800,
+    "wood": 10
+  },
+  "requires": [
+    "golem_forge"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bear_rider"
+    }
+  ]
+}

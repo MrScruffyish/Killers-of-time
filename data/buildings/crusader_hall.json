@@ -1,0 +1,19 @@
+{
+  "id": "crusader_hall",
+  "name": "Crusader Chapter",
+  "race": "humans",
+  "cost": {
+    "gold": 1500,
+    "stone": 5
+  },
+  "requires": [
+    "fort"
+  ],
+  "upgradeOf": "sword_hall",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "crusader"
+    }
+  ]
+}

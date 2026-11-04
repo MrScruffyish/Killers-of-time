@@ -1,0 +1,16 @@
+{
+  "id": "catapult",
+  "name": "Catapult",
+  "race": "neutral",
+  "tier": 1,
+  "attack": 0,
+  "defense": 5,
+  "damageMin": 0,
+  "damageMax": 0,
+  "maxHp": 120,
+  "battleSpeed": 1,
+  "initiative": 3,
+  "weeklyGrowth": 0,
+  "cost": { "gold": 600 },
+  "abilities": [ "siege_engine" ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "warg_kennel",
+  "name": "Warg Kennel",
+  "race": "orcs",
+  "cost": {
+    "gold": 850,
+    "wood": 5
+  },
+  "upgradeOf": "wolf_pen",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "warg_rider"
+    }
+  ]
+}

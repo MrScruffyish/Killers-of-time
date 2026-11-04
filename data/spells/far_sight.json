@@ -1,0 +1,3 @@
+{ "id": "far_sight", "name": "Far Sight", "school": "water", "level": 2, "cost": 6, "requiredMagic": 2,
+  "scope": "adventure", "description": "Reveals the land around the hero.",
+  "effects": [ { "type": "reveal", "amount": 7, "perPower": 1 } ] }

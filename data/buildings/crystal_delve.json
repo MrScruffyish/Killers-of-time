@@ -1,0 +1,19 @@
+{
+  "id": "crystal_delve",
+  "name": "Crystal Delve",
+  "race": "dwarves",
+  "cost": {
+    "gold": 1200,
+    "stone": 10
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "gems",
+      "amount": 1
+    }
+  ]
+}

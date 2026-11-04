@@ -1,0 +1,20 @@
+{
+  "id": "archery_academy",
+  "name": "Archery Academy",
+  "race": "humans",
+  "cost": {
+    "gold": 1500,
+    "wood": 5,
+    "stone": 5
+  },
+  "requires": [
+    "fort"
+  ],
+  "upgradeOf": "archery_school",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "archer_elite"
+    }
+  ]
+}

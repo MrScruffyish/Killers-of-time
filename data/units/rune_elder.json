@@ -1,0 +1,24 @@
+{
+  "id": "rune_elder",
+  "name": "Rune Elder",
+  "race": "dwarves",
+  "tier": 3,
+  "attack": 10,
+  "defense": 10,
+  "damageMin": 7,
+  "damageMax": 11,
+  "maxHp": 36,
+  "battleSpeed": 5,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 640,
+    "gems": 1
+  },
+  "initiative": 8,
+  "range": 7,
+  "shots": 12,
+  "spellPoints": 20,
+  "spells": [
+    "stone_skin"
+  ]
+}

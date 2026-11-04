@@ -1,0 +1,13 @@
+{
+  "id": "tavern",
+  "name": "Tavern",
+  "cost": {
+    "gold": 500,
+    "wood": 5
+  },
+  "effects": [
+    {
+      "type": "tavern"
+    }
+  ]
+}

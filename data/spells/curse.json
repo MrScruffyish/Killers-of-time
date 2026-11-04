@@ -1,0 +1,20 @@
+{
+  "id": "curse",
+  "name": "Curse",
+  "school": "dark",
+  "level": 1,
+  "cost": 5,
+  "requiredMagic": 1,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "An enemy stack attacks weaker for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "attack",
+      "amount": -3,
+      "perPower": -1,
+      "rounds": 3
+    }
+  ]
+}

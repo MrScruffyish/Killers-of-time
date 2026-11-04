@@ -1,0 +1,14 @@
+{
+  "id": "great_war",
+  "name": "The Great War",
+  "description": "Three wars, one hero: from the dwarven passes through the orc horde to the struggle of the five realms. Your best hero and his army go with you.",
+  "scenarios": [
+    "mountain_kings",
+    "orc_horde",
+    "five_realms"
+  ],
+  "carryOver": {
+    "heroes": 1,
+    "army": true
+  }
+}

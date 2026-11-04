@@ -1,0 +1,19 @@
+{
+  "id": "barkskin",
+  "name": "Barkskin",
+  "school": "nature",
+  "level": 1,
+  "cost": 5,
+  "requiredMagic": 1,
+  "scope": "battle",
+  "target": "ally",
+  "description": "Bark covers one of your stacks: more defense for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "defense",
+      "amount": 4,
+      "rounds": 3
+    }
+  ]
+}

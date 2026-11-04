@@ -1,0 +1,19 @@
+{
+  "id": "chieftain_tent",
+  "name": "Chieftain's Tent",
+  "race": "orcs",
+  "cost": {
+    "gold": 1700,
+    "wood": 5
+  },
+  "requires": [
+    "fort"
+  ],
+  "upgradeOf": "war_camp",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "orc_chieftain"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "drake_nest",
+  "name": "Drake Nest",
+  "race": "ashborn",
+  "cost": {
+    "gold": 2800,
+    "stone": 10,
+    "sulphur": 3
+  },
+  "requires": [
+    "brute_forge"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "ash_drake"
+    }
+  ]
+}

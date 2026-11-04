@@ -1,0 +1,20 @@
+{
+  "id": "behemoth_crag",
+  "name": "Behemoth Crag",
+  "race": "orcs",
+  "cost": {
+    "gold": 6500,
+    "stone": 15,
+    "mercury": 4
+  },
+  "requires": [
+    "cyclops_cave",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "behemoth"
+    }
+  ]
+}

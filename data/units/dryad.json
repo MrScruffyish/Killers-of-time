@@ -1,0 +1,25 @@
+{
+  "id": "dryad",
+  "name": "Dryad",
+  "race": "sylvan",
+  "tier": 1,
+  "attack": 3,
+  "defense": 3,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 8,
+  "battleSpeed": 6,
+  "weeklyGrowth": 10,
+  "cost": {
+    "gold": 40
+  },
+  "initiative": 10,
+  "abilities": [
+    "flying"
+  ],
+  "spellPoints": 6,
+  "spells": [
+    "regrowth"
+  ],
+  "upgradesTo": "wood_nymph"
+}

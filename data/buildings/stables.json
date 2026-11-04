@@ -1,0 +1,18 @@
+{
+  "id": "stables",
+  "name": "Stables",
+  "race": "humans",
+  "cost": {
+    "gold": 2500,
+    "wood": 10
+  },
+  "requires": [
+    "sword_hall"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "cavalier"
+    }
+  ]
+}

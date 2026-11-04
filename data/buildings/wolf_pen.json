@@ -1,0 +1,18 @@
+{
+  "id": "wolf_pen",
+  "name": "Wolf Pen",
+  "race": "orcs",
+  "cost": {
+    "gold": 600,
+    "wood": 8
+  },
+  "requires": [
+    "goblin_huts"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "wolf_rider"
+    }
+  ]
+}

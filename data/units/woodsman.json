@@ -1,0 +1,17 @@
+{
+  "id": "woodsman",
+  "name": "Woodsman",
+  "race": "sylvan",
+  "tier": 1,
+  "attack": 4,
+  "defense": 3,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 7,
+  "battleSpeed": 5,
+  "weeklyGrowth": 12,
+  "cost": {
+    "gold": 25
+  },
+  "upgradesTo": "forest_warden"
+}

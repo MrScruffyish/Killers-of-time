@@ -1,0 +1,18 @@
+{
+  "id": "chain_lightning",
+  "name": "Chain Lightning",
+  "school": "air",
+  "level": 4,
+  "cost": 18,
+  "requiredMagic": 4,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "Great lightning burns one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 45,
+      "perPower": 25
+    }
+  ]
+}

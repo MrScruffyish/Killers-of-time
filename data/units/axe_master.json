@@ -1,0 +1,22 @@
+{
+  "id": "axe_master",
+  "name": "Axe Master",
+  "race": "dwarves",
+  "tier": 2,
+  "attack": 9,
+  "defense": 7,
+  "damageMin": 4,
+  "damageMax": 7,
+  "maxHp": 20,
+  "battleSpeed": 4,
+  "weeklyGrowth": 7,
+  "cost": {
+    "gold": 360
+  },
+  "initiative": 7,
+  "range": 6,
+  "shots": 12,
+  "abilities": [
+    "double_attack"
+  ]
+}

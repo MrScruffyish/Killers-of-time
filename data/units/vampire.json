@@ -1,0 +1,23 @@
+{
+  "id": "vampire",
+  "name": "Vampire",
+  "race": "undead",
+  "tier": 4,
+  "attack": 16,
+  "defense": 14,
+  "damageMin": 14,
+  "damageMax": 22,
+  "maxHp": 80,
+  "battleSpeed": 9,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1455
+  },
+  "initiative": 12,
+  "abilities": [
+    "undead",
+    "flying",
+    "no_retaliation"
+  ],
+  "upgradesTo": "vampire_lord"
+}

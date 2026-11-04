@@ -1,0 +1,16 @@
+{
+  "id": "marksman_hall",
+  "name": "Marksman Hall",
+  "race": "sylvan",
+  "cost": {
+    "gold": 700,
+    "wood": 5
+  },
+  "upgradeOf": "archery_glade",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "elf_marksman"
+    }
+  ]
+}

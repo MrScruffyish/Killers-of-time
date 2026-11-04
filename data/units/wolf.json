@@ -1,0 +1,17 @@
+{
+  "id": "wolf",
+  "name": "Wolf",
+  "race": "neutral",
+  "tier": 1,
+  "attack": 6,
+  "defense": 3,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 10,
+  "battleSpeed": 8,
+  "weeklyGrowth": 10,
+  "cost": {
+    "gold": 40
+  },
+  "initiative": 10
+}

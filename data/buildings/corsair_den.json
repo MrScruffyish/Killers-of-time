@@ -1,0 +1,16 @@
+{
+  "id": "corsair_den",
+  "name": "Corsair Den",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 400,
+    "wood": 5
+  },
+  "upgradeOf": "deckhand_shacks",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "corsair"
+    }
+  ]
+}

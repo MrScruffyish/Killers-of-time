@@ -1,0 +1,9 @@
+build/
+build-*/
+*.user
+*.user.*
+CMakeLists.txt.user*
+.vscode/
+.idea/
+compile_commands.json
+COMMIT_MSG.txt

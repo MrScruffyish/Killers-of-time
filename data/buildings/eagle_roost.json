@@ -1,0 +1,21 @@
+{
+  "id": "eagle_roost",
+  "name": "Eagle Roost",
+  "race": "humans",
+  "cost": {
+    "gold": 1500,
+    "gems": 2
+  },
+  "requires": [
+    "archery_range"
+  ],
+  "excludes": [
+    "snail_pen"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "armoured_eagle"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "axe_range",
+  "name": "Axe Range",
+  "race": "dwarves",
+  "cost": {
+    "gold": 650,
+    "wood": 5
+  },
+  "requires": [
+    "dwarf_hall"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "axe_thrower"
+    }
+  ]
+}

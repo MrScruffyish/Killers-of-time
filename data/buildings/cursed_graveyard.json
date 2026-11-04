@@ -1,0 +1,15 @@
+{
+  "id": "cursed_graveyard",
+  "name": "Cursed Graveyard",
+  "race": "undead",
+  "cost": {
+    "gold": 300,
+    "stone": 5
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "skeleton"
+    }
+  ]
+}

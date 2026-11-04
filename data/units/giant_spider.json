@@ -1,0 +1,20 @@
+{
+  "id": "giant_spider",
+  "name": "Giant Spider",
+  "race": "neutral",
+  "tier": 2,
+  "attack": 8,
+  "defense": 6,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 20,
+  "battleSpeed": 6,
+  "weeklyGrowth": 6,
+  "cost": {
+    "gold": 150
+  },
+  "initiative": 9,
+  "abilities": [
+    "no_retaliation"
+  ]
+}
