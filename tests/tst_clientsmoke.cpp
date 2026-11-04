@@ -52,6 +52,7 @@ private slots:
         QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope, config.path());
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        QSettings().setValue("game/endTurnReminder", false);  // no question box in the scripted play-through
         QHash<QString, int> tiers;
         for (const core::UnitDef& u : reg.units()) tiers.insert(u.id, u.tier);
         art::setUnitTiers(tiers);

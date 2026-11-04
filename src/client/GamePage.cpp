@@ -15,6 +15,7 @@
 #include <QToolButton>
 #include <QMenu>
 #include <QActionGroup>
+#include <QCheckBox>
 #include <QSettings>
 #include <QToolTip>
 #include <QCursor>
@@ -170,6 +171,10 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     }
     QAction* market = menu->addAction(tr("Market...\tM"));
     connect(market, &QAction::triggered, this, [this]() { openMarket(); });
+    QAction* remind = menu->addAction(tr("Remind me before ending the turn"));
+    remind->setCheckable(true);
+    connect(menu, &QMenu::aboutToShow, this, [remind]() { remind->setChecked(QSettings().value(QStringLiteral("game/endTurnReminder"), true).toBool()); });
+    connect(remind, &QAction::toggled, this, [](bool on) { QSettings().setValue(QStringLiteral("game/endTurnReminder"), on); });
     QAction* mute = menu->addAction(tr("Sound"));
     mute->setCheckable(true);
     mute->setChecked(!sound::muted());
@@ -321,6 +326,38 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
                         break;
                     }
                 return;
+            }
+        }
+        // Heroes with steps left and towns that could still build are easy to
+        // forget too (the reminder can be turned off).
+        if (QSettings().value(QStringLiteral("game/endTurnReminder"), true).toBool()) {
+            QStringList walkers, builders;
+            for (const ViewHero* h : m_view.myHeroes())
+                if (h->movementPoints >= 100) walkers << h->name;
+            for (const ViewTown* t : m_view.myTowns()) {
+                if (t->lastBuildDay == m_view.day) continue;
+                bool can = false;
+                for (const BuildOption& o : t->buildOptions) can = can || o.why.isEmpty();
+                if (can) builders << t->name;
+            }
+            if (!walkers.isEmpty() || !builders.isEmpty()) {
+                QStringList lines;
+                if (!walkers.isEmpty()) lines << tr("Heroes with steps left: <b>%1</b>").arg(walkers.join(", ").toHtmlEscaped());
+                if (!builders.isEmpty()) lines << tr("Towns that can still build today: <b>%1</b>").arg(builders.join(", ").toHtmlEscaped());
+                QMessageBox box(QMessageBox::Question, tr("End the turn?"), lines.join("<br>") + tr("<br><br>End the turn anyway?"),
+                                QMessageBox::NoButton, this);
+                box.setTextFormat(Qt::RichText);
+                QPushButton* back = box.addButton(tr("Not yet"), QMessageBox::RejectRole);
+                box.addButton(tr("End turn"), QMessageBox::AcceptRole);
+                auto* never = new QCheckBox(tr("Do not remind me again (Game menu turns it back on)"), &box);
+                box.setCheckBox(never);
+                box.setDefaultButton(back);
+                box.exec();
+                if (never->isChecked()) QSettings().setValue(QStringLiteral("game/endTurnReminder"), false);
+                if (box.clickedButton() == back) {
+                    if (!walkers.isEmpty()) selectNextHero();
+                    return;
+                }
             }
         }
         send(net::msg::endTurn, {}, tr("End turn"));
@@ -759,11 +796,20 @@ void GamePage::selectTown(int id) {
 }
 
 void GamePage::selectNextHero() {
+    // The next hero who can still walk today (if nobody can, simply the next one).
     const QList<const ViewHero*> heroes = m_view.myHeroes();
     if (heroes.isEmpty()) return;
-    int index = 0;
+    int current = -1;
     for (int i = 0; i < heroes.size(); ++i)
-        if (heroes[i]->id == m_selectedHero) index = (i + 1) % heroes.size();
+        if (heroes[i]->id == m_selectedHero) current = i;
+    int index = (current + 1) % heroes.size();
+    for (int step = 1; step <= heroes.size(); ++step) {
+        const int i = (current + step) % heroes.size();
+        if (heroes[i]->movementPoints >= 100) {
+            index = i;
+            break;
+        }
+    }
     selectHero(heroes[index]->id);
     m_map->centerOn(heroes[index]->pos);
 }
