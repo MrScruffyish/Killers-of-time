@@ -215,6 +215,12 @@ more damage per level. The attacker may pay `engineCost` for a catapult (unit `c
 ability `siege_engine`) for this battle only: it shoots wall segments for
 `catapultDamageMin`-`catapultDamageMax`. Computer attackers buy one when they can.
 
+## balance.json "neutralTowns"
+Towns nobody owns do not stock recruits for whoever takes them. Instead, each new week
+the garrison gets `growthPercent` percent of a week's growth of each of its dwellings'
+units (at least one), until it holds `capWeeks` weeks of growth of that unit (a bigger
+starting garrison is not cut). All fields optional (25 and 4).
+
 ## balance.json "scouting"
 The `scouting` trait (traits.json): per level `visionPerLevel` more vision tiles and
 `movementPercentPerLevel` percent more daily movement. **Zone of control:** a hostile army on

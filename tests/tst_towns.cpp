@@ -216,6 +216,19 @@ private slots:
         QCOMPARE(t().recruitPool.value("barracks"), 24);
     }
 
+    void neutralTownsGrowTheirGarrisonSlowly() {
+        const TownId free = gs.addTown("Free", "humans", {7, 7}, PlayerId());
+        gs.town(free)->buildings << "barracks";  // militia, 12 a week
+        const int week = townGrowth(gs, *gs.town(free), *reg.unit("militia"), reg);
+        const auto garrison = [&]() { return gs.army(gs.town(free)->garrison)->totalUnits(); };
+        QCOMPARE(garrison(), 0);
+        applyWeeklyGrowth(gs, reg);
+        QCOMPARE(garrison(), std::max(1, week * reg.balance().neutralTowns.growthPercent / 100));
+        QCOMPARE(gs.town(free)->recruitPool.value("barracks"), 0);  // nothing piles up for the next owner
+        for (int i = 0; i < 40; ++i) applyWeeklyGrowth(gs, reg);
+        QCOMPARE(garrison(), reg.balance().neutralTowns.capWeeks * week);  // up to the cap
+    }
+
     void upgradedDwellingGrowsWithTheNewUnit() {
         QVERIFY(build("barracks").ok);
         buildOnNewDay("pike_barracks");

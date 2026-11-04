@@ -137,8 +137,16 @@ struct ScoutingBalance {
     int zoneOfControlMinRadius = 1;
     int levelsPerZoneStep = 2;
 };
+// Neutral towns (nobody owns them): instead of recruits piling up for whoever takes
+// the town, the garrison grows growthPercent of a week's units of each dwelling a
+// week (at least one), until it holds capWeeks weeks of growth of that unit.
+struct NeutralTownBalance {
+    int growthPercent = 25;
+    int capWeeks = 4;
+};
 struct Balance {
     MovementBalance movement;
+    NeutralTownBalance neutralTowns;
     ScoutingBalance scouting;
     SiegeBalance siege;
     VisionBalance vision;

@@ -234,10 +234,23 @@ int townGrowth(const GameState& state, const Town& town, const UnitDef& unit, co
 void applyWeeklyGrowth(GameState& state, const ContentRegistry& content) {
     const WeekEventDef* event = content.weekEvent(state.weekEvent());
     const auto eventExtra = [event](const UnitDef& u) { return event ? event->unitGrowth.value(u.id) : 0; };
+    const NeutralTownBalance& nb = content.balance().neutralTowns;
     for (Town& town : state.towns()) {
+        Army* garrison = town.owner.isValid() ? nullptr : state.army(town.garrison);
         for (const Dwelling& d : dwellings(town, content)) {
             const UnitDef* unit = content.unit(d.unitId);
-            if (unit) town.recruitPool[d.poolKey] += townGrowth(state, town, *unit, content) + eventExtra(*unit);
+            if (!unit) continue;
+            const int week = townGrowth(state, town, *unit, content) + eventExtra(*unit);
+            if (town.owner.isValid()) {
+                town.recruitPool[d.poolKey] += week;
+                continue;
+            }
+            // A neutral town: a little more garrison instead of recruits piling up.
+            if (!garrison || nb.growthPercent <= 0 || week <= 0) continue;
+            int have = 0;
+            for (const UnitStack& st : garrison->stacks) have += st.unitTypeId() == unit->id ? st.count() : 0;
+            const int add = std::min(std::max(1, week * nb.growthPercent / 100), nb.capWeeks * week - have);
+            if (add > 0) garrison->addUnits(unit->id, add, unit->maxHp);
         }
     }
     for (MapDwelling& d : state.mapDwellings()) {

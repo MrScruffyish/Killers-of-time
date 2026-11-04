@@ -571,6 +571,8 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         ? top.requireObject(QStringLiteral("siege")) : QJsonObject();
     const QJsonObject scouting = root.contains(QStringLiteral("scouting"))
         ? top.requireObject(QStringLiteral("scouting")) : QJsonObject();
+    const QJsonObject neutralTowns = root.contains(QStringLiteral("neutralTowns"))
+        ? top.requireObject(QStringLiteral("neutralTowns")) : QJsonObject();
     const QJsonObject aiSlot = root.contains(QStringLiteral("aiSlotDifficulty"))
         ? top.requireObject(QStringLiteral("aiSlotDifficulty")) : QJsonObject();
     top.finish();
@@ -620,6 +622,14 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         if (sb.zoneOfControlMinRadius > sb.zoneOfControlRadius)
             sr.addError(QStringLiteral("zoneOfControlMinRadius must not be above zoneOfControlRadius"));
         if (sr.ok()) m_balance.scouting = sb;
+    }
+    if (!neutralTowns.isEmpty()) {
+        JsonReader nr(neutralTowns, file + QStringLiteral("/neutralTowns"), &errors);
+        NeutralTownBalance nb;
+        nb.growthPercent = nr.optionalInt(QStringLiteral("growthPercent"), nb.growthPercent, 0, 1000);
+        nb.capWeeks = nr.optionalInt(QStringLiteral("capWeeks"), nb.capWeeks, 0, 100);
+        nr.finish();
+        if (nr.ok()) m_balance.neutralTowns = nb;
     }
     if (!veterancy.isEmpty()) {
         JsonReader vr(veterancy, file + QStringLiteral("/veterancy"), &errors);

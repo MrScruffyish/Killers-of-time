@@ -33,6 +33,8 @@
   "_siege": "Battles at a town with walls (fort = level 1, citadel = 2): wall segments with HP, towers that shoot each round, more damage for the defenders' shooters, and a catapult the attacker can pay for, for one battle.",
   "siege": { "wallHpPerLevel": 50, "towerDamagePerLevel": 15, "defenderShotPercentPerLevel": 20,
              "catapultDamageMin": 30, "catapultDamageMax": 45, "engineCost": { "gold": 600, "wood": 10 } },
+  "_neutralTowns": "Towns nobody owns: no recruits pile up; the garrison grows growthPercent of a week's units of each dwelling a week (at least 1), up to capWeeks weeks of that unit.",
+  "neutralTowns": { "growthPercent": 25, "capWeeks": 4 },
   "_scouting": "Scouting trait: +vision tiles and +movement percent per level. Monsters and enemy heroes on the map attack a hero within zoneOfControlRadius tiles, one tile less per levelsPerZoneStep Scouting levels (not below the minimum).",
   "scouting": { "visionPerLevel": 1, "movementPercentPerLevel": 5,
                 "zoneOfControlRadius": 2, "zoneOfControlMinRadius": 1, "levelsPerZoneStep": 2 },

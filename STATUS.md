@@ -3,9 +3,9 @@
 > Update at the end of every session. Upload together with PROJECT.md at the
 > start of the next one.
 
-**Last updated:** 2026-11-03 (session 18, Claude Code, playtest round)
+**Last updated:** 2026-11-04 (session 19, Claude Code)
 **Current milestone:** first versions of every part of the game are in (M0-M10); version 0.3.0. Now: the user playtests the real client while the feel, the graphics and the rules are improved from his notes
-**Next session should do:** go on with the user's playtest notes. This round so far: races dwarves/orcs/ashborn/tidefolk (7), sieges with castles, hot-seat, roads, scenarios and campaigns plus a random maker, 14 more unit upgrades, town/city hall, granary, coasts and terrain features, a softer UI style, growth-aware balancing (`kot_balance weeks`). Next: the user's notes. Later: race abilities of their own (user agreed 7 races are enough for now), balance (a first even pass done; play-feel next). Not wanted (user): day/night, seasons; animation for now
+**Next session should do:** the user playtests against the stronger AI (session 19); go on with his notes. Use `kot_aiplay` before and after AI changes. This round so far: races dwarves/orcs/ashborn/tidefolk (7), sieges with castles, hot-seat, roads, scenarios and campaigns plus a random maker, 14 more unit upgrades, town/city hall, granary, coasts and terrain features, a softer UI style, growth-aware balancing (`kot_balance weeks`). Next: the user's notes. Later: race abilities of their own (user agreed 7 races are enough for now), balance (a first even pass done; play-feel next). Not wanted (user): day/night, seasons; animation for now
 
 ## Legend
 `[ ]` todo  `[~]` in progress  `[x]` done  `[?]` needs a decision from the user
@@ -125,6 +125,7 @@ and react to; add depth afterwards.
 - [x] Battle AI (basic: most dangerous target, ranged first, damage spells)
 - [x] Strategic AI v1 (`SimpleAi`): scored targets (value / distance: towns, mines, artifacts, treasures, dwellings, weaker armies, exploring), avoids stronger armies, defends threatened towns, collects reinforcements, hires more heroes over time, class-fitting level-ups, sends dwelling units home, movement spells. It now conquers an idle human within three weeks
 - [x] Difficulty: overall level in the lobby (easy/normal/hard/expert: human starting resources, monster size, AI income and growth) plus the per-AI slot level; numbers in balance.json; saved. AI profiles: simple, aggressive, economic, explorer (personality weights). Later: hero stat bonuses
+- [x] Strategic AI v2 (session 19): hires before building and saves gold when it has no hero, builds a tavern when it has none, keeps out of a day's reach (10 tiles) of stronger enemy heroes and goes home, guesses an enemy town's secret garrison from its size and walls and its own army, remembers where it lost a hero (comes back only 1.6x stronger), a little more careful with monsters; computer sides surrender (if they can pay) or retreat from battles where the enemy is 3x stronger. `kot_aiplay` (3 AIs, 8 games, 70 days): days without a hero 23/57/43 -> 0/0.5/0; games decided 0 -> 2
 - [x] Teams in mixed human/AI games, victory conditions: conquest always, plus per scenario take a town, collect gold, most towns after N days (editor settings, goal shown in the game)
 
 ## M10: Polish and extras
@@ -247,6 +248,7 @@ and react to; add depth afterwards.
 
 ## Session log
 - **Session 1:** Wrote PROJECT.md and STATUS.md. No code yet.
+- **Session 19:** In-game help (F1); stronger AI and the `kot_aiplay` tool; empty taverns refill each morning; heroes side by side meet (swap units and artifacts, `give_artifact`); neutral towns grow their garrison slowly instead of piling up recruits (balance `neutralTowns`).
 - **Session 18:** Playtest round with the user: upkeep removed; routes (click plots, double click/Enter walks, destination remembered); zone of control and the Scouting trait; spotting stops a hero when an unseen enemy appears; 2x2 towns; zoom steps and sprite art; pointers; Game menu; versioned saves with conversion and a load list; autosaves and campaign chapter saves; hero panel, resource bar, 10 army slots; battle ranges, unit ranks (regular/advanced/elite), battle stats panel, D/W keys, battle pointers; unit pictures; market (M); settings file; sound through one output (PulseAudio crash fixed), crash log; battle result window; towns drawn by race, size and walls, town picture (42 test programs).
 - **Session 17:** Moved to Claude Code (CLAUDE.md added). Long autonomous run: battle depth, map content, AI, difficulty, client polish, tools (kot_graph, kot_balance(_gui), kot_mapgen, kot_editor), scenarios, campaigns, veterancy, art, sound, packaging, hero screen, weekly events, boats and islands (41 test programs). Basic auto-resolved battles, neutral monsters, battle reports over the network and in the client. Simple AI player. Game end (last team standing). Save/load on the server and reconnect. Hex battles (simple) with a battle screen. Spells (simple). Three races.
 - **Session 16:** Client slice (connect, lobby, map, town dialog, one-click actions), view parser, GUI smoke test with screenshots, lobby ready-flag fix, roadmap reordered breadth-first.
