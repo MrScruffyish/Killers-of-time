@@ -392,51 +392,155 @@ void drawTownScene(QPainter& p, const QRectF& r, const TownLook& look, const QLi
     const double w = r.width(), h = r.height();
     const auto X = [&](double f) { return r.left() + w * f; };
     const auto Y = [&](double f) { return r.top() + h * f; };
-    // Sky (dusk for the undead), far hills and the ground.
+    // Each race's own land: sky, far land, ground, and a landmark behind the town.
+    struct Land {
+        QColor skyTop, skyLow, far, hills, ground, tuft;
+        bool moon = false, clouds = true;
+    };
+    const QString& race = look.race;
+    Land land{QColor("#6aa0d8"), QColor("#d8e8f0"), QColor(120, 150, 180, 150), QColor("#7aa060"), QColor("#5d8a3a"), QColor("#3e6a26")};
+    if (race == "undead") land = {QColor("#2a2040"), QColor("#8a6a7a"), QColor(80, 70, 90, 150), QColor("#4a4a40"), QColor("#5a5a48"), QColor("#3a3a30"), true};
+    else if (race == "ashborn") land = {QColor("#3a1a1a"), QColor("#d0703a"), QColor(70, 40, 40, 170), QColor("#4a3030"), QColor("#4a3a34"), QColor("#2a2020"), false, false};
+    else if (race == "dwarves") land = {QColor("#7aa0c8"), QColor("#e0e8f0"), QColor(150, 150, 160, 190), QColor("#8a8478"), QColor("#7a7468"), QColor("#5a5448")};
+    else if (race == "orcs") land = {QColor("#c88a4a"), QColor("#f0d8a0"), QColor(160, 110, 70, 150), QColor("#a8804a"), QColor("#9a7444"), QColor("#6a4a24")};
+    else if (race == "sylvan") land = {QColor("#78b0d0"), QColor("#e0f0e0"), QColor(80, 130, 90, 160), QColor("#4a8a3a"), QColor("#3e7a30"), QColor("#2a5a1e")};
+    else if (race == "tidefolk") land = {QColor("#5aa8e0"), QColor("#e8f4f8"), QColor(60, 130, 180, 200), QColor("#d8c890"), QColor("#d8c080"), QColor("#a89050")};
     QLinearGradient sky(r.topLeft(), r.bottomLeft());
-    sky.setColorAt(0, look.race == "undead" ? QColor("#3a2a50") : QColor("#6aa0d8"));
-    sky.setColorAt(0.7, look.race == "undead" ? QColor("#8a6a7a") : QColor("#d8e8f0"));
+    sky.setColorAt(0, land.skyTop);
+    sky.setColorAt(0.7, land.skyLow);
     p.fillRect(r, sky);
     p.setPen(Qt::NoPen);
-    // Soft clouds (a pale moon for the undead).
-    if (look.race == "undead") {
+    if (land.moon) {
         p.setBrush(QColor(240, 236, 210, 200));
         p.drawEllipse(QPointF(X(0.82), Y(0.16)), h * 0.07, h * 0.07);
     }
-    for (const auto& [cxf, cyf, sz] : {std::tuple{0.12, 0.14, 1.0}, std::tuple{0.38, 0.08, 0.7}, std::tuple{0.66, 0.18, 0.9}, std::tuple{0.9, 0.06, 0.6}}) {
-        const QColor cloud = look.race == "undead" ? QColor(120, 100, 130, 110) : QColor(255, 255, 255, 150);
-        p.setBrush(cloud);
-        for (int k = 0; k < 4; ++k)
-            p.drawEllipse(QPointF(X(cxf + (k - 1.5) * 0.025 * sz), Y(cyf + (k % 2 ? -0.015 : 0.01) * sz)), w * 0.03 * sz, h * 0.045 * sz);
-    }
-    // A far blue range.
-    p.setBrush(look.race == "undead" ? QColor(80, 70, 90, 150) : QColor(120, 150, 180, 150));
+    if (land.clouds)
+        for (const auto& [cxf, cyf, sz] : {std::tuple{0.12, 0.14, 1.0}, std::tuple{0.38, 0.08, 0.7}, std::tuple{0.66, 0.18, 0.9}, std::tuple{0.9, 0.06, 0.6}}) {
+            const QColor cloud = race == "undead" ? QColor(120, 100, 130, 110) : QColor(255, 255, 255, 150);
+            p.setBrush(cloud);
+            for (int k = 0; k < 4; ++k)
+                p.drawEllipse(QPointF(X(cxf + (k - 1.5) * 0.025 * sz), Y(cyf + (k % 2 ? -0.015 : 0.01) * sz)), w * 0.03 * sz, h * 0.045 * sz);
+        }
+    // Far land: a blue range, the sea for the tidefolk, tall peaks for the dwarves.
+    p.setBrush(land.far);
     QPainterPath range;
     range.moveTo(X(0), Y(0.62));
-    for (int i = 0; i <= 12; ++i) range.lineTo(X(i / 12.0), Y(0.34 + 0.1 * (((i * 5) % 4) / 3.0)));
-    range.lineTo(X(1), Y(0.7));
-    range.lineTo(X(0), Y(0.7));
+    if (race == "tidefolk") {
+        range.addRect(QRectF(X(0), Y(0.5), w, h * 0.2));
+    } else {
+        const double peak = race == "dwarves" ? 0.12 : 0.34, rise = race == "dwarves" ? 0.3 : 0.1;
+        for (int i = 0; i <= 12; ++i) range.lineTo(X(i / 12.0), Y(peak + rise * (((i * 5) % 4) / 3.0)));
+        range.lineTo(X(1), Y(0.7));
+        range.lineTo(X(0), Y(0.7));
+    }
     p.drawPath(range);
-    p.setBrush(look.race == "undead" ? QColor("#4a4a40") : QColor("#7aa060"));
+    if (race == "dwarves") {  // snow on the peaks
+        p.setBrush(QColor(250, 252, 255, 220));
+        for (int i = 0; i <= 12; ++i)
+            if (((i * 5) % 4) == 0) p.drawPolygon(QPolygonF{QPointF(X(i / 12.0 - 0.025), Y(0.18)), QPointF(X(i / 12.0), Y(0.12)), QPointF(X(i / 12.0 + 0.025), Y(0.18))});
+    }
+    if (race == "tidefolk") {  // waves and a lighthouse
+        p.setPen(QPen(QColor(255, 255, 255, 140), std::max(1.0, h / 200)));
+        for (int i = 0; i < 14; ++i) p.drawLine(QPointF(X(i / 14.0 + 0.01), Y(0.55 + 0.03 * (i % 3))), QPointF(X(i / 14.0 + 0.04), Y(0.55 + 0.03 * (i % 3))));
+        p.setPen(QPen(kInk, std::max(1.0, w / 600)));
+        p.setBrush(lit(QRectF(X(0.06), Y(0.24), w * 0.03, h * 0.3), QColor("#f0ece0")));
+        p.drawPolygon(QPolygonF{QPointF(X(0.06), Y(0.54)), QPointF(X(0.068), Y(0.26)), QPointF(X(0.082), Y(0.26)), QPointF(X(0.09), Y(0.54))});
+        p.setBrush(QColor("#c03a2a"));
+        p.drawRect(QRectF(X(0.064), Y(0.36), w * 0.022, h * 0.04));
+        p.setBrush(QColor("#ffe27a"));
+        p.drawRect(QRectF(X(0.066), Y(0.22), w * 0.018, h * 0.04));
+        p.setPen(Qt::NoPen);
+    }
+    if (race == "ashborn") {  // a volcano with a glowing top and smoke
+        p.setBrush(QColor("#2a1a1a"));
+        p.drawPolygon(QPolygonF{QPointF(X(0.62), Y(0.66)), QPointF(X(0.74), Y(0.2)), QPointF(X(0.8), Y(0.2)), QPointF(X(0.95), Y(0.66))});
+        QRadialGradient lava(QPointF(X(0.77), Y(0.2)), w * 0.06);
+        lava.setColorAt(0, QColor(255, 200, 80, 240));
+        lava.setColorAt(1, QColor(255, 60, 10, 0));
+        p.setBrush(lava);
+        p.drawEllipse(QPointF(X(0.77), Y(0.2)), w * 0.06, h * 0.12);
+        p.setBrush(QColor(60, 50, 50, 140));
+        for (int k = 0; k < 4; ++k) p.drawEllipse(QPointF(X(0.78 + 0.02 * k), Y(0.12 - 0.04 * k)), w * (0.025 + 0.01 * k), h * (0.05 + 0.015 * k));
+    }
+    if (race == "sylvan") {  // great trees behind the town
+        for (const double x : {0.08, 0.3, 0.7, 0.92}) {
+            p.setBrush(QColor("#5a3a20"));
+            p.drawRect(QRectF(X(x - 0.008), Y(0.3), w * 0.016, h * 0.4));
+            p.setBrush(lit(QRectF(X(x - 0.08), Y(0.08), w * 0.16, h * 0.3), QColor("#3a7a30"), 135, 150));
+            QPainterPath crown;
+            for (const auto& [dx, dyy, rr] : {std::tuple{-0.04, 0.2, 0.05}, std::tuple{0.04, 0.2, 0.05}, std::tuple{0.0, 0.13, 0.06}})
+                crown.addEllipse(QPointF(X(x + dx * 0.6), Y(dyy)), h * rr * 3.4, h * rr * 3.4);
+            p.drawPath(crown.simplified());
+        }
+    }
+    p.setBrush(land.hills);
     QPainterPath hills;
     hills.moveTo(X(0), Y(0.7));
     for (int i = 0; i <= 8; ++i) hills.quadTo(X(i / 8.0 - 0.06), Y(0.5 + 0.06 * ((i * 7) % 3)), X(i / 8.0), Y(0.66));
     hills.lineTo(X(1), Y(1));
     hills.lineTo(X(0), Y(1));
     p.drawPath(hills);
+    if (race == "undead") {  // a graveyard on the hill: stones and crosses, dead trees
+        p.setPen(QPen(kInk, std::max(1.0, w / 700)));
+        for (int i = 0; i < 9; ++i) {
+            const double x = 0.05 + 0.11 * i + 0.02 * (i % 2), y = 0.64 + 0.03 * (i % 3);
+            p.setBrush(QColor("#8a8a90"));
+            if (i % 3 == 1) {
+                p.drawRect(QRectF(X(x), Y(y - 0.05), w * 0.004, h * 0.06));
+                p.drawRect(QRectF(X(x - 0.006), Y(y - 0.035), w * 0.016, h * 0.012));
+            } else {
+                p.drawChord(QRectF(X(x - 0.008), Y(y - 0.04), w * 0.018, h * 0.08), 0, 180 * 16);
+                p.drawRect(QRectF(X(x - 0.008), Y(y), w * 0.018, h * 0.02));
+            }
+        }
+        p.setPen(QPen(QColor("#2a2028"), std::max(1.5, w / 400), Qt::SolidLine, Qt::RoundCap));
+        for (const double x : {0.18, 0.84}) {
+            p.drawLine(QPointF(X(x), Y(0.7)), QPointF(X(x), Y(0.42)));
+            p.drawLine(QPointF(X(x), Y(0.5)), QPointF(X(x - 0.02), Y(0.42)));
+            p.drawLine(QPointF(X(x), Y(0.46)), QPointF(X(x + 0.025), Y(0.38)));
+        }
+        p.setPen(Qt::NoPen);
+    }
+    if (race == "orcs") {  // tents and a totem in the camp
+        p.setPen(QPen(kInk, std::max(1.0, w / 700)));
+        for (const double x : {0.04, 0.16, 0.86}) {
+            p.setBrush(lit(QRectF(X(x), Y(0.56), w * 0.08, h * 0.14), QColor("#a8804a")));
+            p.drawPolygon(QPolygonF{QPointF(X(x), Y(0.72)), QPointF(X(x + 0.04), Y(0.54)), QPointF(X(x + 0.08), Y(0.72))});
+            p.setBrush(QColor("#3a2410"));
+            p.drawPolygon(QPolygonF{QPointF(X(x + 0.03), Y(0.72)), QPointF(X(x + 0.04), Y(0.64)), QPointF(X(x + 0.05), Y(0.72))});
+        }
+        p.setBrush(QColor("#7a5a30"));
+        p.drawRect(QRectF(X(0.96), Y(0.44), w * 0.012, h * 0.28));
+        p.setBrush(QColor("#e8e0c8"));
+        p.drawEllipse(QPointF(X(0.966), Y(0.44)), w * 0.012, h * 0.03);
+        p.setPen(Qt::NoPen);
+    }
     {
-        const QColor g = look.race == "undead" ? QColor("#5a5a48") : QColor("#5d8a3a");
+        const QColor g = land.ground;
         QLinearGradient ground(QPointF(0, Y(0.78)), QPointF(0, Y(1)));
         ground.setColorAt(0, g.lighter(110));
         ground.setColorAt(1, g.darker(125));
         p.setBrush(ground);
         p.drawRect(QRectF(X(0), Y(0.78), w, h * 0.22));
-        // Tufts of grass.
-        p.setPen(QPen(g.darker(140), std::max(1.0, h / 250)));
+        // Tufts of grass (or pebbles on bare ground).
+        p.setPen(QPen(land.tuft, std::max(1.0, h / 250)));
+        const bool bare = race == "ashborn" || race == "dwarves" || race == "tidefolk" || race == "orcs";
         for (int i = 0; i < 90; ++i) {
             const double gx = X(((i * 37) % 100) / 100.0 + 0.003 * (i % 7)), gy = Y(0.8 + 0.18 * (((i * 53) % 97) / 97.0));
-            p.drawLine(QPointF(gx, gy), QPointF(gx - h * 0.006, gy - h * 0.014));
-            p.drawLine(QPointF(gx, gy), QPointF(gx + h * 0.006, gy - h * 0.016));
+            if (bare) {
+                p.drawPoint(QPointF(gx, gy));
+                p.drawPoint(QPointF(gx + h * 0.004, gy + h * 0.002));
+            } else {
+                p.drawLine(QPointF(gx, gy), QPointF(gx - h * 0.006, gy - h * 0.014));
+                p.drawLine(QPointF(gx, gy), QPointF(gx + h * 0.006, gy - h * 0.016));
+            }
+        }
+        if (race == "ashborn") {  // lava cracks
+            p.setPen(QPen(QColor(255, 120, 30, 200), std::max(1.0, h / 160), Qt::SolidLine, Qt::RoundCap));
+            for (int i = 0; i < 6; ++i) {
+                const double x = 0.08 + 0.16 * i, y = 0.86 + 0.04 * (i % 3);
+                p.drawPolyline(QPolygonF{QPointF(X(x), Y(y)), QPointF(X(x + 0.02), Y(y + 0.02)), QPointF(X(x + 0.035), Y(y + 0.01))});
+            }
         }
         p.setPen(Qt::NoPen);
     }

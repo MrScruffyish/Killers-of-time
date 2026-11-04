@@ -319,6 +319,16 @@ private slots:
                             {K::Walls, 0, {}}, {K::Walls, 0, {}}, {K::Dwelling, 0, "armoured_eagle"}});
         tp.end();
         if (!dir.isEmpty()) towns.save(QDir(dir).filePath("0_towns.png"));
+        {  // the town screen of every race (0_scenes.png)
+            const QStringList races = {"humans", "undead", "sylvan", "orcs", "dwarves", "ashborn", "tidefolk"};
+            QImage scenes(900, int(races.size()) * 150, QImage::Format_ARGB32);
+            QPainter sp(&scenes);
+            for (int i = 0; i < races.size(); ++i)
+                art::drawTownScene(sp, QRectF(0, i * 150, 900, 146), art::TownLook{QColor("#d62728"), races[i], 1, 9},
+                                   {{K::Hall, 1, {}}, {K::Tavern, 0, {}}, {K::Dwelling, 1, {}}, {K::MageGuild, 1, {}}, {K::Market, 0, {}}, {K::Walls, 0, {}}});
+            sp.end();
+            if (!dir.isEmpty()) scenes.save(QDir(dir).filePath("0_scenes.png"));
+        }
         // Hero portraits of every class.
         {
             const QList<core::HeroClassDef> classes = reg.heroClasses().values();
