@@ -11,7 +11,7 @@
   "battleSpeed": 6,
   "weeklyGrowth": 5,
   "cost": {
-    "gold": 420
+    "gold": 410
   },
   "initiative": 8,
   "upgradesTo": "triton_guard"

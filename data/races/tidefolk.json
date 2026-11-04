@@ -2,7 +2,7 @@
   "id": "tidefolk",
   "name": "Tidefolk",
   "description": "Coast and sea people: sturdy sailors, harpooners and great sea beasts (-5% growth). Quick on sand and in swamps. Water and nature magic.",
-  "growthPercent": -5,
+  "growthPercent": 12,
   "incomePercent": 0,
   "terrainCostPercent": {
     "sand": 60,

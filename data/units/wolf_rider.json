@@ -11,7 +11,7 @@
   "battleSpeed": 8,
   "weeklyGrowth": 8,
   "cost": {
-    "gold": 170
+    "gold": 155
   },
   "initiative": 11,
   "upgradesTo": "warg_rider"

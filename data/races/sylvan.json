@@ -2,7 +2,7 @@
   "id": "sylvan",
   "name": "Sylvan",
   "description": "Forest folk with deadly archers. Fast in forests, and they grow fast (+25%). Nature, water and air magic.",
-  "growthPercent": 25,
+  "growthPercent": 23,
   "terrainCostPercent": {
     "forest": 50
   },

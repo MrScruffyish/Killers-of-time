@@ -36,7 +36,7 @@ private slots:
 
     void racesLoad() {
         QCOMPARE(reg.raceIds(), QStringList({"ashborn", "dwarves", "humans", "orcs", "sylvan", "tidefolk", "undead"}));
-        QCOMPARE(reg.race("undead").growthPercent, 25);
+        QVERIFY(reg.race("undead").growthPercent > 0);  // the undead grow fast (the number is balance)
         QCOMPARE(reg.race("sylvan").terrainCostPercent.value("forest"), 50);
         QCOMPARE(reg.race("nobody").growthPercent, 0);  // defaults
         for (const QString& race : reg.raceIds()) {
@@ -58,8 +58,9 @@ private slots:
     void growthFollowsTheRace() {
         const TownId u = town("undead");
         QVERIFY(buildBuilding(gs, reg, u, "cursed_graveyard", p1).ok);
-        QCOMPARE(gs.town(u)->recruitPool.value("cursed_graveyard"), (14 * 125 + 50) / 100);  // 18
-        QCOMPARE(townGrowth(gs, *gs.town(u), *reg.unit("skeleton"), reg), 18);
+        const int grown = (reg.unit("skeleton")->weeklyGrowth * (100 + reg.race("undead").growthPercent) + 50) / 100;
+        QCOMPARE(gs.town(u)->recruitPool.value("cursed_graveyard"), grown);
+        QCOMPARE(townGrowth(gs, *gs.town(u), *reg.unit("skeleton"), reg), grown);
         const TownId s = gs.addTown("S", "sylvan", {9, 9}, p1);
         QVERIFY(buildBuilding(gs, reg, s, "woodcutters_lodge", p1).ok);
         QCOMPARE(gs.town(s)->recruitPool.value("woodcutters_lodge"), (12 * 125 + 50) / 100);  // 15

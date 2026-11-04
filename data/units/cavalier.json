@@ -11,7 +11,7 @@
   "battleSpeed": 8,
   "weeklyGrowth": 3,
   "cost": {
-    "gold": 1350
+    "gold": 1380
   },
   "initiative": 11,
   "upgradesTo": "paladin"

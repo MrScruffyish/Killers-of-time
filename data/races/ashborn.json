@@ -2,7 +2,7 @@
   "id": "ashborn",
   "name": "Ashborn",
   "description": "Fire-born from the burning wastes: quick and hard-hitting, but few (-10% growth). Quick on sand and dirt. Fire and dark magic.",
-  "growthPercent": -10,
+  "growthPercent": 18,
   "incomePercent": 0,
   "terrainCostPercent": {
     "sand": 70,

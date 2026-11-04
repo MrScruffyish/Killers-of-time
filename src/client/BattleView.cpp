@@ -233,17 +233,75 @@ public:
         return bestD <= radius() * radius() ? best : core::Pos{-1, -1};
     }
 
+    // The land around the field, after the map tile the battle is on: trees round a
+    // forest battle, peaks behind a mountain one, the sea below a shore battle,
+    // bushes and stones on open ground; darker than the field so that stands out.
+    void drawSurroundings(QPainter& p, const QRectF& field, double r) {
+        const QString where = battle.terrain.isEmpty() ? QStringLiteral("grass") : battle.terrain;
+        static const QHash<QString, QString> groundOf = {{"forest", "grass"}, {"hills", "dirt"}, {"mountains", "dirt"},
+                                                         {"road", "dirt"}, {"sea", "sand"}, {"river", "grass"}, {"lava", "dirt"}};
+        const QString groundId = groundOf.value(where, where);
+        const core::TerrainDef* gt = m_content->terrainType(groundId);
+        const QColor groundColour = gt ? QColor(gt->color) : QColor("#5d8a3a");
+        const int tile = std::max(24, int(r * 2.6));
+        for (int ty = 0; ty * tile < height(); ++ty)
+            for (int tx = 0; tx * tile < width(); ++tx)
+                p.drawPixmap(tx * tile, ty * tile, art::terrainTile(groundId, groundColour, tile, art::variantFor(tx + 3, ty + 9)));
+        const bool water = where == "sea" || where == "river";
+        if (water) {  // the water along the bottom, with a sandy edge
+            const core::TerrainDef* sea = m_content->terrainType(QStringLiteral("sea"));
+            const QColor seaColour = sea ? QColor(sea->color) : QColor("#2f5f9a");
+            for (int ty = int(field.bottom() + r * 0.6) / tile; ty * tile < height() + tile; ++ty)
+                for (int tx = 0; tx * tile < width(); ++tx)
+                    p.drawPixmap(tx * tile, int(field.bottom() + r * 0.6) + (ty - int(field.bottom() + r * 0.6) / tile) * tile,
+                                 art::terrainTile(QStringLiteral("sea"), seaColour, tile, art::variantFor(tx, ty)));
+        }
+        // Features in bands above and below the field (and at the sides when there is room).
+        QString feature;
+        QColor featureColour;
+        if (where == "forest" || where == "grass" || where == "river" || where == "swamp") feature = QStringLiteral("forest");
+        else if (where == "hills" || where == "dirt" || where == "road") feature = QStringLiteral("hills");
+        else if (where == "mountains" || where == "snow" || where == "lava") feature = QStringLiteral("mountains");
+        if (const core::TerrainDef* ft = feature.isEmpty() ? nullptr : m_content->terrainType(feature)) featureColour = QColor(ft->color);
+        const int size = std::max(32, int(r * 3.2));
+        const bool dense = where == "forest" || where == "mountains" || where == "hills";
+        const auto band = [&](double top, double bottom, double left, double right, int seed) {
+            if (bottom - top < size * 0.3 || right - left < size * 0.3) return;
+            for (double y = top - size * 0.45; y < bottom - size * 0.3; y += size * 0.42)
+                for (double x = left - size * 0.3; x < right; x += size * (dense ? 0.42 : 0.7)) {
+                    const int v = art::variantFor(int(x / 7) + seed, int(y / 5) + seed);
+                    const double jx = ((v * 37) % 10) / 10.0 * size * 0.2;
+                    if (!feature.isEmpty() && (dense || v % 3 == 0)) {
+                        p.drawPixmap(QPointF(x + jx, y), art::terrainFeature(feature, featureColour, size, v));
+                    } else {
+                        const int deco = art::decorationAt(int(x) / 11 + seed, int(y) / 13);
+                        if (deco >= 0) p.drawPixmap(QPointF(x + jx + size * 0.3, y + size * 0.4), art::decoration(groundId, deco, size / 2));
+                    }
+                }
+        };
+        band(0, field.top() - r * 0.2, 0, width(), 1);
+        if (!water) band(field.bottom() + r * 0.4, height(), 0, width(), 2);
+        band(field.top(), field.bottom(), 0, field.left() - r * 0.2, 3);
+        band(field.top(), field.bottom(), field.right() + r * 0.2, width(), 4);
+        // Darker towards the edges of the widget, so the eye stays on the field.
+        QRadialGradient shade(field.center(), std::max(width(), height()) * 0.75);
+        shade.setColorAt(0.0, QColor(0, 0, 0, 40));
+        shade.setColorAt(1.0, QColor(0, 0, 0, 150));
+        p.fillRect(rect(), shade);
+    }
+
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter p(this);
         p.fillRect(rect(), QColor("#1f1810"));
         if (battle.present) {
-            // A wooden frame around the field.
             const double r0 = radius();
             const QPointF o = origin();
             const QRectF field(o.x() - r0 * 0.4, o.y() - r0 * 0.4, std::sqrt(3.0) * r0 * (battle.width + 0.5) + r0 * 0.8,
                                1.5 * r0 * (battle.height - 1) + 2 * r0 + r0 * 0.8);
             p.setRenderHint(QPainter::Antialiasing, true);
+            drawSurroundings(p, field, r0);
+            // A wooden frame around the field.
             p.setPen(QPen(QColor("#c9a24a"), 2));
             p.setBrush(QColor("#3a2a18"));
             p.drawRoundedRect(field.adjusted(-6, -6, 6, 6), 10, 10);

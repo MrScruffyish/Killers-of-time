@@ -11,7 +11,7 @@
   "battleSpeed": 5,
   "weeklyGrowth": 4,
   "cost": {
-    "gold": 550,
+    "gold": 530,
     "mercury": 1
   },
   "initiative": 8,

@@ -13,7 +13,9 @@ using namespace kot::core;
 
 double unitPower(const UnitDef& u) {
     return u.maxHp * (u.damageMin + u.damageMax) / 2.0 * (1.0 + 0.05 * (u.attack + u.defense)) *
-           (u.range > 0 ? 1.25 : 1.0) * (u.has("flying") ? 1.1 : 1.0) * (u.has("double_attack") ? 1.6 : 1.0) *
+           // Shooters: more for a longer reach (more volleys before melee arrives),
+           // less with few shots. Range 5 with 12 shots is the old flat 1.25.
+           (u.range > 0 ? 1.0 + 0.05 * u.range * std::min(1.0, u.shots / 12.0) : 1.0) * (u.has("flying") ? 1.1 : 1.0) * (u.has("double_attack") ? 1.6 : 1.0) *
            (u.has("no_retaliation") ? 1.15 : 1.0);
 }
 
@@ -156,7 +158,7 @@ QList<QPair<QString, int>> raceWeekArmy(const ContentRegistry& c, const QString&
         if (!u) continue;
         const int perWeek = std::max(1, int(std::lround(u->weeklyGrowth * (100.0 + rd.growthPercent) / 100.0)));
         const double price = std::max(1.0, goldValue(c, u->cost));
-        const int n = std::min(perWeek * weeks, int(gold / price));
+        const int n = int(std::min<double>(perWeek * weeks, gold / price));  // (gold may be "unlimited": no int overflow)
         if (n <= 0) continue;
         gold -= n * price;
         army << qMakePair(id, n);

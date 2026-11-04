@@ -37,7 +37,8 @@ kot_balance weeks [--weeks n] [--budget gold] [--runs n] [--csv]
 kot_balance replay <save.json> <attackerArmy> <defenderArmy> [--runs n]
 ```
 - Power is a rough fighting value: HP x average damage x (1 + 5% per attack + defense
-  point), weighted up for ranged, flying, double attack and no retaliation.
+  point), weighted up for ranged (more for a longer range, less with few shots), flying,
+  double attack and no retaliation.
 - Costs count other resources at their trade `value` from `resources.json`, so those
   values are part of balancing too.
 - `units` marks units whose power per gold is more than 1.5x away from the median of
