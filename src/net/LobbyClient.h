@@ -16,6 +16,15 @@ class LobbyClient : public QObject {
     Q_OBJECT
 public:
     explicit LobbyClient(QObject* parent = nullptr);
+    // The checksum of this program's game data (ContentRegistry::checksum), sent in the
+    // hello: game messages carry content ids as numbers, so both sides need the same data.
+    void setContentChecksum(const QString& checksum) { m_contentChecksum = checksum; }
+    // This client's secret key for this server (random, made once per server and kept
+    // by the window): sent in the hello; the server keeps only its hash with the seats
+    // you play, so you get them back when you come again (and nobody else does).
+    void setPlayerKey(const QString& key) { m_playerKey = key; }
+    const QString& playerKey() const { return m_playerKey; }
+    static QString newPlayerKey();  // 128 random bits as hex
 
     void connectToServer(const QString& host, quint16 port, const QString& playerName);
     void disconnectFromServer();
@@ -73,6 +82,8 @@ private:
     void onMessage(const Message& message);
 
     Connection* m_connection = nullptr;
+    QString m_contentChecksum;
+    QString m_playerKey;
     QString m_name;
     bool m_welcomed = false;
     int m_clientId = 0;

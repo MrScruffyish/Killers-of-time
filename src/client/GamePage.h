@@ -64,6 +64,7 @@ private:
     void selectHero(int id);
     void openMarket();  // M
     void showHelp();    // F1
+    void showKingdoms();  // K: every player's towns, heroes, mines and army strength
     void selectTown(int id);  // T cycles: the map looks there
     // Moves the selected hero along his plotted route (Enter, double click).
     void goAlongRoute();
@@ -73,7 +74,7 @@ private:
     void updateEndTurnHighlight();
     void announceLevelUps(bool firstView);
     void offerToJoin(const QJsonObject& offer);  // monsters offering to join: accept / fight / leave
-    QString unitName(const QString& id) const;
+    QString unitName(core::UnitTypeId id) const;
     void announceEnd();
     void rememberObjects(GameView* view);
     void selectNextHero();

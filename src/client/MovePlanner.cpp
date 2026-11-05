@@ -15,14 +15,14 @@ void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& con
     m_danger.clear();
     m_dangerFrom.clear();
     const ViewHero* hero = view.hero(heroId);
-    if (!hero || view.width <= 0 || view.terrainPalette.isEmpty()) return;
+    if (!hero || view.width <= 0 || content.terrain().isEmpty()) return;
     m_heroId = heroId;
     m_from = hero->pos;
     m_movement = hero->movementPoints;
     const core::HeroClassDef* cls = content.heroClass(hero->classId);
-    m_terrainPercent = cls ? content.race(cls->race).terrainCostPercent : QMap<QString, int>();
+    m_terrainPercent = cls ? content.race(cls->race).terrainCostPercent : QVector<int>();
 
-    m_map = core::GameMap(view.width, view.height, view.terrainPalette.first());
+    m_map = core::GameMap(view.width, view.height, core::TerrainId(0));
     for (int y = 0; y < view.height; ++y)
         for (int x = 0; x < view.width; ++x) {
             const int index = view.tiles.value(y * view.width + x, -1);
@@ -30,7 +30,7 @@ void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& con
                 m_blocked.insert({x, y});
                 m_unexplored.insert({x, y});
             }
-            else m_map.setTerrain({x, y}, view.terrainPalette.value(index));
+            else m_map.setTerrain({x, y}, core::TerrainId(index));
         }
     for (const ViewTown& t : view.towns)
         for (const core::Pos p : core::townTiles(t.pos, view.width, view.height)) m_blocked.insert(p);
@@ -46,7 +46,7 @@ void MovePlanner::prepare(const GameView& view, const core::ContentRegistry& con
     // Zones of control of the hostile field armies the player can see.
     if (!hero->inBoat) {
         const ViewPlayer* me = view.player(view.you);
-        const int radius = core::zoneOfControlRadius(hero->traits.value(QStringLiteral("scouting")), content);
+        const int radius = core::zoneOfControlRadius(hero->traits.value(content.known().scouting), content);
         for (const ViewArmy& a : view.armies) {
             if (a.id == hero->army || view.townAt(a.pos)) continue;
             const ViewPlayer* owner = view.player(a.owner);

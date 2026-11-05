@@ -3,17 +3,61 @@
 #include <QHash>
 #include <QSet>
 
+#include "core/content/ContentRegistry.h"
+
 namespace kot::core {
 
-bool isEliminated(const GameState& state, PlayerId player) {
+namespace {
+bool hasTown(const GameState& state, PlayerId player) {
     for (const Town& t : state.towns())
-        if (t.owner == player) return false;
+        if (t.owner == player) return true;
+    return false;
+}
+bool timeRanOut(const GameState& state, const Player& p) {
+    if (state.defeatRule() == QLatin1String("town")) return true;
+    if (state.defeatRule() == QLatin1String("all")) return false;
+    return p.townlessSince > 0 && state.day() - p.townlessSince >= kTownlessGraceDays;
+}
+}  // namespace
+
+bool isEliminated(const GameState& state, PlayerId player) {
+    if (hasTown(state, player)) return false;
+    if (const Player* p = state.player(player); p && timeRanOut(state, *p)) return true;
     for (const Hero& h : state.heroes())
         if (h.owner == player) return false;
     return true;
 }
 
-GameOutcome gameOutcome(const GameState& state) {
+int townlessDaysLeft(const GameState& state, PlayerId player) {
+    const Player* p = state.player(player);
+    if (state.defeatRule() != QLatin1String("week")) return -1;
+    if (!p || p->townlessSince <= 0 || hasTown(state, player) || isEliminated(state, player)) return -1;
+    return kTownlessGraceDays - (state.day() - p->townlessSince);
+}
+
+void updateTownless(GameState& state) {
+    for (Player& p : state.players()) {
+        if (hasTown(state, p.id)) {
+            p.townlessSince = 0;
+            continue;
+        }
+        if (p.townlessSince == 0) p.townlessSince = state.day();
+        if (!timeRanOut(state, p)) continue;
+        // Out of the game: his heroes and their armies leave the map.
+        QList<HeroId> gone;
+        for (const Hero& h : state.heroes())
+            if (h.owner == p.id) gone << h.id;
+        for (const HeroId id : gone) {
+            for (auto it = state.armies().begin(); it != state.armies().end();) {
+                if (it->hero == id) it = state.armies().erase(it);
+                else ++it;
+            }
+            state.heroes().remove(id);
+        }
+    }
+}
+
+GameOutcome gameOutcome(const GameState& state, const ContentRegistry& content) {
     QSet<TeamId> alive;
     for (const Player& p : state.players())
         if (!isEliminated(state, p.id)) alive.insert(p.team);
@@ -32,7 +76,7 @@ GameOutcome gameOutcome(const GameState& state) {
         break;
     case VictoryCondition::Type::Gold:
         for (const Player& p : state.players())
-            if (v.amount > 0 && p.resources.value(QStringLiteral("gold")) >= v.amount && !isEliminated(state, p.id)) {
+            if (v.amount > 0 && p.resources.value(content.currency()) >= v.amount && !isEliminated(state, p.id)) {
                 o.over = true;
                 o.winner = p.team;
                 break;
@@ -80,6 +124,12 @@ QString describeVictory(const GameState& state) {
         break;
     }
     return QStringLiteral("Defeat everyone");
+}
+
+QString describeDefeat(const GameState& state) {
+    if (state.defeatRule() == QLatin1String("town")) return QStringLiteral("A player who loses his last town is out at once");
+    if (state.defeatRule() == QLatin1String("all")) return QStringLiteral("A player is out only when he has no towns and no heroes left");
+    return QStringLiteral("A player who loses his last town has %1 days to take one back, else he is out").arg(kTownlessGraceDays);
 }
 
 }  // namespace kot::core

@@ -27,7 +27,8 @@ signals:
 
 private:
     void refreshPreview();
-    QString chosen(const QListWidget* list) const;
+    core::ResourceId chosen(const QListWidget* list) const;
+    QString keyOf(core::ResourceId r) const;  // "gold" (for messages)
 
     const core::ContentRegistry* m_content;
     GameView m_view;

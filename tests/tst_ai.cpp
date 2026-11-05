@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "ai/AiFactory.h"
 #include "ai/AiView.h"
 #include "core/content/ContentRegistry.h"
@@ -49,6 +51,7 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void profiles() {
@@ -112,7 +115,7 @@ private slots:
             int buildings = 0;
             for (const core::Town& t : s->state().towns())
                 if (t.owner == p.id) buildings += int(t.buildings.size());
-            QVERIFY2(buildings >= 2, qPrintable(p.race));
+            QVERIFY2(buildings >= 2, qPrintable(QString::number(p.race.index())));
         }
     }
 
@@ -159,7 +162,7 @@ private slots:
                     for (int dx = -1; dx <= 1; ++dx) {
                         const core::Pos n{p.x + dx, p.y + dy};
                         if (seen.contains(n) || !s.state().map().inBounds(n)) continue;
-                        const core::TerrainDef* t = reg.terrainType(s.state().map().terrainAt(n));
+                        const core::TerrainDef* t = &reg.terrain(s.state().map().terrainAt(n));
                         if (t && t->walkable && !t->sailable) {
                             seen.insert(n);
                             todo.append(n);
@@ -225,7 +228,7 @@ private slots:
         auto b = startGame(3);
         playDays(*a, 10);
         playDays(*b, 10);
-        QCOMPARE(a->state().toJson(), b->state().toJson());
+        QCOMPARE(a->state().toJson(reg), b->state().toJson(reg));
     }
 };
 

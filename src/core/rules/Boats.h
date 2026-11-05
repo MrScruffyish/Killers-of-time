@@ -12,6 +12,9 @@ class ContentRegistry;
 // The nearest water tile (within two tiles of `p`) a boat can be put on (sailable,
 // nobody there), if any.
 std::optional<Pos> freeWaterNext(const GameState& state, const ContentRegistry& content, Pos p);
+// Whether any sailable tile lies within two tiles of `p` (boats on it or not):
+// the town is at the coast and may build a shipyard.
+bool coastalAt(const GameState& state, const ContentRegistry& content, Pos p);
 bool hasShipyard(const Town& town, const ContentRegistry& content);
 
 // A hero standing in his town with a shipyard buys a boat (balance.json economy

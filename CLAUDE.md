@@ -13,7 +13,7 @@ ask them to try things on screen when that matters (they are happy to do tasks).
 
 ## Layout
 `src/core` (model, rules, content; QtCore only, no GUI/net) · `src/net` (protocol) ·
-`src/ai` · `src/server` (lobby, GameSession) · `src/client` (Qt Widgets) · `src/tools` (content tools, `docs/tools.md`) · `tests/` (Qt Test,
+`src/ai` · `src/server` (lobby, GameSession) · `src/client` (Qt Widgets; loads PNG art only) · `src/artgen` (art drawn in code, for kot_artexport) · `src/tools` (content tools, `docs/tools.md`) · `tests/` (Qt Test,
 one `tst_*.cpp` per area, registered in `tests/CMakeLists.txt`) · `data/` (strict JSON content) ·
 `docs/` (protocol, data and save formats).
 

@@ -1,6 +1,8 @@
 #include <QJsonArray>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "client/MovePlanner.h"
 #include "client/Sound.h"
 #include "client/ViewModel.h"
@@ -22,6 +24,7 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
         core::GameSetupParams p;
         p.seed = 4;
         p.players = {{"Ann", false, "", "humans", 1, "#d62728"}, {"Bob", false, "", "humans", 2, "#1f77b4"}};
@@ -41,7 +44,7 @@ private slots:
         QCOMPARE(v.tiles.size(), 64 * 64);
         QCOMPARE(v.players.size(), 2);
         QVERIFY(v.myTeam() > 0);
-        QCOMPARE(v.resources.value("gold"), 10000);
+        QCOMPARE(v.resources.value(kot::core::R("gold")), 10000);
     }
 
     void myThingsAreComplete() {
@@ -52,7 +55,7 @@ private slots:
         const ViewHero* h = v.myHeroes().first();
         QVERIFY(h->own);
         QVERIFY(h->movementPoints > 0);
-        QVERIFY(h->traits.value("spell_points_max") > 0);
+        QVERIFY(h->traits.value(kot::core::TR("spell_points_max")) > 0);
         QCOMPARE(v.heroAt(h->pos), h);
         const ViewArmy* army = v.army(h->army);
         QVERIFY(army && !army->stacks.isEmpty());
@@ -70,8 +73,8 @@ private slots:
         QVERIFY(!t->buildOptions.isEmpty());
         QString barracksWhy = "?", archeryWhy;
         for (const BuildOption& o : t->buildOptions) {
-            if (o.id == "barracks") barracksWhy = o.why;
-            if (o.id == "archery_range") archeryWhy = o.why;
+            if (o.id == kot::core::B("barracks")) barracksWhy = o.why;
+            if (o.id == kot::core::B("archery_range")) archeryWhy = o.why;
         }
         QVERIFY(barracksWhy.isEmpty());                 // can be built now
         QVERIFY(archeryWhy.contains("Barracks"));        // needs the barracks first
@@ -164,11 +167,11 @@ private slots:
         QJsonObject bad = core::buildPlayerView(gs, reg, ids[0]);
         QJsonObject m2 = bad["map"].toObject();
         QJsonArray tiles = m2["tiles"].toArray();
-        tiles[0] = 99;
+        tiles.removeLast();  // one tile short
         m2["tiles"] = tiles;
         bad["map"] = m2;
         QVERIFY(!parseGameView(bad, &v, &error));
-        QVERIFY(error.contains("palette"));
+        QVERIFY(error.contains("does not match its tiles"));
     }
 };
 

@@ -25,6 +25,7 @@ private:
     const core::ContentRegistry& m_content;
     QByteArray m_visible;
     QByteArray m_explored;
+    QVector<bool> m_walkable;  // per terrain id
 };
 
 // Rough fighting strength of an army (units' HP x average damage x attack bonus),

@@ -40,15 +40,13 @@ LoadDialog::LoadDialog(const QJsonArray& games, QWidget* parent) : QDialog(paren
         QStringList players;
         for (const QJsonValue& p : g["players"].toArray()) players << p.toString();
         const QString version = g["gameVersion"].toString().isEmpty() ? tr("older") : g["gameVersion"].toString();
-        const QString can = status == "ok" ? tr("yes") : status == "converted" ? tr("yes, converted from an older format")
-                                                                                : tr("no: ") + g["problems"].toArray().first().toString();
+        const QString can = status == "ok" ? tr("yes") : tr("no: ") + g["problems"].toArray().first().toString();
         const QStringList cells = {g["name"].toString(), when.isValid() ? when.toString("yyyy-MM-dd hh:mm") : QString(),
                                    QString::number(g["day"].toInt()), players.join(", "),
                                    QStringLiteral("%1 x %2").arg(g["mapWidth"].toInt()).arg(g["mapHeight"].toInt()), version, can};
         for (int c = 0; c < cells.size(); ++c) {
             auto* item = new QTableWidgetItem(cells[c]);
             if (status == "incompatible") item->setForeground(QColor("#8a7b63"));
-            if (c == 6 && status == "converted") item->setForeground(QColor("#ffd27a"));
             QStringList problems;
             for (const QJsonValue& p : g["problems"].toArray()) problems << p.toString();
             if (!problems.isEmpty()) item->setToolTip(problems.join("\n"));
@@ -96,8 +94,6 @@ void LoadDialog::updateSelection() {
     for (const QJsonValue& p : g["problems"].toArray()) problems << p.toString();
     if (status == "incompatible")
         m_details->setText(tr("<b>This game cannot be loaded</b> by this version: %1").arg(problems.join("; ").toHtmlEscaped()));
-    else if (status == "converted")
-        m_details->setText(tr("Saved by an older version; it will be converted when loaded: %1").arg(problems.join("; ").toHtmlEscaped()));
     else
         m_details->clear();
 }

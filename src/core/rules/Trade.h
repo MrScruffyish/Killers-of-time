@@ -13,9 +13,9 @@ class ContentRegistry;
 
 // One exchange: give `giveAmount` of `give`, receive `getAmount` of `get`.
 struct TradeStep {
-    QString give;
+    ResourceId give;
     int giveAmount = 0;
-    QString get;
+    ResourceId get;
     int getAmount = 0;
 };
 
@@ -25,16 +25,13 @@ int tradeEfficiency(const GameState& state, const ContentRegistry& content, Play
 
 // How much you receive for giving `giveAmount` (rounded down). Uses the resources'
 // gold values and the trade efficiency (-1 = the base one from balance.json).
-int tradeYield(const ContentRegistry& content, const QString& give, int giveAmount,
-               const QString& get, int efficiencyPercent = -1);
+int tradeYield(const ContentRegistry& content, ResourceId give, int giveAmount, ResourceId get, int efficiencyPercent = -1);
 
 // How much you must give to receive `getAmount` (rounded up).
-int tradeCostToGet(const ContentRegistry& content, const QString& give, const QString& get,
-                   int getAmount, int efficiencyPercent = -1);
+int tradeCostToGet(const ContentRegistry& content, ResourceId give, ResourceId get, int getAmount, int efficiencyPercent = -1);
 
 // Plain trade: give `giveAmount` of one resource for as much as possible of another.
-ActionResult trade(GameState& state, const ContentRegistry& content, PlayerId player,
-                   const QString& give, int giveAmount, const QString& get);
+ActionResult trade(GameState& state, const ContentRegistry& content, PlayerId player, ResourceId give, int giveAmount, ResourceId get);
 
 // Works out how to afford `cost` by trading spare resources (not needed for the cost
 // itself): other resources are sold first, most valuable spare stock first, gold last.

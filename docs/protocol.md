@@ -5,7 +5,10 @@ TCP. The server listens on port 45454 by default (`--port` to change it).
 ## Framing
 Every message is one frame: a 4-byte big-endian length, then that many bytes of UTF-8 JSON
 (one JSON object). Length 0 or above 16 MiB is a protocol error: the server answers
-`protocol_error` and closes the connection.
+`protocol_error` and closes the connection. When the top bit of the length is set
+(protocol 2), the payload is compressed: a 4-byte big-endian unpacked size (at most 16 MiB),
+then a zlib stream of the JSON (Qt's `qCompress` format). Senders compress JSON of 1 KiB
+or more; game views shrink from tens of KB to a few.
 
 ## Messages
 Every message is a JSON object with a `"type"`. Requests carry an optional integer `"seq"`;
@@ -18,7 +21,7 @@ The first message of a client must be `hello`, otherwise the server sends `error
 
 | Direction | Type | Fields |
 |---|---|---|
-| client -> server | `hello` | `protocol` (must be 1), `name` (trimmed, max 24 chars, empty = "Player N") |
+| client -> server | `hello` | `protocol` (must be 2), `name` (trimmed, max 24 chars, empty = "Player N"), `playerKey` (this client's secret for this server, see below), `content` (the client's content checksum: game messages carry content ids as numbers, so a server with game data refuses other data with `content_mismatch`) |
 | server -> client | `welcome` | `protocol`, `serverVersion`, `clientId`, `races` (list), `aiProfiles` (list) |
 | server -> client | `lobby_state` | the whole lobby, sent to everyone after every change (see below) |
 
@@ -79,13 +82,13 @@ Failed commands answer with `error` (`replyTo` names the request). Codes: `not_y
 
 ### The view (`PlayerView`)
 The server only sends what the player may know: `day`, `currentPlayer`, `you`, own `resources`, `income` (per day) and `tradePercent` (what trading gives, percent of the fair value)
-(private), `players` (name, team, colour, race, isAi), `map`, `heroes`, `armies`, `towns`,
+(private), `players` (name, team, colour, race (id), isAi), `map`, `heroes`, `armies`, `towns`,
 `mines`, `mapDwellings`, `mapObjects` (in sight: `id`, `kind` treasure/artifact/site, `x`, `y`, `resources` or `artifact`; sites: `site` and `giftFor` (your hero ids that would still get something there)), `gameOver` (bool) and `winnerTeam` (when over; 0 = nobody) and `history` (when over: per week `week`, `players`: player id -> `armyValue`, `towns`, `mines`, `heroes`, `gold`; the last entry is now). Each
 Own heroes have `movementPoints` and `movementMax` (a full day).
 Towns in sight have `walls` (buildings with a defense effect) and `size` (buildings), so the map can draw them. Each
-player has `eliminated` (no towns and no heroes left: out of the game, turns skipped).
+player has `eliminated` (out of the game, turns skipped: no towns and no heroes left, or out by the `defeat` rule; then the heroes leave the map), `towns`, `heroes`, `mines`, `armyValue` (what the units cost; rounded to two digits for other teams) and, while the player has no town, `townlessDaysLeft` (days left to take one).
 When the game is over every command is refused with code `game_over`.
-- `map`: `width`, `height`, `terrainPalette`, `tiles` (palette index per tile, row-major, **-1 =
+- `map`: `width`, `height`, `tiles` (the terrain id of each tile, row-major, **-1 =
   never explored**), `visible` (base64, one byte per tile, 1 = in sight right now).
 - Things of the player's own team are complete (hero traits, exact army HP, town buildings and
   recruits, dwelling stock). Things of others only appear on tiles in sight, without secrets (no
@@ -94,7 +97,7 @@ When the game is over every command is refused with code `game_over`.
 ### Commands (all need your turn)
 | Type | Fields | `info` on success |
 |---|---|---|
-| `end_turn` | | `day`, `newDay`. AI players then play their turns on the server (with these same commands); players who left are skipped. |
+| `end_turn` | | `day`, `newDay`. AI players then play their turns on the server (with these same commands); the game waits at the turn of a human who is away. |
 | `move_hero` | `hero`, `x`, `y` | `arrived`, `stepsTaken`, `movementSpent`, `capturedMine` / `capturedTown` / `capturedDwelling`; after an attack also `battles` (list, see below) and `heroKilled`; `visitedSite` (`site`, `result`: what the hero got), `foundResources`, `foundArtifacts` (of those, `stowedArtifacts` went to the backpack because their place was taken), `learnedSpells` when that happened; `ambushed: true` when a zone of control stopped the hero and the armies there attacked; `spotted: true` when he stopped because a hostile army came into sight that was not visible when he set out; `joinOffer` (`army`, `hero`, `units`: `unit`, `count`; `cost`: gold, balance `battle.joinCostPercent` of their recruit price) when much weaker neutral monsters (balance `battle.joinStrengthRatio`) would rather join him: the hero stopped next to them, answer with `answer_join` (computer players pay when they can (`joined`), else they fight). A move that runs out of movement keeps the target as the hero's `destination` (own heroes in the view: `destination: [x, y]`) |
 | `build` | `town`, `building`, `useTrade`? | `trades` (the exchanges made) |
 | `recruit` | `town`, `unit`, `count`, `army`? | |
@@ -117,15 +120,26 @@ When the game is over every command is refused with code `game_over`.
 `town` omitted means all of the player's towns for the one-click actions.
 
 ### Leaving, coming back, saved games
-A player who disconnects during the game is played by the passive AI from then on (the game
-continues; his turns are skipped).
+A player who disconnects keeps his seat: no computer plays for him, the game waits at his
+turn (players may come at different times); a battle against him is fought by the battle AI
+for his side. In views his entry in `players` has `away: true` while he is not connected.
+Content ids are numbers everywhere in game messages (resources, terrain, units: `unit` in
+stacks, recruit options, dwellings, battles, `recruit` commands; `losses`/`importedUnits` are
+objects keyed by the unit id as text); they mean the same as in the server's data (the hello's
+content checksum guarantees that). Seat keys: every client makes a random secret key per server (kept in its settings) and
+sends it in `hello` (`playerKey`). The server keeps only its SHA-256 (with each seat the client
+plays, also in saves). A running game, or one the host loads, gives the free seats bound to
+that key back to the client at once (`game_started`, no choice offered); other clients are
+only offered seats nobody has played yet (a seat of someone who is away cannot be taken). The server can resume
+the newest save at start (`--resume`). A player who is out may join and watch; his turns are
+skipped.
 
 | Type | Fields | Reply (`command_result` info) / notes |
 |---|---|---|
 | `join_game` | `player` | `player`; then `game_started` to you and new views to all. Only a free human player (nobody plays him now). |
-| `save_game` | `name` (1-40 of `A-Za-z0-9_-`) | `name`. Any player of the running game, any time. Saved on the server (`--saves <dir>`, default the app data folder). |
-| `list_saves` | | `saves` (names, newest first) and `games`: per save `name`, `gameVersion`, `savedAt`, `formatVersion`, `day`, `players`, `mapWidth`, `mapHeight`, `status` (`ok`, `converted` = an older format that is converted on load, `incompatible` = cannot be loaded) and `problems` (why, or what is converted) |
-| `load_game` | `name` | `name`, `converted` (notes when an older save was converted). Host only, no game running. Refused with `incompatible_save` and the reason when the save cannot be loaded. Then everyone gets `game_loaded` {`freePlayers`}. |
+| `save_game` | `name` (1-40 of `A-Za-z0-9_-`) | `name`. Any player of the running game, any time; only the host may replace an existing save (else `save_exists`). Saved on the server (`--saves <dir>`, default the app data folder). |
+| `list_saves` | | `saves` (names, newest first) and `games`: per save `name`, `gameVersion`, `savedAt`, `formatVersion`, `day`, `players`, `mapWidth`, `mapHeight`, `status` (`ok`, or `incompatible` = cannot be loaded: another save format, or other game data) and `problems` (why) |
+| `load_game` | `name` | `name`. Host only, no game running. Refused with `incompatible_save` and the reason when the save cannot be loaded. Then everyone gets `game_loaded` {`freePlayers`}. |
 
 `welcome` has `freePlayers` (`[{id, name}]`) when a game is running: a client joining late (or
 coming back) picks one with `join_game`. After loading, all humans are free and the game waits on
@@ -149,7 +163,7 @@ once by the battle AI and `move_hero` returns the reports.
 
 | Type | Fields | `info` on success |
 |---|---|---|
-| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `wait` (act again at the end of the round, once), `retreat` (a side with a hero, not a town's defenders: army lost, hero escapes to the nearest own town), `surrender` (against another player: pay `surrenderCost` gold, keep hero and army; the view sends `surrenderCost` when possible), `unit_cast` (`spell`, `target`: the active stack's own spell, uses its turn), `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end), `ai` (the battle AI makes this one move for your stack: the client's auto-play, which can be stopped), `build_engine` (attacker in a siege: pay balance `siege.engineCost` for a catapult; does not use the turn), `shoot` with `x`, `y` (the catapult: a wall segment) | `events` (list; also `tower` (fromX, fromY, target, damage), `wall_hit` (x, y, damage, fell), `engine`; first your stack's, then what the computer's stacks did until your next turn: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
+| `battle_action` | `action`: `move` (`x`, `y`), `attack` (`target`, optional `x`, `y` = hex to strike from), `shoot` (`target`), `defend`, `wait` (act again at the end of the round, once), `retreat` (a side with a hero, not a town's defenders, that has an own town free of heroes to flee to: army lost, hero escapes to the nearest such town), `surrender` (same conditions, against another player: pay `surrenderCost` gold, keep hero and army, which go to that town; the view sends `surrenderCost` when possible), `unit_cast` (`spell`, `target`: the active stack's own spell, uses its turn), `cast` (`spell`, `target`: your hero, once per round, does not end the stack's turn), `auto` (the battle AI plays your side to the end), `ai` (the battle AI makes this one move for your stack: the client's auto-play, which can be stopped), `build_engine` (attacker in a siege: pay balance `siege.engineCost` for a catapult; does not use the turn), `shoot` with `x`, `y` (the catapult: a wall segment) | `events` (list; also `tower` (fromX, fromY, target, damage), `wall_hit` (x, y, damage, fell), `engine`; first your stack's, then what the computer's stacks did until your next turn: `type` move/attack/shoot/retaliate/defend/round, `unit`, `target`, `damage`, `killed`, `x`/`y`); when it ended `battleOver: true` and `move` (the `move_hero` info with `battles`) |
 
 Battle reports (`battles` entries, and `lastBattle.report` in the view of both participants,
 `lastBattle.id` grows with every battle):
@@ -160,12 +174,13 @@ Battle reports (`battles` entries, and `lastBattle.report` in the view of both p
   "defender": { "owner": 0, "hero": 0, "losses": { "militia": 5 } } }
 ```
 Owner/hero 0 = neutral / none. A winner whose race has the ability gets `raised` (`unit`, `count`: undead raise the fallen) or `lootGold` (orcs). After a retreat: `retreated: true`, and `retreatedTo` (town name) when
-the hero fled to the nearest own town without a hero (he has no movement left that day).
+the hero fled to the nearest own town without a hero (he has no movement left that day). A surrender also sends `retreatedTo`: the hero goes there with his army.
 Neutral monster armies appear in `armies` with `owner` 0 and `hero` 0.
 Saving is refused while a battle runs. A human who disconnects during a battle is replaced by the
 battle AI.
 
 Lobby settings also have `difficulty` (`easy`/`normal`/`hard`/`expert`, host only); the game view has `difficulty`.
+Lobby settings also have `defeat` (host only): when a player is out: `week` (default: 7 days without a town), `town` (at once with his last town), `all` (no towns and no heroes); the game view has `defeat` (a short text) next to `victory`.
 Stacks in views and battle units may have `stars` (0..5, veterancy).
 
 `welcome` lists `scenarios` (`id`, `name`, `description`, `width`, `height`, `races`). Lobby settings have `scenario` (an id, empty = random map; host only).

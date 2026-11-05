@@ -19,12 +19,12 @@ void MiniMap::setView(const GameView& view) {
     m_colors.clear();
     m_kinds.clear();
     m_water.clear();
-    for (const QString& id : m_view.terrainPalette) {
-        const core::TerrainDef* t = m_content ? m_content->terrainType(id) : nullptr;
-        m_colors.append(t ? QColor(t->color) : QColor(Qt::magenta));
-        m_kinds.append(id);
-        m_water.append(t && t->sailable);
-    }
+    if (m_content)
+        for (const core::TerrainDef& t : m_content->terrain()) {  // a tile is a terrain id: an index into these
+            m_colors.append(QColor(t.color));
+            m_kinds.append(t.key);
+            m_water.append(t.sailable);
+        }
     rebuildImage();
     update();
 }

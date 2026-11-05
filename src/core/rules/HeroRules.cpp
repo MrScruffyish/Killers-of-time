@@ -14,19 +14,19 @@ void setError(QString* error, const QString& message) {
 }
 }  // namespace
 
-int maxSpellPoints(const Hero& hero) {
-    return hero.trait(QStringLiteral("spell_points_max"));
+int maxSpellPoints(const Hero& hero, const ContentRegistry& content) {
+    return hero.trait(content.known().spellPointsMax);
 }
 
 HeroId createHero(GameState& state, const ContentRegistry& content, PlayerId owner,
-                  const QString& name, const QString& classId, Pos pos, QString* error) {
+                  const QString& name, HeroClassId classId, Pos pos, QString* error) {
     if (!state.player(owner)) {
         setError(error, QStringLiteral("unknown owner"));
         return {};
     }
     const HeroClassDef* cls = content.heroClass(classId);
     if (!cls) {
-        setError(error, QStringLiteral("unknown hero class '%1'").arg(classId));
+        setError(error, QStringLiteral("unknown hero class %1").arg(classId.index()));
         return {};
     }
     Hero hero;
@@ -35,7 +35,7 @@ HeroId createHero(GameState& state, const ContentRegistry& content, PlayerId own
     hero.classId = classId;
     hero.owner = owner;
     hero.traits = cls->baseTraits;
-    hero.spellPoints = maxSpellPoints(hero);
+    hero.spellPoints = maxSpellPoints(hero, content);
     hero.spells = cls->startingSpells;
     hero.army = state.addArmy(owner, pos);
     state.army(hero.army)->hero = hero.id;
@@ -56,14 +56,13 @@ int addExperience(Hero& hero, const ContentRegistry& content, int experience) {
         ++gained;
         ++hero.pendingTraitPicks;
         if (cls) {
-            for (auto it = cls->autoGrowth.begin(); it != cls->autoGrowth.end(); ++it)
-                hero.traits[it.key()] += it.value();
+            for (const auto [t, v] : cls->autoGrowth) hero.traits[t] += v;
         }
     }
     return gained;
 }
 
-bool pickTrait(Hero& hero, const ContentRegistry& content, const QString& traitId,
+bool pickTrait(Hero& hero, const ContentRegistry& content, TraitId traitId,
                QString* error) {
     if (hero.pendingTraitPicks <= 0) {
         setError(error, QStringLiteral("no trait pick available"));
@@ -71,23 +70,23 @@ bool pickTrait(Hero& hero, const ContentRegistry& content, const QString& traitI
     }
     const TraitDef* trait = content.trait(traitId);
     if (!trait) {
-        setError(error, QStringLiteral("unknown trait '%1'").arg(traitId));
+        setError(error, QStringLiteral("unknown trait %1").arg(traitId.index()));
         return false;
     }
     if (!trait->pickable) {
-        setError(error, QStringLiteral("trait '%1' cannot be picked").arg(traitId));
+        setError(error, QStringLiteral("trait '%1' cannot be picked").arg(trait->key));
         return false;
     }
     const HeroClassDef* cls = content.heroClass(hero.classId);
-    const int increment = cls ? cls->pickIncrement.value(traitId, 1) : 1;
+    const int increment = cls && cls->pickIncrement.value(traitId) > 0 ? cls->pickIncrement.value(traitId) : 1;
     hero.traits[traitId] += increment;
     --hero.pendingTraitPicks;
     return true;
 }
 
-int regenSpellPoints(Hero& hero) {
-    const int missing = std::max(0, maxSpellPoints(hero) - hero.spellPoints);
-    const int gained = std::min(missing, hero.trait(QStringLiteral("spell_recovery")));
+int regenSpellPoints(Hero& hero, const ContentRegistry& content) {
+    const int missing = std::max(0, maxSpellPoints(hero, content) - hero.spellPoints);
+    const int gained = std::min(missing, hero.trait(content.known().spellRecovery));
     hero.spellPoints += gained;
     return gained;
 }
@@ -95,32 +94,29 @@ int regenSpellPoints(Hero& hero) {
 namespace {
 int wornInSlot(const Hero& hero, const ContentRegistry& content, const QString& slot) {
     int n = 0;
-    for (const QString& id : hero.artifacts)
+    for (const ArtifactId id : hero.artifacts)
         if (const ArtifactDef* a = content.artifact(id); a && a->slot == slot) ++n;
     return n;
 }
-void applyBonus(Hero& hero, const ArtifactDef& a, int sign) {
-    for (auto it = a.traits.begin(); it != a.traits.end(); ++it) {
-        hero.traits[it.key()] += sign * it.value();
-        if (hero.traits[it.key()] == 0) hero.traits.remove(it.key());
-    }
-    hero.spellPoints = std::min(hero.spellPoints, std::max(0, maxSpellPoints(hero)));
+void applyBonus(Hero& hero, const ContentRegistry& content, const ArtifactDef& a, int sign) {
+    for (const auto [t, v] : a.traits) hero.traits[t] += sign * v;
+    hero.spellPoints = std::min(hero.spellPoints, std::max(0, maxSpellPoints(hero, content)));
 }
 }  // namespace
 
-bool takeArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId) {
+bool takeArtifact(Hero& hero, const ContentRegistry& content, ArtifactId artifactId) {
     const ArtifactDef* a = content.artifact(artifactId);
     if (!a) return false;
     if (wornInSlot(hero, content, a->slot) < artifactSlotCount(a->slot)) {
         hero.artifacts.append(a->id);
-        applyBonus(hero, *a, +1);
+        applyBonus(hero, content, *a, +1);
         return true;
     }
     hero.backpack.append(a->id);
     return false;
 }
 
-bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId, const QString& replace,
+bool equipArtifact(Hero& hero, const ContentRegistry& content, ArtifactId artifactId, ArtifactId replace,
                    QString* error) {
     const ArtifactDef* a = content.artifact(artifactId);
     if (!a || !hero.backpack.contains(artifactId)) {
@@ -128,8 +124,8 @@ bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& ar
         return false;
     }
     if (wornInSlot(hero, content, a->slot) >= artifactSlotCount(a->slot)) {
-        QString off;
-        if (!replace.isEmpty()) {
+        ArtifactId off;
+        if (replace.isValid()) {
             const ArtifactDef* r = content.artifact(replace);
             if (!r || r->slot != a->slot || !hero.artifacts.contains(replace)) {
                 setError(error, QStringLiteral("that artifact is not worn in the same place"));
@@ -137,7 +133,7 @@ bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& ar
             }
             off = replace;
         } else {
-            for (const QString& id : hero.artifacts)
+            for (const ArtifactId id : hero.artifacts)
                 if (const ArtifactDef* w = content.artifact(id); w && w->slot == a->slot) {
                     off = id;
                     break;
@@ -147,11 +143,11 @@ bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& ar
     }
     hero.backpack.removeOne(artifactId);
     hero.artifacts.append(artifactId);
-    applyBonus(hero, *a, +1);
+    applyBonus(hero, content, *a, +1);
     return true;
 }
 
-bool unequipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId, QString* error) {
+bool unequipArtifact(Hero& hero, const ContentRegistry& content, ArtifactId artifactId, QString* error) {
     const ArtifactDef* a = content.artifact(artifactId);
     if (!a || !hero.artifacts.contains(artifactId)) {
         setError(error, QStringLiteral("the hero does not wear that artifact"));
@@ -159,11 +155,11 @@ bool unequipArtifact(Hero& hero, const ContentRegistry& content, const QString& 
     }
     hero.artifacts.removeOne(artifactId);
     hero.backpack.append(artifactId);
-    applyBonus(hero, *a, -1);
+    applyBonus(hero, content, *a, -1);
     return true;
 }
 
-bool giveArtifact(GameState& state, const ContentRegistry& content, HeroId fromId, HeroId toId, const QString& artifactId,
+bool giveArtifact(GameState& state, const ContentRegistry& content, HeroId fromId, HeroId toId, ArtifactId artifactId,
                   QString* error) {
     Hero* from = state.hero(fromId);
     Hero* to = state.hero(toId);

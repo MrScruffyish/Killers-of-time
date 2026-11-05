@@ -99,7 +99,7 @@ public:
             f.type = e["type"].toString();
             f.unit = e["unit"].toInt();
             f.target = e["target"].toInt();
-            f.spell = e["spell"].toString();
+            f.spell = core::SpellId(e["spell"].toInt(-1));
             f.lucky = e["lucky"].toBool();
             f.hex = {e["x"].toInt(), e["y"].toInt()};
             if (f.type == "tower") f.from = centre(core::Pos{e["fromX"].toInt(), e["fromY"].toInt()});
@@ -151,7 +151,7 @@ public:
         const ViewBattleUnit* me = battle.unit(battle.active);
         if (!battle.myMove() || !me || h.x < 0) return;
         const core::UnitDef* activeDef = m_content->unit(me->unit);
-        if (activeDef && activeDef->has(QStringLiteral("siege_engine"))) {  // the catapult only shoots walls
+        if (activeDef && activeDef->has(core::Ability::SiegeEngine)) {  // the catapult only shoots walls
             intent = battle.walls.contains(h) ? Intent::Shoot : Intent::Blocked;
             return;
         }
@@ -237,32 +237,27 @@ public:
     // forest battle, peaks behind a mountain one, the sea below a shore battle,
     // bushes and stones on open ground; darker than the field so that stands out.
     void drawSurroundings(QPainter& p, const QRectF& field, double r) {
-        const QString where = battle.terrain.isEmpty() ? QStringLiteral("grass") : battle.terrain;
+        const QString where = battle.terrain >= 0 && battle.terrain < m_content->terrain().size()
+                                  ? m_content->terrain(core::TerrainId(battle.terrain)).key : QStringLiteral("grass");
         static const QHash<QString, QString> groundOf = {{"forest", "grass"}, {"hills", "dirt"}, {"mountains", "dirt"},
                                                          {"road", "dirt"}, {"sea", "sand"}, {"river", "grass"}, {"lava", "dirt"}};
         const QString groundId = groundOf.value(where, where);
-        const core::TerrainDef* gt = m_content->terrainType(groundId);
-        const QColor groundColour = gt ? QColor(gt->color) : QColor("#5d8a3a");
         const int tile = std::max(24, int(r * 2.6));
         for (int ty = 0; ty * tile < height(); ++ty)
             for (int tx = 0; tx * tile < width(); ++tx)
-                p.drawPixmap(tx * tile, ty * tile, art::terrainTile(groundId, groundColour, tile, art::variantFor(tx + 3, ty + 9)));
+                p.drawPixmap(tx * tile, ty * tile, art::terrainTile(groundId, tile, art::variantFor(tx + 3, ty + 9)));
         const bool water = where == "sea" || where == "river";
         if (water) {  // the water along the bottom, with a sandy edge
-            const core::TerrainDef* sea = m_content->terrainType(QStringLiteral("sea"));
-            const QColor seaColour = sea ? QColor(sea->color) : QColor("#2f5f9a");
             for (int ty = int(field.bottom() + r * 0.6) / tile; ty * tile < height() + tile; ++ty)
                 for (int tx = 0; tx * tile < width(); ++tx)
                     p.drawPixmap(tx * tile, int(field.bottom() + r * 0.6) + (ty - int(field.bottom() + r * 0.6) / tile) * tile,
-                                 art::terrainTile(QStringLiteral("sea"), seaColour, tile, art::variantFor(tx, ty)));
+                                 art::terrainTile(QStringLiteral("sea"), tile, art::variantFor(tx, ty)));
         }
         // Features in bands above and below the field (and at the sides when there is room).
         QString feature;
-        QColor featureColour;
         if (where == "forest" || where == "grass" || where == "river" || where == "swamp") feature = QStringLiteral("forest");
         else if (where == "hills" || where == "dirt" || where == "road") feature = QStringLiteral("hills");
         else if (where == "mountains" || where == "snow" || where == "lava") feature = QStringLiteral("mountains");
-        if (const core::TerrainDef* ft = feature.isEmpty() ? nullptr : m_content->terrainType(feature)) featureColour = QColor(ft->color);
         const int size = std::max(32, int(r * 3.2));
         const bool dense = where == "forest" || where == "mountains" || where == "hills";
         const auto band = [&](double top, double bottom, double left, double right, int seed) {
@@ -272,7 +267,7 @@ public:
                     const int v = art::variantFor(int(x / 7) + seed, int(y / 5) + seed);
                     const double jx = ((v * 37) % 10) / 10.0 * size * 0.2;
                     if (!feature.isEmpty() && (dense || v % 3 == 0)) {
-                        p.drawPixmap(QPointF(x + jx, y), art::terrainFeature(feature, featureColour, size, v));
+                        p.drawPixmap(QPointF(x + jx, y), art::terrainFeature(feature, size, v));
                     } else {
                         const int deco = art::decorationAt(int(x) / 11 + seed, int(y) / 13);
                         if (deco >= 0) p.drawPixmap(QPointF(x + jx + size * 0.3, y + size * 0.4), art::decoration(groundId, deco, size / 2));
@@ -292,9 +287,33 @@ public:
 
 protected:
     void paintEvent(QPaintEvent*) override {
-        QPainter p(this);
-        p.fillRect(rect(), QColor("#1f1810"));
-        if (battle.present) {
+        QPainter screen(this);
+        if (!battle.present) {
+            screen.fillRect(rect(), QColor("#1f1810"));
+            return;
+        }
+        // What stays the same all battle (surroundings, ground, hex lines, trees and
+        // rocks) is painted once into m_background; each frame draws only the rest.
+        const qreal dpr = devicePixelRatioF();
+        QList<core::Pos> obstacles(battle.obstacles.cbegin(), battle.obstacles.cend());
+        std::sort(obstacles.begin(), obstacles.end(), [](core::Pos a, core::Pos b) { return a.y != b.y ? a.y < b.y : a.x < b.x; });
+        QString key = QStringLiteral("%1x%2@%3|%4x%5|%6|").arg(width()).arg(height()).arg(dpr).arg(battle.width).arg(battle.height).arg(battle.terrain);
+        for (const core::Pos o : obstacles) key += QStringLiteral("%1,%2;").arg(o.x).arg(o.y);
+        if (key != m_backgroundKey) {
+            m_background = QPixmap(size() * dpr);
+            m_background.setDevicePixelRatio(dpr);
+            QPainter bp(&m_background);
+            paintField(bp, true);
+            m_backgroundKey = key;
+        }
+        screen.drawPixmap(0, 0, m_background);
+        paintField(screen, false);
+    }
+
+    // The field: `background` = only the parts that do not change, else only the others.
+    void paintField(QPainter& p, bool background) {
+        if (background) {
+            p.fillRect(rect(), QColor("#1f1810"));
             const double r0 = radius();
             const QPointF o = origin();
             const QRectF field(o.x() - r0 * 0.4, o.y() - r0 * 0.4, std::sqrt(3.0) * r0 * (battle.width + 0.5) + r0 * 0.8,
@@ -309,7 +328,6 @@ protected:
             p.setBrush(Qt::NoBrush);
             p.drawRoundedRect(field.adjusted(-1, -1, 1, 1), 6, 6);
         }
-        if (!battle.present) return;
         p.setRenderHint(QPainter::Antialiasing, true);
         const double r = radius();
         const auto hexPath = [&](core::Pos h, double scale) {
@@ -327,14 +345,11 @@ protected:
         const bool mine = battle.myMove();
         // The ground of the map tile the battle is fought on (forests and hills give
         // their grass or earth; their trees and peaks are the obstacles instead).
-        const QString where = battle.terrain.isEmpty() ? QStringLiteral("grass") : battle.terrain;
+        const QString where = battle.terrain >= 0 && battle.terrain < m_content->terrain().size()
+                                  ? m_content->terrain(core::TerrainId(battle.terrain)).key : QStringLiteral("grass");
         static const QHash<QString, QString> ground = {{"forest", "grass"}, {"hills", "dirt"}, {"mountains", "dirt"},
                                                        {"road", "dirt"}, {"sea", "sand"}, {"river", "grass"}, {"lava", "dirt"}};
         const QString groundId = ground.value(where, where);
-        const core::TerrainDef* gt = m_content->terrainType(groundId);
-        const core::TerrainDef* wt = m_content->terrainType(where);
-        QColor groundColour = gt ? QColor(gt->color) : QColor("#5d8a3a");
-        if (where == "forest" && wt) groundColour = QColor(wt->color).lighter(125);
         // Whose range to show: the stack under the mouse if it shoots, else your active shooter.
         const ViewBattleUnit* ranger = battle.unitAt(hover);
         if (!ranger || ranger->range <= 0 || ranger->shots <= 0) {
@@ -344,7 +359,7 @@ protected:
         const bool enemyRange = ranger && ranger->side != battle.yourSide;
         // One continuous ground under the whole field (no tile seams at the hexes),
         // shaped to the hexes; then soft hex lines, lit hexes, small decorations.
-        {
+        if (background) {
             QPainterPath fieldShape;
             for (int y = 0; y < battle.height; ++y)
                 for (int x = 0; x < battle.width; ++x) fieldShape.addPath(hexPath({x, y}, 1.0));
@@ -356,7 +371,7 @@ protected:
             for (double ty = area.top(); ty < area.bottom(); ty += tile)
                 for (double tx = area.left(); tx < area.right(); tx += tile) {
                     const int ix = int((tx - area.left()) / tile), iy = int((ty - area.top()) / tile);
-                    p.drawPixmap(QPointF(tx, ty), art::terrainTile(groundId, groundColour, tile, art::variantFor(ix + 31, iy + 17)));
+                    p.drawPixmap(QPointF(tx, ty), art::terrainTile(groundId, tile, art::variantFor(ix + 31, iy + 17)));
                 }
             // A gentle vignette towards the edges of the field.
             QRadialGradient vignette(area.center(), std::max(area.width(), area.height()) * 0.62);
@@ -369,14 +384,17 @@ protected:
             for (int x = 0; x < battle.width; ++x) {
                 const core::Pos h{x, y};
                 const QPainterPath path = hexPath(h, 0.97);
+                if (!background) {
+                    if (mine && battle.reachable.contains(h)) p.fillPath(path, QColor(255, 240, 160, 70));
+                    if (ranger && core::hex::distance(ranger->hex, h) <= ranger->range)
+                        p.fillPath(path, enemyRange ? QColor(255, 40, 40, 45) : QColor(80, 150, 255, 40));
+                    continue;
+                }
                 if (!battle.obstacles.contains(h) && r >= 14) {
                     const int variant = art::decorationAt(x * 3 + 7, y * 5 + 3);
                     const QPixmap& deco = variant >= 0 ? art::decoration(groundId, variant, int(r * 1.5)) : QPixmap();
                     if (!deco.isNull()) p.drawPixmap(centre(h) - QPointF(r * 0.75, r * 0.75), deco);
                 }
-                if (mine && battle.reachable.contains(h)) p.fillPath(path, QColor(255, 240, 160, 70));
-                if (ranger && core::hex::distance(ranger->hex, h) <= ranger->range)
-                    p.fillPath(path, enemyRange ? QColor(255, 40, 40, 45) : QColor(80, 150, 255, 40));
                 p.setBrush(Qt::NoBrush);
                 p.setPen(QPen(QColor(255, 250, 220, 45), 1.2));
                 p.drawPath(path);
@@ -388,7 +406,7 @@ protected:
                     p.setPen(QPen(QColor(20, 30, 10), 1.5));
                     if (where == "forest") {
                         const int size = int(r * 2.3);
-                        const QPixmap& trees = art::terrainFeature("forest", wt ? QColor(wt->color) : QColor("#2f6b3a"), size, art::variantFor(x, y));
+                        const QPixmap trees = art::terrainFeature("forest", size, art::variantFor(x, y));
                         if (!trees.isNull()) p.drawPixmap(c - QPointF(size, size * 1.6), trees);
                     } else {
                         p.setBrush(QColor("#3c5a6e"));
@@ -412,6 +430,7 @@ protected:
                     p.drawPolygon(rock);
                 }
             }
+        if (background) return;
         // A siege: the wall (cracking as it takes damage, rubble where it fell), the
         // wooden gate, and the towers behind it.
         if (battle.wallLevel > 0) {
@@ -542,7 +561,7 @@ protected:
             const bool target = mine && u.side != battle.yourSide && (battle.shootable.contains(u.id) || battle.attackable.contains(u.id));
             const core::UnitDef* def = m_content->unit(u.unit);
             const QPointF c = drawnAt(u);
-            art::drawBattleFigure(p, c, r, sideColor[u.side], u.unit, def ? def->rank : 0, u.count, u.stars, active, target, u.side == 1);
+            art::drawBattleFigure(p, c, r, sideColor[u.side], art::unitKey(u.unit), def ? def->rank : 0, u.count, u.stars, active, target, u.side == 1);
             if (u.maxHp > 0 && u.frontHp > 0 && u.frontHp < u.maxHp) {
                 // The front unit is hurt: a small health bar under the base.
                 const QRectF bar(c.x() - r * 0.6, c.y() + r * 0.76, r * 1.2, std::max(3.0, r * 0.12));
@@ -674,7 +693,7 @@ protected:
         for (const Ghost& g : m_ghosts) {
             const core::UnitDef* def = m_content->unit(g.unit.unit);
             p.setOpacity(std::max(0.0, 1.0 - g.age / 0.7));
-            art::drawBattleFigure(p, centre(g.unit.hex) + QPointF(0, r * g.age * 0.4), r, sideColor[g.unit.side], g.unit.unit,
+            art::drawBattleFigure(p, centre(g.unit.hex) + QPointF(0, r * g.age * 0.4), r, sideColor[g.unit.side], art::unitKey(g.unit.unit),
                                   def ? def->rank : 0, 0, 0, false, false, g.unit.side == 1);
         }
         p.setOpacity(1.0);
@@ -734,7 +753,8 @@ private:
         double age;
     };
     struct Fx {
-        QString type, spell;
+        QString type;
+        core::SpellId spell;
         int unit = 0, target = 0;
         core::Pos hex;
         bool lucky = false;
@@ -746,6 +766,8 @@ private:
     QHash<int, QPointF> m_fxPos;
     const core::ContentRegistry* m_content;
     QTimer m_anim;
+    QPixmap m_background;  // the unchanging part of the field (see paintEvent)
+    QString m_backgroundKey;
     QElapsedTimer m_clock;
     QHash<int, QPointF> m_slideFrom;
     double m_slide = 1.0;
@@ -879,7 +901,7 @@ void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, con
     m_field->setBattleAnimated(battle);
     m_field->sideColor[0] = attacker;
     m_field->sideColor[1] = defender;
-    if (!battle.myMove()) m_castSpell.clear();
+    if (!battle.myMove()) m_castSpell = core::SpellId();
     if (!battle.unit(m_hoverUnit)) m_hoverUnit = 0;
     autoStep();
     updateInfo();
@@ -923,12 +945,12 @@ void BattleView::updateStats() {
     t += tr("Attack <b>%1</b> &nbsp; Defense <b>%2</b><br>").arg(d->attack).arg(d->defense);
     t += tr("Damage <b>%1-%2</b> per unit<br>").arg(d->damageMin).arg(d->damageMax);
     t += tr("Speed <b>%1</b> &nbsp; Initiative <b>%2</b><br>").arg(d->battleSpeed).arg(d->initiative);
-    if (d->has(QStringLiteral("siege_engine"))) t += tr("Hurls stones at the walls (%1-%2 damage); gone after the battle<br>")
+    if (d->has(core::Ability::SiegeEngine)) t += tr("Hurls stones at the walls (%1-%2 damage); gone after the battle<br>")
                                                          .arg(m_content->balance().siege.catapultDamageMin).arg(m_content->balance().siege.catapultDamageMax);
     else if (u->range > 0) t += tr("Shoots: range <b>%1</b> hexes, %2 shots left<br>").arg(u->range).arg(u->shots);
     else t += tr("Melee only<br>");
     if (u->stars > 0) t += tr("Veteran: %1<br>").arg(QString(u->stars, QChar(0x2605)));
-    if (!d->abilities.isEmpty()) t += tr("Abilities: %1<br>").arg(d->abilities.join(", ").replace('_', ' '));
+    if (d->abilities) t += tr("Abilities: %1<br>").arg(core::abilityNames(d->abilities).join(", "));
     if (u->retaliated) t += tr("<i>Has struck back this round</i><br>");
     if (u->range > 0 && u->side != m_battle.yourSide) t += tr("<br><span style='color:#ff8080'>Red hexes: where it can shoot</span>");
     m_stats->setText(t);
@@ -942,18 +964,18 @@ void BattleView::updateInfo() {
     QString text = tr("<b>Battle, round %1</b> &nbsp; ").arg(battle.round);
     if (!active) {
         text += tr("waiting...");
-    } else if (mine && !m_castSpell.isEmpty()) {
+    } else if (mine && m_castSpell.isValid()) {
         const core::SpellDef* s = m_content->spell(m_castSpell);
         bool enemy = true;
         for (const ViewBattle::Spell& sp : m_castByUnit ? battle.unitSpells : battle.spells)
             if (sp.id == m_castSpell) enemy = sp.targetsEnemy;
         text += tr("Cast %1: click %2 (or an empty hex to cancel).")
-                    .arg(s ? s->name : m_castSpell, enemy ? tr("an enemy stack") : tr("one of your stacks"));
-    } else if (mine && def && def->has(QStringLiteral("siege_engine"))) {
+                    .arg(s ? s->name : QString(), enemy ? tr("an enemy stack") : tr("one of your stacks"));
+    } else if (mine && def && def->has(core::Ability::SiegeEngine)) {
         text += tr("Your catapult: click a wall segment to hurl a stone at it.");
     } else if (mine) {
         text += tr("Your %1 (%2) acts: click a light hex to move, a red-ringed enemy to %3.")
-                    .arg(def ? def->name : active->unit)
+                    .arg(def ? def->name : QString())
                     .arg(active->count)
                     .arg(!battle.shootable.isEmpty() ? tr("shoot (blue hexes: in range)") : tr("attack"));
     } else {
@@ -974,7 +996,7 @@ void BattleView::updateInfo() {
     {
         QStringList cost;
         const core::ResourceAmounts& c = m_content->balance().siege.engineCost;
-        for (auto it = c.begin(); it != c.end(); ++it) cost << QStringLiteral("%1 %2").arg(it.value()).arg(it.key());
+        for (const auto [r, amount] : c) cost << QStringLiteral("%1 %2").arg(amount).arg(m_content->resource(r).key);
         m_engine->setText(tr("Build a catapult (%1)").arg(cost.join(", ")));
         m_engine->setVisible(battle.canBuildEngine);
         m_engine->setEnabled(mine);
@@ -994,8 +1016,8 @@ void BattleView::chooseSpell(bool unitSpell) {
     for (const ViewBattle::Spell& sp : unitSpell ? m_battle.unitSpells : m_battle.spells)
         entries.append({sp.id, sp.castable, sp.castable ? QString() : tr("Not now (spell points, or already cast this round)")});
     if (entries.isEmpty()) return;
-    const QString chosen = SpellBook::chooseSpell(m_content, entries, unitSpell ? tr("The stack's spells") : tr("Your hero's spell book"), this);
-    if (chosen.isEmpty()) return;
+    const core::SpellId chosen = SpellBook::chooseSpell(m_content, entries, unitSpell ? tr("The stack's spells") : tr("Your hero's spell book"), this);
+    if (!chosen.isValid()) return;
     m_castSpell = chosen;
     m_castByUnit = unitSpell;
     updateInfo();
@@ -1003,17 +1025,17 @@ void BattleView::chooseSpell(bool unitSpell) {
 
 void BattleView::onHexClicked(core::Pos hex, core::Pos from) {
     if (!m_battle.myMove()) return;
-    if (!m_castSpell.isEmpty()) {
-        const QString spell = m_castSpell;
-        m_castSpell.clear();
+    if (m_castSpell.isValid()) {
+        const core::SpellId spell = m_castSpell;
+        m_castSpell = core::SpellId();
         if (const ViewBattleUnit* u = m_battle.unitAt(hex))
-            emit actionRequested({{"action", m_castByUnit ? "unit_cast" : "cast"}, {"spell", spell}, {"target", u->id}});
+            emit actionRequested({{"action", m_castByUnit ? "unit_cast" : "cast"}, {"spell", spell.index()}, {"target", u->id}});
         updateInfo();
         return;
     }
     const ViewBattleUnit* active = m_battle.unit(m_battle.active);
     const core::UnitDef* activeDef = active ? m_content->unit(active->unit) : nullptr;
-    if (activeDef && activeDef->has(QStringLiteral("siege_engine"))) {
+    if (activeDef && activeDef->has(core::Ability::SiegeEngine)) {
         if (m_battle.walls.contains(hex)) emit actionRequested({{"action", "shoot"}, {"x", hex.x}, {"y", hex.y}});
         return;
     }

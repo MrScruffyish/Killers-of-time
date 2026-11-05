@@ -14,6 +14,7 @@ AiView::AiView(const GameState& state, const ContentRegistry& content, PlayerId 
     const TeamId team = state.teamOf(me);
     m_visible = visibleTiles(state, team, content);
     m_explored = state.exploredMap(team);
+    for (const TerrainDef& t : content.terrain()) m_walkable.append(t.walkable);
 }
 
 bool AiView::visible(Pos p) const {
@@ -30,8 +31,7 @@ bool AiView::explored(Pos p) const {
 
 bool AiView::isFrontier(Pos p) const {
     if (!explored(p)) return false;
-    const auto t = m_content.terrain().constFind(m_state.map().terrainAt(p));
-    if (t == m_content.terrain().cend() || !t->walkable) return false;
+    if (!m_walkable.value(m_state.map().terrainAt(p).index(), false)) return false;
     for (int dy = -1; dy <= 1; ++dy)
         for (int dx = -1; dx <= 1; ++dx) {
             const Pos n{p.x + dx, p.y + dy};

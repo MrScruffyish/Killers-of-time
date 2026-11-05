@@ -12,6 +12,23 @@
 
 namespace kot::core {
 
+const Town* retreatTown(const GameState& state, const Army& army) {
+    const Town* best = nullptr;
+    int bestDist = 0;
+    for (const Town& t : state.towns()) {
+        if (t.owner != army.owner || t.pos == army.pos) continue;
+        bool taken = false;
+        for (const Army& a : state.armies()) taken = taken || (a.id != army.id && a.hasHero() && a.pos == t.pos);
+        if (taken) continue;
+        const int d = std::abs(t.pos.x - army.pos.x) + std::abs(t.pos.y - army.pos.y);
+        if (!best || d < bestDist) {
+            best = &t;
+            bestDist = d;
+        }
+    }
+    return best;
+}
+
 Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId attacker, ArmyId defender,
                std::uint64_t seed)
     : m_content(content), m_rng(seed) {
@@ -21,16 +38,17 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
         const Army* army = state.army(ids[side]);
         if (!army) continue;
         m_owner[side] = army->owner;
+        m_hasRefuge[side] = retreatTown(state, *army) != nullptr;
         if (const Player* pl = state.player(army->owner)) m_schoolPercent[side] = content.race(pl->race).spellSchoolPercent;
         m_hero[side] = army->hero;
         if (const Hero* h = state.hero(army->hero)) {
-            m_attackBonus[side] = h->trait(QStringLiteral("attack"));
-            m_defenseBonus[side] = h->trait(QStringLiteral("defense"));
+            m_attackBonus[side] = h->trait(content.known().attack);
+            m_defenseBonus[side] = h->trait(content.known().defense);
             m_heroCopy[side] = *h;
-            m_morale[side] = h->trait(QStringLiteral("morale"));
-            m_luck[side] = h->trait(QStringLiteral("luck"));
+            m_morale[side] = h->trait(content.known().morale);
+            m_luck[side] = h->trait(content.known().luck);
         }
-        const int hpPercent = (m_heroCopy[side].id.isValid() ? m_heroCopy[side].trait(QStringLiteral("hit_points")) : 0)
+        const int hpPercent = (m_heroCopy[side].id.isValid() ? m_heroCopy[side].trait(content.known().hitPoints) : 0)
                             * content.balance().battle.hpPercentPerTraitLevel;
         // Up to 10 stacks over the start column, from the middle outwards.
         static const int rows[] = {5, 3, 7, 1, 9, 0, 10, 2, 8, 4, 6};
@@ -67,7 +85,7 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
     if (const Army* d = state.army(defender)) {
         for (const Town& t : state.towns()) {
             if (t.pos != d->pos) continue;
-            for (const QString& b : t.buildings)
+            for (const BuildingTypeId b : t.buildings)
                 if (const BuildingDef* def = content.building(b))
                     for (const BuildingEffect& e : def->effects)
                         if (e.type == BuildingEffect::Type::Defense) m_townDefense += e.amount;
@@ -79,7 +97,7 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
         // The walls on the field: one level per defense building.
         for (const Town& t : state.towns()) {
             if (t.pos != d->pos) continue;
-            for (const QString& b : t.buildings)
+            for (const BuildingTypeId b : t.buildings)
                 if (const BuildingDef* def = content.building(b))
                     for (const BuildingEffect& e : def->effects) m_wallLevel += e.type == BuildingEffect::Type::Defense;
         }
@@ -141,7 +159,7 @@ const BattleUnit* Battle::activeUnit() const {
 
 bool Battle::sideAlive(int side) const {
     for (const BattleUnit& u : m_units)
-        if (u.side == side && u.alive() && !u.def->has(QStringLiteral("siege_engine"))) return true;  // a catapult alone does not fight on
+        if (u.side == side && u.alive() && !u.def->has(Ability::SiegeEngine)) return true;  // a catapult alone does not fight on
     return false;
 }
 
@@ -149,6 +167,7 @@ QString Battle::whyNoRetreat(int side) const {
     if (isOver()) return QStringLiteral("the battle is over");
     if (!m_hero[side].isValid()) return QStringLiteral("only a hero can retreat");
     if (side == 1 && m_defenderInTown) return QStringLiteral("a town's defenders cannot run away");
+    if (!m_hasRefuge[side]) return QStringLiteral("there is no town of yours to flee to");
     return {};
 }
 
@@ -161,7 +180,7 @@ QString Battle::whyNoSurrender(int side) const {
 int Battle::surrenderCost(int side) const {
     long long gold = 0;
     for (const BattleUnit& u : m_units)
-        if (u.side == side && u.alive() && u.armyIndex >= 0) gold += static_cast<long long>(u.stack.count()) * u.def->cost.value(QStringLiteral("gold"));
+        if (u.side == side && u.alive() && u.armyIndex >= 0) gold += static_cast<long long>(u.stack.count()) * u.def->cost.value(m_content.currency());
     return static_cast<int>(gold * m_content.balance().battle.surrenderCostPercent / 100);
 }
 
@@ -180,7 +199,7 @@ QString Battle::whyNoSiegeEngine() const {
     if (m_wallLevel <= 0) return QStringLiteral("there are no walls to break");
     if (m_engineBuilt) return QStringLiteral("a catapult is already here");
     if (isOver()) return QStringLiteral("the battle is over");
-    if (!m_content.unit(QStringLiteral("catapult"))) return QStringLiteral("no catapult in the game data");
+    if (!m_content.unitByKey(QStringLiteral("catapult"))) return QStringLiteral("no catapult in the game data");
     return {};
 }
 
@@ -191,7 +210,7 @@ QString Battle::buildSiegeEngine(QList<BattleEvent>* events) {
     u.id = static_cast<int>(m_units.size()) + 1;
     u.side = 0;
     u.armyIndex = -1;  // not from the army: gone after the battle
-    u.def = m_content.unit(QStringLiteral("catapult"));
+    u.def = m_content.unitByKey(QStringLiteral("catapult"));
     u.stack = UnitStack(u.def->id, 1, u.def->maxHp);
     u.baseMaxHp = u.def->maxHp;
     // At the back of the attacker's side, on a free hex.
@@ -228,9 +247,9 @@ void Battle::towersShoot(QList<BattleEvent>* events) {
 QHash<Pos, int> Battle::reachable(const BattleUnit& who) const {
     // Breadth-first over hexes. Walkers go around stacks and rocks; flyers pass
     // over them but must land on a free hex.
-    if (who.def->has(QStringLiteral("siege_engine"))) return {{who.pos, 0}};  // a catapult stays put
+    if (who.def->has(Ability::SiegeEngine)) return {{who.pos, 0}};  // a catapult stays put
     const int speed = std::max(1, who.def->battleSpeed + who.modifier(QStringLiteral("battleSpeed")));
-    const bool flying = who.def->has(QStringLiteral("flying"));
+    const bool flying = who.def->has(Ability::Flying);
     QHash<Pos, int> dist{{who.pos, 0}};
     QQueue<Pos> queue;
     queue.enqueue(who.pos);
@@ -260,7 +279,7 @@ bool Battle::canShoot(const BattleUnit& who) const {
 int Battle::shootRange(const BattleUnit& who) const {
     if (who.def->range <= 0) return 0;
     const Hero* h = heroOf(who.side);
-    return who.def->range + (h ? h->trait(QStringLiteral("attack_range")) : 0);
+    return who.def->range + (h ? h->trait(m_content.known().attackRange) : 0);
 }
 
 bool Battle::canShootAt(const BattleUnit& who, const BattleUnit& target) const {
@@ -344,16 +363,16 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
             me->pos = from;
         }
         strike(*me, *target, BattleEvent::Type::Attack, events);
-        if (target->alive() && !target->retaliated && !me->def->has(QStringLiteral("no_retaliation"))) {
+        if (target->alive() && !target->retaliated && !me->def->has(Ability::NoRetaliation)) {
             target->retaliated = true;
             strike(*target, *me, BattleEvent::Type::Retaliate, events);
         }
-        if (me->def->has(QStringLiteral("double_attack")) && me->alive() && target->alive())
+        if (me->def->has(Ability::DoubleAttack) && me->alive() && target->alive())
             strike(*me, *target, BattleEvent::Type::Attack, events);
         break;
     }
     case BattleAction::Type::Shoot: {
-        if (me->def->has(QStringLiteral("siege_engine"))) {
+        if (me->def->has(Ability::SiegeEngine)) {
             // The catapult hurls a stone at a wall segment.
             if (!action.hasHex || !m_wallHp.contains(action.hex)) return QStringLiteral("aim at a standing wall segment");
             const SiegeBalance& sb = m_content.balance().siege;
@@ -371,7 +390,7 @@ QString Battle::act(const BattleAction& action, QList<BattleEvent>* events) {
             return QStringLiteral("out of range (%1 hexes away, range %2)").arg(hex::distance(me->pos, target->pos)).arg(shootRange(*me));
         --me->shotsLeft;
         strike(*me, *target, BattleEvent::Type::Shoot, events);
-        if (me->def->has(QStringLiteral("double_attack")) && me->shotsLeft > 0 && target->alive()) {
+        if (me->def->has(Ability::DoubleAttack) && me->shotsLeft > 0 && target->alive()) {
             --me->shotsLeft;
             strike(*me, *target, BattleEvent::Type::Shoot, events);
         }
@@ -433,10 +452,10 @@ int Battle::moraleOf(const BattleUnit& u) const {
 }
 
 bool Battle::ignoresMorale(const BattleUnit& u) const {
-    return u.def->has(QStringLiteral("undead"));
+    return u.def->has(Ability::Undead);
 }
 
-QString Battle::whyCannotCast(const QString& spellId, int target) const {
+QString Battle::whyCannotCast(SpellId spellId, int target) const {
     const BattleUnit* me = activeUnit();
     if (!me) return QStringLiteral("the battle is over");
     const Hero* hero = heroOf(me->side);
@@ -462,12 +481,12 @@ QString Battle::cast(const BattleAction& action, QList<BattleEvent>* events) {
     hero.spellPoints -= spell->cost;
     m_heroCast[side] = true;
     for (BattleUnit* t : spellTargets(*spell, *mutableUnit(action.target)))
-        applySpell(*spell, hero.trait(QStringLiteral("spell_power")), *t, side, 0, events);
+        applySpell(*spell, hero.trait(m_content.known().spellPower), *t, side, 0, events);
     checkOver();
     return {};
 }
 
-QString Battle::whyUnitCannotCast(const QString& spellId, int target) const {
+QString Battle::whyUnitCannotCast(SpellId spellId, int target) const {
     const BattleUnit* me = activeUnit();
     if (!me) return QStringLiteral("the battle is over");
     const SpellDef* spell = m_content.spell(spellId);
@@ -616,7 +635,7 @@ QJsonObject battleEventToJson(const BattleEvent& e) {
         o.insert("damage", e.damage);
         o.insert("killed", e.killed);
     }
-    if (!e.spell.isEmpty()) o.insert("spell", e.spell);
+    if (e.spell.isValid()) o.insert("spell", e.spell.index());
     if (e.side >= 0) o.insert("side", e.side);
     if (e.lucky) o.insert("lucky", true);
     return o;
@@ -639,7 +658,7 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
         QJsonObject j;
         j.insert("id", u.id);
         j.insert("side", u.side);
-        j.insert("unit", u.def->id);
+        j.insert("unit", u.def->id.index());
         j.insert("count", u.stack.count());
         j.insert("frontHp", u.stack.frontUnitHp());
         j.insert("maxHp", u.stack.maxHp());
@@ -661,7 +680,7 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
     for (const Pos p : b.obstacles()) rocks.append(QJsonArray{p.x, p.y});
     o.insert("obstacles", rocks);
     if (b.townDefense() > 0) o.insert("townDefense", b.townDefense());
-    if (!b.terrain().isEmpty()) o.insert("terrain", b.terrain());
+    if (b.terrain().isValid()) o.insert("terrain", b.terrain().index());
     if (b.wallLevel() > 0) {
         QJsonObject siege;
         siege.insert("level", b.wallLevel());
@@ -693,9 +712,9 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
         o.insert("shootable", shootable);
         o.insert("canWait", !active->waited);
         QJsonArray unitSpells;
-        for (const QString& id : active->def->spells)
+        for (const SpellId id : active->def->spells)
             if (const SpellDef* sp = b.content().spell(id))
-                unitSpells.append(QJsonObject{{"id", id}, {"target", sp->target == SpellDef::Target::Enemy ? "enemy" : "ally"},
+                unitSpells.append(QJsonObject{{"id", id.index()}, {"target", sp->target == SpellDef::Target::Enemy ? "enemy" : "ally"},
                                               {"cost", sp->cost}, {"castable", b.whyUnitCannotCast(id, 0).isEmpty()}});
         if (!unitSpells.isEmpty()) o.insert("unitSpells", unitSpells);
         o.insert("canRetreat", b.whyNoRetreat(active->side).isEmpty());
@@ -713,11 +732,11 @@ QJsonObject battleToJson(const Battle& b, int viewerSide) {
             hero.insert("spellPoints", h->spellPoints);
             hero.insert("hasCast", b.heroHasCast(viewerSide));
             QJsonArray spells;
-            for (const QString& id : h->spells) {
+            for (const SpellId id : h->spells) {
                 const SpellDef* sp = b.content().spell(id);
                 if (!sp || sp->scope != SpellDef::Scope::Battle) continue;
                 const bool myTurn = active && active->side == viewerSide;
-                spells.append(QJsonObject{{"id", id},
+                spells.append(QJsonObject{{"id", id.index()},
                                           {"target", sp->target == SpellDef::Target::Enemy ? "enemy" : "ally"},
                                           {"cost", sp->cost},
                                           {"castable", myTurn && b.whyCannotCast(id, 0).isEmpty()}});

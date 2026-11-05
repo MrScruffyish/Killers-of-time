@@ -23,7 +23,7 @@ struct Army {
     int totalUnits() const;
     // Adds units to an existing stack of the same type (same max HP), or
     // starts a new stack. Returns false if all 7 slots are taken.
-    bool addUnits(const QString& unitTypeId, int count, int maxHpPerUnit);
+    bool addUnits(UnitTypeId unitType, int count, int maxHpPerUnit);
     // Removes eliminated stacks.
     void removeEmptyStacks();
 };

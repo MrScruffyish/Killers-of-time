@@ -5,10 +5,9 @@ add_library(kot_client_lib STATIC
     MapView.h
     MapView.cpp
     Art.h
+    ArtPaths.h
     Art.cpp
-    IconArt.cpp
     Toast.cpp
-    SpellArt.cpp
     GameOverDialog.cpp
     GameOverDialog.h
     HelpDialog.h
@@ -34,9 +33,6 @@ add_library(kot_client_lib STATIC
     LoadDialog.cpp
     Panels.h
     Panels.cpp
-    UnitArt.cpp
-    TownArt.cpp
-    PortraitArt.cpp
     SpellBook.h
     SpellBook.cpp
     MapMakerDialog.h
@@ -60,6 +56,7 @@ add_library(kot_client_lib STATIC
 )
 target_include_directories(kot_client_lib PUBLIC ${KOT_SRC_DIR})
 target_link_libraries(kot_client_lib PUBLIC kot_net kot_core Qt6::Widgets Qt6::Network PRIVATE kot_warnings)
+kot_pch(kot_client_lib ${KOT_PCH_WIDGETS})
 # Sound effects when Qt Multimedia is installed (sudo apt install qt6-multimedia-dev).
 find_package(Qt6 QUIET COMPONENTS Multimedia)
 if(Qt6Multimedia_FOUND)

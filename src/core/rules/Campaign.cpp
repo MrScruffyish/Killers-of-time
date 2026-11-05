@@ -83,25 +83,32 @@ bool saveProgress(const QString& path, const CampaignProgress& progress, QString
     return f.commit();
 }
 
-QJsonObject heroSnapshot(const GameState& state, HeroId id) {
+QJsonObject heroSnapshot(const GameState& state, const ContentRegistry& content, HeroId id) {
     const Hero* h = state.hero(id);
     if (!h) return {};
     QJsonObject o;
     o.insert("name", h->name);
-    o.insert("class", h->classId);
+    o.insert("class", content.heroClass(h->classId)->key);
     o.insert("level", h->level);
     o.insert("experience", h->experience);
     QJsonObject traits;
-    for (auto it = h->traits.begin(); it != h->traits.end(); ++it) traits.insert(it.key(), it.value());
+    for (const auto [t, v] : h->traits) traits.insert(content.trait(t)->key, v);  // keys
     o.insert("traits", traits);
-    o.insert("spells", QJsonArray::fromStringList(h->spells));
-    o.insert("artifacts", QJsonArray::fromStringList(h->artifacts));
-    o.insert("backpack", QJsonArray::fromStringList(h->backpack));
+    {
+        QJsonArray spells;  // keys (campaign progress outlives data changes better)
+        for (const SpellId s : h->spells) spells.append(content.spell(s)->key);
+        o.insert("spells", spells);
+    }
+    for (const char* field : {"artifacts", "backpack"}) {
+        QJsonArray list;  // keys
+        for (const ArtifactId a : (QLatin1String(field) == QLatin1String("artifacts") ? h->artifacts : h->backpack)) list.append(content.artifact(a)->key);
+        o.insert(QLatin1String(field), list);
+    }
     o.insert("pendingTraitPicks", h->pendingTraitPicks);
     QJsonArray stacks;
     if (const Army* a = state.army(h->army))
         for (const UnitStack& s : a->stacks)
-            stacks.append(QJsonObject{{"unit", s.unitTypeId()}, {"count", s.count()}, {"experience", s.experience()}});
+            stacks.append(QJsonObject{{"unit", content.unit(s.unitTypeId())->key}, {"count", s.count()}, {"experience", s.experience()}});
     o.insert("army", stacks);
     return o;
 }
@@ -129,38 +136,39 @@ int applyCarriedHeroes(GameState& state, const ContentRegistry& content, PlayerI
     int applied = 0;
     for (int i = 0; i < carried.size(); ++i) {
         const QJsonObject& c = carried[i];
-        if (!content.heroClass(c.value("class").toString())) continue;
+        const HeroClassId cls = content.heroClassId(c.value("class").toString());  // keys in campaign progress
+        if (!cls.isValid()) continue;
         HeroId id = i < mine.size() ? mine[i] : HeroId();
         if (!id.isValid()) {
-            id = createHero(state, content, player, c.value("name").toString(), c.value("class").toString(), base);
+            id = createHero(state, content, player, c.value("name").toString(), cls, base);
             if (!id.isValid()) continue;
         }
         Hero* h = state.hero(id);
         h->name = c.value("name").toString(h->name);
-        h->classId = c.value("class").toString();
+        h->classId = cls;
         h->level = std::max(1, c.value("level").toInt(1));
         h->experience = c.value("experience").toInt();
         h->pendingTraitPicks = c.value("pendingTraitPicks").toInt();
-        h->traits.clear();
+        h->traits = TraitValues();
         const QJsonObject traits = c.value("traits").toObject();
         for (auto it = traits.begin(); it != traits.end(); ++it)
-            if (content.trait(it.key())) h->traits.insert(it.key(), it.value().toInt());
+            if (const TraitId t = content.traitId(it.key()); t.isValid()) h->traits[t] = it.value().toInt();
         h->spells.clear();
         for (const QJsonValue& v : c.value("spells").toArray())
-            if (content.spell(v.toString())) h->spells << v.toString();
+            if (content.spellId(v.toString()).isValid()) h->spells << content.spellId(v.toString());
         h->artifacts.clear();
         for (const QJsonValue& v : c.value("artifacts").toArray())
-            if (content.artifact(v.toString())) h->artifacts << v.toString();
+            if (content.artifactId(v.toString()).isValid()) h->artifacts << content.artifactId(v.toString());
         h->backpack.clear();
         for (const QJsonValue& v : c.value("backpack").toArray())
-            if (content.artifact(v.toString())) h->backpack << v.toString();
-        h->spellPoints = maxSpellPoints(*h);
+            if (content.artifactId(v.toString()).isValid()) h->backpack << content.artifactId(v.toString());
+        h->spellPoints = maxSpellPoints(*h, content);
         if (withArmy) {
             Army* a = state.army(h->army);
             a->stacks.clear();
             for (const QJsonValue& v : c.value("army").toArray()) {
                 const QJsonObject s = v.toObject();
-                const UnitDef* u = content.unit(s.value("unit").toString());
+                const UnitDef* u = content.unitByKey(s.value("unit").toString());
                 if (!u || !a->addUnits(u->id, s.value("count").toInt(), u->maxHp)) continue;
                 a->stacks.last().setExperience(s.value("experience").toInt());
             }

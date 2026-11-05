@@ -1,6 +1,8 @@
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QtTest>
+
+#include "TestContent.h"
 #include <QFile>
 
 #include "core/Version.h"
@@ -16,32 +18,32 @@ class TstGameState : public QObject {
 
     GameState makeState() {
         GameState gs(42);
-        gs.setMap(GameMap(8, 6, "grass"));
-        gs.map().setTerrain({2, 3}, "sea");
-        gs.map().setTerrain({4, 4}, "mountains");
+        gs.setMap(GameMap(8, 6, T("grass")));
+        gs.map().setTerrain({2, 3}, T("sea"));
+        gs.map().setTerrain({4, 4}, T("mountains"));
         const TeamId t1 = gs.newTeam();
         const TeamId t2 = gs.newTeam();
-        const PlayerId a = gs.addPlayer("Alice", t1, Player::Controller::Human, "humans", "#ff0000");
-        const PlayerId b = gs.addPlayer("Bot", t2, Player::Controller::Ai, "humans", "#0000ff");
+        const PlayerId a = gs.addPlayer("Alice", t1, Player::Controller::Human, RC("humans"), "#ff0000");
+        const PlayerId b = gs.addPlayer("Bot", t2, Player::Controller::Ai, RC("humans"), "#0000ff");
         gs.player(b)->aiProfile = "passive";
-        gs.player(a)->resources["gold"] = 1000;
-        gs.player(a)->resources["wood"] = 5;
-        const HeroId h = createHero(gs, reg, a, "Arthur", "knight", {1, 1});
+        gs.player(a)->resources[R("gold")] = 1000;
+        gs.player(a)->resources[R("wood")] = 5;
+        const HeroId h = createHero(gs, reg, a, "Arthur", C("knight"), {1, 1});
         Army* army = gs.army(gs.hero(h)->army);
-        army->addUnits("militia", 12, 6);
+        army->addUnits(U("militia"), 12, 6);
         army->stacks[0].applyDamage(20);  // wounded stack must survive saving
         addExperience(*gs.hero(h), reg, 1500);
-        const TownId town = gs.addTown("Capital", "humans", {1, 1}, a);
-        gs.town(town)->buildings << "village_hall" << "barracks";
-        gs.town(town)->recruitPool["barracks"] = 7;
+        const TownId town = gs.addTown("Capital", RC("humans"), {1, 1}, a);
+        gs.town(town)->buildings << B("village_hall") << B("barracks");
+        gs.town(town)->recruitPool[B("barracks")] = 7;
         gs.town(town)->lastBuildDay = 3;
-        gs.town(town)->importedUnits["pikeman"] = 4;
-        gs.town(town)->tavernOffers << "merlin" << "elaine";
-        gs.hero(h)->templateId = "arthur";
-        const MapDwellingId dw = gs.addMapDwelling("archer", {2, 2}, 9, a);
+        gs.town(town)->importedUnits[U("pikeman")] = 4;
+        gs.town(town)->tavernOffers << H("merlin") << H("elaine");
+        gs.hero(h)->templateId = H("arthur");
+        const MapDwellingId dw = gs.addMapDwelling(U("archer"), {2, 2}, 9, a);
         Q_UNUSED(dw);
-        gs.addMine("gold", 1000, {5, 2}, a);
-        gs.addMine("wood", 2, {6, 2});  // neutral
+        gs.addMine(R("gold"), 1000, {5, 2}, a);
+        gs.addMine(R("wood"), 2, {6, 2});  // neutral
         gs.rng().nextInt(1, 100);
         gs.rng().nextInt(1, 100);
         gs.setDay(7);
@@ -49,7 +51,7 @@ class TstGameState : public QObject {
     }
 
     QJsonObject edited(const GameState& gs, const QString& from, const QString& to) {
-        QString text = QString::fromUtf8(QJsonDocument(gs.toJson()).toJson(QJsonDocument::Compact));
+        QString text = QString::fromUtf8(QJsonDocument(gs.toJson(reg)).toJson(QJsonDocument::Compact));
         if (!text.contains(from)) qFatal("test bug: '%s' not in save", qPrintable(from));
         text.replace(from, to);
         return QJsonDocument::fromJson(text.toUtf8()).object();
@@ -67,6 +69,7 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void buildingBlocks() {
@@ -81,7 +84,7 @@ private slots:
         QVERIFY(gs.map().inBounds({7, 5}));
         QVERIFY(!gs.map().inBounds({8, 5}));
         QVERIFY(!gs.map().inBounds({-1, 0}));
-        QCOMPARE(gs.map().terrainAt({2, 3}), QString("sea"));
+        QCOMPARE(gs.map().terrainAt({2, 3}), T("sea"));
     }
 
     void idsAreUniqueAcrossKinds() {
@@ -99,12 +102,12 @@ private slots:
         GameState original = makeState();
         GameState loaded;
         QStringList errors;
-        QVERIFY2(GameState::fromJson(original.toJson(), reg, &loaded, &errors),
+        QVERIFY2(GameState::fromJson(original.toJson(reg), reg, &loaded, &errors),
                  qPrintable(errors.join("\n")));
-        QCOMPARE(loaded.toJson(), original.toJson());
+        QCOMPARE(loaded.toJson(reg), original.toJson(reg));
 
         QCOMPARE(loaded.day(), 7);
-        QCOMPARE(loaded.map().terrainAt({4, 4}), QString("mountains"));
+        QCOMPARE(loaded.map().terrainAt({4, 4}), T("mountains"));
         const Hero& h = loaded.heroes().first();
         QCOMPARE(h.name, QString("Arthur"));
         QCOMPARE(h.level, 2);
@@ -112,22 +115,22 @@ private slots:
         const UnitStack& s = loaded.army(h.army)->stacks[0];
         QCOMPARE(s.totalHp(), 12 * 6 - 20);  // wounded stack preserved
         QCOMPARE(s.count(), 9);
-        QCOMPARE(loaded.towns().first().buildings, QStringList({"village_hall", "barracks"}));
-        QCOMPARE(loaded.towns().first().recruitPool.value("barracks"), 7);
+        QCOMPARE(loaded.towns().first().buildings, QList<BuildingTypeId>({B("village_hall"), B("barracks")}));
+        QCOMPARE(loaded.towns().first().recruitPool.value(B("barracks")), 7);
         QCOMPARE(loaded.towns().first().lastBuildDay, 3);
-        QCOMPARE(loaded.towns().first().importedUnits.value("pikeman"), 4);
-        QCOMPARE(loaded.towns().first().tavernOffers, QStringList({"merlin", "elaine"}));
-        QCOMPARE(loaded.heroes().first().templateId, QString("arthur"));
+        QCOMPARE(loaded.towns().first().importedUnits.value(U("pikeman")), 4);
+        QCOMPARE(loaded.towns().first().tavernOffers, QList<HeroTemplateId>({H("merlin"), H("elaine")}));
+        QCOMPARE(loaded.heroes().first().templateId, H("arthur"));
         QCOMPARE(loaded.mapDwellings().size(), 1);
         QCOMPARE(loaded.mapDwellings().first().available, 9);
-        QCOMPARE(loaded.mapDwellings().first().unitId, QString("archer"));
+        QCOMPARE(loaded.mapDwellings().first().unitId, U("archer"));
         QVERIFY(!loaded.mines().last().owner.isValid());
     }
 
     void rngContinuesIdenticallyAfterLoad() {
         GameState original = makeState();
         GameState loaded;
-        QVERIFY(GameState::fromJson(original.toJson(), reg, &loaded, nullptr));
+        QVERIFY(GameState::fromJson(original.toJson(reg), reg, &loaded, nullptr));
         for (int i = 0; i < 50; ++i)
             QCOMPARE(loaded.rng().nextInt(0, 1000000), original.rng().nextInt(0, 1000000));
     }
@@ -135,7 +138,7 @@ private slots:
     void newIdsAfterLoadDoNotCollide() {
         GameState original = makeState();
         GameState loaded;
-        QVERIFY(GameState::fromJson(original.toJson(), reg, &loaded, nullptr));
+        QVERIFY(GameState::fromJson(original.toJson(reg), reg, &loaded, nullptr));
         QCOMPARE(loaded.newId<HeroId>().value(), original.newId<HeroId>().value());
     }
 
@@ -144,11 +147,11 @@ private slots:
         const QString path = tmp.filePath("game.json");
         GameState original = makeState();
         QString error;
-        QVERIFY2(original.saveToFile(path, &error), qPrintable(error));
+        QVERIFY2(original.saveToFile(path, reg, &error), qPrintable(error));
         GameState loaded;
         QStringList errors;
         QVERIFY2(GameState::loadFromFile(path, reg, &loaded, &errors), qPrintable(errors.join("\n")));
-        QCOMPARE(loaded.toJson(), original.toJson());
+        QCOMPARE(loaded.toJson(reg), original.toJson(reg));
     }
 
     void loadMissingFile() {
@@ -158,28 +161,29 @@ private slots:
         QVERIFY(errors.join("\n").contains("cannot open"));
     }
 
-    void rejectsUnsupportedVersion() {
+    void contentIdsAreNumbersBoundToTheData() {
         GameState gs = makeState();
-        expectLoadError(edited(gs, "\"formatVersion\":2", "\"formatVersion\":99"),
-                        "saved by a newer version of the game");
+        gs.player(gs.turnOrder().first())->resources = amounts({{"gold", 1234}, {"gems", 3}});
+        // Numbers, with the checksum of the data they belong to.
+        const QJsonObject numbers = gs.toJson(reg);
+        QCOMPARE(numbers["contentChecksum"].toString(), reg.checksum());
+        QVERIFY(numbers["players"].toArray()[0].toObject()["resources"].isArray());
+        expectLoadError(edited(gs, QStringLiteral("\"contentChecksum\":\"%1\"").arg(reg.checksum()), "\"contentChecksum\":\"0000\""),
+                        "made with other game data");
+        // Text keys (scenarios, kot_saveview): the same game.
+        const QJsonObject text = gs.toJson(reg, GameState::IdStyle::Text);
+        QCOMPARE(text["contentIds"].toString(), QString("text"));
+        QCOMPARE(text["players"].toArray()[0].toObject()["resources"].toObject()["gold"].toInt(), 1234);
+        GameState fromText;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(text, reg, &fromText, &errors), qPrintable(errors.join("; ")));
+        QCOMPARE(fromText.toJson(reg), numbers);
     }
 
-    void convertsFormat1Saves() {
-        // A v1 save: a mine on what is now the town's wall (town at 1,1 covers 1..2 x 0..1).
+    void rejectsUnsupportedVersion() {
         GameState gs = makeState();
-        gs.addMine("stone", 2, {2, 1});
-        QJsonObject json = edited(gs, "\"formatVersion\":2", "\"formatVersion\":1");
-        GameState loaded;
-        QStringList errors, notes;
-        QVERIFY2(GameState::fromJson(json, reg, &loaded, &errors, &notes), qPrintable(errors.join("\n")));
-        QVERIFY(notes.join("\n").contains("stone mine moved"));
-        for (const Mine& m : loaded.mines()) {
-            const Town* t = loaded.townCovering(m.pos);
-            QVERIFY(!t || t->pos == m.pos);
-        }
-        // The current format loads without notes.
-        QVERIFY(GameState::fromJson(loaded.toJson(), reg, &loaded, &errors, &notes));
-        QVERIFY(notes.isEmpty());
+        expectLoadError(edited(gs, "\"formatVersion\":3", "\"formatVersion\":99"), "saved by another version of the game");
+        expectLoadError(edited(gs, "\"formatVersion\":3", "\"formatVersion\":2"), "saved by another version of the game");  // older too
     }
 
     void saveFilesCarryVersionAndListInfo() {
@@ -187,7 +191,7 @@ private slots:
         GameState gs = makeState();
         const QString path = dir.filePath("mygame.json");
         QString error;
-        QVERIFY2(gs.saveToFile(path, &error), qPrintable(error));
+        QVERIFY2(gs.saveToFile(path, reg, &error), qPrintable(error));
         SaveInfo info = inspectSave(path, reg);
         QCOMPARE(info.name, QString("mygame"));
         QCOMPARE(info.gameVersion, QString(kot::core::kGameVersion));
@@ -199,16 +203,28 @@ private slots:
         // A broken one says why.
         QFile f(dir.filePath("broken.json"));
         QVERIFY(f.open(QIODevice::WriteOnly));
-        f.write(QJsonDocument(edited(gs, "\"formatVersion\":2", "\"formatVersion\":7")).toJson());
+        f.write(QJsonDocument(edited(gs, "\"formatVersion\":3", "\"formatVersion\":7")).toJson());
         f.close();
         info = inspectSave(dir.filePath("broken.json"), reg);
         QCOMPARE(info.status, SaveInfo::Status::Incompatible);
-        QVERIFY(info.problems.join(" ").contains("newer version"));
+        QVERIFY(info.problems.join(" ").contains("another version"));
     }
 
     void rejectsUnknownTerrain() {
         GameState gs = makeState();
-        expectLoadError(edited(gs, "\"sea\"", "\"seaX\""), "unknown terrain 'seaX'");
+        // Text ids (scenarios): an unknown key.
+        QString text = QString::fromUtf8(QJsonDocument(gs.toJson(reg, GameState::IdStyle::Text)).toJson(QJsonDocument::Compact));
+        QVERIFY(text.contains("\"sea\""));
+        text.replace("\"sea\"", "\"seaX\"");
+        expectLoadError(QJsonDocument::fromJson(text.toUtf8()).object(), "unknown terrain 'seaX'");
+        // Numbers: a terrain id that does not exist.
+        QJsonObject json = gs.toJson(reg);
+        QJsonObject map = json["map"].toObject();
+        QJsonArray tiles = map["tiles"].toArray();
+        tiles[0] = 999;
+        map["tiles"] = tiles;
+        json["map"] = map;
+        expectLoadError(json, "terrain 999");
     }
 
     void rejectsOutOfBoundsPosition() {
@@ -218,14 +234,21 @@ private slots:
 
     void rejectsUnknownUnit() {
         GameState gs = makeState();
-        expectLoadError(edited(gs, "\"unit\":\"militia\"", "\"unit\":\"ghost\""),
-                        "unknown unit 'ghost'");
+        // Text ids: an unknown key; numbers: an id that does not exist.
+        QString text = QString::fromUtf8(QJsonDocument(gs.toJson(reg, GameState::IdStyle::Text)).toJson(QJsonDocument::Compact));
+        QVERIFY(text.contains("\"unit\":\"militia\""));
+        text.replace("\"unit\":\"militia\"", "\"unit\":\"ghost\"");
+        expectLoadError(QJsonDocument::fromJson(text.toUtf8()).object(), "unknown unit 'ghost'");
+        expectLoadError(edited(gs, QStringLiteral("\"unit\":%1").arg(U("militia").index()), "\"unit\":9999"), "unknown unit 9999");
     }
 
     void rejectsUnknownHeroClass() {
         GameState gs = makeState();
-        expectLoadError(edited(gs, "\"class\":\"knight\"", "\"class\":\"jester\""),
-                        "unknown hero class 'jester'");
+        QString text = QString::fromUtf8(QJsonDocument(gs.toJson(reg, GameState::IdStyle::Text)).toJson(QJsonDocument::Compact));
+        QVERIFY(text.contains("\"class\":\"knight\""));
+        text.replace("\"class\":\"knight\"", "\"class\":\"jester\"");
+        expectLoadError(QJsonDocument::fromJson(text.toUtf8()).object(), "unknown hero class");
+        expectLoadError(edited(gs, QStringLiteral("\"class\":%1").arg(C("knight").index()), "\"class\":999"), "unknown hero class");
     }
 
     void rejectsMissingHeroArmy() {
@@ -253,10 +276,10 @@ private slots:
 
     void failedLoadLeavesOutputUntouched() {
         GameState out = makeState();
-        const QJsonObject before = out.toJson();
+        const QJsonObject before = out.toJson(reg);
         QStringList errors;
         QVERIFY(!GameState::fromJson(QJsonObject(), reg, &out, &errors));
-        QCOMPARE(out.toJson(), before);
+        QCOMPARE(out.toJson(reg), before);
     }
 };
 

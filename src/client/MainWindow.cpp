@@ -9,6 +9,8 @@
 #include <QTimer>
 
 #include "client/Art.h"
+
+#include <QDir>
 #include "client/ConnectPage.h"
 #include "client/GamePage.h"
 #include "client/LobbyPage.h"
@@ -39,9 +41,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     } else {
         QStringList errors;
         m_contentLoaded = m_content.loadFromDirectory(dataDir, &errors);
-        QHash<QString, int> tiers;
-        for (const core::UnitDef& u : m_content.units()) tiers.insert(u.id, u.tier);
-        art::setUnitTiers(tiers);
+        art::setContent(&m_content);  // unit tiers, and the art overloads that take ids
+        art::setArtDirectory(QDir(dataDir).filePath(QStringLiteral("art")));  // PNG art (kot_artexport); else drawn in code
+        m_client.setContentChecksum(m_content.checksum());  // the server checks we have the same data
         if (!m_contentLoaded) contentMessage = tr("The game data is invalid:\n%1").arg(errors.join('\n'));
     }
     showConnect(contentMessage, !contentMessage.isEmpty());
@@ -139,6 +141,14 @@ void MainWindow::connectToServer(const QString& host, quint16 port, const QStrin
         return;
     }
     m_connect->showMessage(tr("Connecting to %1:%2 ...").arg(host).arg(port), false);
+    // Our secret key for this server (made the first time): with it we get our seats back.
+    const QString settingsKey = QStringLiteral("playerKeys/%1_%2").arg(host).arg(port);
+    QString key = QSettings().value(settingsKey).toString();
+    if (key.isEmpty()) {
+        key = net::LobbyClient::newPlayerKey();
+        QSettings().setValue(settingsKey, key);
+    }
+    m_client.setPlayerKey(key);
     m_client.connectToServer(host, port, name.isEmpty() ? tr("Player") : name);
 }
 

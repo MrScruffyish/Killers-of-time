@@ -14,8 +14,8 @@ class ContentRegistry;
 bool hasTavern(const Town& town, const ContentRegistry& content);
 
 // Hero templates of `race` that are not in the game right now (not hired by anyone).
-QStringList freeHeroTemplates(const GameState& state, const ContentRegistry& content,
-                              const QString& race);
+QList<HeroTemplateId> freeHeroTemplates(const GameState& state, const ContentRegistry& content,
+                              RaceId race);
 
 // Draws new offers (up to balance `tavernOffers`, all different, random but
 // reproducible from the game's seed) for one town, or for every town when `town`
@@ -37,6 +37,6 @@ struct HireResult : ActionResult {
 // most `maxHeroesPerPlayer`. With
 // `useTrade`, missing gold is bought by trading spare resources.
 HireResult hireHero(GameState& state, const ContentRegistry& content, TownId town,
-                    PlayerId player, const QString& templateId, bool useTrade = false);
+                    PlayerId player, HeroTemplateId templateId, bool useTrade = false);
 
 }  // namespace kot::core

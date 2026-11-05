@@ -201,8 +201,12 @@ private slots:
         QCOMPARE(lobby.setSettings(1, {{"difficulty", "insane"}}).code, QString("invalid_value"));
         QVERIFY(lobby.setSettings(1, {{"difficulty", "expert"}}).ok);
         QCOMPARE(lobby.state().settings.difficulty, QString("expert"));
+        QCOMPARE(lobby.state().settings.defeat, QString("week"));
+        QCOMPARE(lobby.setSettings(1, {{"defeat", "never"}}).code, QString("invalid_value"));
+        QVERIFY(lobby.setSettings(1, {{"defeat", "town"}}).ok);
         kot::net::LobbyState copy;
         QVERIFY(kot::net::LobbyState::fromJson(lobby.state().toJson(), &copy, nullptr));
+        QCOMPARE(copy.settings.defeat, QString("town"));
         QCOMPARE(copy.settings.difficulty, QString("expert"));
     }
 

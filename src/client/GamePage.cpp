@@ -26,6 +26,9 @@
 #include <QTimer>
 #include <QStackedWidget>
 #include <QVBoxLayout>
+#include <QHeaderView>
+#include <QLocale>
+#include <QTableWidget>
 
 #include "client/BattleResultDialog.h"
 #include "client/BattleView.h"
@@ -88,7 +91,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_players = new QLabel(this);
     m_players->setObjectName("playerColours");
     m_players->setWordWrap(true);
-    m_players->setToolTip(tr("Each side's colour: rings on the map, flags, roofs and banners"));
+    m_players->setToolTip(tr("Each side's colour (rings on the map, flags, roofs and banners), its towns and heroes"));
+    connect(m_players, &QLabel::linkActivated, this, [this]() { showKingdoms(); });
     side->addWidget(m_players);
     m_heroCombo = new QComboBox(this);
     m_heroCombo->setObjectName("heroCombo");
@@ -174,6 +178,8 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
             connect(a, &QAction::triggered, this, [own, speed]() { MapView::setWalkSpeed(own, speed); });
         }
     }
+    QAction* kingdoms = menu->addAction(tr("Kingdoms overview...\tK"));
+    connect(kingdoms, &QAction::triggered, this, [this]() { showKingdoms(); });
     QAction* market = menu->addAction(tr("Market...\tM"));
     connect(market, &QAction::triggered, this, [this]() { openMarket(); });
     QAction* remind = menu->addAction(tr("Remind me before ending the turn"));
@@ -267,6 +273,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     shortcut("-", [this]() { m_map->zoomStep(-1); });
     shortcut("Enter", [this]() { goAlongRoute(); });
     shortcut("M", [this]() { openMarket(); });
+    shortcut("K", [this]() { showKingdoms(); });
     shortcut("F1", [this]() { showHelp(); });
     shortcut("H", [this]() {
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
@@ -341,8 +348,18 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
         // forget too (the reminder can be turned off).
         if (QSettings().value(QStringLiteral("game/endTurnReminder"), true).toBool()) {
             QStringList walkers, builders;
-            for (const ViewHero* h : m_view.myHeroes())
-                if (h->movementPoints >= 100) walkers << h->name;
+            for (const ViewHero* h : m_view.myHeroes()) {
+                if (h->movementPoints < 100) continue;
+                // A plotted route whose next step costs more than is left today
+                // (red on the map) waits for tomorrow: no reminder for that hero.
+                if (const auto r = m_routes.constFind(h->id); r != m_routes.cend()) {
+                    MovePlanner planner;
+                    planner.prepare(m_view, *m_content, h->id);
+                    const MovePlan plan = planner.plan(*r);
+                    if (plan.found && plan.affordable == 0) continue;
+                }
+                walkers << h->name;
+            }
             for (const ViewTown* t : m_view.myTowns()) {
                 if (t->lastBuildDay == m_view.day) continue;
                 bool can = false;
@@ -391,12 +408,12 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
             const QJsonArray found = info["foundArtifacts"].toArray();
             const QJsonArray stowed = info["stowedArtifacts"].toArray();
             for (const QJsonValue& v : found) {
-                const core::ArtifactDef* a = m_content->artifact(v.toString());
+                const core::ArtifactDef* a = m_content->artifact(core::ArtifactId(v.toInt(-1)));
                 if (!a) continue;
                 const bool carried = stowed.contains(v);
                 const QString where = carried ? tr("Put in the backpack: something is already worn there. Open the hero (H) to swap.")
                                               : tr("Worn at once.");
-                Toast::show(this, art::artifactIcon(a->id, a->slot, 128),
+                Toast::show(this, art::artifactIcon(a->key, 128),
                             tr("<b style='color:#ffd84a; font-size:13pt'>Found the %1!</b><br>%2<br><i>%3</i>")
                                 .arg(a->name.toHtmlEscaped(), a->description.toHtmlEscaped(), where));
             }
@@ -442,11 +459,68 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
 
 QString GamePage::logText() const { return m_log->toPlainText(); }
 
+void GamePage::showKingdoms() {
+    // One row per player: what everybody can see on the map (towns, heroes, mines)
+    // and how strong the armies are (other teams only roughly).
+    const ViewPlayer* me = m_view.player(m_view.you);
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Kingdoms"));
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* goal = new QLabel(tr("<b>Day %1.</b> Goal: %2. %3.")
+                                .arg(m_view.day).arg(m_view.victory.toHtmlEscaped(), m_view.defeat.toHtmlEscaped()), &dialog);
+    goal->setWordWrap(true);
+    layout->addWidget(goal);
+    auto* table = new QTableWidget(static_cast<int>(m_view.players.size()), 6, &dialog);
+    table->setObjectName("kingdomsTable");
+    table->setHorizontalHeaderLabels({tr("Player"), tr("Towns"), tr("Heroes"), tr("Mines"), tr("Army strength"), tr("State")});
+    table->verticalHeader()->setVisible(false);
+    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    table->setSelectionMode(QAbstractItemView::NoSelection);
+    table->setAlternatingRowColors(true);
+    const int mine = me ? me->armyValue : 0;
+    for (int row = 0; row < m_view.players.size(); ++row) {
+        const ViewPlayer& pl = m_view.players[row];
+        const bool friendOrMe = me && pl.team == me->team;
+        QString name = pl.name;
+        if (pl.id == m_view.you) name = tr("%1 (you)").arg(name);
+        else if (friendOrMe) name = tr("%1 (ally)").arg(name);
+        auto* who = new QTableWidgetItem(name);
+        who->setForeground(QColor(pl.color));
+        table->setItem(row, 0, who);
+        for (int c = 1; c <= 3; ++c) {
+            auto* item = new QTableWidgetItem(QString::number(c == 1 ? pl.towns : c == 2 ? pl.heroes : pl.mines));
+            item->setTextAlignment(Qt::AlignCenter);
+            table->setItem(row, c, item);
+        }
+        QString strength = friendOrMe ? QLocale().toString(pl.armyValue) : tr("about %1").arg(QLocale().toString(pl.armyValue));
+        if (pl.id != m_view.you && mine > 0 && !pl.eliminated)
+            strength += tr(" (%1x yours)").arg(double(pl.armyValue) / mine, 0, 'f', 1);
+        auto* army = new QTableWidgetItem(strength);
+        army->setToolTip(tr("What all the player's units cost in gold"));
+        table->setItem(row, 4, army);
+        const QString state = pl.eliminated ? tr("out of the game")
+                              : pl.townlessDaysLeft == 1 ? tr("no town: out tomorrow")
+                              : pl.townlessDaysLeft > 1 ? tr("no town: out in %1 days").arg(pl.townlessDaysLeft)
+                              : pl.id == m_view.currentPlayer ? tr("playing now") : QString();
+        auto* st = new QTableWidgetItem(state);
+        if (pl.townlessDaysLeft > 0) st->setForeground(QColor("#ff7060"));
+        table->setItem(row, 5, st);
+    }
+    table->resizeColumnsToContents();
+    table->horizontalHeader()->setStretchLastSection(true);
+    layout->addWidget(table);
+    auto* close = new QPushButton(tr("Close"), &dialog);
+    connect(close, &QPushButton::clicked, &dialog, &QDialog::accept);
+    layout->addWidget(close, 0, Qt::AlignRight);
+    dialog.resize(640, 120 + 34 * static_cast<int>(m_view.players.size()));
+    dialog.exec();
+}
+
 void GamePage::log(const QString& text) { m_log->appendPlainText(text); }
 
-QString GamePage::unitName(const QString& id) const {
+QString GamePage::unitName(core::UnitTypeId id) const {
     const core::UnitDef* u = m_content->unit(id);
-    return u ? u->name : id;
+    return u ? u->name : QString();
 }
 
 void GamePage::send(const QString& type, const QJsonObject& body, const QString& what) {
@@ -494,7 +568,8 @@ void GamePage::onViewChanged() {
     m_miniMap->setView(m_view);
     m_miniMap->setVisibleTiles(m_map->visibleTiles());
     {
-        // Who is who: a shield in each player's colour; you, your allies, whose turn.
+        // Who is who: a shield in each player's colour; you, your allies, whose turn;
+        // towns and heroes, and the days left for a player who lost his last town.
         const ViewPlayer* me = m_view.player(m_view.you);
         QStringList parts;
         for (const ViewPlayer& pl : m_view.players) {
@@ -502,11 +577,21 @@ void GamePage::onViewChanged() {
             if (pl.id == m_view.you) name = tr("%1 (you)").arg(name);
             else if (me && pl.team && pl.team == me->team) name = tr("%1 (ally)").arg(name);
             if (pl.id == m_view.currentPlayer) name = QStringLiteral("<b>%1</b>").arg(name);
-            if (pl.eliminated) name = QStringLiteral("<s>%1</s>").arg(name);
-            parts << QStringLiteral("<span style='color:%1; font-size:14pt'>&#x25C6;</span>&nbsp;%2").arg(pl.color, name);
+            QString line = QStringLiteral("<span style='color:%1; font-size:14pt'>&#x25C6;</span>&nbsp;%2").arg(pl.color, name);
+            if (pl.away && !pl.eliminated) line += QStringLiteral(" <span style='color:#9a8a70'>%1</span>").arg(tr("(away)"));
+            if (pl.eliminated) {
+                line = QStringLiteral("<s>%1</s> %2").arg(line, tr("out"));
+            } else {
+                line += QStringLiteral(" <span style='color:#bfb39a'>%1</span>").arg((pl.towns == 1 ? tr("1 town") : tr("%1 towns").arg(pl.towns)) + QStringLiteral(", ")
+                                                                               + (pl.heroes == 1 ? tr("1 hero") : tr("%1 heroes").arg(pl.heroes)));
+                if (pl.townlessDaysLeft > 0)
+                    line += QStringLiteral(" <span style='color:#ff7060'>%1</span>").arg(pl.townlessDaysLeft == 1 ? tr("no town: out tomorrow") : tr("no town: out in %1 days").arg(pl.townlessDaysLeft));
+            }
+            parts << line;
         }
-        parts << QStringLiteral("<span style='color:#9a9a9a; font-size:14pt'>&#x25C7;</span>&nbsp;%1").arg(tr("neutral"));
-        m_players->setText(parts.join(QStringLiteral(" &nbsp; ")));
+        parts << QStringLiteral("<span style='color:#9a9a9a; font-size:14pt'>&#x25C7;</span>&nbsp;%1 &nbsp; <a href='kingdoms' style='color:#e8c872'>%2</a>")
+                     .arg(tr("neutral"), tr("Overview (K)"));
+        m_players->setText(parts.join(QStringLiteral("<br>")));
     }
     if (!m_centered && m_selectedHero) {
         const ViewHero* h = m_view.hero(m_selectedHero);
@@ -526,7 +611,7 @@ void GamePage::onViewChanged() {
         m_map->showBanner(weekDay == 1 ? tr("Week %1").arg((m_view.day - 1) / 7 + 1) : tr("Day %1").arg(m_view.day),
                           weekDay == 1 && !m_view.weekEventName.isEmpty() ? m_view.weekEventName : tr("day %1 of the week").arg(weekDay));
     }
-    if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1.").arg(m_view.victory));
+    if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1. %2.").arg(m_view.victory, m_view.defeat));
     // A new week brings its event.
     const int week = (m_view.day - 1) / 7 + 1;
     if (week != m_announcedWeek) {
@@ -580,7 +665,7 @@ void GamePage::offerToJoin(const QJsonObject& offer) {
     QStringList who;
     for (const QJsonValue& v : offer["units"].toArray()) {
         const QJsonObject u = v.toObject();
-        who << QStringLiteral("%1 %2").arg(u["count"].toInt()).arg(unitName(u["unit"].toString()));
+        who << QStringLiteral("%1 %2").arg(u["count"].toInt()).arg(unitName(core::UnitTypeId(u["unit"].toInt(-1))));
     }
     auto* box = new QDialog(this);
     box->setObjectName("joinOfferDialog");
@@ -589,13 +674,13 @@ void GamePage::offerToJoin(const QJsonObject& offer) {
     auto* v = new QVBoxLayout(box);
     auto* row = new QHBoxLayout();
     for (const QJsonValue& u : offer["units"].toArray()) {
-        const core::UnitDef* def = m_content->unit(u.toObject()["unit"].toString());
+        const core::UnitDef* def = m_content->unit(core::UnitTypeId(u.toObject()["unit"].toInt(-1)));
         auto* icon = new QLabel(box);
-        icon->setPixmap(art::unitIcon(u.toObject()["unit"].toString(), def ? def->rank : 0, 72));
+        icon->setPixmap(art::unitIcon(core::UnitTypeId(u.toObject()["unit"].toInt(-1)), def ? def->rank : 0, 72));
         row->addWidget(icon);
     }
     const int cost = offer["cost"].toInt();
-    const int gold = m_view.resources.value(QStringLiteral("gold"));
+    const int gold = m_view.resources.value(m_content->currency());
     auto* text = new QLabel(tr("<b>%1</b> are impressed by your army<br>and offer to join you for <b>%2 gold</b>%3.")
                                 .arg(who.join(", ")).arg(cost)
                                 .arg(gold < cost ? tr(" <span style='color:#ff6a5a'>(you have %1)</span>").arg(gold) : QString()),
@@ -851,7 +936,9 @@ void GamePage::updateStatus() {
                              .arg(weekDay).arg((m_view.day - 1) / 7 + 1).arg(m_view.victory));
     m_status->setText(tr("<b>Day %1</b> &nbsp;Week %3: %6 <span style='color:#c8b890'>%7</span> &nbsp;(%4) &nbsp;&mdash;&nbsp; %2%5")
                           .arg(m_view.day)
-                          .arg(m_view.isMyTurn() ? tr("<b>your turn</b>") : tr("waiting for %1").arg(current ? current->name : "?"))
+                          .arg(m_view.isMyTurn() ? tr("<b>your turn</b>")
+                          : current && current->away ? tr("waiting for %1 (not connected: the game goes on when they come back)").arg(current->name)
+                                                     : tr("waiting for %1").arg(current ? current->name : "?"))
                           .arg((m_view.day - 1) / 7 + 1)
                           .arg(m_view.difficulty.isEmpty() ? tr("normal") : m_view.difficulty)
                           .arg(campaign, marks, growth));
@@ -905,22 +992,22 @@ void GamePage::updateHeroPanel() {
     m_heroPanel->setHero(m_view, h->id);
     QStringList lines;
     QStringList spellNames;
-    for (const QString& id : h->spells) {
+    for (const core::SpellId id : h->spells) {
         const core::SpellDef* s = m_content->spell(id);
-        spellNames << (s ? s->name : id);
+        spellNames << (s ? s->name : QString());
     }
     lines << tr("Spells: %1").arg(spellNames.isEmpty() ? tr("none") : spellNames.join(", "));
     if (!h->artifacts.isEmpty()) {
         QStringList names;
-        for (const QString& id : h->artifacts) {
+        for (const core::ArtifactId id : h->artifacts) {
             const core::ArtifactDef* a = m_content->artifact(id);
-            names << (a ? QStringLiteral("%1 (%2)").arg(a->name, a->description) : id);
+            names << (a ? QStringLiteral("%1 (%2)").arg(a->name, a->description) : QString());
         }
         lines << tr("Artifacts: %1").arg(names.join(", "));
     }
     m_heroInfo->setText(lines.join("<br>"));
     bool adventureSpell = false;
-    for (const QString& id : h->spells) {
+    for (const core::SpellId id : h->spells) {
         const core::SpellDef* s = m_content->spell(id);
         adventureSpell = adventureSpell || (s && s->scope == core::SpellDef::Scope::Adventure);
     }
@@ -933,14 +1020,14 @@ void GamePage::castAdventureSpell() {
     const ViewHero* h = m_view.hero(m_selectedHero);
     if (!h) return;
     QList<SpellBook::Entry> entries;
-    for (const QString& id : h->spells) {
+    for (const core::SpellId id : h->spells) {
         const core::SpellDef* s = m_content->spell(id);
         if (!s || s->scope != core::SpellDef::Scope::Adventure) continue;
         entries.append({id, h->spellPoints >= s->cost, tr("Needs %1 spell points").arg(s->cost)});
     }
     if (entries.isEmpty()) return;
-    const QString chosen = SpellBook::chooseSpell(m_content, entries, tr("%1's spell book").arg(h->name), this);
-    if (!chosen.isEmpty()) send(net::msg::castSpell, {{"hero", h->id}, {"spell", chosen}}, tr("Cast %1").arg(m_content->spell(chosen)->name));
+    const core::SpellId chosen = SpellBook::chooseSpell(m_content, entries, tr("%1's spell book").arg(h->name), this);
+    if (chosen.isValid()) send(net::msg::castSpell, {{"hero", h->id}, {"spell", chosen.index()}}, tr("Cast %1").arg(m_content->spell(chosen)->name));
 }
 
 void GamePage::selectHero(int id) {
@@ -1038,7 +1125,7 @@ QString GamePage::describeBattle(const QJsonObject& b) const {
     const auto losses = [this](const QJsonObject& side) {
         QStringList parts;
         const QJsonObject l = side["losses"].toObject();
-        for (auto it = l.begin(); it != l.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value().toInt()).arg(unitName(it.key()));
+        for (auto it = l.begin(); it != l.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value().toInt()).arg(unitName(core::UnitTypeId(it.key().toInt())));
         return parts.isEmpty() ? tr("nothing") : parts.join(", ");
     };
     // Seen from your side (you may have attacked or defended).
@@ -1082,7 +1169,7 @@ QString GamePage::describeBattleEvents(const QJsonArray& events) const {
                          .arg(e["killed"].toInt())
                          .arg(e["lucky"].toBool() ? tr(" (lucky strike!)") : QString());
         } else if (type == "cast") {
-            const core::SpellDef* s = m_content->spell(e["spell"].toString());
+            const core::SpellDef* s = m_content->spell(core::SpellId(e["spell"].toInt(-1)));
             const QString caster = e["unit"].toInt() > 0 ? name(e["unit"].toInt())
                                    : e["side"].toInt() == m_view.battle.yourSide ? tr("your hero") : tr("the enemy hero");
             lines << tr("%1 casts %2 on %3%4").arg(caster, s ? s->name : e["spell"].toString(), name(e["target"].toInt()),
@@ -1131,14 +1218,14 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
             text += tr(", found %1").arg(parts.join(", "));
         }
         for (const QJsonValue& v : info["foundArtifacts"].toArray()) {
-            const core::ArtifactDef* a = m_content->artifact(v.toString());
+            const core::ArtifactDef* a = m_content->artifact(core::ArtifactId(v.toInt(-1)));
             text += tr(", found the %1 (%2)!").arg(a ? a->name : v.toString(), a ? a->description : QString());
         }
         if (info.contains("learnedSpells")) {
             QStringList names;
             for (const QJsonValue& v : info["learnedSpells"].toArray()) {
-                const core::SpellDef* s = m_content->spell(v.toString());
-                names << (s ? s->name : v.toString());
+                const core::SpellDef* s = m_content->spell(core::SpellId(v.toInt(-1)));
+                names << (s ? s->name : QString());
             }
             text += tr(", learned %1").arg(names.join(", "));
         }
@@ -1159,7 +1246,7 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
         const QJsonObject build = type == net::msg::buildThenBuy ? info["build"].toObject() : info;
         QStringList parts;
         for (const QJsonValue& v : build["built"].toArray()) {
-            const core::BuildingDef* b = m_content->building(v.toObject()["building"].toString());
+            const core::BuildingDef* b = m_content->building(core::BuildingTypeId(v.toObject()["building"].toInt(-1)));
             const ViewTown* t = m_view.town(v.toObject()["town"].toInt());
             parts << tr("built %1 in %2").arg(b ? b->name : "?", t ? t->name : "?");
         }

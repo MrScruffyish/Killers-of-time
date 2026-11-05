@@ -18,22 +18,19 @@ namespace kot::core {
 ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& content,
                             PlayerId player) {
     ResourceAmounts income;
-    const QString currency = content.currency() ? content.currency()->id : QString();
+    const ResourceId currency = content.currency();
     for (const Town& t : state.towns()) {
         if (t.owner != player) continue;
-        if (!currency.isEmpty())
-            income[currency] += content.balance().economy.townDailyGold * (100 + content.race(t.race).incomePercent) / 100;
-        const ResourceAmounts fromBuildings = buildingIncome(t, content);
-        for (auto it = fromBuildings.begin(); it != fromBuildings.end(); ++it)
-            income[it.key()] += it.value();
+        income[currency] += content.balance().economy.townDailyGold * (100 + content.race(t.race).incomePercent) / 100;
+        for (const auto [r, amount] : buildingIncome(t, content)) income[r] += amount;
     }
     for (const Mine& m : state.mines()) {
-        if (m.owner == player) income[m.resourceId] += m.dailyAmount;
+        if (m.owner == player) income[m.resource] += m.dailyAmount;
     }
     // Difficulty bonus or malus (AI players).
     const Player* p = state.player(player);
     if (p && p->incomePercent != 0)
-        for (auto it = income.begin(); it != income.end(); ++it) it.value() = std::max(0, it.value() * (100 + p->incomePercent) / 100);
+        for (const auto [r, amount] : ResourceAmounts(income)) income[r] = std::max(0, amount * (100 + p->incomePercent) / 100);
     return income;
 }
 
@@ -41,13 +38,12 @@ void startTurn(GameState& state, const ContentRegistry& content, PlayerId player
     Player* player = state.player(playerId);
     if (!player) return;
     if (state.day() > 1) {
-        const ResourceAmounts income = dailyIncome(state, content, playerId);
-        for (auto it = income.begin(); it != income.end(); ++it) player->resources[it.key()] += it.value();
+        for (const auto [r, amount] : dailyIncome(state, content, playerId)) player->resources[r] += amount;
     }
     QList<HeroId> heroes;
     for (Hero& hero : state.heroes()) {
         if (hero.owner != playerId) continue;
-        regenSpellPoints(hero);
+        regenSpellPoints(hero, content);
         heroes.append(hero.id);
     }
     for (const HeroId h : heroes) learnSpellsInTown(state, content, h);  // heroes in a town with a mage guild
@@ -62,7 +58,7 @@ void beginGame(GameState& state, const ContentRegistry& content) {
 }
 
 void startWeekEvent(GameState& state, const ContentRegistry& content) {
-    state.setWeekEvent(QString());
+    state.setWeekEvent(WeekEventId());
     int total = 0;
     for (const WeekEventDef& e : content.weekEvents()) total += e.weight;
     if (total <= 0) return;
@@ -72,8 +68,7 @@ void startWeekEvent(GameState& state, const ContentRegistry& content) {
         if (roll > 0) continue;
         state.setWeekEvent(e.id);
         for (Player& p : state.players())
-            for (auto it = e.resources.begin(); it != e.resources.end(); ++it)
-                p.resources[it.key()] = std::max(0, p.resources.value(it.key()) + it.value());
+            for (const auto [r, amount] : e.resources) p.resources[r] = std::max(0, p.resources.value(r) + amount);
         return;
     }
 }
@@ -82,6 +77,7 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
     TurnInfo info;
     const int count = static_cast<int>(state.turnOrder().size());
     if (count == 0) return info;
+    updateTownless(state);  // who lost his last town this turn
     // Players who are out of the game are skipped (but the day still advances).
     int next = state.currentIndex();
     for (int i = 0; i < count; ++i) {
@@ -98,6 +94,7 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
                 refillEmptyTaverns(state, content);
             }
         }
+        if (info.newDay) updateTownless(state);  // a new day: whose time ran out
         if (!isEliminated(state, state.turnOrder()[next])) break;
     }
     state.setCurrentIndex(next);

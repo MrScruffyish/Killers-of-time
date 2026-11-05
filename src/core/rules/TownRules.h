@@ -13,9 +13,9 @@ class ContentRegistry;
 
 // A place in a town where units can be recruited right now.
 struct Dwelling {
-    QString poolKey;     // key into Town::recruitPool (root building of the upgrade chain)
-    QString buildingId;  // the building that currently provides it (the latest upgrade)
-    QString unitId;      // the unit it produces
+    BuildingTypeId poolKey;     // key into Town::recruitPool (root building of the upgrade chain)
+    BuildingTypeId buildingId;  // the building that currently provides it (the latest upgrade)
+    UnitTypeId unitId;      // the unit it produces
 };
 
 // Dwellings of a town: every built dwelling building that has not been
@@ -27,12 +27,12 @@ QList<Dwelling> dwellings(const Town& town, const ContentRegistry& content);
 // not enough resources, ...). Used by the UI to explain greyed-out buildings.
 // With `checkResources` false the cost is ignored (to find what is buildable at all).
 QString whyCannotBuild(const GameState& state, const ContentRegistry& content, TownId town,
-                       const QString& buildingId, PlayerId player, bool checkResources = true);
+                       BuildingTypeId buildingId, PlayerId player, bool checkResources = true);
 
 // Builds it: pays the cost, remembers the day (one building per town per day) and
 // stocks a new dwelling with its first week of units.
 ActionResult buildBuilding(GameState& state, const ContentRegistry& content, TownId town,
-                           const QString& buildingId, PlayerId player);
+                           BuildingTypeId buildingId, PlayerId player);
 
 struct BuildResult : ActionResult {
     QList<TradeStep> trades;  // exchanges made to afford it (empty if none were needed)
@@ -42,23 +42,23 @@ struct BuildResult : ActionResult {
 // spare ones automatically (see planTradeFor). Nothing happens if it still cannot be
 // afforded.
 BuildResult buildBuildingWithTrade(GameState& state, const ContentRegistry& content, TownId town,
-                                   const QString& buildingId, PlayerId player);
+                                   BuildingTypeId buildingId, PlayerId player);
 
 // Units that can be recruited in a town right now: from its dwellings and from
 // units sent there from map dwellings.
 struct RecruitOption {
-    QString unitId;
+    UnitTypeId unitId;
     int available = 0;
 };
 QList<RecruitOption> recruitOptions(const Town& town, const ContentRegistry& content);
 
 // Pays for `count` units and adds them to `army` (checks resources and room first).
-ActionResult payAndAddUnits(Player& player, const UnitDef& unit, int count, Army& army);
+ActionResult payAndAddUnits(const ContentRegistry& content, Player& player, const UnitDef& unit, int count, Army& army);
 
 // Recruits `count` units of `unitId` from the town's dwellings into an army standing
 // in the town (the garrison when `target` is invalid). Pays the unit costs.
 ActionResult recruit(GameState& state, const ContentRegistry& content, TownId town,
-                     PlayerId player, const QString& unitId, int count, ArmyId target = {});
+                     PlayerId player, UnitTypeId unitId, int count, ArmyId target = {});
 
 // A new week: every dwelling (in towns and on the map) gets the weekly growth of its unit.
 // In a neutral town the garrison grows a little instead (balance neutralTowns).

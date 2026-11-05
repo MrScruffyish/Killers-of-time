@@ -2,6 +2,8 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/Campaign.h"
 #include "core/rules/HeroRules.h"
@@ -33,6 +35,7 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void campaignsLoad() {
@@ -53,33 +56,33 @@ private slots:
         QString error;
         QVERIFY2(s.start(lobby, &error), qPrintable(error));
         QCOMPARE(s.state().map().width(), 56);  // mountain_kings
-        QCOMPARE(s.state().player(s.playerOfClient(1))->race, QString("dwarves"));
+        QCOMPARE(s.state().player(s.playerOfClient(1))->race, RC("dwarves"));
         QCOMPARE(s.state().victory().type, VictoryCondition::Type::HoldTown);
     }
 
     void heroesCarryOver() {
         GameState a(1);
-        a.setMap(GameMap(8, 8, "grass"));
-        const PlayerId pa = a.addPlayer("A", a.newTeam(), Player::Controller::Human, "humans", "#ff0000");
-        const HeroId h = createHero(a, reg, pa, "Veteran", "wizard", {1, 1});
+        a.setMap(GameMap(8, 8, T("grass")));
+        const PlayerId pa = a.addPlayer("A", a.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        const HeroId h = createHero(a, reg, pa, "Veteran", C("wizard"), {1, 1});
         addExperience(*a.hero(h), reg, 5000);
-        a.hero(h)->artifacts << "iron_sword";
-        a.hero(h)->spells << "far_sight";
-        a.army(a.hero(h)->army)->addUnits("pikeman", 25, 10);
+        a.hero(h)->artifacts << A("iron_sword");
+        a.hero(h)->spells << S("far_sight");
+        a.army(a.hero(h)->army)->addUnits(U("pikeman"), 25, 10);
         a.army(a.hero(h)->army)->stacks[0].setExperience(70);
-        const QJsonObject snap = heroSnapshot(a, h);
+        const QJsonObject snap = heroSnapshot(a, reg, h);
 
         GameState b(2);
-        b.setMap(GameMap(8, 8, "grass"));
-        const PlayerId pb = b.addPlayer("B", b.newTeam(), Player::Controller::Human, "undead", "#ff0000");
-        const HeroId fresh = createHero(b, reg, pb, "Rookie", "death_knight", {2, 2});
+        b.setMap(GameMap(8, 8, T("grass")));
+        const PlayerId pb = b.addPlayer("B", b.newTeam(), Player::Controller::Human, RC("undead"), "#ff0000");
+        const HeroId fresh = createHero(b, reg, pb, "Rookie", C("death_knight"), {2, 2});
         QCOMPARE(applyCarriedHeroes(b, reg, pb, {snap}, true), 1);
         const Hero* now = b.hero(fresh);
         QCOMPARE(now->name, QString("Veteran"));
-        QCOMPARE(now->classId, QString("wizard"));
+        QCOMPARE(now->classId, C("wizard"));
         QCOMPARE(now->level, a.hero(h)->level);
-        QVERIFY(now->artifacts.contains("iron_sword"));
-        QVERIFY(now->spells.contains("far_sight"));
+        QVERIFY(now->artifacts.contains(A("iron_sword")));
+        QVERIFY(now->spells.contains(S("far_sight")));
         QCOMPARE(b.army(now->army)->stacks[0].count(), 25);
         QCOMPARE(b.army(now->army)->stacks[0].experience(), 70);
         QCOMPARE(bestHeroes(a, pa, 1), QList<HeroId>({h}));

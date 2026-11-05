@@ -82,10 +82,11 @@ bool roomAround(const MoveCostGrid& grid, Pos p) {
 bool createGame(const ContentRegistry& content, const GameSetupParams& params, GameState* out,
                 QList<PlayerId>* playerIds, QString* error) {
     if (params.players.size() < 2) return fail(error, QStringLiteral("a game needs at least two players"));
+    QList<RaceId> raceOf;  // the players' races (the setup names them by key)
     for (const PlayerSetup& p : params.players) {
-        bool hasClass = false;
-        for (const HeroClassDef& c : content.heroClasses()) hasClass = hasClass || c.race == p.race;
-        if (!hasClass) return fail(error, QStringLiteral("race '%1' has no hero class").arg(p.race));
+        const RaceId race = content.raceId(p.race);
+        if (!content.playableRaces().contains(race)) return fail(error, QStringLiteral("race '%1' has no hero class").arg(p.race));
+        raceOf << race;
     }
 
     MapGenParams mapParams;
@@ -120,8 +121,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         for (int dy = -2; dy <= 2; ++dy)
             for (int dx = -2; dx <= 2; ++dx) {
                 const Pos n{p.x + dx, p.y + dy};
-                if (grid.inBounds(n) && content.terrainType(gs.map().terrainAt(n)) &&
-                    content.terrainType(gs.map().terrainAt(n))->sailable)
+                if (grid.inBounds(n) && content.terrain(gs.map().terrainAt(n)).sailable)
                     return true;
             }
         return false;
@@ -173,13 +173,12 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         if (!teams.contains(ps.team)) teams.insert(ps.team, gs.newTeam());
         const PlayerId id = gs.addPlayer(ps.name, teams[ps.team],
                                          ps.isAi ? Player::Controller::Ai : Player::Controller::Human,
-                                         ps.race, ps.color);
+                                         raceOf[i], ps.color);
         gs.player(id)->aiProfile = ps.aiProfile;
         Player* player = gs.player(id);
         player->resources = content.balance().economy.startingResources;
         if (!ps.isAi) {
-            for (auto it = player->resources.begin(); it != player->resources.end(); ++it)
-                it.value() = it.value() * level.humanStartPercent / 100;
+            for (const auto [r, amount] : ResourceAmounts(player->resources)) player->resources[r] = amount * level.humanStartPercent / 100;
         } else {
             const DifficultyLevel slot = content.balance().aiSlot.value(ps.aiDifficulty);
             player->incomePercent = level.aiIncomePercent + slot.aiIncomePercent;
@@ -187,14 +186,14 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         }
         ids.append(id);
 
-        gs.addTown(QStringLiteral("%1's capital").arg(ps.name), ps.race, starts[i], id);
+        gs.addTown(QStringLiteral("%1's capital").arg(ps.name), raceOf[i], starts[i], id);
 
-        const QStringList free = freeHeroTemplates(gs, content, ps.race);
+        const QList<HeroTemplateId> free = freeHeroTemplates(gs, content, raceOf[i]);
         const HeroTemplateDef* tmpl = free.isEmpty() ? nullptr
             : content.heroTemplate(free[gs.rng().nextInt(0, static_cast<int>(free.size()) - 1)]);
-        QString classId;
+        HeroClassId classId;
         for (const HeroClassDef& c : content.heroClasses()) {
-            if (c.race == ps.race && classId.isEmpty()) classId = c.id;
+            if (c.race == raceOf[i] && !classId.isValid()) classId = c.id;
         }
         const HeroId hero = createHero(gs, content, id, tmpl ? tmpl->name : ps.name, tmpl ? tmpl->classId : classId, starts[i], error);
         if (!hero.isValid()) return false;
@@ -230,7 +229,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         return false;
     };
     const int area = static_cast<int>(land.size());
-    const QString currency = content.currency() ? content.currency()->id : QString();
+    const ResourceId currency = content.currency();
     for (const ResourceDef& r : content.resources()) {
         const int mines = std::max(1, area / (r.id == currency ? 500 : 900));
         const int perDay = (r.id == currency) ? 1000 : (r.value >= 300 ? 1 : 2);
@@ -239,7 +238,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
             if (place(&where)) gs.addMine(r.id, perDay, where);
         }
     }
-    QStringList growers;
+    QList<UnitTypeId> growers;
     for (const UnitDef& u : content.units()) {
         if (u.weeklyGrowth > 0) growers.append(u.id);
     }
@@ -251,13 +250,13 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     }
 
     // Neutral monsters. `strength` 1 (weak) .. 3 (strong) picks the tiers and the size.
-    QStringList monsterUnits;
+    QList<UnitTypeId> monsterUnits;
     for (const UnitDef& u : content.units())
-        if (!u.has(QStringLiteral("siege_engine"))) monsterUnits.append(u.id);  // no wandering catapults
+        if (!u.has(Ability::SiegeEngine)) monsterUnits.append(u.id);  // no wandering catapults
     const QSet<Pos> landSet(land.begin(), land.end());
     const auto addMonsters = [&](Pos where, int strength) {
-        QStringList fitting;
-        for (const QString& id : monsterUnits) {
+        QList<UnitTypeId> fitting;
+        for (const UnitTypeId id : monsterUnits) {
             const int tier = content.unit(id)->tier;
             if (tier >= strength && tier <= strength + 1) fitting.append(id);
         }
@@ -282,25 +281,25 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     // Every other non-gold mine and every gold mine is guarded.
     int mineIndex = 0;
     for (const Mine& m : QList<Mine>(gs.mines().values()))
-        if (m.resourceId == currency || (mineIndex++ % 2 == 0)) guard(m.pos, m.resourceId == currency ? 2 : 1);
+        if (m.resource == currency || (mineIndex++ % 2 == 0)) guard(m.pos, m.resource == currency ? 2 : 1);
 
     // Neutral towns to conquer, each with a garrison and a few buildings.
-    const QStringList raceList = content.raceIds();
+    const QList<RaceId> raceList = content.playableRaces();
     const int neutralTowns = std::max(1, static_cast<int>(params.players.size()) / 2) + area / 2500;
     for (int i = 0; i < neutralTowns && !raceList.isEmpty(); ++i) {
         Pos where;
         if (!place(&where)) break;
-        const QString race = raceList[gs.rng().nextInt(0, static_cast<int>(raceList.size()) - 1)];
+        const RaceId race = raceList[gs.rng().nextInt(0, static_cast<int>(raceList.size()) - 1)];
         const TownId t = gs.addTown(QStringLiteral("Free town %1").arg(i + 1), race, where);
         Town* town = gs.town(t);
         // The cheapest dwelling of the race and the village hall, so it is worth taking.
         const BuildingDef* dwelling = nullptr;
         for (const BuildingDef& b : content.buildings()) {
-            if (b.race != race || !b.requiredBuildings.isEmpty() || !b.upgradeOf.isEmpty()) continue;
+            if (b.race != race || !b.requiredBuildings.isEmpty() || b.upgradeOf.isValid()) continue;
             for (const BuildingEffect& e : b.effects)
                 if (e.type == BuildingEffect::Type::Dwelling && !dwelling) dwelling = &b;
         }
-        if (content.building(QStringLiteral("village_hall"))) town->buildings << QStringLiteral("village_hall");
+        if (const BuildingTypeId hall = content.buildingId(QStringLiteral("village_hall")); hall.isValid()) town->buildings << hall;
         if (dwelling) {
             town->buildings << dwelling->id;
             for (const BuildingEffect& e : dwelling->effects)
@@ -312,7 +311,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     }
 
     // Treasure piles and guarded artifacts.
-    QStringList resources;
+    QList<ResourceId> resources;
     for (const ResourceDef& r : content.resources()) resources.append(r.id);
     for (int i = 0, n = std::max(4, area / 250); i < n; ++i) {
         Pos where;
@@ -320,13 +319,13 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         MapObject o;
         o.kind = MapObject::Kind::Treasure;
         o.pos = where;
-        const QString res = resources[gs.rng().nextInt(0, static_cast<int>(resources.size()) - 1)];
-        const ResourceDef* rd = content.resource(res);
+        const ResourceId res = resources[gs.rng().nextInt(0, static_cast<int>(resources.size()) - 1)];
         o.resources[res] = res == currency ? 100 * gs.rng().nextInt(5, 15)
-                                           : (rd && rd->value >= 300 ? gs.rng().nextInt(2, 4) : gs.rng().nextInt(4, 10));
+                                           : (content.resource(res).value >= 300 ? gs.rng().nextInt(2, 4) : gs.rng().nextInt(4, 10));
         gs.addMapObject(o);
     }
-    const QStringList artifactIds = content.artifacts().keys();
+    QList<ArtifactId> artifactIds;
+    for (const ArtifactDef& a : content.artifacts()) artifactIds << a.id;
     for (int i = 0, n = std::max(2, area / 600); i < n && !artifactIds.isEmpty(); ++i) {
         Pos where;
         if (!place(&where)) break;
@@ -374,7 +373,8 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         GameMap roadMap = gs.map();  // rivers count as crossable (bridges) for the road builder
         for (int y = 0; y < roadMap.height(); ++y)
             for (int x = 0; x < roadMap.width(); ++x)
-                if (roadMap.terrainAt({x, y}) == QLatin1String("river")) roadMap.setTerrain({x, y}, QStringLiteral("swamp"));
+                if (roadMap.terrainAt({x, y}) == content.terrainId(QStringLiteral("river")))
+                    roadMap.setTerrain({x, y}, content.terrainId(QStringLiteral("swamp")));
         const MoveCostGrid roadGrid(roadMap, content, MoveMode::Foot);
         QList<Pos> towns;
         for (const Town& t : gs.towns()) towns.append(t.pos);
@@ -398,7 +398,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
             if (!road.found || bestD > gs.map().width()) continue;  // across the sea, or too far
             for (const Pos p : road.steps) {
                 if (gs.townCovering(p)) continue;
-                gs.map().setTerrain(p, QStringLiteral("road"));
+                gs.map().setTerrain(p, content.terrainId(QStringLiteral("road")));
             }
         }
     }

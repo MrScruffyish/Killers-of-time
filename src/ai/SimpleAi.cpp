@@ -40,7 +40,7 @@ std::uint64_t key(quint32 hero, Pos p) {
 
 bool isMagicClass(const ContentRegistry& content, const Hero& h) {
     const HeroClassDef* c = content.heroClass(h.classId);
-    return c && c->baseTraits.value(QStringLiteral("magic")) >= 3;
+    return c && c->baseTraits.value(content.known().magic) >= 3;
 }
 
 }  // namespace
@@ -114,8 +114,8 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
     for (const Hero& h : state.heroes()) {
         if (h.owner == me && h.pendingTraitPicks > 0) {
             const QStringList& pool = isMagicClass(content, h) ? magicTraits : mightTraits;
-            const QString trait = pool[m_rng.nextInt(0, static_cast<int>(pool.size()) - 1)];
-            return command(net::msg::pickTrait, {{"hero", toInt(h.id.value())}, {"trait", trait}});
+            const TraitId trait = content.traitId(pool[m_rng.nextInt(0, static_cast<int>(pool.size()) - 1)]);
+            return command(net::msg::pickTrait, {{"hero", toInt(h.id.value())}, {"trait", trait.index()}});
         }
     }
 
@@ -151,9 +151,9 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
                 where = &t;
             }
         }
-        if (where && player->resources.value("gold") >= heroCost + reserve) {
-            const QString offer = where->tavernOffers[m_rng.nextInt(0, static_cast<int>(where->tavernOffers.size()) - 1)];
-            return command(net::msg::hireHero, {{"town", toInt(where->id.value())}, {"hero", offer}});
+        if (where && player->resources.value(content.currency()) >= heroCost + reserve) {
+            const HeroTemplateId offer = where->tavernOffers[m_rng.nextInt(0, static_cast<int>(where->tavernOffers.size()) - 1)];
+            return command(net::msg::hireHero, {{"town", toInt(where->id.value())}, {"hero", offer.index()}});
         }
     }
     // No tavern anywhere (auto-build goes for dwellings first): build one.
@@ -168,7 +168,7 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
                 for (const Town& t : state.towns())
                     if (t.owner == me && b.fitsRace(t.race) && whyCannotBuild(state, content, t.id, b.id, me, false).isEmpty()) {
                         m_built = true;  // today's building in that town; buy units tomorrow
-                        return command(net::msg::build, {{"town", toInt(t.id.value())}, {"building", b.id}, {"useTrade", true}});
+                        return command(net::msg::build, {{"town", toInt(t.id.value())}, {"building", b.id.index()}, {"useTrade", true}});
                     }
             }
         }
@@ -181,7 +181,7 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
         m_built = true;
         bool canPayBoat = true;
         const ResourceAmounts& boat = content.balance().economy.boatCost;
-        for (auto it = boat.begin(); it != boat.end(); ++it) canPayBoat = canPayBoat && player->resources.value(it.key()) >= it.value();
+        for (const auto [r, amount] : boat) canPayBoat = canPayBoat && player->resources.value(r) >= amount;
         if ((!m_savingForBoat || canPayBoat) && !savingForHero) return command(net::msg::buildThenBuy, {{"useTrade", true}});
     }
 
@@ -213,12 +213,12 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
     for (const Hero& h : state.heroes()) {
         if (h.owner != me || m_spellCast.contains(h.id.value())) continue;
         m_spellCast.insert(h.id.value());
-        for (const QString& id : h.spells) {
+        for (const SpellId id : h.spells) {
             const SpellDef* s = content.spell(id);
             bool movement = false;
             for (const SpellEffect& e : s ? s->effects : QList<SpellEffect>()) movement = movement || e.type == SpellEffect::Type::Movement;
             if (movement && whyCannotCast(h, content, id, SpellDef::Scope::Adventure, h.spellPoints).isEmpty())
-                return command(net::msg::castSpell, {{"hero", toInt(h.id.value())}, {"spell", id}});
+                return command(net::msg::castSpell, {{"hero", toInt(h.id.value())}, {"spell", id.index()}});
         }
     }
     for (const Hero& h : state.heroes()) {
@@ -249,13 +249,50 @@ static QSet<Pos> walkableRegion(const GameState& state, const ContentRegistry& c
             for (int dx = -1; dx <= 1; ++dx) {
                 const Pos n{p.x + dx, p.y + dy};
                 if (seen.contains(n) || !state.map().inBounds(n)) continue;
-                const TerrainDef* t = content.terrainType(state.map().terrainAt(n));
+                const TerrainDef* t = &content.terrain(state.map().terrainAt(n));
                 if (!t || !t->walkable) continue;
                 seen.insert(n);
                 todo.append(n);
             }
     }
     return seen;
+}
+
+void SimpleAi::labelRegions(const GameState& state, const ContentRegistry& content) {
+    const GameMap& map = state.map();
+    if (m_regionMapWidth == map.width() && m_regionOf.size() == map.width() * map.height()) return;
+    m_regionMapWidth = map.width();
+    m_regionOf.fill(-1, map.width() * map.height());
+    m_regionSize.clear();
+    QVector<char> walkable(m_regionOf.size(), 0);
+    for (qsizetype i = 0; i < walkable.size(); ++i) walkable[i] = content.terrain(map.cells()[i]).walkable;
+    QList<Pos> todo;
+    for (int start = 0; start < m_regionOf.size(); ++start) {
+        if (!walkable[start] || m_regionOf[start] >= 0) continue;
+        const int label = static_cast<int>(m_regionSize.size());
+        int size = 0;
+        m_regionOf[start] = label;
+        todo = {Pos{start % map.width(), start / map.width()}};
+        while (!todo.isEmpty()) {
+            const Pos p = todo.takeLast();
+            ++size;
+            for (int dy = -1; dy <= 1; ++dy)
+                for (int dx = -1; dx <= 1; ++dx) {
+                    const Pos n{p.x + dx, p.y + dy};
+                    if (!map.inBounds(n)) continue;
+                    const int i = n.y * map.width() + n.x;
+                    if (!walkable[i] || m_regionOf[i] >= 0) continue;
+                    m_regionOf[i] = label;
+                    todo.append(n);
+                }
+        }
+        m_regionSize.append(size);
+    }
+}
+
+int SimpleAi::regionAt(const GameState& state, Pos p) const {
+    if (!state.map().inBounds(p) || m_regionOf.isEmpty()) return -1;
+    return m_regionOf.value(p.y * state.map().width() + p.x, -1);
 }
 
 // Nothing more to do on this island: buy a boat in a town with a shipyard (or go there).
@@ -267,25 +304,26 @@ net::Message SimpleAi::boatPlan(const GameState& state, const ContentRegistry& c
     bool shipyard = false;
     for (const Town& t : state.towns()) shipyard = shipyard || (t.owner == me && hasShipyard(t, content));
     // Missing wood (or the like): buy it at the market when the gold covers it.
-    int goldNeeded = cost.value(QStringLiteral("gold"));
-    QString buy;
+    const ResourceId gold = content.currency();
+    int goldNeeded = cost.value(gold);
+    ResourceId buy;
     int buyAmount = 0;
-    for (auto it = cost.begin(); it != cost.end(); ++it) {
-        const int missing = it.value() - player->resources.value(it.key());
-        if (missing <= 0 || it.key() == QStringLiteral("gold")) continue;
-        const int price = tradeCostToGet(content, QStringLiteral("gold"), it.key(), missing, tradeEfficiency(state, content, me));
+    for (const auto [r, amount] : cost) {
+        const int missing = amount - player->resources.value(r);
+        if (missing <= 0 || r == gold) continue;
+        const int price = tradeCostToGet(content, gold, r, missing, tradeEfficiency(state, content, me));
         goldNeeded += price;
-        if (buy.isEmpty()) {
-            buy = it.key();
+        if (!buy.isValid()) {
+            buy = r;
             buyAmount = price;
         }
     }
-    if (player->resources.value(QStringLiteral("gold")) < goldNeeded) {
+    if (player->resources.value(gold) < goldNeeded) {
         m_savingForBoat = shipyard;  // nothing left here: keep the money for a boat
         return {};
     }
-    if (!buy.isEmpty() && shipyard)
-        return command(net::msg::trade, {{"give", "gold"}, {"amount", buyAmount}, {"get", buy}});
+    if (buy.isValid() && shipyard)
+        return command(net::msg::trade, {{"give", gold.index()}, {"amount", buyAmount}, {"get", buy.index()}});
     for (const Town& t : state.towns()) {
         if (t.owner != me || !hasShipyard(t, content) || !freeWaterNext(state, content, t.pos)) continue;
         if (t.pos == army->pos) {
@@ -310,11 +348,11 @@ net::Message SimpleAi::sailMove(const GameState& state, const ContentRegistry& c
     const AiView view(state, content, me);
     const QSet<Pos> home = m_homeLand.value(hero.id.value());
     const auto sailable = [&](Pos p) {
-        const TerrainDef* t = state.map().inBounds(p) ? content.terrainType(state.map().terrainAt(p)) : nullptr;
+        const TerrainDef* t = state.map().inBounds(p) ? &content.terrain(state.map().terrainAt(p)) : nullptr;
         return t && t->sailable;
     };
     const auto walkable = [&](Pos p) {
-        const TerrainDef* t = state.map().inBounds(p) ? content.terrainType(state.map().terrainAt(p)) : nullptr;
+        const TerrainDef* t = state.map().inBounds(p) ? &content.terrain(state.map().terrainAt(p)) : nullptr;
         return t && t->walkable && !t->sailable;
     };
     const Pos at = army->pos;
@@ -323,7 +361,9 @@ net::Message SimpleAi::sailMove(const GameState& state, const ContentRegistry& c
     const auto worthLanding = [&](Pos n) {
         for (const QSet<Pos>& seen : m_visitedIslands)
             if (seen.contains(n)) return false;
-        return walkableRegion(state, content, n).size() >= 12;
+        labelRegions(state, content);
+        const int region = regionAt(state, n);
+        return region >= 0 && m_regionSize[region] >= 12;
     };
     // Land right here if foreign shore is next to us.
     for (int dy = -1; dy <= 1; ++dy)
@@ -377,9 +417,16 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
     };
     QList<Target> targets;
     // Only what can be walked to: things on other islands need a boat (boatPlan).
-    const QSet<Pos> island = walkableRegion(state, content, army->pos);
+    labelRegions(state, content);
+    QSet<int> island{regionAt(state, army->pos)};
+    if (*island.cbegin() < 0) {  // on water (a boat): the land next to it
+        island.clear();
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx)
+                if (const int r = regionAt(state, {army->pos.x + dx, army->pos.y + dy}); r >= 0) island.insert(r);
+    }
     const auto add = [&](Pos p, double value) {
-        if (p != army->pos && island.contains(p) && !m_failedTargets.contains(key(hid, p))) targets.append({p, value});
+        if (p != army->pos && island.contains(regionAt(state, p)) && !m_failedTargets.contains(key(hid, p))) targets.append({p, value});
     };
 
     QSet<ArmyId> garrisons;
@@ -446,7 +493,7 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
             if (t.owner == me) ownLargest = std::max(ownLargest, static_cast<int>(t.buildings.size()));
         const auto walls = [&](const Town& t) {
             int n = 0;
-            for (const QString& b : t.buildings)
+            for (const BuildingTypeId b : t.buildings)
                 if (const BuildingDef* def = content.building(b))
                     for (const BuildingEffect& e : def->effects) n += e.type == BuildingEffect::Type::Defense;
             return n;
@@ -467,7 +514,7 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
         }
         for (const Mine& m : state.mines())
             if (view.visible(m.pos) && state.isHostile(m.owner, me) && !risky(m.pos))
-                add(m.pos, (m.resourceId == QStringLiteral("gold") ? 70 : 40) * m_p.mineValue);
+                add(m.pos, (m.resource == content.currency() ? 70 : 40) * m_p.mineValue);
         for (const MapDwelling& d : state.mapDwellings())
             if (view.visible(d.pos) && state.isHostile(d.owner, me) && !risky(d.pos)) add(d.pos, 35 * m_p.mineValue);
         for (const MapObject& o : state.mapObjects()) {

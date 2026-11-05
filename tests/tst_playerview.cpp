@@ -1,6 +1,8 @@
 #include <QJsonArray>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/model/PlayerView.h"
 #include "core/rules/HeroRules.h"
@@ -33,21 +35,22 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void init() {
         gs = GameState(1);
-        gs.setMap(GameMap(40, 20, "grass"));
-        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
-        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
-        gs.player(p1)->resources = {{"gold", 1234}};
-        gs.player(p2)->resources = {{"gold", 777}};
-        hero1 = createHero(gs, reg, p1, "Ann", "knight", {5, 5});
-        hero2 = createHero(gs, reg, p2, "Bob", "knight", {30, 5});
-        town2 = gs.addTown("Fort", "humans", {30, 5}, p2);
-        gs.army(gs.town(town2)->garrison)->addUnits("pikeman", 7, 10);
-        gs.army(gs.hero(hero2)->army)->addUnits("militia", 4, 6);
-        gs.army(gs.hero(hero1)->army)->addUnits("militia", 9, 6);
+        gs.setMap(GameMap(40, 20, T("grass")));
+        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, RC("humans"), "#0000ff");
+        gs.player(p1)->resources = amounts({{"gold", 1234}});
+        gs.player(p2)->resources = amounts({{"gold", 777}});
+        hero1 = createHero(gs, reg, p1, "Ann", C("knight"), {5, 5});
+        hero2 = createHero(gs, reg, p2, "Bob", C("knight"), {30, 5});
+        town2 = gs.addTown("Fort", RC("humans"), {30, 5}, p2);
+        gs.army(gs.town(town2)->garrison)->addUnits(U("pikeman"), 7, 10);
+        gs.army(gs.hero(hero2)->army)->addUnits(U("militia"), 4, 6);
+        gs.army(gs.hero(hero1)->army)->addUnits(U("militia"), 9, 6);
         gs.army(gs.hero(hero1)->army)->stacks[0].applyDamage(5);
     }
 
@@ -72,7 +75,7 @@ private slots:
 
     void resourcesArePrivate() {
         const QJsonObject v = view(p1);
-        QCOMPARE(v["resources"].toObject()["gold"].toInt(), 1234);
+        QCOMPARE(v["resources"].toArray()[R("gold").index()].toInt(), 1234);
         for (const QJsonValue& pl : v["players"].toArray()) QVERIFY(!pl.toObject().contains("resources"));
         QVERIFY(!QJsonDocument(v).toJson().contains("777"));  // the other player's gold appears nowhere
     }
@@ -91,9 +94,9 @@ private slots:
     }
 
     void farObjectsAreHiddenNearOnesShown() {
-        const MineId near = gs.addMine("gold", 1000, {7, 5});
-        const MineId far = gs.addMine("wood", 2, {35, 15});
-        const MapDwellingId d = gs.addMapDwelling("archer", {37, 2}, 4);
+        const MineId near = gs.addMine(R("gold"), 1000, {7, 5});
+        const MineId far = gs.addMine(R("wood"), 2, {35, 15});
+        const MapDwellingId d = gs.addMapDwelling(U("archer"), {37, 2}, 4);
         const QJsonObject v = view(p1);
         QVERIFY(hasId(v["mines"].toArray(), near.value()));
         QVERIFY(!hasId(v["mines"].toArray(), far.value()));
@@ -102,8 +105,8 @@ private slots:
     }
 
     void ownThingsAreAlwaysShownEvenOutOfSight() {
-        const MineId mine = gs.addMine("gold", 1000, {35, 15}, p1);
-        const MapDwellingId d = gs.addMapDwelling("archer", {37, 2}, 4, p1);
+        const MineId mine = gs.addMine(R("gold"), 1000, {35, 15}, p1);
+        const MapDwellingId d = gs.addMapDwelling(U("archer"), {37, 2}, 4, p1);
         const QJsonObject v = view(p1);
         QVERIFY(hasId(v["mines"].toArray(), mine.value()));
         const QJsonObject dwelling = find(v["mapDwellings"].toArray(), d.value());
@@ -146,8 +149,8 @@ private slots:
     }
 
     void teammatesSeeEachOtherInFull() {
-        const PlayerId ally = gs.addPlayer("C", gs.player(p1)->team, Player::Controller::Ai, "humans", "#00ff00");
-        const HeroId allyHero = createHero(gs, reg, ally, "Cee", "wizard", {20, 15});
+        const PlayerId ally = gs.addPlayer("C", gs.player(p1)->team, Player::Controller::Ai, RC("humans"), "#00ff00");
+        const HeroId allyHero = createHero(gs, reg, ally, "Cee", C("wizard"), {20, 15});
         const QJsonObject v = view(p1);
         const QJsonObject h = find(v["heroes"].toArray(), allyHero.value());
         QVERIFY(!h.isEmpty());
@@ -156,7 +159,7 @@ private slots:
     }
 
     void exploredTerrainIsRememberedObjectsAreNot() {
-        const MineId mine = gs.addMine("gold", 1000, {7, 5});
+        const MineId mine = gs.addMine(R("gold"), 1000, {7, 5});
         QVERIFY(hasId(view(p1)["mines"].toArray(), mine.value()));
         gs.army(gs.hero(hero1)->army)->pos = {30, 15};  // walks far away
         const QJsonObject v = view(p1);
@@ -167,7 +170,7 @@ private slots:
     void viewsDifferBetweenPlayers() {
         QVERIFY(view(p1) != view(p2));
         QCOMPARE(view(p2)["you"].toInt(), int(p2.value()));
-        QCOMPARE(view(p2)["resources"].toObject()["gold"].toInt(), 777);
+        QCOMPARE(view(p2)["resources"].toArray()[R("gold").index()].toInt(), 777);
     }
 };
 

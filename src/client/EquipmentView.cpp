@@ -51,7 +51,7 @@ EquipmentView::EquipmentView(const core::ContentRegistry* content, QWidget* pare
     setMouseTracking(true);
 }
 
-void EquipmentView::setArtifacts(const QStringList& worn, const QStringList& backpack, bool canChange) {
+void EquipmentView::setArtifacts(const QList<core::ArtifactId>& worn, const QList<core::ArtifactId>& backpack, bool canChange) {
     m_worn = worn;
     m_backpack = backpack;
     m_canChange = canChange;
@@ -71,8 +71,8 @@ void EquipmentView::layoutBoxes() {
     m_layoutWidth = width();
     const double dx = std::max(0.0, (width() - kWidth) / 2);
     // Worn ones fill their places in order.
-    QHash<QString, QStringList> bySlot;
-    for (const QString& id : m_worn) {
+    QHash<QString, QList<core::ArtifactId>> bySlot;
+    for (const core::ArtifactId id : m_worn) {
         const core::ArtifactDef* a = m_content ? m_content->artifact(id) : nullptr;
         bySlot[a ? a->slot : QStringLiteral("misc")].append(id);
     }
@@ -84,7 +84,7 @@ void EquipmentView::layoutBoxes() {
         m_boxes << b;
     }
     // More worn than there are places (old saves): shown in the backpack row too.
-    QStringList carried = m_backpack;
+    QList<core::ArtifactId> carried = m_backpack;
     for (auto it = bySlot.begin(); it != bySlot.end(); ++it) carried = it.value() + carried;
     const double top = kDollHeight + 30;
     for (int i = 0; i < std::max<qsizetype>(8, carried.size()); ++i) {
@@ -141,11 +141,11 @@ void EquipmentView::paintEvent(QPaintEvent*) {
     small.setPointSizeF(small.pointSizeF() * 0.8);
     // Where the carried one under the mouse would go.
     QString target;
-    if (m_hover >= 0 && !m_boxes[m_hover].worn && !m_boxes[m_hover].artifact.isEmpty()) target = m_boxes[m_hover].slot;
+    if (m_hover >= 0 && !m_boxes[m_hover].worn && !!m_boxes[m_hover].artifact.isValid()) target = m_boxes[m_hover].slot;
     for (int i = 0; i < m_boxes.size(); ++i) {
         const Box& b = m_boxes[i];
         const bool lit = i == m_hover || (b.worn && b.slot == target);
-        const core::ArtifactDef* a = b.artifact.isEmpty() || !m_content ? nullptr : m_content->artifact(b.artifact);
+        const core::ArtifactDef* a = !b.artifact.isValid() || !m_content ? nullptr : m_content->artifact(b.artifact);
         // A framed box; its frame tells how strong the artifact is.
         const QColor frame = !a ? QColor("#6a5a44") : a->value >= 3 ? QColor("#f0c030") : a->value == 2 ? QColor("#c8ccd8") : QColor("#c08a50");
         QLinearGradient g(b.rect.topLeft(), b.rect.bottomLeft());
@@ -161,10 +161,10 @@ void EquipmentView::paintEvent(QPaintEvent*) {
         p.drawRoundedRect(b.rect, 9, 9);
         const QRect inner = b.rect.adjusted(5, 5, -5, -5).toRect();
         if (a) {
-            p.drawPixmap(inner, art::artifactIcon(a->id, a->slot, inner.width()));
+            p.drawPixmap(inner, art::artifactIcon(a->key, inner.width()));
         } else if (b.worn) {
             p.setOpacity(0.16);
-            p.drawPixmap(inner, art::artifactIcon(ghostOf(b.slot), b.slot, inner.width()));
+            p.drawPixmap(inner, art::artifactIcon(ghostOf(b.slot), inner.width()));
             p.setOpacity(1.0);
             p.setFont(small);
             p.setPen(QColor("#8a7a60"));
@@ -179,14 +179,14 @@ void EquipmentView::paintEvent(QPaintEvent*) {
 }
 
 QString EquipmentView::tooltipFor(const Box& b) const {
-    const core::ArtifactDef* a = b.artifact.isEmpty() || !m_content ? nullptr : m_content->artifact(b.artifact);
+    const core::ArtifactDef* a = !b.artifact.isValid() || !m_content ? nullptr : m_content->artifact(b.artifact);
     if (!a) return b.worn ? tr("%1: nothing worn here").arg(slotName(b.slot)) : QString();
     QString tip = QStringLiteral("<b>%1</b><br>%2<br><i>%3</i>").arg(a->name.toHtmlEscaped(), a->description.toHtmlEscaped(), slotName(a->slot));
     if (!m_canChange) return tip;
     if (b.worn) return tip + tr("<br>Click to take it off (into the backpack).");
     QStringList inSlot;
     int count = 0;
-    for (const QString& id : m_worn)
+    for (const core::ArtifactId id : m_worn)
         if (const core::ArtifactDef* w = m_content->artifact(id); w && w->slot == a->slot) {
             inSlot << w->name;
             ++count;
@@ -199,7 +199,7 @@ void EquipmentView::mouseMoveEvent(QMouseEvent* e) {
     const int h = boxAt(e->position());
     if (h != m_hover) {
         m_hover = h;
-        setCursor(h >= 0 && m_canChange && !m_boxes[h].artifact.isEmpty() ? Qt::PointingHandCursor : Qt::ArrowCursor);
+        setCursor(h >= 0 && m_canChange && !!m_boxes[h].artifact.isValid() ? Qt::PointingHandCursor : Qt::ArrowCursor);
         update();
     }
 }
@@ -211,7 +211,7 @@ void EquipmentView::leaveEvent(QEvent*) {
 
 void EquipmentView::mousePressEvent(QMouseEvent* e) {
     const int i = boxAt(e->position());
-    if (i < 0 || !m_canChange || e->button() != Qt::LeftButton || m_boxes[i].artifact.isEmpty()) return;
+    if (i < 0 || !m_canChange || e->button() != Qt::LeftButton || !m_boxes[i].artifact.isValid()) return;
     const Box& b = m_boxes[i];
     if (b.worn || !m_backpack.contains(b.artifact)) emit unequipRequested(b.artifact);
     else emit equipRequested(b.artifact);

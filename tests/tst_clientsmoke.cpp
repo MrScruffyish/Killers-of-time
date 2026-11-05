@@ -10,6 +10,8 @@
 #include <QTabWidget>
 #include <QComboBox>
 #include <QtTest>
+
+#include "TestContent.h"
 #include <tuple>
 
 #include "client/Art.h"
@@ -54,10 +56,10 @@ private slots:
         QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope, config.path());
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
         QSettings().setValue("game/endTurnReminder", false);  // no question box in the scripted play-through
-        QHash<QString, int> tiers;
-        for (const core::UnitDef& u : reg.units()) tiers.insert(u.id, u.tier);
-        art::setUnitTiers(tiers);
+        art::setContent(&reg);
+        art::setArtDirectory(QDir(KOT_DATA_DIR).filePath("art"));
         qputenv("KOT_DATA_DIR", KOT_DATA_DIR);
         qApp->setStyleSheet(art::styleSheet());  // the real look
     }
@@ -87,7 +89,7 @@ private slots:
         GameView v;
         v.width = 16;
         v.height = 12;
-        v.terrainPalette = {"grass", "sea", "sand", "forest", "hills", "mountains", "river", "dirt"};
+        const QStringList palette = {"grass", "sea", "sand", "forest", "hills", "mountains", "river", "dirt"};  // digits below
         const QStringList rows = {
             "0000033330000000",
             "0011110333004400",
@@ -103,7 +105,7 @@ private slots:
             "0003300000060000",
         };
         for (const QString& row : rows)
-            for (const QChar c : row) v.tiles.append(c.digitValue());
+            for (const QChar c : row) v.tiles.append(reg.terrainId(palette[c.digitValue()]).index());
         v.visible = QByteArray(v.width * v.height, '\1');
         // Monster groups of every size, along the bottom left.
         int armyId = 900;
@@ -113,12 +115,12 @@ private slots:
             a.id = armyId++;
             a.pos = {x, 11 - (x % 2)};
             ViewStack st;
-            st.unit = unit;
+            st.unit = reg.unitId(unit);
             st.count = n;
             a.stacks = {st};
             if (n > 20) {
                 ViewStack second;
-                second.unit = "archer";
+                second.unit = reg.unitId("archer");
                 second.count = n / 3;
                 a.stacks << second;
             }
@@ -148,10 +150,10 @@ private slots:
         QImage decor(6 * 72, int(kinds.size()) * 72, QImage::Format_ARGB32);
         QPainter dp(&decor);
         for (int k = 0; k < kinds.size(); ++k) {
-            const core::TerrainDef* t = reg.terrainType(kinds[k]);
+            const core::TerrainDef* t = reg.terrainByKey(kinds[k]);
             QVERIFY(t);
             for (int variant = 0; variant < 6; ++variant) {
-                dp.drawPixmap(variant * 72, k * 72, art::terrainTile(kinds[k], QColor(t->color), 72, variant % 4));
+                dp.drawPixmap(variant * 72, k * 72, art::terrainTile(kinds[k], 72, variant % 4));
                 const QPixmap& pm = art::decoration(kinds[k], variant, 72);
                 if (!pm.isNull()) dp.drawPixmap(variant * 72, k * 72, pm);
             }
@@ -161,7 +163,7 @@ private slots:
     }
 
     void artGallery() {
-        const QList<core::UnitDef> units = reg.units().values();
+        const QList<core::UnitDef> units = reg.units();
         const int cols = 6, cell = 110;
         QImage sheet(cols * cell + 640, ((units.size() + cols - 1) / cols + 1) * cell, QImage::Format_ARGB32);
         sheet.fill(QColor("#2b2118"));
@@ -169,19 +171,19 @@ private slots:
         for (int i = 0; i < units.size(); ++i) {
             const QPointF c((i % cols) * cell + cell / 2.0, (i / cols) * cell + cell / 2.0 - 8);
             art::drawUnitToken(p, c, 40, i % 2 ? QColor("#6e5a86") : QColor("#d62728"), units[i].name, 25, i % 4, false, false,
-                               units[i].id, units[i].rank);
+                               units[i].key, units[i].rank);
             p.setPen(Qt::white);
             p.drawText(QRectF(c.x() - cell / 2.0, c.y() + 42, cell, 16), Qt::AlignCenter, units[i].name);
         }
         const int y = ((units.size() + cols - 1) / cols) * cell + 10;
         int x = 10;
-        for (const QPixmap& pm : {art::townSprite(QColor("#d62728"), 96), art::heroSprite(QColor("#1f77b4"), false, 64),
-                                  art::mineSprite("gold", art::resourceColor("gold"), QColor("#999999"), 64),
-                                  art::mineSprite("wood", art::resourceColor("wood"), QColor("#d62728"), 64),
-                                  art::mineSprite("stone", art::resourceColor("stone"), QColor("#999999"), 64),
-                                  art::mineSprite("gems", art::resourceColor("gems"), QColor("#1f77b4"), 64),
-                                  art::dwellingSprite(QColor("#999999"), "unicorn", 64),
-                                  art::chestSprite(art::resourceColor("wood"), 64), art::artifactSprite(64)}) {
+        for (const QPixmap& pm : {art::townSprite(QColor("#d62728"), 96), art::heroSprite(QColor("#1f77b4"), false, 64, reg.heroClassId("knight")),
+                                  art::mineSprite("gold", QColor("#999999"), 64),
+                                  art::mineSprite("wood", QColor("#d62728"), 64),
+                                  art::mineSprite("stone", QColor("#999999"), 64),
+                                  art::mineSprite("gems", QColor("#1f77b4"), 64),
+                                  art::dwellingSprite(QColor("#999999"), reg.unitId("unicorn"), 64),
+                                  art::chestSprite("wood", 64), art::artifactSprite(64)}) {
             QVERIFY(!pm.isNull());
             p.drawPixmap(x, y, pm);
             x += pm.width() + 12;
@@ -216,7 +218,7 @@ private slots:
         // Icons (0_icons.png): every resource at three sizes, the special mines, every button icon.
         {
             const QStringList res = {"gold", "wood", "stone", "grain", "gems", "sulphur", "coal", "mercury", "papyrus"};
-            const QStringList buttons = {"build", "buy", "wagon", "end", "spell", "market", "defend", "auto", "retreat",
+            const QStringList buttons = {"build", "buy", "wagon", "end", "spell", "defend", "auto", "retreat",
                                          "catapult", "town", "army", "tavern"};
             QImage icons(int(res.size()) * 136 + 20, 128 + 40 + 24 + 140 + 80 + 180 + 160, QImage::Format_ARGB32);
             icons.fill(QColor("#3a2c1e"));
@@ -227,11 +229,11 @@ private slots:
                 ip.drawPixmap(56 + i * 136, 158, art::resourceIcon(res[i], 20));
             }
             int mx = 10;
-            for (const QString& r : {"gold", "wood", "stone", "gems", "sulphur"}) {
-                ip.drawPixmap(mx, 196, art::mineSprite(r, art::resourceColor(r), QColor("#d62728"), 128));
+            for (const char* r : {"gold", "wood", "stone", "gems", "sulphur"}) {
+                ip.drawPixmap(mx, 196, art::mineSprite(r, QColor("#d62728"), 128));
                 mx += 140;
             }
-            ip.drawPixmap(mx, 196, art::mineSprite("gems", art::resourceColor("gems"), QColor("#d62728"), 64));
+            ip.drawPixmap(mx, 196, art::mineSprite("gems", QColor("#d62728"), 64));
             for (int i = 0; i < buttons.size(); ++i) {
                 const QPixmap pm = art::buttonIcon(buttons[i]).pixmap(64, 64);
                 QVERIFY(!pm.isNull());
@@ -249,12 +251,12 @@ private slots:
             }
             int si = 0;
             for (const core::SpellDef& sp : reg.spells()) {
-                ip.drawPixmap(10 + (si % 17) * 70, 590 + (si / 17) * 70, art::spellIcon(sp.id, sp.school, 64));
+                ip.drawPixmap(10 + (si % 17) * 70, 590 + (si / 17) * 70, art::spellIcon(sp.key, 64));
                 ++si;
             }
             int ai = 0;
             for (const core::ArtifactDef& a : reg.artifacts()) {
-                const QPixmap& pm = art::artifactIcon(a.id, a.slot, 72);
+                const QPixmap& pm = art::artifactIcon(a.key, 72);
                 QVERIFY(!pm.isNull());
                 ip.drawPixmap(10 + (ai % 15) * 80, 420 + (ai / 15) * 80, pm);
                 ++ai;
@@ -265,22 +267,22 @@ private slots:
         // The hero's gear: worn things around the figure, the backpack below (0_equipment.png).
         {
             EquipmentView gear(&reg);
-            gear.setArtifacts({"crown_of_kings", "dragon_blade", "tower_shield", "winged_boots", "ring_of_vigor", "spyglass", "war_banner"},
-                              {"iron_sword", "lucky_clover", "chain_mail"}, true);
+            gear.setArtifacts({reg.artifactId("crown_of_kings"), reg.artifactId("dragon_blade"), reg.artifactId("tower_shield"), reg.artifactId("winged_boots"), reg.artifactId("ring_of_vigor"), reg.artifactId("spyglass"), reg.artifactId("war_banner")},
+                              {reg.artifactId("iron_sword"), reg.artifactId("lucky_clover"), reg.artifactId("chain_mail")}, true);
             gear.resize(gear.sizeHint());
             QVERIFY(gear.sizeHint().height() > 400);
             if (!dir.isEmpty()) gear.grab().save(QDir(dir).filePath("0_equipment.png"));
             QSignalSpy wear(&gear, &EquipmentView::equipRequested);
             QTest::mouseClick(&gear, Qt::LeftButton, {}, QPoint(6 + 28, 430 + 28));  // the first backpack box
             QCOMPARE(wear.count(), 1);
-            QCOMPARE(wear.first().first().toString(), QString("iron_sword"));
+            QCOMPARE(wear.first().first().value<core::ArtifactId>(), reg.artifactId("iron_sword"));
             gear.show();
-            Toast* t = Toast::show(&gear, art::artifactIcon("winged_boots", "feet", 128), "<b>Found the Winged Boots!</b>");
+            Toast* t = Toast::show(&gear, art::artifactIcon("winged_boots", 128), "<b>Found the Winged Boots!</b>");
             QVERIFY(t && t->isVisible());
         }
         // Every hero class on the map (0_heroes.png).
         {
-            const QList<core::HeroClassDef> classes = reg.heroClasses().values();
+            const QList<core::HeroClassDef> classes = reg.heroClasses();
             QImage heroes(int(classes.size()) * 100, 100, QImage::Format_ARGB32);
             heroes.fill(QColor("#5d8a3a"));
             QPainter hp(&heroes);
@@ -292,15 +294,15 @@ private slots:
         {
             GameView v;
             v.you = v.currentPlayer = 1;
-            v.players = {ViewPlayer{1, "Ann", 1, "#d62728", "humans", false, true}};
+            v.players = {ViewPlayer{1, "Ann", 1, "#d62728", core::RC("humans"), false, true}};
             ViewHero a;
-            a.id = 10; a.name = "Arthur"; a.classId = "knight"; a.owner = 1; a.level = 4; a.pos = {5, 5}; a.army = 20; a.own = true;
-            a.artifacts = {"iron_sword"}; a.backpack = {"ring_of_vigor"};
+            a.id = 10; a.name = "Arthur"; a.classId = reg.heroClassId("knight"); a.owner = 1; a.level = 4; a.pos = {5, 5}; a.army = 20; a.own = true;
+            a.artifacts = {reg.artifactId("iron_sword")}; a.backpack = {reg.artifactId("ring_of_vigor")};
             ViewHero b = a;
-            b.id = 11; b.name = "Elaine"; b.classId = "wizard"; b.pos = {6, 5}; b.army = 21; b.artifacts.clear(); b.backpack.clear();
+            b.id = 11; b.name = "Elaine"; b.classId = reg.heroClassId("wizard"); b.pos = {6, 5}; b.army = 21; b.artifacts.clear(); b.backpack.clear();
             v.heroes = {a, b};
-            v.armies = {ViewArmy{20, 1, 10, {5, 5}, {ViewStack{"pikeman", 12, 120, 10, 1}, ViewStack{"archer", 8, 80, 10, 0}}},
-                        ViewArmy{21, 1, 11, {6, 5}, {ViewStack{"militia", 20, 120, 6, 0}}}};
+            v.armies = {ViewArmy{20, 1, 10, {5, 5}, {ViewStack{reg.unitId("pikeman"), 12, 120, 10, 1}, ViewStack{reg.unitId("archer"), 8, 80, 10, 0}}},
+                        ViewArmy{21, 1, 11, {6, 5}, {ViewStack{reg.unitId("militia"), 20, 120, 6, 0}}}};
             MeetDialog meet(&reg, nullptr);
             QSignalSpy sent(&meet, &MeetDialog::commandRequested);
             meet.showMeeting(v, 10, 11);
@@ -324,7 +326,7 @@ private slots:
             v.you = 1;
             v.winnerTeam = 2;
             v.gameOver = true;
-            v.players = {ViewPlayer{1, "Ann", 1, "#d62728", "humans", false, true}, ViewPlayer{2, "AI 2", 2, "#1f77b4", "orcs", true, false}};
+            v.players = {ViewPlayer{1, "Ann", 1, "#d62728", core::RC("humans"), false, true}, ViewPlayer{2, "AI 2", 2, "#1f77b4", core::RC("orcs"), true, false}};
             for (int w = 1; w <= 9; ++w)
                 v.history.append(QJsonObject{{"week", w}, {"players", QJsonObject{
                     {"1", QJsonObject{{"armyValue", 3000 * w - (w > 6 ? 9000 : 0)}, {"towns", w < 7 ? 1 + w / 3 : 0}, {"mines", w}, {"gold", 5000 + 700 * w}}},
@@ -364,7 +366,7 @@ private slots:
         }
         // Hero portraits of every class.
         {
-            const QList<core::HeroClassDef> classes = reg.heroClasses().values();
+            const QList<core::HeroClassDef> classes = reg.heroClasses();
             QImage faces(int(classes.size()) * 110, 110, QImage::Format_ARGB32);
             faces.fill(QColor("#2b2118"));
             QPainter fp(&faces);
@@ -380,12 +382,12 @@ private slots:
             vb.width = 15;
             vb.height = 11;
             vb.round = 1;
-            vb.terrain = ground;
+            vb.terrain = reg.terrainId(ground).index();
             vb.obstacles = {{5, 2}, {7, 5}, {9, 8}, {6, 9}, {10, 3}};
             ViewBattleUnit a;
-            a.id = 1; a.side = 0; a.unit = "archer_elite"; a.count = 12; a.hex = {0, 5}; a.range = 7; a.shots = 10;
+            a.id = 1; a.side = 0; a.unit = reg.unitId("archer_elite"); a.count = 12; a.hex = {0, 5}; a.range = 7; a.shots = 10;
             ViewBattleUnit b;
-            b.id = 2; b.side = 1; b.unit = "treant"; b.count = 4; b.hex = {14, 5};
+            b.id = 2; b.side = 1; b.unit = reg.unitId("treant"); b.count = 4; b.hex = {14, 5};
             vb.units = {a, b};
             vb.active = 1;
             BattleView view(&reg);
@@ -419,11 +421,11 @@ private slots:
             vb.gate = {11, 5};
             vb.towers = {{12, 1}, {12, 9}, {12, 3}};
             ViewBattleUnit a;
-            a.id = 1; a.side = 0; a.unit = "pikeman"; a.count = 30; a.hex = {9, 4};
+            a.id = 1; a.side = 0; a.unit = reg.unitId("pikeman"); a.count = 30; a.hex = {9, 4};
             ViewBattleUnit c;
-            c.id = 2; c.side = 0; c.unit = "catapult"; c.count = 1; c.hex = {0, 5};
+            c.id = 2; c.side = 0; c.unit = reg.unitId("catapult"); c.count = 1; c.hex = {0, 5};
             ViewBattleUnit d;
-            d.id = 3; d.side = 1; d.unit = "archer_elite"; d.count = 15; d.hex = {13, 5}; d.range = 7; d.shots = 10;
+            d.id = 3; d.side = 1; d.unit = reg.unitId("archer_elite"); d.count = 15; d.hex = {13, 5}; d.range = 7; d.shots = 10;
             vb.units = {a, c, d};
             vb.active = 2;
             BattleView view(&reg);
@@ -469,6 +471,7 @@ private slots:
         w.connectToServer("127.0.0.1", server.port(), "Ann");
         QTRY_COMPARE_WITH_TIMEOUT(w.currentPage(), QString("lobby"), 5000);
         net::LobbyClient bob;
+        bob.setContentChecksum(reg.checksum());
         bob.connectToServer("127.0.0.1", server.port(), "Bob");
         QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().members.size(), 2, 5000);
         QTRY_VERIFY_WITH_TIMEOUT(bob.isConnected() && bob.lobby().members.size() == 2, 5000);  // Bob is fully in
@@ -502,8 +505,8 @@ private slots:
             for (int dx = -1; dx <= 1; ++dx) {
                 const core::Pos t{hero.pos.x + dx, hero.pos.y + dy};
                 if (t == hero.pos || !game->view().known(t)) continue;
-                const QString terrain = game->view().terrainPalette[game->view().tiles[t.y * game->view().width + t.x]];
-                if (reg.terrainType(terrain)->walkable && !game->view().townCovering(t)) { target = t; break; }
+                const core::TerrainId terrain(game->view().tiles[t.y * game->view().width + t.x]);
+                if (reg.terrain(terrain).walkable && !game->view().townCovering(t)) { target = t; break; }
             }
         }
         QVERIFY(target != hero.pos);
@@ -535,7 +538,7 @@ private slots:
         auto* build = game->townDialog()->findChild<QPushButton*>("build_barracks");
         QVERIFY(build && build->isEnabled());
         QTest::mouseClick(build, Qt::LeftButton);
-        QTRY_VERIFY_WITH_TIMEOUT(game->view().town(town.id)->buildings.contains("barracks"), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(game->view().town(town.id)->buildings.contains(kot::core::B("barracks")), 5000);
         // The only town has built today: "Build, then buy" is off until tomorrow.
         QTRY_VERIFY_WITH_TIMEOUT(!game->findChild<QPushButton*>("buildAndBuyButton")->isEnabled(), 3000);
         QTRY_VERIFY_WITH_TIMEOUT(game->townDialog()->findChild<QPushButton*>("recruit_militia") != nullptr, 5000);
@@ -595,7 +598,7 @@ private slots:
         for (int dy = -1; dy <= 1 && spot.x < 0; ++dy)
             for (int dx = -1; dx <= 1 && spot.x < 0; ++dx) {
                 const core::Pos p{at.x + dx, at.y + dy};
-                bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable;
+                bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrain(gs.map().terrainAt(p)).walkable;
                 for (const core::Army& a : gs.armies()) free = free && a.pos != p;
                 free = free && !gs.townCovering(p);
                 for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
@@ -603,7 +606,7 @@ private slots:
                 if (free) spot = p;
             }
         QVERIFY(spot.x >= 0);
-        gs.army(gs.addArmy(core::PlayerId(), spot))->addUnits("militia", 4, 6);
+        gs.army(gs.addArmy(core::PlayerId(), spot))->addUnits(reg.unitId("militia"), 4, 6);
         game->mapView()->centerOn(spot);
         QTest::mouseDClick(game->mapView()->viewport(), Qt::LeftButton, {}, game->mapView()->tileRect(spot).center());
         // 4 militia would rather join; Ann fights them anyway.

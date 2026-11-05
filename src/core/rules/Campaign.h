@@ -39,7 +39,7 @@ bool loadProgress(const QString& path, CampaignProgress* out);  // false: none y
 bool saveProgress(const QString& path, const CampaignProgress& progress, QString* error);
 
 // A hero (and his army) as plain JSON, for carrying over.
-QJsonObject heroSnapshot(const GameState& state, HeroId hero);
+QJsonObject heroSnapshot(const GameState& state, const ContentRegistry& content, HeroId hero);
 // The strongest heroes of `player` (by level, then experience), at most `count`.
 QList<HeroId> bestHeroes(const GameState& state, PlayerId player, int count);
 // Gives `player`'s heroes (in id order) the carried heroes' name, class, level,

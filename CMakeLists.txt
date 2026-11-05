@@ -12,6 +12,28 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Core Network Widgets Test)
 
 option(KOT_BUILD_TESTS "Build unit tests" ON)
 
+# ---- Faster builds while developing
+# ccache (when installed) remembers compiled files across clean builds and branches.
+# KOT_PCH: the Qt and standard headers are compiled once per library (kot_pch below);
+# turn it off (-DKOT_PCH=OFF) to check that every file includes what it needs.
+option(KOT_PCH "Precompiled Qt headers" ON)
+find_program(KOT_CCACHE ccache)
+if(KOT_CCACHE AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
+    # These sloppiness settings let ccache cache files built with a precompiled header.
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CMAKE_COMMAND} -E env
+        "CCACHE_SLOPPINESS=pch_defines,time_macros,include_file_mtime,include_file_ctime" ${KOT_CCACHE})
+    message(STATUS "Using ccache: ${KOT_CCACHE}")
+endif()
+set(KOT_PCH_CORE <algorithm> <functional> <memory> <optional> <QHash> <QJsonArray> <QJsonDocument>
+    <QJsonObject> <QList> <QMap> <QSet> <QString> <QStringList> <QVariant>)
+set(KOT_PCH_WIDGETS <QComboBox> <QDialog> <QHBoxLayout> <QLabel> <QPainter> <QPainterPath> <QPixmap>
+    <QPushButton> <QTableWidget> <QTimer> <QVBoxLayout> <QWidget>)
+function(kot_pch target)
+    if(KOT_PCH)
+        target_precompile_headers(${target} PRIVATE ${KOT_PCH_CORE} ${ARGN})
+    endif()
+endfunction()
+
 # Shared warning flags, linked by every target.
 add_library(kot_warnings INTERFACE)
 target_compile_options(kot_warnings INTERFACE

@@ -25,7 +25,7 @@ void ResourceBar::setView(const GameView& view) {
     for (const core::ResourceDef& r : m_content->resources()) {
         const int amount = view.resources.value(r.id), income = view.income.value(r.id);
         if (amount == 0 && income == 0 && !r.isCurrency) continue;
-        m_items.append({r.id, r.name, amount, income, {}});
+        m_items.append({r.key, r.name, amount, income, {}});
     }
     update();
 }
@@ -148,7 +148,7 @@ QString HeroPanel::slotTip(int i) const {
     if (!a || i >= a->stacks.size()) return tr("Empty slot (an army has %1)").arg(core::kMaxArmyStacks);
     const ViewStack& s = a->stacks[i];
     const core::UnitDef* u = m_content->unit(s.unit);
-    if (!u) return s.unit;
+    if (!u) return QString();
     QString tip = tr("<b>%1 x %2</b>").arg(s.count).arg(u->name);
     if (s.stars > 0) tip += QStringLiteral(" ") + QString(s.stars, QChar(0x2605));
     tip += tr("<br>Attack %1, Defense %2, Damage %3-%4, %5 HP<br>Speed %6, Initiative %7")
@@ -186,11 +186,11 @@ void HeroPanel::paintEvent(QPaintEvent*) {
     p.setFont(f);
     p.setPen(QColor("#eadfc8"));
     p.drawText(QRect(60, 20, width() - 60, 16), Qt::AlignLeft | Qt::AlignVCenter,
-               tr("Level %1 %2").arg(h->level).arg(cls ? cls->name : h->classId));
+               tr("Level %1 %2").arg(h->level).arg(cls ? cls->name : QString()));
     p.drawText(QRect(60, 36, width() - 60, 16), Qt::AlignLeft | Qt::AlignVCenter,
                tr("Att %1 · Def %2 · Power %3 · Magic %4")
-                   .arg(h->traits.value("attack")).arg(h->traits.value("defense"))
-                   .arg(h->traits.value("spell_power")).arg(h->traits.value("magic")));
+                   .arg(h->traits.value(m_content->known().attack)).arg(h->traits.value(m_content->known().defense))
+                   .arg(h->traits.value(m_content->known().spellPower)).arg(h->traits.value(m_content->known().magic)));
     // Bars.
     f.setPixelSize(11);
     f.setBold(true);
@@ -198,7 +198,7 @@ void HeroPanel::paintEvent(QPaintEvent*) {
     const int maxMove = std::max(h->movementMax, h->movementPoints);
     bar(p, QRect(0, 58, width(), 17), maxMove > 0 ? double(h->movementPoints) / maxMove : 0, QColor("#c98a12"),
         tr("Movement %1 / %2").arg(h->movementPoints / 100.0, 0, 'f', 1).arg(maxMove / 100.0, 0, 'f', 1));
-    const int maxSp = h->traits.value("spell_points_max");
+    const int maxSp = h->traits.value(m_content->known().spellPointsMax);
     bar(p, QRect(0, 78, width(), 17), maxSp > 0 ? double(h->spellPoints) / maxSp : 0, QColor("#3a6fd0"),
         tr("Spell points %1 / %2").arg(h->spellPoints).arg(maxSp));
     const QList<int>& xp = m_content->xpThresholds();
@@ -221,7 +221,7 @@ void HeroPanel::paintEvent(QPaintEvent*) {
         const ViewStack& s = a->stacks[i];
         const core::UnitDef* u = m_content->unit(s.unit);
         art::drawUnitToken(p, QRectF(r).center(), r.width() * 0.46, owner ? QColor(owner->color) : QColor("#999999"),
-                           u ? u->name : s.unit, s.count, s.stars, false, false, s.unit, u ? u->rank : 0);
+                           u ? u->name : QString(), s.count, s.stars, false, false, art::unitKey(s.unit), u ? u->rank : 0);
     }
 }
 

@@ -8,9 +8,8 @@ namespace kot::core {
 
 namespace {
 
-qint64 valueOf(const ContentRegistry& content, const QString& id) {
-    const ResourceDef* r = content.resource(id);
-    return r ? r->value : 0;
+qint64 valueOf(const ContentRegistry& content, ResourceId id) {
+    return id.isValid() && id.index() < content.resources().size() ? content.resource(id).value : 0;
 }
 
 qint64 efficiency(const ContentRegistry& content, int given) {
@@ -23,7 +22,7 @@ int tradeEfficiency(const GameState& state, const ContentRegistry& content, Play
     int percent = content.balance().economy.tradeEfficiencyPercent;
     for (const Town& t : state.towns()) {
         if (t.owner != player) continue;
-        for (const QString& b : t.buildings)
+        for (const BuildingTypeId b : t.buildings)
             if (const BuildingDef* def = content.building(b))
                 for (const BuildingEffect& e : def->effects)
                     if (e.type == BuildingEffect::Type::Market) percent += e.amount;
@@ -32,15 +31,13 @@ int tradeEfficiency(const GameState& state, const ContentRegistry& content, Play
     return std::min(percent, 95);
 }
 
-int tradeYield(const ContentRegistry& content, const QString& give, int giveAmount,
-               const QString& get, int efficiencyPercent) {
+int tradeYield(const ContentRegistry& content, ResourceId give, int giveAmount, ResourceId get, int efficiencyPercent) {
     const qint64 vg = valueOf(content, give), vt = valueOf(content, get);
     if (vg <= 0 || vt <= 0 || giveAmount <= 0) return 0;
     return static_cast<int>(giveAmount * vg * efficiency(content, efficiencyPercent) / (100 * vt));
 }
 
-int tradeCostToGet(const ContentRegistry& content, const QString& give, const QString& get,
-                   int getAmount, int efficiencyPercent) {
+int tradeCostToGet(const ContentRegistry& content, ResourceId give, ResourceId get, int getAmount, int efficiencyPercent) {
     const qint64 vg = valueOf(content, give), vt = valueOf(content, get);
     if (vg <= 0 || vt <= 0 || getAmount <= 0) return 0;
     const qint64 num = getAmount * vt * 100;
@@ -48,18 +45,17 @@ int tradeCostToGet(const ContentRegistry& content, const QString& give, const QS
     return static_cast<int>((num + den - 1) / den);
 }
 
-ActionResult trade(GameState& state, const ContentRegistry& content, PlayerId playerId,
-                   const QString& give, int giveAmount, const QString& get) {
+ActionResult trade(GameState& state, const ContentRegistry& content, PlayerId playerId, ResourceId give, int giveAmount, ResourceId get) {
     ActionResult r;
     Player* p = state.player(playerId);
     if (!p) { r.error = QStringLiteral("unknown player"); return r; }
-    if (!content.resource(give) || !content.resource(get)) {
+    if (valueOf(content, give) <= 0 || valueOf(content, get) <= 0) {
         r.error = QStringLiteral("unknown resource");
         return r;
     }
     if (give == get) { r.error = QStringLiteral("cannot trade a resource for itself"); return r; }
     if (giveAmount < 1 || p->resources.value(give) < giveAmount) {
-        r.error = QStringLiteral("not enough %1").arg(give);
+        r.error = QStringLiteral("not enough %1").arg(content.resource(give).key);
         return r;
     }
     const int got = tradeYield(content, give, giveAmount, get, tradeEfficiency(state, content, playerId));
@@ -75,46 +71,45 @@ std::optional<QList<TradeStep>> planTradeFor(const ContentRegistry& content,
                                              const ResourceAmounts& cost, int eff) {
     QList<TradeStep> steps;
     ResourceAmounts missing;
-    for (auto it = cost.begin(); it != cost.end(); ++it) {
-        const int lack = it.value() - have.value(it.key());
-        if (lack > 0) missing[it.key()] = lack;
+    for (const auto [r, amount] : cost) {
+        const int lack = amount - have.value(r);
+        if (lack > 0) missing[r] = lack;
     }
     if (missing.isEmpty()) return steps;
 
     // Spare stock: what we have beyond the cost, for resources we are not short of.
     ResourceAmounts spare;
     for (const ResourceDef& r : content.resources()) {
-        if (missing.contains(r.id)) continue;
+        if (missing.value(r.id) > 0) continue;
         const int extra = have.value(r.id) - cost.value(r.id);
         if (extra > 0) spare[r.id] = extra;
     }
-    const QString currency = content.currency() ? content.currency()->id : QString();
+    const ResourceId currency = content.currency();
 
-    for (auto m = missing.begin(); m != missing.end(); ++m) {
-        int remaining = m.value();
+    for (const auto [wanted, lacking] : missing) {
+        int remaining = lacking;
         while (remaining > 0) {
             // Source order: non-currency by spare gold value (high first), currency last.
-            QString source;
+            ResourceId source;
             qint64 bestScore = -1;
             bool bestIsCurrency = true;
-            for (auto sp = spare.begin(); sp != spare.end(); ++sp) {
-                if (sp.value() <= 0 || tradeYield(content, sp.key(), sp.value(), m.key(), eff) < 1)
-                    continue;
-                const bool isCurrency = (sp.key() == currency);
-                const qint64 score = static_cast<qint64>(sp.value()) * valueOf(content, sp.key());
-                const bool better = source.isEmpty() || (bestIsCurrency && !isCurrency) ||
+            for (const auto [r, extra] : spare) {
+                if (extra <= 0 || tradeYield(content, r, extra, wanted, eff) < 1) continue;
+                const bool isCurrency = (r == currency);
+                const qint64 score = static_cast<qint64>(extra) * valueOf(content, r);
+                const bool better = !source.isValid() || (bestIsCurrency && !isCurrency) ||
                                     (isCurrency == bestIsCurrency && score > bestScore);
                 if (better) {
-                    source = sp.key();
+                    source = r;
                     bestScore = score;
                     bestIsCurrency = isCurrency;
                 }
             }
-            if (source.isEmpty()) return std::nullopt;
-            const int canGet = tradeYield(content, source, spare[source], m.key(), eff);
+            if (!source.isValid()) return std::nullopt;
+            const int canGet = tradeYield(content, source, spare.value(source), wanted, eff);
             const int get = std::min(remaining, canGet);
-            const int give = tradeCostToGet(content, source, m.key(), get, eff);
-            steps.append({source, give, m.key(), get});
+            const int give = tradeCostToGet(content, source, wanted, get, eff);
+            steps.append({source, give, wanted, get});
             spare[source] -= give;
             remaining -= get;
         }

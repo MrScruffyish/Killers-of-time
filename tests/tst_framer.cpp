@@ -1,3 +1,4 @@
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QtEndian>
 #include <QtTest>
@@ -108,6 +109,49 @@ private slots:
         Message m;
         QString error;
         QCOMPARE(f.next(&m, &error), MessageFramer::Status::Error);
+    }
+
+    void bigMessagesAreCompressed() {
+        // A view-sized message: compressed on the wire, the same after reading.
+        QJsonArray tiles;
+        for (int i = 0; i < 20000; ++i) tiles.append(i % 7);
+        const Message big = make("game_state", {{"tiles", tiles}}, 5);
+        const QByteArray frame = MessageFramer::encode(big);
+        const quint32 header = qFromBigEndian<quint32>(frame.constData());
+        QVERIFY(header & kCompressedFlag);
+        const QByteArray json = QJsonDocument(big.toJson()).toJson(QJsonDocument::Compact);
+        QVERIFY(frame.size() < json.size() / 4);
+        MessageFramer f;
+        f.append(frame);
+        Message m;
+        QCOMPARE(f.next(&m, nullptr), MessageFramer::Status::Message);
+        QCOMPARE(m.body.value("tiles").toArray().size(), 20000);
+        QCOMPARE(m.seq, 5);
+        // Small ones stay plain JSON.
+        QVERIFY(!(qFromBigEndian<quint32>(MessageFramer::encode(make("ping")).constData()) & kCompressedFlag));
+    }
+
+    void badCompressedFramesAreErrors() {
+        // Claims to unpack to more than the limit: refused before unpacking.
+        QByteArray packed(4, '\0');
+        qToBigEndian<quint32>(kMaxFrameBytes + 1, packed.data());
+        packed += QByteArray(16, 'x');
+        QByteArray frame(4, '\0');
+        qToBigEndian<quint32>(static_cast<quint32>(packed.size()) | kCompressedFlag, frame.data());
+        MessageFramer f;
+        f.append(frame + packed);
+        Message m;
+        QString error;
+        QCOMPARE(f.next(&m, &error), MessageFramer::Status::Error);
+        QVERIFY(error.contains("unpacked size"));
+        // Garbage instead of a zlib stream.
+        QByteArray junk(4, '\0');
+        qToBigEndian<quint32>(100, junk.data());
+        junk += QByteArray(20, 'y');
+        qToBigEndian<quint32>(static_cast<quint32>(junk.size()) | kCompressedFlag, frame.data());
+        MessageFramer g;
+        g.append(frame + junk);
+        QCOMPARE(g.next(&m, &error), MessageFramer::Status::Error);
     }
 
     void invalidJsonIsAnError() {

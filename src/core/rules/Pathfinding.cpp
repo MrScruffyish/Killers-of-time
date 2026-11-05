@@ -27,25 +27,20 @@ int stepCost(int terrainMoveCost, bool diagonal) {
     return diagonal ? (terrainMoveCost * 141 + 50) / 100 : terrainMoveCost;
 }
 
-MoveCostGrid::MoveCostGrid(const GameMap& map, const ContentRegistry& content, MoveMode mode,
-                           const QMap<QString, int>& terrainPercent)
+MoveCostGrid::MoveCostGrid(const GameMap& map, const ContentRegistry& content, MoveMode mode, const QVector<int>& terrainPercent)
     : m_width(map.width()), m_height(map.height()) {
-    QHash<QString, int> byTerrain;
-    m_costs.reserve(map.tiles().size());
+    // Built for every path search: one cost per terrain, then per tile only a lookup.
+    QVector<int> byTerrain;
+    for (const TerrainDef& t : content.terrain()) {
+        const bool enterable = (mode == MoveMode::Foot) ? t.walkable : t.sailable;
+        byTerrain.append(enterable ? std::max(1, t.moveCost * terrainPercent.value(t.id.index(), 100) / 100) : -1);
+    }
+    m_costs.reserve(map.cells().size());
     int minCost = INT_MAX;
-    for (const QString& id : map.tiles()) {
-        auto it = byTerrain.find(id);
-        if (it == byTerrain.end()) {
-            const TerrainDef* t = content.terrainType(id);
-            int c = -1;
-            if (t) {
-                const bool enterable = (mode == MoveMode::Foot) ? t->walkable : t->sailable;
-                if (enterable) c = std::max(1, t->moveCost * terrainPercent.value(id, 100) / 100);
-            }
-            it = byTerrain.insert(id, c);
-        }
-        m_costs.append(it.value());
-        if (it.value() >= 0) minCost = std::min(minCost, it.value());
+    for (const TerrainId cell : map.cells()) {
+        const int c = cell.isValid() ? byTerrain[cell.index()] : -1;
+        m_costs.append(c);
+        if (c >= 0) minCost = std::min(minCost, c);
     }
     m_minCost = (minCost == INT_MAX) ? 1 : std::max(1, minCost);
 }

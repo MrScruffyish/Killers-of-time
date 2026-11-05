@@ -42,7 +42,7 @@ private:
     int m_movement = 0;
     core::MoveMode m_mode = core::MoveMode::Foot;
     core::GameMap m_map;
-    QMap<QString, int> m_terrainPercent;
+    QVector<int> m_terrainPercent;
     QSet<core::Pos> m_blocked;
     QSet<core::Pos> m_unexplored;
     QSet<core::Pos> m_today;

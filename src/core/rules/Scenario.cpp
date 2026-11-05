@@ -14,7 +14,7 @@ namespace kot::core {
 
 namespace {
 
-bool infoFrom(const QJsonObject& root, const GameState& gs, ScenarioInfo* info) {
+bool infoFrom(const QJsonObject& root, const GameState& gs, const ContentRegistry& content, ScenarioInfo* info) {
     info->id = root.value("id").toString();
     info->name = root.value("name").toString(info->id);
     info->description = root.value("description").toString();
@@ -22,7 +22,7 @@ bool infoFrom(const QJsonObject& root, const GameState& gs, ScenarioInfo* info) 
     info->height = gs.map().height();
     info->races.clear();
     for (const PlayerId p : gs.turnOrder())
-        if (const Player* pl = gs.player(p)) info->races << pl->race;
+        if (const Player* pl = gs.player(p)) info->races << content.race(pl->race).key;
     return !info->id.isEmpty();
 }
 
@@ -53,7 +53,7 @@ bool loadScenario(const QString& path, const ContentRegistry& content, Scenario*
         return false;
     }
     Scenario s;
-    if (!infoFrom(root, gs, &s.info)) {
+    if (!infoFrom(root, gs, content, &s.info)) {
         if (errors) *errors << QStringLiteral("%1: the scenario needs an id").arg(path);
         return false;
     }
@@ -67,13 +67,13 @@ bool loadScenario(const QString& path, const ContentRegistry& content, Scenario*
 }
 
 bool saveScenario(const QString& path, const QString& id, const QString& name, const QString& description,
-                  const GameState& state, QString* error) {
+                  const GameState& state, const ContentRegistry& content, QString* error) {
     QJsonObject root;
     root.insert("format", "kot-scenario");
     root.insert("id", id);
     root.insert("name", name);
     root.insert("description", description);
-    root.insert("game", state.toJson());
+    root.insert("game", state.toJson(content, GameState::IdStyle::Text));
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly)) {
@@ -126,8 +126,7 @@ bool startScenario(const Scenario& scenario, const ContentRegistry& content, con
         p->controller = ps.isAi ? Player::Controller::Ai : Player::Controller::Human;
         p->aiProfile = ps.aiProfile;
         if (!ps.isAi) {
-            for (auto it = p->resources.begin(); it != p->resources.end(); ++it)
-                it.value() = it.value() * level.humanStartPercent / 100;
+            for (const auto [r, amount] : ResourceAmounts(p->resources)) p->resources[r] = amount * level.humanStartPercent / 100;
         } else {
             const DifficultyLevel slot = content.balance().aiSlot.value(ps.aiDifficulty);
             p->incomePercent = level.aiIncomePercent + slot.aiIncomePercent;

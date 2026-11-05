@@ -33,8 +33,8 @@ int tierOfDwelling(const BuildingDef& b, const ContentRegistry& content) {
 }
 
 // Rival buildings that building `id` would shut out for good.
-QStringList liveRivals(const Town& town, const QString& id, const ContentRegistry& content) {
-    QStringList rivals;
+QList<BuildingTypeId> liveRivals(const Town& town, BuildingTypeId id, const ContentRegistry& content) {
+    QList<BuildingTypeId> rivals;
     const BuildingDef* b = content.building(id);
     if (!b) return rivals;
     for (const BuildingDef& other : content.buildings()) {
@@ -46,7 +46,7 @@ QStringList liveRivals(const Town& town, const QString& id, const ContentRegistr
 
 int totalCost(const BuildingDef& b) {
     int sum = 0;
-    for (int v : b.cost) sum += v;
+    for (const auto [r, v] : b.cost) sum += v;
     return sum;
 }
 
@@ -68,9 +68,7 @@ BuyReport buyAllUnits(GameState& state, const ContentRegistry& content, PlayerId
                              if (strategy == BuyStrategy::BestFirst) return ua->tier > ub->tier;
                              const auto price = [&](const UnitDef* u) {
                                  qint64 sum = 0;
-                                 for (auto it = u->cost.begin(); it != u->cost.end(); ++it)
-                                     sum += static_cast<qint64>(it.value()) *
-                                            (content.resource(it.key()) ? content.resource(it.key())->value : 1);
+                                 for (const auto [r, amount] : u->cost) sum += static_cast<qint64>(amount) * content.resource(r).value;
                                  return sum;
                              };
                              return price(ua) < price(ub);
@@ -80,14 +78,13 @@ BuyReport buyAllUnits(GameState& state, const ContentRegistry& content, PlayerId
             const UnitDef* unit = content.unit(option.unitId);
             if (!unit || option.available <= 0) continue;
             int affordable = option.available;
-            for (auto it = unit->cost.begin(); it != unit->cost.end(); ++it)
-                affordable = std::min(affordable, player->resources.value(it.key()) / it.value());
+            for (const auto [r, amount] : unit->cost) affordable = std::min(affordable, player->resources.value(r) / amount);
             if (useTrade && affordable < option.available) {
                 // The most units a trade can still make affordable (binary search).
                 const int eff = tradeEfficiency(state, content, playerId);
                 const auto costOf = [&](int n) {
                     ResourceAmounts c;
-                    for (auto it = unit->cost.begin(); it != unit->cost.end(); ++it) c[it.key()] = it.value() * n;
+                    for (const auto [r, amount] : unit->cost) c[r] = amount * n;
                     return c;
                 };
                 int lo = affordable, hi = option.available;
@@ -104,8 +101,7 @@ BuyReport buyAllUnits(GameState& state, const ContentRegistry& content, PlayerId
             if (affordable <= 0) continue;
             if (recruit(state, content, townId, playerId, option.unitId, affordable).ok) {
                 report.unitsBought += affordable;
-                for (auto it = unit->cost.begin(); it != unit->cost.end(); ++it)
-                    report.spent[it.key()] += it.value() * affordable;
+                for (const auto [r, amount] : unit->cost) report.spent[r] += amount * affordable;
                 boughtHere = true;
             }
         }

@@ -57,6 +57,7 @@ struct LobbySettings {
     int autosaves = 5;  // autosaves kept (one at the start of each day), 0 = none
     bool fogOfWar = true;   // off: what you explored stays in full sight (armies too)
     bool hiddenMap = true;  // off: the whole map (land, towns, mines) is known from the start
+    QString defeat = QStringLiteral("week");  // when a player is out: week, town or all (GameState::defeatRule)
 };
 
 // Everything a client needs to show the game setup screen.

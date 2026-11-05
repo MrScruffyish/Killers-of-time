@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/Automation.h"
 #include "core/rules/Dwellings.h"
@@ -18,39 +20,40 @@ class TstAutomation : public QObject {
     int garrisonUnits(TownId t, const QString& unit) {
         int n = 0;
         for (const UnitStack& s : gs.army(gs.town(t)->garrison)->stacks)
-            if (s.unitTypeId() == unit) n += s.count();
+            if (s.unitTypeId() == U(qPrintable(unit))) n += s.count();
         return n;
     }
     static bool builtIn(const AutoBuildReport& r, TownId t, const QString& b) {
-        for (const auto& x : r.built) if (x.town == t && x.building == b) return true;
+        for (const auto& x : r.built) if (x.town == t && x.building == B(qPrintable(b))) return true;
         return false;
     }
 
 private slots:
     void buyAllCanTradeForMore() {
-        QVERIFY(buildBuilding(gs, reg, t1, "barracks", p1).ok);
-        me().resources = {{"gold", 100}, {"wood", 10}};  // 5 militia for gold; the wood buys more
+        QVERIFY(buildBuilding(gs, reg, t1, B("barracks"), p1).ok);
+        me().resources = amounts({{"gold", 100}, {"wood", 10}});  // 5 militia for gold; the wood buys more
         GameState copy = gs;
         const BuyReport plain = buyAllUnits(gs, reg, p1, t1);
         const BuyReport traded = buyAllUnits(copy, reg, p1, t1, BuyStrategy::BestFirst, true);
         QCOMPARE(plain.unitsBought, 5);
         QVERIFY2(traded.unitsBought > plain.unitsBought, qPrintable(QString::number(traded.unitsBought)));
-        QVERIFY(copy.player(p1)->resources.value("wood") < 10);
+        QVERIFY(copy.player(p1)->resources.value(R("wood")) < 10);
     }
 
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void init() {
         gs = GameState(1);
-        gs.setMap(GameMap(20, 20, "grass"));
-        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
-        gs.player(p1)->race = "orcs";  // a race without a trade bonus (humans get +10%): plain trade numbers
-        me().resources = {{"gold", 20000}, {"wood", 100}, {"stone", 20}, {"gems", 10}};
-        t1 = gs.addTown("One", "humans", {3, 3}, p1);
-        t2 = gs.addTown("Two", "humans", {6, 6}, p1);
+        gs.setMap(GameMap(20, 20, T("grass")));
+        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        gs.player(p1)->race = RC("orcs");  // a race without a trade bonus (humans get +10%): plain trade numbers
+        me().resources = amounts({{"gold", 20000}, {"wood", 100}, {"stone", 20}, {"gems", 10}});
+        t1 = gs.addTown("One", RC("humans"), {3, 3}, p1);
+        t2 = gs.addTown("Two", RC("humans"), {6, 6}, p1);
     }
 
     // ---- auto-build
@@ -73,16 +76,16 @@ private slots:
         AutoBuildReport r = autoBuild(gs, reg, p1);
         QVERIFY(builtIn(r, t1, "archery_range"));  // highest tier unit first
         QCOMPARE(r.needsChoice.size(), 2);          // snail_pen would shut out eagle_roost
-        QCOMPARE(r.needsChoice[0].buildings, QStringList({"snail_pen"}));
+        QCOMPARE(r.needsChoice[0].buildings, QList<BuildingTypeId>({B("snail_pen")}));
 
         // Then the higher-tier dwellings and upgrades, the village hall and the tavern,
         // in some order, never one of the two rival dwellings.
         QStringList builtSoFar;
         for (int day = 3; day <= 12; ++day) {
             gs.setDay(day);
-            gs.player(p1)->resources = {{"gold", 50000}, {"wood", 200}, {"stone", 200}, {"gems", 50}, {"mercury", 50}};
+            gs.player(p1)->resources = amounts({{"gold", 50000}, {"wood", 200}, {"stone", 200}, {"gems", 50}, {"mercury", 50}});
             r = autoBuild(gs, reg, p1);
-            for (const AutoBuildReport::Built& b : r.built) builtSoFar << b.building;
+            for (const AutoBuildReport::Built& b : r.built) builtSoFar << reg.building(b.building)->key;
         }
         for (const char* id : {"pike_barracks", "archery_school", "sword_hall", "village_hall", "tavern"})
             QVERIFY2(builtSoFar.contains(id), qPrintable(QString(id) + " was not built: " + builtSoFar.join(", ")));
@@ -93,12 +96,12 @@ private slots:
             gs.setDay(day);
             r = autoBuild(gs, reg, p1);
             for (const AutoBuildReport::Built& b : r.built)
-                QVERIFY(b.building != "snail_pen" && b.building != "eagle_roost");
+                QVERIFY(b.building != B("snail_pen") && b.building != B("eagle_roost"));
         }
         QVERIFY(gs.town(t1)->buildings.size() > before);
         QCOMPARE(r.needsChoice.size(), 2);
-        QVERIFY(!gs.town(t1)->buildings.contains("snail_pen"));
-        QVERIFY(!gs.town(t1)->buildings.contains("eagle_roost"));
+        QVERIFY(!gs.town(t1)->buildings.contains(B("snail_pen")));
+        QVERIFY(!gs.town(t1)->buildings.contains(B("eagle_roost")));
     }
 
     void restrictedToOneTown() {
@@ -109,53 +112,53 @@ private slots:
     }
 
     void reportsWhenItCannotAfford() {
-        me().resources = {{"gold", 0}};
+        me().resources = amounts({{"gold", 0}});
         const AutoBuildReport r = autoBuild(gs, reg, p1);
         QVERIFY(r.built.isEmpty());
         QCOMPARE(r.cannotAfford.size(), 2);
     }
 
     void fallsBackToAnAffordableBuilding() {
-        me().resources = {{"gold", 5000}};  // no wood: barracks unaffordable, hall is fine
+        me().resources = amounts({{"gold", 5000}});  // no wood: barracks unaffordable, hall is fine
         const AutoBuildReport r = autoBuild(gs, reg, p1, t1);
         QVERIFY(builtIn(r, t1, "village_hall"));
     }
 
     void tradeLetsItBuyTheBetterBuilding() {
-        me().resources = {{"gold", 5000}};
+        me().resources = amounts({{"gold", 5000}});
         const AutoBuildReport r = autoBuild(gs, reg, p1, t1, true);
         QVERIFY(builtIn(r, t1, "barracks"));
-        QCOMPARE(me().resources.value("gold"), 5000 - 625 - 300);
+        QCOMPARE(me().resources.value(R("gold")), 5000 - 625 - 300);
     }
 
     void ignoresTownsOfOtherPlayers() {
-        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Ai, "humans", "#00f");
-        const TownId foreign = gs.addTown("Theirs", "humans", {9, 9}, p2);
+        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Ai, RC("humans"), "#00f");
+        const TownId foreign = gs.addTown("Theirs", RC("humans"), {9, 9}, p2);
         autoBuild(gs, reg, p1);
         QVERIFY(gs.town(foreign)->buildings.isEmpty());
     }
 
     // ---- buy all units
     void setUpDwellings(TownId t) {
-        gs.town(t)->buildings = QStringList({"barracks", "archery_range"});
-        gs.town(t)->recruitPool = {{"barracks", 12}, {"archery_range", 8}};
+        gs.town(t)->buildings = QList<BuildingTypeId>({B("barracks"), B("archery_range")});
+        gs.town(t)->recruitPool = {{B("barracks"), 12}, {B("archery_range"), 8}};
     }
 
     void bestFirstBuysTheStrongestUnitsFirst() {
         setUpDwellings(t1);
-        me().resources = {{"gold", 1000}, {"wood", 10}};
+        me().resources = amounts({{"gold", 1000}, {"wood", 10}});
         const BuyReport r = buyAllUnits(gs, reg, p1, t1, BuyStrategy::BestFirst);
         QCOMPARE(garrisonUnits(t1, "archer"), 8);
         QCOMPARE(garrisonUnits(t1, "militia"), 10);
         QCOMPARE(r.unitsBought, 18);
         QCOMPARE(r.townsServed, 1);
-        QCOMPARE(r.spent.value("gold"), 1000);
-        QCOMPARE(me().resources.value("gold"), 0);
+        QCOMPARE(r.spent.value(R("gold")), 1000);
+        QCOMPARE(me().resources.value(R("gold")), 0);
     }
 
     void mostUnitsBuysTheCheapestFirst() {
         setUpDwellings(t1);
-        me().resources = {{"gold", 1000}, {"wood", 10}};
+        me().resources = amounts({{"gold", 1000}, {"wood", 10}});
         const BuyReport r = buyAllUnits(gs, reg, p1, t1, BuyStrategy::MostUnits);
         QCOMPARE(garrisonUnits(t1, "militia"), 12);
         QCOMPARE(garrisonUnits(t1, "archer"), 7);
@@ -165,7 +168,7 @@ private slots:
     void buyAllInAllTownsInOrder() {
         setUpDwellings(t1);
         setUpDwellings(t2);
-        me().resources = {{"gold", 1000}, {"wood", 10}};
+        me().resources = amounts({{"gold", 1000}, {"wood", 10}});
         const BuyReport r = buyAllUnits(gs, reg, p1);
         QCOMPARE(r.townsServed, 1);  // the money was gone after the first town
         QCOMPARE(garrisonUnits(t1, "archer"), 8);
@@ -173,9 +176,9 @@ private slots:
     }
 
     void buysUnitsSentFromMapDwellings() {
-        gs.addMapDwelling("pikeman", {15, 15}, 6, p1);
+        gs.addMapDwelling(U("pikeman"), {15, 15}, 6, p1);
         sendDwellingUnitsToClosestTown(gs, p1);
-        me().resources = {{"gold", 1000}};
+        me().resources = amounts({{"gold", 1000}});
         const BuyReport r = buyAllUnits(gs, reg, p1);
         QCOMPARE(r.unitsBought, 6);
     }
@@ -183,11 +186,11 @@ private slots:
     void stopsCleanlyWhenTheGarrisonIsFull() {
         setUpDwellings(t1);
         Army& g = *gs.army(gs.town(t1)->garrison);
-        for (int i = 0; i < kMaxArmyStacks; ++i) g.addUnits(QString("other%1").arg(i), 1, 5);
-        const int gold = me().resources.value("gold");
+        for (int i = 0; i < kMaxArmyStacks; ++i) g.addUnits(UnitTypeId(1000 + i), 1, 5);
+        const int gold = me().resources.value(R("gold"));
         const BuyReport r = buyAllUnits(gs, reg, p1, t1);
         QCOMPARE(r.unitsBought, 0);
-        QCOMPARE(me().resources.value("gold"), gold);
+        QCOMPARE(me().resources.value(R("gold")), gold);
     }
 
     void nothingToBuyWithoutMoney() {

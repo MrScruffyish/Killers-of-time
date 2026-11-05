@@ -1,4 +1,5 @@
 #include "server/GameSession.h"
+#include "core/content/IdJson.h"
 
 #include "core/rules/ArmyRules.h"
 #include "core/rules/Vision.h"
@@ -57,11 +58,7 @@ CommandResult fromAction(const ActionResult& a, const QJsonObject& info = {}) {
 
 int toInt(quint32 v) { return static_cast<int>(v); }
 
-QJsonObject resourcesJson(const ResourceAmounts& m) {
-    QJsonObject o;
-    for (auto it = m.begin(); it != m.end(); ++it) o.insert(it.key(), it.value());
-    return o;
-}
+QJsonArray resourcesJson(const ResourceAmounts& m) { return amountsToJson(m); }
 QJsonObject buyJson(const BuyReport& r) {
     QJsonObject o;
     o.insert("unitsBought", r.unitsBought);
@@ -72,9 +69,13 @@ QJsonObject buyJson(const BuyReport& r) {
 QJsonObject buildReportJson(const AutoBuildReport& r) {
     QJsonObject o;
     QJsonArray built, choices, poor;
-    for (const auto& b : r.built) built.append(QJsonObject{{"town", toInt(b.town.value())}, {"building", b.building}});
+    for (const auto& b : r.built) built.append(QJsonObject{{"town", toInt(b.town.value())}, {"building", b.building.index()}});
     for (const auto& c : r.needsChoice)
-        choices.append(QJsonObject{{"town", toInt(c.town.value())}, {"buildings", QJsonArray::fromStringList(c.buildings)}});
+        choices.append(QJsonObject{{"town", toInt(c.town.value())}, {"buildings", [&] {
+            QJsonArray a;
+            for (const BuildingTypeId b : c.buildings) a.append(b.index());
+            return a;
+        }()}});
     for (const TownId t : r.cannotAfford) poor.append(toInt(t.value()));
     o.insert("built", built);
     o.insert("needsChoice", choices);
@@ -149,6 +150,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
         return false;
     }
     m_state.setFogOfWar(lobby.settings.fogOfWar);
+    m_state.setDefeatRule(lobby.settings.defeat);
     m_state.setHiddenMap(lobby.settings.hiddenMap);
     if (!lobby.settings.hiddenMap)  // every team knows the whole map from the start
         for (const Player& p : m_state.players()) {
@@ -180,7 +182,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
 void GameSession::playAutoTurns() {
     // At most one full round, so a game with no human left cannot spin forever.
     for (int i = 0; i < m_state.turnOrder().size() && isAuto(m_state.currentPlayer()); ++i) {
-        if (gameOutcome(m_state).over || m_battle) return;
+        if (gameOutcome(m_state, m_content).over || m_battle) return;
         const PlayerId p = m_state.currentPlayer();
         playAiTurn(p, *m_autoPlayers.value(p));
         if (m_battle) return;  // the AI attacked a human: his turn goes on after the battle
@@ -244,13 +246,15 @@ PlayerId GameSession::playerOfClient(int clientId) const {
     return players.first();
 }
 
-bool GameSession::joinPlayer(int clientId, PlayerId player, QString* error) {
-    if (!freePlayers().contains(player)) {
-        if (error) *error = QStringLiteral("that player is not free");
+bool GameSession::joinPlayer(int clientId, PlayerId player, const QString& keyHash, QString* error) {
+    if (!seatsFor(keyHash, false).contains(player)) {
+        if (error) *error = freePlayers().contains(player) ? QStringLiteral("that seat belongs to someone else (who is away)")
+                                                           : QStringLiteral("that player is not free");
         return false;
     }
     m_autoPlayers.remove(player);
     m_clientPlayers[clientId].append(player);
+    bindSeats(clientId, keyHash);
     playAutoTurns();
     return true;
 }
@@ -258,13 +262,46 @@ bool GameSession::joinPlayer(int clientId, PlayerId player, QString* error) {
 void GameSession::clientLeft(int clientId) {
     const QList<PlayerId> players = m_clientPlayers.take(clientId);
     if (players.isEmpty()) return;
-    for (const PlayerId p : players) m_autoPlayers.insert(p, std::make_shared<ai::PassiveAi>());
+    // His seat stays his: the game waits at his turn until he is back (no computer
+    // plays for him; players may come at different times).
     if (m_battle) runBattles();  // his side is played by the battle AI now
     afterCommand();
 }
 
+bool GameSession::isConnected(PlayerId player) const { return clientPlays(player); }
+
+QList<PlayerId> GameSession::seatsFor(const QString& keyHash, bool ownOnly) const {
+    QList<PlayerId> out;
+    for (const PlayerId id : freePlayers()) {
+        const Player* p = m_state.player(id);
+        if (!p) continue;
+        const bool his = !keyHash.isEmpty() && p->seatKeyHash == keyHash;
+        if (his || (!ownOnly && p->seatKeyHash.isEmpty())) out.append(id);
+    }
+    return out;
+}
+
+void GameSession::bindSeats(int clientId, const QString& keyHash) {
+    if (keyHash.isEmpty()) return;
+    for (const PlayerId id : m_clientPlayers.value(clientId))
+        if (Player* p = m_state.player(id); p && p->seatKeyHash.isEmpty()) p->seatKeyHash = keyHash;
+}
+
 QJsonObject GameSession::viewFor(PlayerId player) const {
     QJsonObject view = buildPlayerView(m_state, m_content, player);
+    {
+        // Who is here: a human whose person is not connected is "away" (the game may
+        // wait for him).
+        QJsonArray players = view.value("players").toArray();
+        for (int i = 0; i < players.size(); ++i) {
+            QJsonObject o = players[i].toObject();
+            const PlayerId id(static_cast<quint32>(o.value("id").toInt()));
+            const Player* p = m_state.player(id);
+            if (p && p->controller == Player::Controller::Human && !isConnected(id)) o.insert("away", true);
+            players[i] = o;
+        }
+        view.insert("players", players);
+    }
     if (m_battle && m_battle->battle) {
         const Battle& b = *m_battle->battle;
         if (b.owner(0) == player || b.owner(1) == player) {
@@ -296,7 +333,7 @@ CommandResult GameSession::handle(int clientId, const Message& command) {
     if (!m_active) return failure("no_game", "no game is running");
     const PlayerId player = playerOfClient(clientId);
     if (!player.isValid()) return failure("not_a_player", "you are not a player in this game");
-    if (gameOutcome(m_state).over) {
+    if (gameOutcome(m_state, m_content).over) {
         recordCampaign();
         return failure("game_over", "the game is over");
     }
@@ -317,7 +354,7 @@ CommandResult GameSession::handle(int clientId, const Message& command) {
 
 void GameSession::recordCampaign() {
     if (m_campaign.isEmpty() || m_campaignRecorded) return;
-    const GameOutcome outcome = gameOutcome(m_state);
+    const GameOutcome outcome = gameOutcome(m_state, m_content);
     if (!outcome.over) return;
     m_campaignRecorded = true;
     const bool won = outcome.winner.isValid() && outcome.winner == m_state.teamOf(m_campaignPlayer);
@@ -328,7 +365,7 @@ void GameSession::recordCampaign() {
     CampaignProgress p;
     p.campaign = m_campaign;
     p.next = m_campaignChapter + 1;
-    for (const HeroId h : bestHeroes(m_state, m_campaignPlayer, def.carryHeroes)) p.heroes << heroSnapshot(m_state, h);
+    for (const HeroId h : bestHeroes(m_state, m_campaignPlayer, def.carryHeroes)) p.heroes << heroSnapshot(m_state, m_content, h);
     QString error;
     if (!saveProgress(QDir(m_campaignDir).filePath("campaign_" + m_campaign + ".json"), p, &error))
         qCWarning(lcKotServer) << "Cannot save the campaign progress:" << error;
@@ -337,7 +374,7 @@ void GameSession::recordCampaign() {
 void GameSession::afterCommand() {
     recordCampaign();
     // A player who just lost his last hero and town cannot go on: his turn ends.
-    if (!m_battle && !gameOutcome(m_state).over && isEliminated(m_state, m_state.currentPlayer()))
+    if (!m_battle && !gameOutcome(m_state, m_content).over && isEliminated(m_state, m_state.currentPlayer()))
         endTurn(m_state, m_content);
     playAutoTurns();
     recordCampaign();
@@ -379,7 +416,7 @@ void GameSession::runBattles() {
             const Player* owner = m_state.player(b.owner(side));
             if (owner && owner->controller == Player::Controller::Ai) {
                 BattleAction giveUp;
-                if (chooseGiveUp(b, side, owner->resources.value(QStringLiteral("gold")), &giveUp)) action = giveUp;
+                if (chooseGiveUp(b, side, owner->resources.value(m_content.currency()), &giveUp)) action = giveUp;
             }
             b.act(action, &ev);
             for (const BattleEvent& e : ev)
@@ -413,13 +450,22 @@ QJsonObject GameSession::moveInfo(const MoveResult& m) const {
     if (m.capturedMine.isValid()) info.insert("capturedMine", toInt(m.capturedMine.value()));
     if (m.capturedTown.isValid()) info.insert("capturedTown", toInt(m.capturedTown.value()));
     if (m.capturedDwelling.isValid()) info.insert("capturedDwelling", toInt(m.capturedDwelling.value()));
-    if (!m.learnedSpells.isEmpty()) info.insert("learnedSpells", QJsonArray::fromStringList(m.learnedSpells));
+    if (!m.learnedSpells.isEmpty()) {
+        QJsonArray learned;
+        for (const SpellId s : m.learnedSpells) learned.append(s.index());
+        info.insert("learnedSpells", learned);
+    }
     if (m.landed) info.insert("landed", true);
     if (m.ambushed) info.insert("ambushed", true);
     if (m.spotted) info.insert("spotted", true);
     if (!m.foundResources.isEmpty()) info.insert("foundResources", resourcesJson(m.foundResources));
-    if (!m.foundArtifacts.isEmpty()) info.insert("foundArtifacts", QJsonArray::fromStringList(m.foundArtifacts));
-    if (!m.stowedArtifacts.isEmpty()) info.insert("stowedArtifacts", QJsonArray::fromStringList(m.stowedArtifacts));
+    const auto ids = [](const QList<ArtifactId>& list) {
+        QJsonArray a;
+        for (const ArtifactId x : list) a.append(x.index());
+        return a;
+    };
+    if (!m.foundArtifacts.isEmpty()) info.insert("foundArtifacts", ids(m.foundArtifacts));
+    if (!m.stowedArtifacts.isEmpty()) info.insert("stowedArtifacts", ids(m.stowedArtifacts));
     if (!m.visitedSite.isEmpty()) info.insert("visitedSite", QJsonObject{{"site", m.visitedSite}, {"result", m.siteResult}});
     if (m.attacked) {
         QJsonArray battles;
@@ -443,7 +489,7 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     const bool hasHex = cmd.body.contains("x");
     const int x = r.optionalInt("x", 0, 0, 1000), y = r.optionalInt("y", 0, 0, 1000);
     const int target = r.optionalInt("target", 0, 0, 1000000);
-    const QString spell = r.optionalString("spell");
+    const SpellId spell(r.optionalInt("spell", -1, -1, 32767));
     r.finish();
     if (!r.ok()) return failure("bad_request", errors.join("; "));
 
@@ -460,7 +506,7 @@ CommandResult GameSession::battleAction(PlayerId player, const Message& cmd) {
     else if (action == "surrender") {
         // The gold must be there: the winner gets it when the battle is written back.
         const int cost = b->surrenderCost(active->side);
-        if (m_state.player(player)->resources.value(QStringLiteral("gold")) < cost)
+        if (m_state.player(player)->resources.value(m_content.currency()) < cost)
             return failure("failed", QStringLiteral("surrendering costs %1 gold").arg(cost));
         a.type = BattleAction::Type::Surrender;
     }
@@ -586,7 +632,7 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
             QJsonObject info = moveInfo(m);
             QJsonArray units;
             for (const UnitStack& s : m_state.army(m.joinOffer)->stacks)
-                units.append(QJsonObject{{"unit", s.unitTypeId()}, {"count", s.count()}});
+                units.append(QJsonObject{{"unit", s.unitTypeId().index()}, {"count", s.count()}});
             info.insert("joinOffer", QJsonObject{{"army", toInt(m.joinOffer.value())}, {"hero", toInt(hero.value())}, {"units", units},
                                                  {"cost", joinCost(m_state, m_content, m.joinOffer)}});
             return success(info);
@@ -616,7 +662,7 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     }
     if (cmd.type == net::msg::castSpell) {
         const HeroId hero(id32("hero"));
-        const QString spell = r.requireString("spell");
+        const SpellId spell(r.requireInt("spell", 0, 32767));
         r.finish();
         if (!r.ok()) return bad();
         const Hero* h = m_state.hero(hero);
@@ -625,7 +671,7 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     }
     if (cmd.type == net::msg::build) {
         const TownId town(id32("town"));
-        const QString building = r.requireString("building");
+        const BuildingTypeId building(r.requireInt("building", 0, 32767));
         const bool useTrade = r.optionalBool("useTrade", false);
         r.finish();
         if (!r.ok()) return bad();
@@ -633,12 +679,12 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         const BuildResult b = buildBuildingWithTrade(m_state, m_content, town, building, player);
         QJsonArray trades;
         for (const TradeStep& s : b.trades)
-            trades.append(QJsonObject{{"give", s.give}, {"giveAmount", s.giveAmount}, {"get", s.get}, {"getAmount", s.getAmount}});
+            trades.append(QJsonObject{{"give", s.give.index()}, {"giveAmount", s.giveAmount}, {"get", s.get.index()}, {"getAmount", s.getAmount}});
         return b.ok ? success(QJsonObject{{"trades", trades}}) : failure("failed", b.error);
     }
     if (cmd.type == net::msg::recruit) {
         const TownId town(id32("town"));
-        const QString unit = r.requireString("unit");
+        const UnitTypeId unit(r.requireInt("unit", 0, 32767));
         const int count = r.requireInt("count", 1, 100000);
         const ArmyId army(id32("army", true));
         r.finish();
@@ -655,7 +701,7 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     }
     if (cmd.type == net::msg::hireHero) {
         const TownId town(id32("town"));
-        const QString hero = r.requireString("hero");
+        const HeroTemplateId hero(r.requireInt("hero", 0, 32767));
         const bool useTrade = r.optionalBool("useTrade", false);
         r.finish();
         if (!r.ok()) return bad();
@@ -663,7 +709,7 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
         return h.ok ? success(QJsonObject{{"hero", toInt(h.hero.value())}}) : failure("failed", h.error);
     }
     if (cmd.type == net::msg::trade) {
-        const QString give = r.requireString("give"), get = r.requireString("get");
+        const ResourceId give(r.requireInt("give", 0, ResourceAmounts::kMax - 1)), get(r.requireInt("get", 0, ResourceAmounts::kMax - 1));
         const int amount = r.requireInt("amount", 1, INT_MAX);
         r.finish();
         if (!r.ok()) return bad();
@@ -688,8 +734,8 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     }
     if (cmd.type == net::msg::equipArtifact || cmd.type == net::msg::unequipArtifact) {
         const HeroId hero(id32("hero"));
-        const QString artifact = r.requireString("artifact");
-        const QString replace = cmd.type == net::msg::equipArtifact ? r.optionalString("replace") : QString();
+        const ArtifactId artifact(r.requireInt("artifact", 0, 32767));
+        const ArtifactId replace(cmd.type == net::msg::equipArtifact ? r.optionalInt("replace", -1, -1, 32767) : -1);
         r.finish();
         if (!r.ok()) return bad();
         Hero* h = m_state.hero(hero);
@@ -701,7 +747,7 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     }
     if (cmd.type == net::msg::giveArtifact) {
         const HeroId from(id32("from")), to(id32("to"));
-        const QString artifact = r.requireString("artifact");
+        const ArtifactId artifact(r.requireInt("artifact", 0, 32767));
         r.finish();
         if (!r.ok()) return bad();
         const Hero* h = m_state.hero(from);
@@ -711,7 +757,7 @@ CommandResult GameSession::dispatch(PlayerId player, const Message& cmd) {
     }
     if (cmd.type == net::msg::pickTrait) {
         const HeroId hero(id32("hero"));
-        const QString trait = r.requireString("trait");
+        const TraitId trait(r.requireInt("trait", 0, TraitValues::kMax - 1));
         r.finish();
         if (!r.ok()) return bad();
         Hero* h = m_state.hero(hero);

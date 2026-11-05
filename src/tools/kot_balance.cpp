@@ -71,8 +71,8 @@ int racesReport(const ContentRegistry& c, bool csv) {
 }
 
 int duelReport(const ContentRegistry& c, const QString& a, const QString& b, int gold, int runs) {
-    const UnitDef* ua = c.unit(a);
-    const UnitDef* ub = c.unit(b);
+    const UnitDef* ua = c.unitByKey(a);
+    const UnitDef* ub = c.unitByKey(b);
     if (!ua || !ub) {
         std::fprintf(stderr, "kot_balance: unknown unit\n");
         return 2;
@@ -102,7 +102,7 @@ int duelsReport(const ContentRegistry& c, int tier, int gold, int runs, bool csv
 int weeksReport(const ContentRegistry& c, int weeks, int runs, int budget, bool csv) {
     if (!csv) {
         std::printf("Armies (%d week(s)%s):\n", weeks, budget > 0 ? qPrintable(QStringLiteral(", %1 gold a week").arg(budget)) : "");
-        for (const QString& race : c.raceIds()) {
+        for (const QString& race : c.playableRaceKeys()) {
             QStringList parts;
             for (const auto& [id, n] : raceWeekArmy(c, race, weeks, budget)) parts << QStringLiteral("%1 %2").arg(n).arg(id);
             std::printf("  %-10s %s\n", qPrintable(race), qPrintable(parts.join(", ")));
@@ -152,8 +152,8 @@ int replayReport(const ContentRegistry& content, const QString& path, int attack
         const BattleReport r = resolveBattle(gs, content, a, d);
         won += r.attackerWon();
         rounds += r.rounds;
-        for (auto it = r.attacker.losses.begin(); it != r.attacker.losses.end(); ++it) lostA[it.key()] += it.value();
-        for (auto it = r.defender.losses.begin(); it != r.defender.losses.end(); ++it) lostD[it.key()] += it.value();
+        for (auto it = r.attacker.losses.begin(); it != r.attacker.losses.end(); ++it) lostA[content.unit(it.key())->key] += it.value();
+        for (auto it = r.defender.losses.begin(); it != r.defender.losses.end(); ++it) lostD[content.unit(it.key())->key] += it.value();
     }
     std::printf("attacker won %d of %d (%.0f%%), %.1f rounds on average\n", won, runs, 100.0 * won / runs, double(rounds) / runs);
     const auto show = [&](const char* who, const QMap<QString, int>& lost) {

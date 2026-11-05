@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/battle/AutoBattle.h"
 #include "core/battle/Battle.h"
 #include "core/battle/BattleAi.h"
@@ -20,10 +22,10 @@ class TstHexBattle : public QObject {
     ArmyId mine() { return gs.hero(hero)->army; }
     ArmyId monsters(const QString& unit, int count) {
         const ArmyId a = gs.addArmy(PlayerId(), {1, 0});
-        gs.army(a)->addUnits(unit, count, reg.unit(unit)->maxHp);
+        gs.army(a)->addUnits(U(qPrintable(unit)), count, reg.unit(U(qPrintable(unit)))->maxHp);
         return a;
     }
-    void add(const QString& unit, int count) { gs.army(mine())->addUnits(unit, count, reg.unit(unit)->maxHp); }
+    void add(const QString& unit, int count) { gs.army(mine())->addUnits(U(qPrintable(unit)), count, reg.unit(U(qPrintable(unit)))->maxHp); }
     static BattleAction move(Pos h) { BattleAction a; a.type = BattleAction::Type::Move; a.hex = h; a.hasHex = true; return a; }
     static BattleAction attack(int target) { BattleAction a; a.type = BattleAction::Type::Attack; a.target = target; return a; }
     static BattleAction shoot(int target) { BattleAction a; a.type = BattleAction::Type::Shoot; a.target = target; return a; }
@@ -33,22 +35,23 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
     void init() {
         gs = GameState(3);
-        gs.setMap(GameMap(8, 8, "grass"));
-        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
-        hero = createHero(gs, reg, p1, "H", "knight", {0, 0});
+        gs.setMap(GameMap(8, 8, T("grass")));
+        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        hero = createHero(gs, reg, p1, "H", C("knight"), {0, 0});
     }
 
     void areaSpellsHitTheNeighboursToo() {
         add("militia", 10);
         // Three monster stacks side by side.
         const ArmyId m = gs.addArmy(PlayerId(), {1, 0});
-        for (const char* u : {"militia", "pikeman", "archer"}) gs.army(m)->addUnits(u, 10, reg.unit(u)->maxHp);
-        gs.hero(hero)->spells << "frost_ring";
+        for (const char* u : {"militia", "pikeman", "archer"}) gs.army(m)->addUnits(U(u), 10, reg.unit(U(u))->maxHp);
+        gs.hero(hero)->spells << S("frost_ring");
         gs.hero(hero)->spellPoints = 50;
-        gs.hero(hero)->traits["magic"] = 5;
+        gs.hero(hero)->traits[TR("magic")] = 5;
         Battle b(gs, reg, mine(), m, 1);
         // Move the defenders together: put them next to each other for the test.
         QList<int> ids;
@@ -56,7 +59,7 @@ private slots:
         QCOMPARE(ids.size(), 3);
         BattleAction cast;
         cast.type = BattleAction::Type::Cast;
-        cast.spell = "frost_ring";
+        cast.spell = S("frost_ring");
         cast.target = ids[0];
         QList<BattleEvent> ev;
         QVERIFY2(b.act(cast, &ev).isEmpty(), "cast failed");
@@ -72,16 +75,22 @@ private slots:
 
     void defendersWithAHeroCanRetreatButNotInTown() {
         add("militia", 10);
-        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
-        const HeroId enemy = createHero(gs, reg, p2, "E", "knight", {1, 0});
-        gs.army(gs.hero(enemy)->army)->addUnits("pikeman", 5, 10);
+        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, RC("humans"), "#0000ff");
+        const HeroId enemy = createHero(gs, reg, p2, "E", C("knight"), {1, 0});
+        gs.army(gs.hero(enemy)->army)->addUnits(U("pikeman"), 5, 10);
+        {
+            Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
+            QVERIFY(!b.whyNoRetreat(1).isEmpty());  // no town to flee to: no way out
+            QVERIFY(!b.whyNoSurrender(1).isEmpty());
+        }
+        gs.addTown("Refuge", RC("humans"), {6, 6}, p2);
         {
             Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
             QVERIFY(b.whyNoRetreat(1).isEmpty());
             QVERIFY(b.whyNoSurrender(1).isEmpty());
             QVERIFY(b.surrenderCost(1) > 0);
         }
-        const TownId town = gs.addTown("T", "humans", {1, 0}, p2);
+        const TownId town = gs.addTown("T", RC("humans"), {1, 0}, p2);
         Q_UNUSED(town);
         Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
         QVERIFY(!b.whyNoRetreat(1).isEmpty());  // in its town it stands
@@ -89,11 +98,12 @@ private slots:
 
     void surrenderPaysTheWinnerAndKeepsTheArmy() {
         add("militia", 10);
-        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
-        const HeroId enemy = createHero(gs, reg, p2, "E", "knight", {1, 0});
-        gs.army(gs.hero(enemy)->army)->addUnits("pikeman", 50, 10);
-        gs.player(p1)->resources["gold"] = 1000;
-        gs.player(p2)->resources["gold"] = 0;
+        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, RC("humans"), "#0000ff");
+        const HeroId enemy = createHero(gs, reg, p2, "E", C("knight"), {1, 0});
+        gs.army(gs.hero(enemy)->army)->addUnits(U("pikeman"), 50, 10);
+        gs.player(p1)->resources[R("gold")] = 1000;
+        gs.player(p2)->resources[R("gold")] = 0;
+        gs.addTown("Home", RC("humans"), {6, 6}, p1);
         Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
         QVERIFY(b.whyNoSurrender(0).isEmpty());
         const int cost = b.surrenderCost(0);
@@ -107,17 +117,25 @@ private slots:
         QVERIFY(r.surrendered);
         QVERIFY(gs.hero(hero));
         QVERIFY(gs.army(mine())->totalUnits() > 0);
-        QCOMPARE(gs.player(p2)->resources.value("gold"), std::min(cost, 1000));
-        QCOMPARE(gs.player(p1)->resources.value("gold"), 1000 - std::min(cost, 1000));
+        QCOMPARE(gs.player(p2)->resources.value(R("gold")), std::min(cost, 1000));
+        QCOMPARE(gs.player(p1)->resources.value(R("gold")), 1000 - std::min(cost, 1000));
+        // He leaves for his town with the army (cannot be caught again on the spot).
+        QCOMPARE(r.retreatedTo, QString("Home"));
+        QCOMPARE(gs.army(mine())->pos, (Pos{6, 6}));
     }
 
     void beatenComputerSidesGiveUp() {
         add("militia", 2);
-        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Ai, "humans", "#0000ff");
-        const HeroId enemy = createHero(gs, reg, p2, "E", "knight", {1, 0});
-        gs.army(gs.hero(enemy)->army)->addUnits("pikeman", 50, 10);
-        Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
+        const PlayerId p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Ai, RC("humans"), "#0000ff");
+        const HeroId enemy = createHero(gs, reg, p2, "E", C("knight"), {1, 0});
+        gs.army(gs.hero(enemy)->army)->addUnits(U("pikeman"), 50, 10);
         BattleAction a;
+        {
+            Battle cornered(gs, reg, mine(), gs.hero(enemy)->army, 1);
+            QVERIFY(!chooseGiveUp(cornered, 0, 100000, &a));  // no town to flee to: fights
+        }
+        gs.addTown("Home", RC("humans"), {6, 6}, p1);
+        Battle b(gs, reg, mine(), gs.hero(enemy)->army, 1);
         QVERIFY(!chooseGiveUp(b, 1, 0, &a));  // the strong side fights on
         QVERIFY(chooseGiveUp(b, 0, 0, &a));   // no gold: retreat
         QCOMPARE(a.type, BattleAction::Type::Retreat);
@@ -131,6 +149,7 @@ private slots:
 
     void monstersDoNotTakeSurrender() {
         add("militia", 10);
+        gs.addTown("Home", RC("humans"), {6, 6}, p1);
         Battle b(gs, reg, mine(), monsters("pikeman", 5), 1);
         QVERIFY(!b.whyNoSurrender(0).isEmpty());
         QVERIFY(b.whyNoRetreat(0).isEmpty());
@@ -155,7 +174,7 @@ private slots:
         Battle b(gs, reg, mine(), m, 1);
         QCOMPARE(b.units().size(), 3);
         for (const BattleUnit& u : b.units()) QCOMPARE(u.pos.x, u.side == 0 ? 0 : hex::kWidth - 1);
-        QCOMPARE(b.activeUnit()->def->id, QString("armoured_eagle"));  // initiative 12
+        QCOMPARE(b.activeUnit()->def->id, U("armoured_eagle"));  // initiative 12
         QCOMPARE(b.round(), 1);
     }
 
@@ -172,7 +191,7 @@ private slots:
 
     void meleeGetsOneRetaliationPerRound() {
         add("pikeman", 10);
-        gs.army(mine())->stacks.append(UnitStack("pikeman", 10, 10));  // a second, separate stack
+        gs.army(mine())->stacks.append(UnitStack(U("pikeman"), 10, 10));  // a second, separate stack
         Battle b(gs, reg, mine(), monsters("battle_snail", 20), 1);
         // Walk both pikemen next to the snail over a few rounds.
         while (!b.isOver() && b.round() < 6) {
@@ -209,16 +228,16 @@ private slots:
             QVERIFY(hex::distance(a.hex, b.unit(2)->pos) < hex::distance(archer->pos, b.unit(2)->pos));
         }
         // The hero's Attack Range trait adds to it.
-        gs.hero(hero)->traits["attack_range"] = 9;
+        gs.hero(hero)->traits[TR("attack_range")] = 9;
         Battle b(gs, reg, mine(), monsters("pikeman", 50), 1);
         QCOMPARE(b.shootRange(*b.activeUnit()), 14);
         QVERIFY(b.canShootAt(*b.activeUnit(), *b.unit(2)));
-        gs.hero(hero)->traits.remove("attack_range");
+        gs.hero(hero)->traits[TR("attack_range")] = 0;
     }
 
     void archersShootWithoutRetaliationUntilEnemyIsNext() {
         add("archer", 10);
-        gs.hero(hero)->traits["attack_range"] = 10;  // reach across the field
+        gs.hero(hero)->traits[TR("attack_range")] = 10;  // reach across the field
         Battle b(gs, reg, mine(), monsters("pikeman", 50), 1);
         const BattleUnit* archer = b.activeUnit();
         const int shots = archer->shotsLeft;
@@ -269,7 +288,7 @@ private slots:
         const BattleReport r = applyBattleResult(gs, reg, b);
         QVERIFY(r.attackerWon());
         QVERIFY(!gs.army(m));
-        QCOMPARE(r.defender.losses.value("militia"), 4);
+        QCOMPARE(r.defender.losses.value(U("militia")), 4);
         QCOMPARE(gs.hero(hero)->experience, r.experience);
     }
 
@@ -287,11 +306,11 @@ private slots:
 
     void flyersPassOverStacks() {
         add("armoured_eagle", 2);  // flying, speed 12
-        gs.army(mine())->stacks.append(UnitStack("militia", 1, 6));
+        gs.army(mine())->stacks.append(UnitStack(U("militia"), 1, 6));
         const ArmyId m = monsters("militia", 3);
         Battle b(gs, reg, mine(), m, 1);
         const BattleUnit* eagle = b.activeUnit();
-        QVERIFY(eagle->def->has("flying"));
+        QVERIFY(eagle->def->has(Ability::Flying));
         // Every free hex within its speed is reachable, stacks or rocks in between or not.
         int free = 0;
         for (int y = 0; y < hex::kHeight; ++y)
@@ -301,7 +320,7 @@ private slots:
     }
 
     void noRetaliationAgainstWraiths() {
-        gs.army(mine())->addUnits("wraith", 5, 18);
+        gs.army(mine())->addUnits(U("wraith"), 5, 18);
         Battle b(gs, reg, mine(), monsters("pikeman", 5), 1);
         // Over the battle the wraith attacks, and nothing ever strikes back at it.
         int attacks = 0;
@@ -318,7 +337,7 @@ private slots:
 
     void marksmenShootTwice() {
         add("elf_marksman", 4);
-        gs.hero(hero)->traits["attack_range"] = 10;
+        gs.hero(hero)->traits[TR("attack_range")] = 10;
         Battle b(gs, reg, mine(), monsters("treant", 3), 1);
         const int shots = b.activeUnit()->shotsLeft;
         QList<BattleEvent> ev;
@@ -330,7 +349,7 @@ private slots:
     }
 
     void goodMoraleGivesAnExtraAction() {
-        gs.hero(hero)->traits["morale"] = 20;  // 100%
+        gs.hero(hero)->traits[TR("morale")] = 20;  // 100%
         add("militia", 5);
         Battle b(gs, reg, mine(), monsters("battle_snail", 1), 1);
         QList<BattleEvent> ev;
@@ -342,16 +361,16 @@ private slots:
     }
 
     void badMoraleMakesStacksFalterButNotUndead() {
-        gs.hero(hero)->traits["morale"] = -20;
+        gs.hero(hero)->traits[TR("morale")] = -20;
         add("militia", 5);
-        gs.army(mine())->stacks.append(UnitStack("skeleton", 5, 6));
+        gs.army(mine())->stacks.append(UnitStack(U("skeleton"), 5, 6));
         Battle b(gs, reg, mine(), monsters("battle_snail", 1), 1);
         // The militia always falters; the skeletons (undead) act.
-        QCOMPARE(b.activeUnit()->def->id, QString("skeleton"));
+        QCOMPARE(b.activeUnit()->def->id, U("skeleton"));
     }
 
     void luckDoublesDamage() {
-        gs.hero(hero)->traits["luck"] = 20;
+        gs.hero(hero)->traits[TR("luck")] = 20;
         add("militia", 10);
         Battle b(gs, reg, mine(), monsters("battle_snail", 50), 1);
         while (!b.isOver() && b.round() < 4) {
@@ -363,7 +382,7 @@ private slots:
     }
 
     void hitPointsTraitRaisesMaxHpInBattleOnly() {
-        gs.hero(hero)->traits["hit_points"] = 4;  // +20%
+        gs.hero(hero)->traits[TR("hit_points")] = 4;  // +20%
         add("pikeman", 10);
         const ArmyId m = monsters("militia", 2);
         Battle b(gs, reg, mine(), m, 1);
@@ -391,9 +410,14 @@ private slots:
     void attackerCanRetreat() {
         add("militia", 5);
         const ArmyId m = monsters("bone_dragon", 3);
-        Battle b(gs, reg, mine(), m, 1);
         BattleAction retreat;
         retreat.type = BattleAction::Type::Retreat;
+        {
+            Battle cornered(gs, reg, mine(), m, 1);
+            QVERIFY(!cornered.whyNoRetreat(0).isEmpty());  // no town of his: he has to fight
+        }
+        gs.addTown("Home", RC("humans"), {6, 6}, p1);
+        Battle b(gs, reg, mine(), m, 1);
         while (b.activeUnit()->side != 0) b.act(defend());
         QVERIFY(b.act(retreat).isEmpty());
         QCOMPARE(b.outcome(), Battle::Outcome::DefenderWon);
@@ -402,15 +426,15 @@ private slots:
         QVERIFY(!r.loserHeroKilled);
         QVERIFY(gs.hero(hero));
         QVERIFY(gs.army(mine())->stacks.isEmpty());
-        QVERIFY(r.retreatedTo.isEmpty());  // no town of his: he stays
+        QCOMPARE(r.retreatedTo, QString("Home"));
     }
 
     void aRetreatingHeroFleesToTheNearestTown() {
         add("militia", 5);
-        gs.addTown("Far", "humans", {14, 14}, p1);
-        gs.addTown("Near", "humans", {5, 3}, p1);
-        const TownId taken = gs.addTown("Nearest", "humans", {2, 2}, p1);
-        createHero(gs, reg, p1, "Other", "knight", gs.town(taken)->pos);  // a hero already stands there
+        gs.addTown("Far", RC("humans"), {14, 14}, p1);
+        gs.addTown("Near", RC("humans"), {5, 3}, p1);
+        const TownId taken = gs.addTown("Nearest", RC("humans"), {2, 2}, p1);
+        createHero(gs, reg, p1, "Other", C("knight"), gs.town(taken)->pos);  // a hero already stands there
         Battle b(gs, reg, mine(), monsters("bone_dragon", 3), 1);
         BattleAction retreat;
         retreat.type = BattleAction::Type::Retreat;
@@ -424,24 +448,24 @@ private slots:
 
     void raceAbilitiesAfterABattle() {
         // Undead raise skeletons, orcs take gold: both from the enemy HP killed.
-        for (const QString race : {"undead", "orcs", "humans"}) {
+        for (const char* race : {"undead", "orcs", "humans"}) {
             init();
-            gs.player(p1)->race = race;
+            gs.player(p1)->race = RC(race);
             add("bone_dragon", 4);
             const ArmyId m = monsters("militia", 30);
-            const int gold = gs.player(p1)->resources.value("gold");
+            const int gold = gs.player(p1)->resources.value(R("gold"));
             const BattleReport r = resolveBattle(gs, reg, mine(), m);
             QVERIFY(r.attackerWon());
-            const int killedHp = 30 * reg.unit("militia")->maxHp;
-            if (race == "undead") {
-                QCOMPARE(r.raisedUnit, QString("skeleton"));
-                QCOMPARE(r.raisedCount, killedHp * 15 / 100 / reg.unit("skeleton")->maxHp);
+            const int killedHp = 30 * reg.unit(U("militia"))->maxHp;
+            if (QLatin1String(race) == QLatin1String("undead")) {
+                QCOMPARE(r.raisedUnit, U("skeleton"));
+                QCOMPARE(r.raisedCount, killedHp * 15 / 100 / reg.unit(U("skeleton"))->maxHp);
                 bool has = false;
-                for (const UnitStack& st : gs.army(mine())->stacks) has = has || st.unitTypeId() == "skeleton";
+                for (const UnitStack& st : gs.army(mine())->stacks) has = has || st.unitTypeId() == U("skeleton");
                 QVERIFY(has);
-            } else if (race == "orcs") {
+            } else if (QLatin1String(race) == QLatin1String("orcs")) {
                 QCOMPARE(r.lootGold, killedHp * 30 / 100);
-                QCOMPARE(gs.player(p1)->resources.value("gold"), gold + r.lootGold);
+                QCOMPARE(gs.player(p1)->resources.value(R("gold")), gold + r.lootGold);
             } else {
                 QCOMPARE(r.raisedCount, 0);
                 QCOMPARE(r.lootGold, 0);
@@ -451,34 +475,34 @@ private slots:
 
     void raceAbilitiesEverywhereElse() {
         // Humans trade better, sylvan heroes see farther, dwarven walls hold better.
-        gs.player(p1)->race = "orcs";
+        gs.player(p1)->race = RC("orcs");
         const int plain = tradeEfficiency(gs, reg, p1);
-        gs.player(p1)->race = "humans";
+        gs.player(p1)->race = RC("humans");
         QCOMPARE(tradeEfficiency(gs, reg, p1), plain + 10);
         Hero elf;
-        elf.classId = "ranger";
+        elf.classId = C("ranger");
         Hero knight;
-        knight.classId = "knight";
-        if (reg.heroClass("ranger") && reg.heroClass("ranger")->race == "sylvan")
+        knight.classId = C("knight");
+        if (reg.heroClass(C("ranger")) && reg.heroClass(C("ranger"))->race == RC("sylvan"))
             QCOMPARE(heroVisionRadius(elf, reg), heroVisionRadius(knight, reg) + 2);
-        const TownId t = gs.addTown("Hold", "dwarves", {2, 2}, p1);
-        gs.town(t)->buildings << "village_hall" << "fort";
-        gs.army(gs.town(t)->garrison)->addUnits("pikeman", 5, 10);
+        const TownId t = gs.addTown("Hold", RC("dwarves"), {2, 2}, p1);
+        gs.town(t)->buildings << B("village_hall") << B("fort");
+        gs.army(gs.town(t)->garrison)->addUnits(U("pikeman"), 5, 10);
         add("militia", 5);
-        gs.player(p1)->race = "humans";
+        gs.player(p1)->race = RC("humans");
         const int human = Battle(gs, reg, mine(), gs.town(t)->garrison, 1).townDefense();
-        gs.player(p1)->race = "dwarves";
+        gs.player(p1)->race = RC("dwarves");
         QCOMPARE(Battle(gs, reg, mine(), gs.town(t)->garrison, 1).townDefense(), human + 4);
     }
 
     void townWallsHelpTheDefender() {
         add("militia", 5);
-        const TownId t = gs.addTown("Fort", "humans", {2, 2}, PlayerId());
+        const TownId t = gs.addTown("Fort", RC("humans"), {2, 2}, PlayerId());
         Army& garrison = *gs.army(gs.town(t)->garrison);
-        garrison.addUnits("pikeman", 5, 10);
+        garrison.addUnits(U("pikeman"), 5, 10);
         Battle open(gs, reg, mine(), gs.town(t)->garrison, 1);
         QCOMPARE(open.townDefense(), 0);
-        gs.town(t)->buildings << "village_hall" << "fort" << "citadel";
+        gs.town(t)->buildings << B("village_hall") << B("fort") << B("citadel");
         Battle walled(gs, reg, mine(), gs.town(t)->garrison, 1);
         QCOMPARE(walled.townDefense(), 6);
         QCOMPARE(battleToJson(walled)["townDefense"].toInt(), 6);

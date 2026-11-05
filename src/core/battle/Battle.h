@@ -50,7 +50,7 @@ struct BattleAction {
     Pos hex;               // Move: where to. Attack: hex to strike from (optional)
     bool hasHex = false;
     int target = 0;        // Attack / Shoot: enemy unit id; Cast: the spell's target
-    QString spell;         // Cast
+    SpellId spell;         // Cast
 };
 
 // What happened, for the battle log and the client.
@@ -65,7 +65,7 @@ struct BattleEvent {
     Pos from, to;
     int damage = 0;   // Cast: damage done or HP healed
     int killed = 0;
-    QString spell;
+    SpellId spell;
     int side = -1;    // Cast: the casting hero's side
     bool lucky = false;  // a lucky strike (double damage)
 };
@@ -109,6 +109,10 @@ struct BattleEvent {
 // from the game's Rng), so a battle can be replayed from seed + actions.
 inline constexpr int kWallColumn = 11;
 
+// Where a hero who retreats or surrenders goes: the nearest town of his owner that
+// he is not standing in and no other hero occupies. None: he cannot get away.
+const Town* retreatTown(const GameState& state, const Army& army);
+
 class Battle {
 public:
     enum class Outcome { Running, AttackerWon, DefenderWon, Draw };
@@ -151,7 +155,7 @@ public:
     QString buildSiegeEngine(QList<BattleEvent>* events = nullptr);
     // Does `hex` stop this unit? Rocks, stacks and standing walls; defenders pass their gate.
     bool blockedFor(Pos hex, const BattleUnit& unit) const;
-    const QString& terrain() const { return m_terrain; }  // the ground (defender's tile), for the picture
+    TerrainId terrain() const { return m_terrain; }  // the ground (defender's tile), for the picture
     const QList<Pos>& obstacles() const { return m_obstacles; }
     bool blocked(Pos hex) const { return m_obstacles.contains(hex) || m_wallHp.contains(hex) || unitAt(hex); }
 
@@ -161,9 +165,9 @@ public:
     bool heroHasCast(int side) const { return m_heroCast[side]; }
     // Why the active side's hero cannot cast this spell on `target` now (empty = can).
     // target 0 checks everything except the target.
-    QString whyCannotCast(const QString& spellId, int target) const;
+    QString whyCannotCast(SpellId spellId, int target) const;
     // Why the active stack cannot cast one of its own spells (UnitCast) now.
-    QString whyUnitCannotCast(const QString& spellId, int target) const;
+    QString whyUnitCannotCast(SpellId spellId, int target) const;
 
     // Hexes the unit can move to, with the number of steps.
     QHash<Pos, int> reachable(const BattleUnit& unit) const;
@@ -208,6 +212,7 @@ private:
     bool m_retreated[2] = {false, false};
     bool m_surrendered[2] = {false, false};
     bool m_defenderInTown = false;
+    bool m_hasRefuge[2] = {false, false};  // a retreatTown exists for the side (else no retreat, no surrender)
     QList<Pos> m_obstacles;
     int m_townDefense = 0;
     QMap<QString, int> m_schoolPercent[2];  // the side's race: spell damage per school
@@ -217,7 +222,7 @@ private:
     QList<Pos> m_towers;
     bool m_engineBuilt = false;
     void towersShoot(QList<BattleEvent>* events);
-    QString m_terrain;
+    TerrainId m_terrain;
     bool m_heroCast[2] = {false, false};
     QList<BattleUnit> m_units;
     QList<int> m_order;  // unit ids, this round

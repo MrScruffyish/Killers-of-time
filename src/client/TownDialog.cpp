@@ -85,53 +85,75 @@ TownDialog::TownDialog(const core::ContentRegistry* content, QWidget* parent)
 
 QString TownDialog::costText(const core::ResourceAmounts& cost) const {
     QStringList parts;
-    for (auto it = cost.begin(); it != cost.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value()).arg(it.key());
+    for (const auto [r, amount] : cost) parts << QStringLiteral("%1 %2").arg(amount).arg(m_content->resource(r).key);
     return parts.isEmpty() ? tr("free") : parts.join(", ");
 }
 
-QString TownDialog::unitName(const QString& id) const {
+QString TownDialog::unitName(core::UnitTypeId id) const {
     const core::UnitDef* u = m_content->unit(id);
-    return u ? u->name : id;
+    return u ? u->name : QString();
 }
 
-QString TownDialog::effectsText(const core::BuildingDef& b) const {
+QString TownDialog::effectsText(const core::BuildingDef& b, bool brief) const {
     using T = core::BuildingEffect::Type;
     QStringList parts;
     for (const core::BuildingEffect& e : b.effects) {
         switch (e.type) {
         case T::Dwelling: {
             const core::UnitDef* u = m_content->unit(e.unit);
-            const QString unit = u ? u->name : e.unit;
+            const QString unit = u ? u->name : QString();
+            if (brief) {
+                parts << (u ? tr("%1 +%2/wk").arg(unit).arg(u->weeklyGrowth) : unit);
+                break;
+            }
             const QString stats = u ? tr(" (attack %1, defense %2, %3 HP, +%4/week)").arg(u->attack).arg(u->defense).arg(u->maxHp).arg(u->weeklyGrowth) : QString();
-            const core::BuildingDef* old = b.upgradeOf.isEmpty() ? nullptr : m_content->building(b.upgradeOf);
+            const core::BuildingDef* old = !b.upgradeOf.isValid() ? nullptr : m_content->building(b.upgradeOf);
             parts << (old ? tr("Upgrades the %1: recruit %2%3").arg(old->name, unit, stats) : tr("Recruit %1%2").arg(unit, stats));
             break;
         }
-        case T::Income: parts << tr("+%1 %2 every day").arg(e.amount).arg(e.resource); break;
+        case T::Income: parts << (brief ? tr("+%1 %2/day") : tr("+%1 %2 every day")).arg(e.amount).arg(m_content->resource(e.resource).key); break;
         case T::Tavern: parts << tr("Hire heroes here"); break;
-        case T::MageGuild: parts << tr("Heroes visiting learn spells up to level %1").arg(e.amount); break;
-        case T::Defense: parts << tr("Walls: the town's defenders get +%1 defense").arg(e.amount); break;
-        case T::Market: parts << tr("Trade resources at %1% better rates").arg(e.amount); break;
-        case T::Shipyard: parts << tr("Buy boats (coastal towns)"); break;
-        case T::Growth: parts << tr("Every dwelling here grows %1% more each week").arg(e.amount); break;
-        case T::Vision: parts << tr("The town sees %1 tiles farther").arg(e.amount); break;
+        case T::MageGuild: parts << (brief ? tr("Spells to level %1") : tr("Heroes visiting learn spells up to level %1")).arg(e.amount); break;
+        case T::Defense: parts << (brief ? tr("Walls +%1 defense") : tr("Walls: the town's defenders get +%1 defense")).arg(e.amount); break;
+        case T::Market: parts << (brief ? tr("Trade %1% better") : tr("Trade resources at %1% better rates")).arg(e.amount); break;
+        case T::Shipyard: parts << (brief ? tr("Buy boats") : tr("Buy boats (coastal towns)")); break;
+        case T::Growth: parts << (brief ? tr("Dwellings +%1% growth") : tr("Every dwelling here grows %1% more each week")).arg(e.amount); break;
+        case T::Vision: parts << (brief ? tr("Sees %1 tiles farther") : tr("The town sees %1 tiles farther")).arg(e.amount); break;
         }
     }
-    return parts.isEmpty() ? tr("Needed for other buildings") : parts.join("; ");
+    if (parts.isEmpty()) return brief ? tr("Needed for others") : tr("Needed for other buildings");
+    return parts.join(brief ? QStringLiteral(", ") : QStringLiteral("; "));
+}
+
+bool TownDialog::isUpgrade(const core::BuildingDef& b) const {
+    if (b.upgradeOf.isValid()) return true;
+    for (const core::BuildingTypeId need : b.requiredBuildings) {
+        const core::BuildingDef* other = m_content->building(need);
+        if (!other) continue;
+        for (const core::BuildingEffect& mine : b.effects)
+            for (const core::BuildingEffect& theirs : other->effects)
+                if (mine.type != core::BuildingEffect::Type::Dwelling  // dwellings use upgradeOf; others just need a lower one
+                    && mine.type == theirs.type && mine.resource == theirs.resource)
+                    return true;
+    }
+    return false;
 }
 
 void TownDialog::drawScene(const ViewTown& town) {
     // The town as a picture: one figure per building (the top of each upgrade
     // chain), the walls in front. It fills up as the town grows.
     using K = art::SceneBuilding::Kind;
-    QSet<QString> replaced;
-    for (const QString& id : town.buildings)
-        if (const core::BuildingDef* b = m_content->building(id); b && !b->upgradeOf.isEmpty()) replaced.insert(b->upgradeOf);
+    QSet<core::BuildingTypeId> replaced;
+    for (const core::BuildingTypeId id : town.buildings)
+        if (const core::BuildingDef* b = m_content->building(id); b && b->upgradeOf.isValid()) replaced.insert(b->upgradeOf);
     // Only the biggest hall stands in the picture.
-    if (town.buildings.contains("town_hall") || town.buildings.contains("city_hall")) replaced.insert("village_hall");
-    if (town.buildings.contains("city_hall")) replaced.insert("town_hall");
+    const core::BuildingTypeId village = m_content->buildingId(QStringLiteral("village_hall")),
+                               townHall = m_content->buildingId(QStringLiteral("town_hall")),
+                               city = m_content->buildingId(QStringLiteral("city_hall"));
+    if (town.buildings.contains(townHall) || town.buildings.contains(city)) replaced.insert(village);
+    if (town.buildings.contains(city)) replaced.insert(townHall);
     QList<art::SceneBuilding> scene;
-    for (const QString& id : town.buildings) {
+    for (const core::BuildingTypeId id : town.buildings) {
         const core::BuildingDef* b = m_content->building(id);
         if (!b || replaced.contains(id)) continue;
         art::SceneBuilding sb;
@@ -139,7 +161,7 @@ void TownDialog::drawScene(const ViewTown& town) {
             switch (e.type) {
             case core::BuildingEffect::Type::Dwelling:
                 sb.kind = K::Dwelling;
-                sb.unit = e.unit;
+                sb.unit = art::unitKey(e.unit);
                 if (const core::UnitDef* u = m_content->unit(e.unit)) sb.level = u->rank;
                 break;
             case core::BuildingEffect::Type::MageGuild: sb.kind = K::MageGuild; sb.level = e.amount; break;
@@ -148,12 +170,12 @@ void TownDialog::drawScene(const ViewTown& town) {
             case core::BuildingEffect::Type::Shipyard: sb.kind = K::Shipyard; break;
             case core::BuildingEffect::Type::Defense: sb.kind = K::Walls; break;
             case core::BuildingEffect::Type::Income:
-                if (id == QLatin1String("village_hall") || id == QLatin1String("town_hall") || id == QLatin1String("city_hall")) {
+                if (id == village || id == townHall || id == city) {
                     sb.kind = K::Hall;
-                    sb.level = id == QLatin1String("city_hall") ? 2 : id == QLatin1String("town_hall") ? 1 : 0;
+                    sb.level = id == city ? 2 : id == townHall ? 1 : 0;
                 } else if (sb.kind == K::Other) {
                     sb.kind = K::Workshop;  // a resource building: a workshop with a heap of what it makes
-                    sb.unit = e.resource;
+                    sb.unit = m_content->resource(e.resource).key;
                 }
                 break;
             case core::BuildingEffect::Type::Growth: sb.kind = K::Granary; break;
@@ -167,7 +189,7 @@ void TownDialog::drawScene(const ViewTown& town) {
     QPixmap pm(w, h);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
-    art::drawTownScene(p, QRectF(0, 0, w, h), art::TownLook{owner ? QColor(owner->color) : QColor("#999999"), town.race, town.walls, town.size}, scene);
+    art::drawTownScene(p, QRectF(0, 0, w, h), art::TownLook{owner ? QColor(owner->color) : QColor("#999999"), art::raceKey(town.race), town.walls, town.size}, scene);
     p.end();
     m_scene->setPixmap(pm);
     m_scene->setToolTip(tr("%1: %2 buildings%3").arg(town.name).arg(town.buildings.size())
@@ -177,14 +199,15 @@ void TownDialog::drawScene(const ViewTown& town) {
 void TownDialog::showTown(const GameView& view, int townId) {
     m_townId = townId;
     m_tabs->setCurrentIndex(0);
-    refresh(view);
+    m_view = view;
+    rebuild();
     show();
     raise();
 }
 
 void TownDialog::refresh(const GameView& view) {
     m_view = view;
-    if (isVisible() || m_townId) rebuild();
+    if (isVisible()) rebuild();  // closed: showTown builds it when it opens
 }
 
 QList<int> TownDialog::myTowns() const {
@@ -219,7 +242,7 @@ void TownDialog::rebuild() {
         m_townChoice->setEnabled(m_townChoice->count() > 1);
     }
     const bool myTurn = m_view.isMyTurn();
-    setWindowTitle(tr("%1 (%2)").arg(town->name, town->race));
+    setWindowTitle(tr("%1 (%2)").arg(town->name, m_content->race(town->race).name));
     drawScene(*town);
     const int keep = m_tabs->currentIndex();
     while (m_tabs->count() > 0) {
@@ -255,28 +278,29 @@ void TownDialog::rebuild() {
         }
         {
             QStringList standing;
-            for (const QString& id : town->buildings)
+            for (const core::BuildingTypeId id : town->buildings)
                 if (const core::BuildingDef* b = m_content->building(id)) standing << b->name;
             auto* built = new QLabel(tr("<i>Built here:</i> %1").arg(standing.isEmpty() ? tr("nothing yet") : standing.join(", ")), page);
             built->setObjectName("builtList");
             built->setWordWrap(true);
             layout->addWidget(built);
         }
-        const auto name = [&](const QString& id) {
+        const auto name = [&](core::BuildingTypeId id) {
             const core::BuildingDef* b = m_content->building(id);
-            return b ? b->name : id;
+            return b ? b->name : QString();
         };
         struct Row {
-            QString id;
+            core::BuildingTypeId id;
             QString status;
             int rank;  // 0 now, 1 after a trade, 2 blocked otherwise, 2 + n: n buildings missing first
+            bool upgrade;  // within a rank: new buildings first, then upgrades
         };
         QList<Row> rows;
         // Left out: buildings that can never come here any more because a rival
         // one was built (excludes, either way round).
-        const auto ruledOut = [&](const QString& id) {
+        const auto ruledOut = [&](core::BuildingTypeId id) {
             const core::BuildingDef* b = m_content->building(id);
-            for (const QString& built : town->buildings) {
+            for (const core::BuildingTypeId built : town->buildings) {
                 const core::BuildingDef* other = m_content->building(built);
                 if ((b && b->excludes.contains(built)) || (other && other->excludes.contains(id))) return true;
             }
@@ -284,42 +308,43 @@ void TownDialog::rebuild() {
         };
         // How many buildings are still missing before this one: 0 = none, 1 = one
         // needed building can be built first, 2 = that one needs another, ...
-        QHash<QString, int> stepsMemo;
-        const std::function<int(const QString&, int)> stepsTo = [&](const QString& id, int guard) -> int {
+        QHash<core::BuildingTypeId, int> stepsMemo;
+        const std::function<int(core::BuildingTypeId, int)> stepsTo = [&](core::BuildingTypeId id, int guard) -> int {
             if (town->buildings.contains(id) || guard > 20) return 0;
             if (stepsMemo.contains(id)) return stepsMemo.value(id);
             const core::BuildingDef* b = m_content->building(id);
             int steps = 0;
             if (b) {
-                QStringList needs = b->requiredBuildings;
-                if (!b->upgradeOf.isEmpty()) needs << b->upgradeOf;
-                for (const QString& n : needs)
+                QList<core::BuildingTypeId> needs = b->requiredBuildings;
+                if (b->upgradeOf.isValid()) needs << b->upgradeOf;
+                for (const core::BuildingTypeId n : needs)
                     if (!town->buildings.contains(n)) steps = std::max(steps, stepsTo(n, guard + 1) + 1);
             }
             stepsMemo.insert(id, steps);
             return steps;
         };
-        QHash<QString, QString> whyOf;
+        QHash<core::BuildingTypeId, QString> whyOf;
         for (const BuildOption& o : town->buildOptions) whyOf.insert(o.id, o.why);
-        const auto missingNow = [&](const QString& id) {
-            QStringList out;
+        const auto missingNow = [&](core::BuildingTypeId id) {
+            QList<core::BuildingTypeId> out;
             const core::BuildingDef* b = m_content->building(id);
             if (!b) return out;
-            QStringList needs = b->requiredBuildings;
-            if (!b->upgradeOf.isEmpty()) needs << b->upgradeOf;
-            for (const QString& n : needs)
+            QList<core::BuildingTypeId> needs = b->requiredBuildings;
+            if (b->upgradeOf.isValid()) needs << b->upgradeOf;
+            for (const core::BuildingTypeId n : needs)
                 if (!town->buildings.contains(n)) out << n;
             return out;
         };
         for (const BuildOption& o : town->buildOptions) {
             if (ruledOut(o.id) || town->buildings.contains(o.id)) continue;  // built ones are listed above
+            if (o.why.contains(QStringLiteral("at the coast"))) continue;  // a shipyard inland: never possible
             const int steps = stepsTo(o.id, 0);
             int rank = o.why.isEmpty() ? 0 : o.why.startsWith("not enough") ? 1 : 2;
             QString status = o.why;
             if (steps > 0) {
                 // What to build first, and whether that can be done now.
                 QStringList parts;
-                for (const QString& n : missingNow(o.id)) {
+                for (const core::BuildingTypeId n : missingNow(o.id)) {
                     const QString w = whyOf.value(n, QStringLiteral("?"));
                     parts << (w.isEmpty() ? tr("%1 (can build now)").arg(name(n))
                               : w.startsWith("not enough") ? tr("%1 (after a trade)").arg(name(n)) : name(n));
@@ -329,9 +354,12 @@ void TownDialog::rebuild() {
             } else if (o.why.contains(QStringLiteral("today"))) {
                 status = QString();  // said once above
             }
-            rows.append({o.id, status, rank});
+            const core::BuildingDef* def = m_content->building(o.id);
+            rows.append({o.id, status, rank, def && isUpgrade(*def)});
         }
-        std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) { return a.rank < b.rank; });
+        std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+            return a.rank != b.rank ? a.rank < b.rank : a.upgrade < b.upgrade;
+        });
         if (m_onlyBuildable) rows.erase(std::remove_if(rows.begin(), rows.end(), [](const Row& r) { return r.rank > 1; }), rows.end());
 
         auto* table = new QTableWidget(page);
@@ -355,8 +383,8 @@ void TownDialog::rebuild() {
             if (r.rank >= 2) nameItem->setForeground(QColor("#9a8a70"));
             table->setItem(row, 0, nameItem);
             table->setItem(row, 2, new QTableWidgetItem(!b ? QString() : costText(b->cost)));
-            auto* what = new QTableWidgetItem(b ? effectsText(*b) : QString());
-            what->setToolTip(what->text());
+            auto* what = new QTableWidgetItem(b ? effectsText(*b, true) : QString());
+            what->setToolTip(b ? effectsText(*b) : QString());
             table->setItem(row, 3, what);
             // Only blocked rows say why (a button already says it can be built).
             auto* why = new QTableWidgetItem(r.rank == 0 ? QString() : r.status);
@@ -365,13 +393,13 @@ void TownDialog::rebuild() {
             table->setItem(row, 4, why);
             if (r.rank <= 1) {
                 const bool trade = r.rank == 1;
-                const QString id = r.id;
+                const core::BuildingTypeId id = r.id;
                 auto* button = new QPushButton(trade ? tr("Build (trade first)") : tr("Build"));
-                button->setObjectName(QStringLiteral("build_%1").arg(id));
+                button->setObjectName(QStringLiteral("build_%1").arg(m_content->building(id)->key));
                 button->setEnabled(myTurn);
                 button->setMinimumHeight(30);
                 connect(button, &QPushButton::clicked, this, [=, this]() {
-                    send("build", {{"town", tid}, {"building", id}, {"useTrade", trade}}, tr("Build %1").arg(name(id)));
+                    send("build", {{"town", tid}, {"building", id.index()}, {"useTrade", trade}}, tr("Build %1").arg(name(id)));
                 });
                 table->setCellWidget(row, 1, button);
             }
@@ -434,13 +462,13 @@ void TownDialog::rebuild() {
             count->setValue(rc.available);
             table->setCellWidget(row, 3, count);
             auto* button = new QPushButton(tr("Recruit"));
-            button->setObjectName(QStringLiteral("recruit_%1").arg(rc.unit));
+            button->setObjectName(QStringLiteral("recruit_%1").arg(art::unitKey(rc.unit)));
             button->setEnabled(myTurn && rc.available > 0);
-            const QString unit = rc.unit;
+            const core::UnitTypeId unit = rc.unit;
             const int tid = town->id;
             connect(button, &QPushButton::clicked, this, [=, this]() {
                 if (count->value() > 0)
-                    send("recruit", {{"town", tid}, {"unit", unit}, {"count", count->value()}},
+                    send("recruit", {{"town", tid}, {"unit", unit.index()}, {"count", count->value()}},
                          tr("Recruit %1 x %2").arg(count->value()).arg(unitName(unit)));
             });
             table->setCellWidget(row, 4, button);
@@ -480,7 +508,7 @@ void TownDialog::rebuild() {
         auto* page = new QWidget();
         auto* layout = new QVBoxLayout(page);
         bool hasTavern = false;
-        for (const QString& id : town->buildings) {
+        for (const core::BuildingTypeId id : town->buildings) {
             const core::BuildingDef* b = m_content->building(id);
             if (!b) continue;
             for (const core::BuildingEffect& e : b->effects)
@@ -497,23 +525,23 @@ void TownDialog::rebuild() {
             layout->addWidget(done);
         }
         const int cost = m_content->balance().economy.heroCost;
-        const int gold = m_view.resources.value(m_content->currency() ? m_content->currency()->id : QString());
-        for (const QString& offer : town->tavernOffers) {
+        const int gold = m_view.resources.value(m_content->currency());
+        for (const core::HeroTemplateId offer : town->tavernOffers) {
             const core::HeroTemplateDef* t = m_content->heroTemplate(offer);
             auto* row = new QHBoxLayout();
             auto* face = new QLabel(page);
             const ViewPlayer* me = m_view.player(m_view.you);
-            if (t) face->setPixmap(art::portrait(t->classId, me ? QColor(me->color) : QColor("#999999"), int(qHash(offer) % 6), 56));
+            if (t) face->setPixmap(art::portrait(t->classId, me ? QColor(me->color) : QColor("#999999"), offer.index() % 6, 56));
             row->addWidget(face);
             const core::HeroClassDef* cls = t ? m_content->heroClass(t->classId) : nullptr;
-            row->addWidget(new QLabel(t ? tr("<b>%1</b><br>%2").arg(t->name, cls ? cls->name : t->classId) : offer, page), 1);
+            row->addWidget(new QLabel(t ? tr("<b>%1</b><br>%2").arg(t->name, cls ? cls->name : QString()) : QString(), page), 1);
             auto* hire = new QPushButton(gold >= cost ? tr("Hire for %1").arg(cost) : tr("Hire for %1 (trade first)").arg(cost), page);
-            hire->setObjectName(QStringLiteral("hire_%1").arg(offer));
+            hire->setObjectName(QStringLiteral("hire_%1").arg(t ? t->key : QString()));
             hire->setEnabled(myTurn && !town->hiredThisWeek);
             const int tid = town->id;
             const bool trade = gold < cost;
             connect(hire, &QPushButton::clicked, this, [=, this]() {
-                send("hire_hero", {{"town", tid}, {"hero", offer}, {"useTrade", trade}}, tr("Hire %1").arg(t ? t->name : offer));
+                send("hire_hero", {{"town", tid}, {"hero", offer.index()}, {"useTrade", trade}}, tr("Hire %1").arg(t ? t->name : QString()));
             });
             row->addWidget(hire);
             layout->addLayout(row);
@@ -573,13 +601,13 @@ void TownDialog::rebuild() {
             }
         };
         bool shipyard = false;
-        for (const QString& id : town->buildings)
+        for (const core::BuildingTypeId id : town->buildings)
             if (const core::BuildingDef* b = m_content->building(id))
                 for (const core::BuildingEffect& e : b->effects) shipyard = shipyard || e.type == core::BuildingEffect::Type::Shipyard;
         if (shipyard && visitor) {
             QStringList cost;
             const core::ResourceAmounts& c = m_content->balance().economy.boatCost;
-            for (auto it = c.begin(); it != c.end(); ++it) cost << QStringLiteral("%1 %2").arg(it.value()).arg(it.key());
+            for (const auto [r, amount] : c) cost << QStringLiteral("%1 %2").arg(amount).arg(m_content->resource(r).key);
             auto* boat = new QPushButton(tr("Buy a boat for %1 (%2)").arg(visitor->name, cost.join(", ")), page);
             boat->setObjectName("buyBoat");
             boat->setEnabled(myTurn);

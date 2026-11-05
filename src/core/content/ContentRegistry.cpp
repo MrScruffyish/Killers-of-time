@@ -1,5 +1,7 @@
 #include "core/content/ContentRegistry.h"
 
+#include <QCryptographicHash>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -77,15 +79,22 @@ void forEachEntry(const QString& dir, const QString& file, const QString& key,
 }  // namespace
 
 void ContentRegistry::clear() {
+    m_checksum.clear();
     m_resources.clear();
+    m_currency = ResourceId();
     m_terrain.clear();
     m_traits.clear();
+    m_known = KnownTraits();
     m_units.clear();
+    m_unitIndex.clear();
     m_heroClasses.clear();
     m_buildings.clear();
+    m_buildingIndex.clear();
     m_heroTemplates.clear();
     m_spells.clear();
+    m_spellIndex.clear();
     m_races.clear();
+    m_raceIndex.clear();
     m_artifacts.clear();
     m_weekEvents.clear();
     m_xpThresholds.clear();
@@ -95,6 +104,14 @@ void ContentRegistry::clear() {
 bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* errors) {
     clear();
     QStringList problems;
+    // Spells are named by units (read before them): their ids from the file names first.
+    for (const QFileInfo& info : QDir(QDir(dataDir).filePath(QStringLiteral("spells"))).entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name))
+        m_spellIndex.insert(info.completeBaseName(), static_cast<int>(m_spellIndex.size()));
+    m_spells.resize(m_spellIndex.size());
+    // Races too (units, buildings and hero classes name them).
+    for (const QFileInfo& info : QDir(QDir(dataDir).filePath(QStringLiteral("races"))).entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name))
+        m_raceIndex.insert(info.completeBaseName(), static_cast<int>(m_raceIndex.size()));
+    m_races.resize(m_raceIndex.size());
     loadResources(dataDir, problems);
     loadTerrain(dataDir, problems);
     loadTraits(dataDir, problems);
@@ -115,9 +132,9 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
         for (UnitDef& u : m_units) u.rank = 0;
         for (const UnitDef& u : m_units) {
             int rank = 0;
-            for (QString next = u.upgradesTo; !next.isEmpty() && rank < 10; next = m_units.value(next).upgradesTo) {
+            for (UnitTypeId next = u.upgradesTo; next.isValid() && rank < 10; next = m_units[next.index()].upgradesTo) {
                 ++rank;
-                UnitDef& n = m_units[next];
+                UnitDef& n = m_units[next.index()];
                 n.rank = std::max(n.rank, rank);
             }
         }
@@ -129,34 +146,120 @@ bool ContentRegistry::loadFromDirectory(const QString& dataDir, QStringList* err
     }
     if (errors) errors->clear();
     m_dataDir = dataDir;
+    {
+        // Every kind's keys in id order (all kinds, also those still keyed by text).
+        QCryptographicHash hash(QCryptographicHash::Sha1);
+        const auto add = [&](const char* kind, const QStringList& keys) {
+            hash.addData(QByteArray(kind) + ':' + keys.join(',').toUtf8() + ';');
+        };
+        QStringList keys;
+        for (const ResourceDef& r : m_resources) keys << r.key;
+        add("resources", keys);
+        keys.clear();
+        for (const TerrainDef& t : m_terrain) keys << t.key;
+        add("terrain", keys);
+        keys.clear();
+        for (const TraitDef& t : m_traits) keys << t.key;
+        add("traits", keys);
+        keys.clear();
+        for (const UnitDef& u : m_units) keys << u.key;
+        add("units", keys);
+        keys.clear();
+        for (const BuildingDef& b : m_buildings) keys << b.key;
+        add("buildings", keys);
+        keys.clear();
+        for (const HeroClassDef& c : m_heroClasses) keys << c.key;
+        add("heroClasses", keys);
+        keys.clear();
+        for (const HeroTemplateDef& h : m_heroTemplates) keys << h.key;
+        add("heroTemplates", keys);
+        keys.clear();
+        for (const SpellDef& sp : m_spells) keys << sp.key;
+        add("spells", keys);
+        keys.clear();
+        for (const RaceDef& rc : m_races) keys << rc.key;
+        add("races", keys);
+        keys.clear();
+        for (const ArtifactDef& a : m_artifacts) keys << a.key;
+        add("artifacts", keys);
+        keys.clear();
+        for (const WeekEventDef& e : m_weekEvents) keys << e.key;
+        add("weekEvents", keys);
+        m_checksum = QString::fromLatin1(hash.result().toHex().left(16));
+    }
     return true;
 }
 
 void ContentRegistry::loadResources(const QString& dir, QStringList& errors) {
+    QMap<QString, ResourceDef> byKey;  // sorted by key: the ids
     forEachEntry(dir, QStringLiteral("resources.json"), QStringLiteral("resources"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
                      JsonReader r(o, ctx, &errors);
                      ResourceDef d;
-                     d.id = r.requireId(QStringLiteral("id"));
+                     d.key = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
                      d.isCurrency = r.optionalBool(QStringLiteral("currency"), false);
                      d.value = r.optionalInt(QStringLiteral("value"), d.isCurrency ? 1 : 100, 1, 1000000);
                      r.finish();
                      if (!r.ok()) return;
-                     if (m_resources.contains(d.id)) {
-                         errors << ctx + QStringLiteral(": duplicate resource id '%1'").arg(d.id);
+                     if (byKey.contains(d.key)) {
+                         errors << ctx + QStringLiteral(": duplicate resource id '%1'").arg(d.key);
                          return;
                      }
-                     m_resources.insert(d.id, d);
+                     byKey.insert(d.key, d);
                  });
+    if (byKey.size() > ResourceAmounts::kMax) {
+        errors << QStringLiteral("resources.json: at most %1 resources").arg(ResourceAmounts::kMax);
+        return;
+    }
+    int currencies = 0;
+    for (ResourceDef& d : byKey) {
+        d.id = ResourceId(static_cast<int>(m_resources.size()));
+        if (d.isCurrency) {
+            m_currency = d.id;
+            ++currencies;
+            if (d.value != 1) errors << QStringLiteral("resource '%1': the currency must have value 1").arg(d.key);
+        }
+        m_resources.append(d);
+    }
+    if (currencies != 1)
+        errors << QStringLiteral("resources.json: exactly one resource must have \"currency\": true (found %1)").arg(currencies);
+    // Defaults for balance.json values that name resources.
+    const ResourceId wood = resourceId(QStringLiteral("wood"));
+    if (m_currency.isValid()) {
+        m_balance.economy.startingResources[m_currency] = 10000;
+        m_balance.economy.boatCost[m_currency] = 1000;
+        m_balance.siege.engineCost[m_currency] = 600;
+    }
+    if (wood.isValid()) {
+        m_balance.economy.boatCost[wood] = 10;
+        m_balance.siege.engineCost[wood] = 10;
+    }
+}
+
+ResourceId ContentRegistry::resourceId(const QString& key) const {
+    for (const ResourceDef& r : m_resources)
+        if (r.key == key) return r.id;
+    return ResourceId();
+}
+
+ResourceAmounts ContentRegistry::toResources(const QMap<QString, int>& amounts, const QString& context, QStringList& errors) const {
+    ResourceAmounts out;
+    for (auto it = amounts.cbegin(); it != amounts.cend(); ++it) {
+        const ResourceId r = resourceId(it.key());
+        if (!r.isValid()) errors << QStringLiteral("%1: unknown resource '%2'").arg(context, it.key());
+        else out[r] = it.value();
+    }
+    return out;
 }
 
 void ContentRegistry::loadTerrain(const QString& dir, QStringList& errors) {
+    QMap<QString, TerrainDef> byKey;  // sorted by key: the ids
     forEachEntry(dir, QStringLiteral("terrain.json"), QStringLiteral("terrain"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
                      JsonReader r(o, ctx, &errors);
                      TerrainDef d;
-                     d.id = r.requireId(QStringLiteral("id"));
+                     d.key = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
                      d.walkable = r.optionalBool(QStringLiteral("walkable"), true);
                      d.sailable = r.optionalBool(QStringLiteral("sailable"), false);
@@ -165,20 +268,31 @@ void ContentRegistry::loadTerrain(const QString& dir, QStringList& errors) {
                      d.color = r.requireColor(QStringLiteral("color"));
                      r.finish();
                      if (!r.ok()) return;
-                     if (m_terrain.contains(d.id)) {
-                         errors << ctx + QStringLiteral(": duplicate terrain id '%1'").arg(d.id);
+                     if (byKey.contains(d.key)) {
+                         errors << ctx + QStringLiteral(": duplicate terrain id '%1'").arg(d.key);
                          return;
                      }
-                     m_terrain.insert(d.id, d);
+                     byKey.insert(d.key, d);
                  });
+    for (TerrainDef& d : byKey) {
+        d.id = TerrainId(static_cast<int>(m_terrain.size()));
+        m_terrain.append(d);
+    }
+}
+
+TerrainId ContentRegistry::terrainId(const QString& key) const {
+    for (const TerrainDef& t : m_terrain)
+        if (t.key == key) return t.id;
+    return TerrainId();
 }
 
 void ContentRegistry::loadTraits(const QString& dir, QStringList& errors) {
+    QMap<QString, TraitDef> byKey;  // sorted by key: the ids
     forEachEntry(dir, QStringLiteral("traits.json"), QStringLiteral("traits"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
                      JsonReader r(o, ctx, &errors);
                      TraitDef d;
-                     d.id = r.requireId(QStringLiteral("id"));
+                     d.key = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
                      const QString group = r.requireString(QStringLiteral("group"));
                      if (group == QLatin1String("battle")) d.group = TraitGroup::Battle;
@@ -191,12 +305,49 @@ void ContentRegistry::loadTraits(const QString& dir, QStringList& errors) {
                      d.description = r.optionalString(QStringLiteral("description"));
                      r.finish();
                      if (!r.ok()) return;
-                     if (m_traits.contains(d.id)) {
-                         errors << ctx + QStringLiteral(": duplicate trait id '%1'").arg(d.id);
+                     if (byKey.contains(d.key)) {
+                         errors << ctx + QStringLiteral(": duplicate trait id '%1'").arg(d.key);
                          return;
                      }
-                     m_traits.insert(d.id, d);
+                     byKey.insert(d.key, d);
                  });
+    if (byKey.size() > TraitValues::kMax) {
+        errors << QStringLiteral("traits.json: at most %1 traits").arg(TraitValues::kMax);
+        return;
+    }
+    for (TraitDef& d : byKey) {
+        d.id = TraitId(static_cast<int>(m_traits.size()));
+        m_traits.append(d);
+    }
+    m_known.attack = traitId(QStringLiteral("attack"));
+    m_known.defense = traitId(QStringLiteral("defense"));
+    m_known.morale = traitId(QStringLiteral("morale"));
+    m_known.luck = traitId(QStringLiteral("luck"));
+    m_known.hitPoints = traitId(QStringLiteral("hit_points"));
+    m_known.magic = traitId(QStringLiteral("magic"));
+    m_known.spellPower = traitId(QStringLiteral("spell_power"));
+    m_known.spellRecovery = traitId(QStringLiteral("spell_recovery"));
+    m_known.spellPointsMax = traitId(QStringLiteral("spell_points_max"));
+    m_known.movementPoints = traitId(QStringLiteral("movement_points"));
+    m_known.scouting = traitId(QStringLiteral("scouting"));
+    m_known.attackRange = traitId(QStringLiteral("attack_range"));
+    m_known.scoutingRadius = traitId(QStringLiteral("scouting_radius"));
+}
+
+TraitId ContentRegistry::traitId(const QString& key) const {
+    for (const TraitDef& t : m_traits)
+        if (t.key == key) return t.id;
+    return TraitId();
+}
+
+TraitValues ContentRegistry::toTraits(const QMap<QString, int>& values, const QString& context, QStringList& errors) const {
+    TraitValues out;
+    for (auto it = values.cbegin(); it != values.cend(); ++it) {
+        const TraitId t = traitId(it.key());
+        if (!t.isValid()) errors << QStringLiteral("%1 uses unknown trait '%2'").arg(context, it.key());
+        else out[t] = it.value();
+    }
+    return out;
 }
 
 void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
@@ -207,16 +358,21 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
     }
     const QFileInfoList files =
         unitsDir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
-    for (const QFileInfo& info : files) {
+    // The ids come from the file names (sorted), so units can name each other.
+    for (const QFileInfo& info : files) m_unitIndex.insert(info.completeBaseName(), static_cast<int>(m_unitIndex.size()));
+    m_units.resize(files.size());
+    for (int index = 0; index < files.size(); ++index) {
+        const QFileInfo& info = files[index];
         const QString ctx = QStringLiteral("units/") + info.fileName();
         QJsonObject o;
         if (!readObjectFile(info.filePath(), ctx, &o, errors)) continue;
 
         JsonReader r(o, ctx, &errors);
         UnitDef d;
-        d.id = r.requireId(QStringLiteral("id"));
+        d.id = UnitTypeId(index);
+        d.key = r.requireId(QStringLiteral("id"));
         d.name = r.requireString(QStringLiteral("name"));
-        d.race = r.requireId(QStringLiteral("race"));
+        d.race = toRace(r.requireId(QStringLiteral("race")), ctx, errors);
         d.tier = r.requireInt(QStringLiteral("tier"), 1, 7);
         d.attack = r.requireInt(QStringLiteral("attack"), 0, 1000);
         d.defense = r.requireInt(QStringLiteral("defense"), 0, 1000);
@@ -230,10 +386,13 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
         d.shots = r.optionalInt(QStringLiteral("shots"), 0, 0, 1000);
         d.weeklyGrowth = r.optionalInt(QStringLiteral("weeklyGrowth"), 0, 0, 10000);
         d.spellPoints = r.optionalInt(QStringLiteral("spellPoints"), 0, 0, 10000);
-        d.cost = r.optionalIntMap(QStringLiteral("cost"), 1, 1000000);
-        d.abilities = r.optionalStringList(QStringLiteral("abilities"));
-        d.spells = r.optionalStringList(QStringLiteral("spells"));
-        d.upgradesTo = r.optionalString(QStringLiteral("upgradesTo"));
+        d.cost = toResources(r.optionalIntMap(QStringLiteral("cost"), 1, 1000000), ctx + QStringLiteral(" cost"), errors);
+        const QStringList abilities = r.optionalStringList(QStringLiteral("abilities"));
+        for (const QString& sp : r.optionalStringList(QStringLiteral("spells"))) {
+            if (spellId(sp).isValid()) d.spells << spellId(sp);
+            else r.addError(QStringLiteral("unknown spell '%1'").arg(sp));
+        }
+        const QString upgradesTo = r.optionalString(QStringLiteral("upgradesTo"));
         r.finish();
         if (!r.ok()) continue;
 
@@ -244,21 +403,28 @@ void ContentRegistry::loadUnits(const QString& dir, QStringList& errors) {
             r.addError(QStringLiteral("a ranged unit (range > 0) needs shots >= 1"));
         if (d.range == 0 && d.shots > 0)
             r.addError(QStringLiteral("shots > 0 but range is 0 (melee units have no shots)"));
-        static const QStringList knownAbilities = {QStringLiteral("flying"), QStringLiteral("no_retaliation"),
-                                                   QStringLiteral("double_attack"), QStringLiteral("undead"),
-                                                   QStringLiteral("siege_engine")};
-        for (const QString& a : d.abilities)
-            if (!knownAbilities.contains(a))
-                r.addError(QStringLiteral("unknown ability '%1' (known: %2)").arg(a, knownAbilities.join(", ")));
-        if (d.id != info.completeBaseName())
-            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
-        if (!r.ok()) continue;
-
-        if (m_units.contains(d.id)) {
-            errors << ctx + QStringLiteral(": duplicate unit id '%1'").arg(d.id);
-            continue;
+        static const QList<std::pair<QString, Ability>> knownAbilities = {
+            {QStringLiteral("flying"), Ability::Flying}, {QStringLiteral("no_retaliation"), Ability::NoRetaliation},
+            {QStringLiteral("double_attack"), Ability::DoubleAttack}, {QStringLiteral("undead"), Ability::Undead},
+            {QStringLiteral("siege_engine"), Ability::SiegeEngine}};
+        for (const QString& a : abilities) {
+            bool known = false;
+            for (const auto& [name, bit] : knownAbilities)
+                if (name == a) {
+                    d.abilities |= static_cast<quint32>(bit);
+                    known = true;
+                }
+            if (!known) r.addError(QStringLiteral("unknown ability '%1' (known: flying, no_retaliation, double_attack, undead, siege_engine)").arg(a));
         }
-        m_units.insert(d.id, d);
+        if (!upgradesTo.isEmpty()) {
+            d.upgradesTo = unitId(upgradesTo);
+            if (!d.upgradesTo.isValid()) r.addError(QStringLiteral("upgradesTo unknown unit '%1'").arg(upgradesTo));
+            else if (d.upgradesTo == d.id) r.addError(QStringLiteral("cannot upgrade to itself"));
+        }
+        if (d.key != info.completeBaseName())
+            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.key));
+        if (!r.ok()) continue;
+        m_units[index] = d;
     }
 }
 
@@ -270,20 +436,40 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
     }
     const QFileInfoList files =
         buildingsDir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
-    for (const QFileInfo& info : files) {
+    // The ids come from the file names (sorted), so buildings can name each other.
+    for (const QFileInfo& info : files) m_buildingIndex.insert(info.completeBaseName(), static_cast<int>(m_buildingIndex.size()));
+    m_buildings.resize(files.size());
+    for (int index = 0; index < files.size(); ++index) {
+        const QFileInfo& info = files[index];
         const QString ctx = QStringLiteral("buildings/") + info.fileName();
         QJsonObject o;
         if (!readObjectFile(info.filePath(), ctx, &o, errors)) continue;
 
         JsonReader r(o, ctx, &errors);
         BuildingDef d;
-        d.id = r.requireId(QStringLiteral("id"));
+        d.id = BuildingTypeId(index);
+        d.key = r.requireId(QStringLiteral("id"));
         d.name = r.requireString(QStringLiteral("name"));
-        d.race = r.has(QStringLiteral("race")) ? r.requireId(QStringLiteral("race")) : QString();
-        d.cost = r.optionalIntMap(QStringLiteral("cost"), 1, 1000000);
-        d.requiredBuildings = r.optionalStringList(QStringLiteral("requires"));
-        d.excludes = r.optionalStringList(QStringLiteral("excludes"));
-        d.upgradeOf = r.optionalString(QStringLiteral("upgradeOf"));
+        if (r.has(QStringLiteral("race"))) d.race = toRace(r.requireId(QStringLiteral("race")), ctx, errors);
+        d.cost = toResources(r.optionalIntMap(QStringLiteral("cost"), 1, 1000000), ctx + QStringLiteral(" cost"), errors);
+        const auto ids = [&](const QStringList& keys, const char* field) {
+            QList<BuildingTypeId> out;
+            for (const QString& k : keys) {
+                const BuildingTypeId b = buildingId(k);
+                if (!b.isValid()) r.addError(QStringLiteral("%1: unknown building '%2'").arg(QLatin1String(field), k));
+                else if (b == d.id) r.addError(QStringLiteral("%1: refers to itself").arg(QLatin1String(field)));
+                else out << b;
+            }
+            return out;
+        };
+        d.requiredBuildings = ids(r.optionalStringList(QStringLiteral("requires")), "requires");
+        d.excludes = ids(r.optionalStringList(QStringLiteral("excludes")), "excludes");
+        for (const BuildingTypeId b : d.requiredBuildings)
+            if (d.excludes.contains(b)) r.addError(QStringLiteral("'%1' is both required and excluded").arg(files[b.index()].completeBaseName()));
+        if (const QString up = r.optionalString(QStringLiteral("upgradeOf")); !up.isEmpty()) {
+            d.upgradeOf = buildingId(up);
+            if (!d.upgradeOf.isValid()) r.addError(QStringLiteral("upgradeOf unknown building '%1'").arg(up));
+        }
         const QJsonArray effects =
             r.has(QStringLiteral("effects")) ? r.requireArray(QStringLiteral("effects")) : QJsonArray();
         r.finish();
@@ -298,12 +484,16 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
             const QString type = er.requireString(QStringLiteral("type"));
             if (type == QLatin1String("dwelling")) {
                 e.type = BuildingEffect::Type::Dwelling;
-                e.unit = er.requireId(QStringLiteral("unit"));
+                const QString key = er.requireId(QStringLiteral("unit"));
+                e.unit = unitId(key);
+                if (!key.isEmpty() && !e.unit.isValid()) er.addError(QStringLiteral("dwelling of unknown unit '%1'").arg(key));
             } else if (type == QLatin1String("tavern")) {
                 e.type = BuildingEffect::Type::Tavern;
             } else if (type == QLatin1String("income")) {
                 e.type = BuildingEffect::Type::Income;
-                e.resource = er.requireId(QStringLiteral("resource"));
+                const QString key = er.requireId(QStringLiteral("resource"));
+                e.resource = resourceId(key);
+                if (!key.isEmpty() && !e.resource.isValid()) er.addError(QStringLiteral("income of unknown resource '%1'").arg(key));
                 e.amount = er.requireInt(QStringLiteral("amount"), 1, 1000000);
             } else if (type == QLatin1String("shipyard")) {
                 e.type = BuildingEffect::Type::Shipyard;
@@ -329,75 +519,109 @@ void ContentRegistry::loadBuildings(const QString& dir, QStringList& errors) {
             if (er.ok()) d.effects.append(e);
             else r.addError(QStringLiteral("has an invalid effect"));
         }
-        if (d.id != info.completeBaseName())
-            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
+        if (d.key != info.completeBaseName())
+            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.key));
         if (!r.ok()) continue;
-        if (m_buildings.contains(d.id)) {
-            errors << ctx + QStringLiteral(": duplicate building id '%1'").arg(d.id);
-            continue;
-        }
-        m_buildings.insert(d.id, d);
+        m_buildings[index] = d;
     }
 }
 
 void ContentRegistry::loadArtifacts(const QString& dir, QStringList& errors) {
     if (!QFile::exists(QDir(dir).filePath(QStringLiteral("artifacts.json")))) return;  // optional
+    QMap<QString, ArtifactDef> byKey;  // sorted by key: the ids
     forEachEntry(dir, QStringLiteral("artifacts.json"), QStringLiteral("artifacts"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
                      JsonReader r(o, ctx, &errors);
                      ArtifactDef d;
-                     d.id = r.requireId(QStringLiteral("id"));
+                     d.key = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
                      d.description = r.optionalString(QStringLiteral("description"));
-                     d.traits = r.optionalIntMap(QStringLiteral("traits"), -100, 100);
+                     d.traits = toTraits(r.optionalIntMap(QStringLiteral("traits"), -100, 100), ctx, errors);
                      d.value = r.optionalInt(QStringLiteral("value"), 1, 1, 3);
                      d.slot = r.optionalString(QStringLiteral("slot"), QStringLiteral("misc"));
                      if (artifactSlotCount(d.slot) == 0) r.addError(QStringLiteral("unknown slot '%1'").arg(d.slot));
                      r.finish();
                      if (!r.ok()) return;
-                     if (m_artifacts.contains(d.id)) {
-                         errors << ctx + QStringLiteral(": duplicate artifact id '%1'").arg(d.id);
+                     if (byKey.contains(d.key)) {
+                         errors << ctx + QStringLiteral(": duplicate artifact id '%1'").arg(d.key);
                          return;
                      }
-                     m_artifacts.insert(d.id, d);
+                     byKey.insert(d.key, d);
                  });
+    for (ArtifactDef& d : byKey) {
+        d.id = ArtifactId(static_cast<int>(m_artifacts.size()));
+        m_artifacts.append(d);
+    }
+}
+
+ArtifactId ContentRegistry::artifactId(const QString& key) const {
+    for (const ArtifactDef& a : m_artifacts)
+        if (a.key == key) return a.id;
+    return ArtifactId();
 }
 
 void ContentRegistry::loadWeekEvents(const QString& dir, QStringList& errors) {
+    QMap<QString, WeekEventDef> byKey;  // sorted by key: the ids
     if (!QFile::exists(QDir(dir).filePath(QStringLiteral("events.json")))) return;  // optional
     forEachEntry(dir, QStringLiteral("events.json"), QStringLiteral("events"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
                      JsonReader r(o, ctx, &errors);
                      WeekEventDef d;
-                     d.id = r.requireId(QStringLiteral("id"));
+                     d.key = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
                      d.description = r.optionalString(QStringLiteral("description"));
                      d.weight = r.optionalInt(QStringLiteral("weight"), 10, 0, 10000);
-                     d.resources = r.optionalIntMap(QStringLiteral("resources"), -1000000, 1000000);
+                     d.resources = toResources(r.optionalIntMap(QStringLiteral("resources"), -1000000, 1000000), ctx, errors);
                      d.growthPercent = r.optionalInt(QStringLiteral("growthPercent"), 0, -100, 1000);
-                     d.unitGrowth = r.optionalIntMap(QStringLiteral("unitGrowth"), 1, 10000);
+                     const QMap<QString, int> growth = r.optionalIntMap(QStringLiteral("unitGrowth"), 1, 10000);
+                     for (auto it = growth.cbegin(); it != growth.cend(); ++it) {
+                         if (unitId(it.key()).isValid()) d.unitGrowth.insert(unitId(it.key()), it.value());
+                         else errors << ctx + QStringLiteral(": unknown unit '%1'").arg(it.key());
+                     }
                      r.finish();
-                     if (r.ok()) m_weekEvents.insert(d.id, d);
+                     if (r.ok()) byKey.insert(d.key, d);
                  });
+    for (WeekEventDef& d : byKey) {
+        d.id = WeekEventId(static_cast<int>(m_weekEvents.size()));
+        m_weekEvents.append(d);
+    }
+}
+
+WeekEventId ContentRegistry::weekEventId(const QString& key) const {
+    for (const WeekEventDef& e : m_weekEvents)
+        if (e.key == key) return e.id;
+    return WeekEventId();
 }
 
 void ContentRegistry::loadRaces(const QString& dir, QStringList& errors) {
     const QDir racesDir(QDir(dir).filePath(QStringLiteral("races")));
-    if (!racesDir.exists()) return;  // races without a file have no bonuses
     for (const QFileInfo& info : racesDir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name)) {
+        const int index = m_raceIndex.value(info.completeBaseName());
         const QString ctx = QStringLiteral("races/") + info.fileName();
         QJsonObject o;
         if (!readObjectFile(info.filePath(), ctx, &o, errors)) continue;
         JsonReader r(o, ctx, &errors);
         RaceDef d;
-        d.id = r.requireId(QStringLiteral("id"));
+        d.id = RaceId(index);
+        d.key = r.requireId(QStringLiteral("id"));
         d.name = r.requireString(QStringLiteral("name"));
         d.description = r.optionalString(QStringLiteral("description"));
         d.growthPercent = r.optionalInt(QStringLiteral("growthPercent"), 0, -90, 500);
         d.incomePercent = r.optionalInt(QStringLiteral("incomePercent"), 0, -90, 500);
-        d.terrainCostPercent = r.optionalIntMap(QStringLiteral("terrainCostPercent"), 10, 1000);
+        {
+            const QMap<QString, int> percent = r.optionalIntMap(QStringLiteral("terrainCostPercent"), 10, 1000);
+            if (!percent.isEmpty()) d.terrainCostPercent.fill(100, m_terrain.size());
+            for (auto it = percent.cbegin(); it != percent.cend(); ++it) {
+                const TerrainId t = terrainId(it.key());
+                if (t.isValid()) d.terrainCostPercent[t.index()] = it.value();
+                else errors << ctx + QStringLiteral(": unknown terrain '%1'").arg(it.key());
+            }
+        }
         d.spellSchools = r.optionalStringList(QStringLiteral("spellSchools"));
-        d.raiseDeadUnit = r.optionalString(QStringLiteral("raiseDeadUnit"));
+        if (const QString raise = r.optionalString(QStringLiteral("raiseDeadUnit")); !raise.isEmpty()) {
+            d.raiseDeadUnit = unitId(raise);
+            if (!d.raiseDeadUnit.isValid()) r.addError(QStringLiteral("raiseDeadUnit: unknown unit '%1'").arg(raise));
+        }
         d.raiseDeadPercent = r.optionalInt(QStringLiteral("raiseDeadPercent"), 0, 0, 100);
         d.battleLootPercent = r.optionalInt(QStringLiteral("battleLootPercent"), 0, 0, 1000);
         d.tradeBonus = r.optionalInt(QStringLiteral("tradeBonus"), 0, 0, 50);
@@ -406,10 +630,10 @@ void ContentRegistry::loadRaces(const QString& dir, QStringList& errors) {
         d.spellSchoolPercent = r.optionalIntMap(QStringLiteral("spellSchoolPercent"), 10, 500);
         d.abilityText = r.optionalString(QStringLiteral("ability"));
         r.finish();
-        if (d.id != info.completeBaseName())
-            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
+        if (d.key != info.completeBaseName())
+            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.key));
         if (!r.ok()) continue;
-        m_races.insert(d.id, d);
+        m_races[index] = d;
     }
 }
 
@@ -417,12 +641,14 @@ void ContentRegistry::loadSpells(const QString& dir, QStringList& errors) {
     const QDir spellsDir(QDir(dir).filePath(QStringLiteral("spells")));
     if (!spellsDir.exists()) return;  // a game without magic is fine
     for (const QFileInfo& info : spellsDir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name)) {
+        const int index = m_spellIndex.value(info.completeBaseName());
         const QString ctx = QStringLiteral("spells/") + info.fileName();
         QJsonObject o;
         if (!readObjectFile(info.filePath(), ctx, &o, errors)) continue;
         JsonReader r(o, ctx, &errors);
         SpellDef d;
-        d.id = r.requireId(QStringLiteral("id"));
+        d.id = SpellId(index);
+        d.key = r.requireId(QStringLiteral("id"));
         d.name = r.requireString(QStringLiteral("name"));
         d.school = r.optionalString(QStringLiteral("school"), QStringLiteral("general"));
         d.description = r.optionalString(QStringLiteral("description"));
@@ -480,52 +706,87 @@ void ContentRegistry::loadSpells(const QString& dir, QStringList& errors) {
             if (er.ok()) d.effects.append(e);
             else r.addError(QStringLiteral("has an invalid effect"));
         }
-        if (d.id != info.completeBaseName())
-            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.id));
+        if (d.key != info.completeBaseName())
+            r.addError(QStringLiteral("id '%1' must match the file name").arg(d.key));
         if (!r.ok()) continue;
-        m_spells.insert(d.id, d);
+        m_spells[index] = d;
     }
 }
 
 void ContentRegistry::loadHeroTemplates(const QString& dir, QStringList& errors) {
+    QMap<QString, HeroTemplateDef> byKey;  // sorted by key: the ids
     forEachEntry(dir, QStringLiteral("heroes.json"), QStringLiteral("heroes"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
                      JsonReader r(o, ctx, &errors);
                      HeroTemplateDef d;
-                     d.id = r.requireId(QStringLiteral("id"));
+                     d.key = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
-                     d.classId = r.requireId(QStringLiteral("class"));
+                     const QString cls = r.requireId(QStringLiteral("class"));
+                     d.classId = heroClassId(cls);
+                     if (!cls.isEmpty() && !d.classId.isValid()) r.addError(QStringLiteral("unknown class '%1'").arg(cls));
                      r.finish();
                      if (!r.ok()) return;
-                     if (m_heroTemplates.contains(d.id)) {
-                         errors << ctx + QStringLiteral(": duplicate hero id '%1'").arg(d.id);
+                     if (byKey.contains(d.key)) {
+                         errors << ctx + QStringLiteral(": duplicate hero id '%1'").arg(d.key);
                          return;
                      }
-                     m_heroTemplates.insert(d.id, d);
+                     byKey.insert(d.key, d);
                  });
+    for (HeroTemplateDef& d : byKey) {
+        d.id = HeroTemplateId(static_cast<int>(m_heroTemplates.size()));
+        m_heroTemplates.append(d);
+    }
+}
+
+HeroTemplateId ContentRegistry::heroTemplateId(const QString& key) const {
+    for (const HeroTemplateDef& h : m_heroTemplates)
+        if (h.key == key) return h.id;
+    return HeroTemplateId();
+}
+
+HeroClassId ContentRegistry::heroClassId(const QString& key) const {
+    for (const HeroClassDef& c : m_heroClasses)
+        if (c.key == key) return c.id;
+    return HeroClassId();
 }
 
 void ContentRegistry::loadHeroClasses(const QString& dir, QStringList& errors) {
+    QMap<QString, HeroClassDef> byKey;  // sorted by key: the ids
     forEachEntry(dir, QStringLiteral("hero_classes.json"), QStringLiteral("heroClasses"), errors,
                  [&](const QJsonObject& o, const QString& ctx) {
                      JsonReader r(o, ctx, &errors);
                      HeroClassDef d;
-                     d.id = r.requireId(QStringLiteral("id"));
+                     d.key = r.requireId(QStringLiteral("id"));
                      d.name = r.requireString(QStringLiteral("name"));
-                     d.race = r.requireId(QStringLiteral("race"));
-                     d.baseTraits = r.optionalIntMap(QStringLiteral("baseTraits"), 0, 1000);
-                     d.pickIncrement = r.optionalIntMap(QStringLiteral("pickIncrement"), 1, 100);
-                     d.autoGrowth = r.optionalIntMap(QStringLiteral("autoGrowth"), 1, 1000);
-                     d.startingArmy = r.optionalIntMap(QStringLiteral("startingArmy"), 1, 10000);
-                     d.startingSpells = r.optionalStringList(QStringLiteral("startingSpells"));
+                     d.race = toRace(r.requireId(QStringLiteral("race")), ctx, errors);
+                     const QString what = QStringLiteral("hero class '%1': ").arg(d.key);
+                     d.baseTraits = toTraits(r.optionalIntMap(QStringLiteral("baseTraits"), 0, 1000), what + "baseTraits", errors);
+                     d.pickIncrement = toTraits(r.optionalIntMap(QStringLiteral("pickIncrement"), 1, 100), what + "pickIncrement", errors);
+                     d.autoGrowth = toTraits(r.optionalIntMap(QStringLiteral("autoGrowth"), 1, 1000), what + "autoGrowth", errors);
+                     for (const auto [t, v] : d.pickIncrement)
+                         if (!trait(t)->pickable)
+                             errors << what + QStringLiteral("pickIncrement lists trait '%1' which is not pickable").arg(trait(t)->key);
+                     const QMap<QString, int> army = r.optionalIntMap(QStringLiteral("startingArmy"), 1, 10000);
+                     for (auto it = army.cbegin(); it != army.cend(); ++it) {
+                         if (unitId(it.key()).isValid()) d.startingArmy.insert(unitId(it.key()), it.value());
+                         else errors << ctx + QStringLiteral(": startingArmy uses unknown unit '%1'").arg(it.key());
+                     }
+                     for (const QString& sp : r.optionalStringList(QStringLiteral("startingSpells"))) {
+                         if (spellId(sp).isValid()) d.startingSpells << spellId(sp);
+                         else errors << ctx + QStringLiteral(": startingSpells uses unknown spell '%1'").arg(sp);
+                     }
                      r.finish();
                      if (!r.ok()) return;
-                     if (m_heroClasses.contains(d.id)) {
-                         errors << ctx + QStringLiteral(": duplicate hero class id '%1'").arg(d.id);
+                     if (byKey.contains(d.key)) {
+                         errors << ctx + QStringLiteral(": duplicate hero class id '%1'").arg(d.key);
                          return;
                      }
-                     m_heroClasses.insert(d.id, d);
+                     byKey.insert(d.key, d);
                  });
+    for (HeroClassDef& d : byKey) {
+        d.id = HeroClassId(static_cast<int>(m_heroClasses.size()));
+        m_heroClasses.append(d);
+    }
 }
 
 void ContentRegistry::loadProgression(const QString& dir, QStringList& errors) {
@@ -605,7 +866,9 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         sb.defenderShotPercentPerLevel = sr.optionalInt(QStringLiteral("defenderShotPercentPerLevel"), sb.defenderShotPercentPerLevel, 0, 1000);
         sb.catapultDamageMin = sr.optionalInt(QStringLiteral("catapultDamageMin"), sb.catapultDamageMin, 1, 100000);
         sb.catapultDamageMax = sr.optionalInt(QStringLiteral("catapultDamageMax"), sb.catapultDamageMax, 1, 100000);
-        if (sr.has(QStringLiteral("engineCost"))) sb.engineCost = sr.optionalIntMap(QStringLiteral("engineCost"), 0, 1000000);
+        sb.engineCost = m_balance.siege.engineCost;
+        if (sr.has(QStringLiteral("engineCost")))
+            sb.engineCost = toResources(sr.optionalIntMap(QStringLiteral("engineCost"), 0, 1000000), file + QStringLiteral("/siege/engineCost"), errors);
         sr.finish();
         if (sb.catapultDamageMax < sb.catapultDamageMin) sr.addError(QStringLiteral("catapultDamageMax below catapultDamageMin"));
         if (sr.ok()) m_balance.siege = sb;
@@ -696,14 +959,15 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
         vb.mineRadius = vr.requireInt(QStringLiteral("mineRadius"), 1, 100);
         vr.finish();
         JsonReader er(economy, file + QStringLiteral("/economy"), &errors);
-        EconomyBalance eb;
+        EconomyBalance eb = m_balance.economy;  // the resource defaults
         eb.townDailyGold = er.requireInt(QStringLiteral("townDailyGold"), 0, 1000000);
         eb.tradeEfficiencyPercent = er.optionalInt(QStringLiteral("tradeEfficiencyPercent"), 80, 1, 100);
         eb.heroCost = er.optionalInt(QStringLiteral("heroCost"), 2500, 0, 10000000);
         eb.tavernOffers = er.optionalInt(QStringLiteral("tavernOffers"), 2, 1, 10);
         eb.maxHeroesPerPlayer = er.optionalInt(QStringLiteral("maxHeroesPerPlayer"), 8, 1, 100);
-        const ResourceAmounts start = er.optionalIntMap(QStringLiteral("startingResources"), 0, 1000000000);
-        const ResourceAmounts boat = er.optionalIntMap(QStringLiteral("boatCost"), 1, 1000000);
+        const ResourceAmounts start = toResources(er.optionalIntMap(QStringLiteral("startingResources"), 0, 1000000000),
+                                                  file + QStringLiteral("/economy/startingResources"), errors);
+        const ResourceAmounts boat = toResources(er.optionalIntMap(QStringLiteral("boatCost"), 1, 1000000), file + QStringLiteral("/economy/boatCost"), errors);
         if (!boat.isEmpty()) eb.boatCost = boat;
         if (!start.isEmpty()) eb.startingResources = start;
         er.finish();
@@ -746,195 +1010,60 @@ void ContentRegistry::loadBalance(const QString& dir, QStringList& errors) {
 
 void ContentRegistry::validateReferences(QStringList& errors) const {
     for (const UnitDef& u : m_units) {
-        for (const QString& sp : u.spells) {
-            const auto it = m_spells.constFind(sp);
-            if (it == m_spells.cend()) errors << QStringLiteral("unit '%1': unknown spell '%2'").arg(u.id, sp);
-            else if (it->scope != SpellDef::Scope::Battle) errors << QStringLiteral("unit '%1': '%2' is not a battle spell").arg(u.id, sp);
-        }
+        for (const SpellId sp : u.spells)
+            if (spell(sp)->scope != SpellDef::Scope::Battle) errors << QStringLiteral("unit '%1': '%2' is not a battle spell").arg(u.key, spell(sp)->key);
         if (!u.spells.isEmpty() && u.spellPoints <= 0)
-            errors << QStringLiteral("unit '%1': has spells but no spellPoints").arg(u.id);
-    }
-    for (const WeekEventDef& e : m_weekEvents) {
-        for (auto it = e.resources.begin(); it != e.resources.end(); ++it)
-            if (!m_resources.contains(it.key())) errors << QStringLiteral("event '%1': unknown resource '%2'").arg(e.id, it.key());
-        for (auto it = e.unitGrowth.begin(); it != e.unitGrowth.end(); ++it)
-            if (!m_units.contains(it.key())) errors << QStringLiteral("event '%1': unknown unit '%2'").arg(e.id, it.key());
-    }
-    for (const ArtifactDef& a : m_artifacts) {
-        for (auto it = a.traits.begin(); it != a.traits.end(); ++it)
-            if (!m_traits.contains(it.key()))
-                errors << QStringLiteral("artifact '%1': unknown trait '%2'").arg(a.id, it.key());
-    }
-    for (const RaceDef& race : m_races) {
-        for (auto it = race.terrainCostPercent.begin(); it != race.terrainCostPercent.end(); ++it)
-            if (!m_terrain.contains(it.key()))
-                errors << QStringLiteral("race '%1': unknown terrain '%2'").arg(race.id, it.key());
-    }
-    for (const HeroTemplateDef& h : m_heroTemplates) {
-        if (!m_heroClasses.contains(h.classId))
-            errors << QStringLiteral("hero '%1': unknown class '%2'").arg(h.id, h.classId);
-    }
-    for (const HeroClassDef& c : m_heroClasses) {
-        auto check = [&](const QMap<QString, int>& m, const char* what, bool needPickable) {
-            for (auto it = m.begin(); it != m.end(); ++it) {
-                const TraitDef* t = trait(it.key());
-                if (!t)
-                    errors << QStringLiteral("hero class '%1': %2 uses unknown trait '%3'")
-                                  .arg(c.id, QString::fromLatin1(what), it.key());
-                else if (needPickable && !t->pickable)
-                    errors << QStringLiteral("hero class '%1': %2 lists trait '%3' which is not "
-                                             "pickable").arg(c.id, QString::fromLatin1(what), it.key());
-            }
-        };
-        check(c.baseTraits, "baseTraits", false);
-        check(c.pickIncrement, "pickIncrement", true);
-        check(c.autoGrowth, "autoGrowth", false);
-        if (!m_races.isEmpty() && !m_races.contains(c.race))
-            errors << QStringLiteral("hero class '%1': race '%2' has no file in races/").arg(c.id, c.race);
-        for (const QString& s : c.startingSpells) {
-            if (!m_spells.contains(s))
-                errors << QStringLiteral("hero class '%1': startingSpells uses unknown spell '%2'").arg(c.id, s);
-        }
-        for (auto it = c.startingArmy.begin(); it != c.startingArmy.end(); ++it) {
-            if (!m_units.contains(it.key()))
-                errors << QStringLiteral("hero class '%1': startingArmy uses unknown unit '%2'").arg(c.id, it.key());
-        }
+            errors << QStringLiteral("unit '%1': has spells but no spellPoints").arg(u.key);
     }
 
-    int currencies = 0;
-    for (const ResourceDef& r : m_resources) currencies += r.isCurrency ? 1 : 0;
-    for (const ResourceDef& r : m_resources) {
-        if (r.isCurrency && r.value != 1)
-            errors << QStringLiteral("resource '%1': the currency must have value 1").arg(r.id);
-    }
-    if (currencies != 1)
-        errors << QStringLiteral("resources.json: exactly one resource must have "
-                                 "\"currency\": true (found %1)").arg(currencies);
-
-    for (auto it = m_balance.economy.startingResources.begin();
-         it != m_balance.economy.startingResources.end(); ++it) {
-        if (!m_resources.contains(it.key()))
-            errors << QStringLiteral("balance.json: startingResources uses unknown resource '%1'").arg(it.key());
-    }
     for (const BuildingDef& b : m_buildings) {
-        const QString what = QStringLiteral("building '%1'").arg(b.id);
-        for (auto it = b.cost.begin(); it != b.cost.end(); ++it) {
-            if (!m_resources.contains(it.key()))
-                errors << what + QStringLiteral(": cost uses unknown resource '%1'").arg(it.key());
-        }
-        for (const QString& other : b.requiredBuildings + b.excludes) {
-            if (other == b.id)
-                errors << what + QStringLiteral(": refers to itself in requires/excludes");
-            else if (!m_buildings.contains(other))
-                errors << what + QStringLiteral(": refers to unknown building '%1'").arg(other);
-        }
-        for (const QString& other : b.requiredBuildings) {
-            if (b.excludes.contains(other))
-                errors << what + QStringLiteral(": '%1' is both required and excluded").arg(other);
-        }
-        for (const BuildingEffect& e : b.effects) {
-            if (e.type == BuildingEffect::Type::Dwelling && !m_units.contains(e.unit))
-                errors << what + QStringLiteral(": dwelling of unknown unit '%1'").arg(e.unit);
-            if (e.type == BuildingEffect::Type::Income && !m_resources.contains(e.resource))
-                errors << what + QStringLiteral(": income of unknown resource '%1'").arg(e.resource);
-        }
-        if (!b.upgradeOf.isEmpty()) {
-            const auto base = m_buildings.constFind(b.upgradeOf);
-            if (base == m_buildings.constEnd()) {
-                errors << what + QStringLiteral(": upgradeOf unknown building '%1'").arg(b.upgradeOf);
-            } else {
-                // The upgraded dwelling must produce the upgrade of the base dwelling's unit.
-                QString baseUnit, newUnit;
-                for (const BuildingEffect& e : base->effects)
-                    if (e.type == BuildingEffect::Type::Dwelling) baseUnit = e.unit;
-                for (const BuildingEffect& e : b.effects)
-                    if (e.type == BuildingEffect::Type::Dwelling) newUnit = e.unit;
-                const auto bu = m_units.constFind(baseUnit);
-                if (baseUnit.isEmpty() || newUnit.isEmpty() || bu == m_units.constEnd() ||
-                    bu->upgradesTo != newUnit)
-                    errors << what + QStringLiteral(": upgradeOf '%1' needs dwellings where the "
-                                                    "unit of '%1' upgrades to this unit").arg(b.upgradeOf);
-            }
-        }
-    }
-    for (const UnitDef& u : m_units) {
-        for (auto it = u.cost.begin(); it != u.cost.end(); ++it) {
-            if (!m_resources.contains(it.key()))
-                errors << QStringLiteral("unit '%1': cost uses unknown resource '%2'")
-                              .arg(u.id, it.key());
-        }
-        if (!u.upgradesTo.isEmpty()) {
-            if (u.upgradesTo == u.id)
-                errors << QStringLiteral("unit '%1': cannot upgrade to itself").arg(u.id);
-            else if (!m_units.contains(u.upgradesTo))
-                errors << QStringLiteral("unit '%1': upgradesTo unknown unit '%2'")
-                              .arg(u.id, u.upgradesTo);
+        const QString what = QStringLiteral("building '%1'").arg(b.key);
+        if (const BuildingDef* base = building(b.upgradeOf)) {
+            // The upgraded dwelling must produce the upgrade of the base dwelling's unit.
+            UnitTypeId baseUnit, newUnit;
+            for (const BuildingEffect& e : base->effects)
+                if (e.type == BuildingEffect::Type::Dwelling) baseUnit = e.unit;
+            for (const BuildingEffect& e : b.effects)
+                if (e.type == BuildingEffect::Type::Dwelling) newUnit = e.unit;
+            const UnitDef* bu = unit(baseUnit);
+            if (!newUnit.isValid() || !bu || bu->upgradesTo != newUnit)
+                errors << what + QStringLiteral(": upgradeOf '%1' needs dwellings where the "
+                                                "unit of '%1' upgrades to this unit").arg(base->key);
         }
     }
 }
 
-const ResourceDef* ContentRegistry::resource(const QString& id) const {
-    const auto it = m_resources.constFind(id);
-    return it == m_resources.constEnd() ? nullptr : &it.value();
-}
-const TerrainDef* ContentRegistry::terrainType(const QString& id) const {
-    const auto it = m_terrain.constFind(id);
-    return it == m_terrain.constEnd() ? nullptr : &it.value();
-}
-const TraitDef* ContentRegistry::trait(const QString& id) const {
-    const auto it = m_traits.constFind(id);
-    return it == m_traits.constEnd() ? nullptr : &it.value();
-}
-const UnitDef* ContentRegistry::unit(const QString& id) const {
-    const auto it = m_units.constFind(id);
-    return it == m_units.constEnd() ? nullptr : &it.value();
-}
-const HeroClassDef* ContentRegistry::heroClass(const QString& id) const {
-    const auto it = m_heroClasses.constFind(id);
-    return it == m_heroClasses.constEnd() ? nullptr : &it.value();
-}
-QStringList ContentRegistry::raceIds() const {
-    QStringList races;
-    for (const HeroClassDef& c : m_heroClasses) {
-        if (!races.contains(c.race)) races.append(c.race);
-    }
-    races.sort();
+
+
+
+QList<RaceId> ContentRegistry::playableRaces() const {
+    QList<RaceId> races;
+    for (const RaceDef& rc : m_races)
+        for (const HeroClassDef& c : m_heroClasses)
+            if (c.race == rc.id) {
+                races.append(rc.id);
+                break;
+            }
     return races;
 }
 
-const RaceDef& ContentRegistry::race(const QString& id) const {
-    const auto it = m_races.constFind(id);
-    return it == m_races.cend() ? m_defaultRace : it.value();
+QStringList ContentRegistry::playableRaceKeys() const {
+    QStringList keys;
+    for (const RaceId id : playableRaces()) keys << race(id).key;
+    return keys;
 }
 
-const WeekEventDef* ContentRegistry::weekEvent(const QString& id) const {
-    const auto it = m_weekEvents.constFind(id);
-    return it == m_weekEvents.cend() ? nullptr : &it.value();
+RaceId ContentRegistry::toRace(const QString& key, const QString& context, QStringList& errors) const {
+    if (key.isEmpty()) return {};
+    const RaceId id = raceId(key);
+    if (!id.isValid()) errors << context + QStringLiteral(": race '%1' has no file in races/").arg(key);
+    return id;
 }
 
-const ArtifactDef* ContentRegistry::artifact(const QString& id) const {
-    const auto it = m_artifacts.constFind(id);
-    return it == m_artifacts.cend() ? nullptr : &it.value();
-}
 
-const SpellDef* ContentRegistry::spell(const QString& id) const {
-    const auto it = m_spells.constFind(id);
-    return it == m_spells.cend() ? nullptr : &it.value();
-}
 
-const HeroTemplateDef* ContentRegistry::heroTemplate(const QString& id) const {
-    const auto it = m_heroTemplates.constFind(id);
-    return it == m_heroTemplates.constEnd() ? nullptr : &it.value();
-}
-const BuildingDef* ContentRegistry::building(const QString& id) const {
-    const auto it = m_buildings.constFind(id);
-    return it == m_buildings.constEnd() ? nullptr : &it.value();
-}
-const ResourceDef* ContentRegistry::currency() const {
-    for (const ResourceDef& r : m_resources) {
-        if (r.isCurrency) return &r;
-    }
-    return nullptr;
-}
+
+
+
 
 }  // namespace kot::core

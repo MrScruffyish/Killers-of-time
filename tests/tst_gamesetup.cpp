@@ -1,6 +1,8 @@
 #include <QSet>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/GameSetup.h"
 #include "core/rules/TurnCycle.h"
@@ -31,6 +33,7 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void difficultyChangesTheStart() {
@@ -48,9 +51,9 @@ private slots:
         QList<PlayerId> e, x;
         QVERIFY(make("easy", "normal", &easy, &e));
         QVERIFY(make("expert", "hard", &expert, &x));
-        const int startGold = reg.balance().economy.startingResources.value("gold");
-        QCOMPARE(easy.player(e[0])->resources.value("gold"), startGold * 150 / 100);
-        QCOMPARE(expert.player(x[0])->resources.value("gold"), startGold * 50 / 100);
+        const int startGold = reg.balance().economy.startingResources.value(R("gold"));
+        QCOMPARE(easy.player(e[0])->resources.value(R("gold")), startGold * 150 / 100);
+        QCOMPARE(expert.player(x[0])->resources.value(R("gold")), startGold * 50 / 100);
         QCOMPARE(easy.player(e[1])->incomePercent, -20);
         QCOMPARE(expert.player(x[1])->incomePercent, 40 + 15);
         QCOMPARE(expert.difficulty(), QString("expert"));
@@ -63,11 +66,11 @@ private slots:
         // The AI's bonus shows in its income; it is saved.
         GameState loaded;
         QStringList errors;
-        QVERIFY(GameState::fromJson(expert.toJson(), reg, &loaded, &errors));
+        QVERIFY(GameState::fromJson(expert.toJson(reg), reg, &loaded, &errors));
         QCOMPARE(loaded.player(x[1])->incomePercent, 55);
         QCOMPARE(loaded.difficulty(), QString("expert"));
-        QCOMPARE(dailyIncome(expert, reg, x[1]).value("gold"),
-                 dailyIncome(expert, reg, x[0]).value("gold") * 155 / 100);
+        QCOMPARE(dailyIncome(expert, reg, x[1]).value(R("gold")),
+                 dailyIncome(expert, reg, x[0]).value(R("gold")) * 155 / 100);
     }
 
     void createsPlayersTownsAndHeroes() {
@@ -88,8 +91,8 @@ private slots:
         QCOMPARE(gs.player(ids[2])->controller, Player::Controller::Ai);
         QCOMPARE(gs.player(ids[2])->aiProfile, QString("passive"));
         for (const PlayerId id : ids) {
-            QCOMPARE(gs.player(id)->resources.value("gold"), 10000);
-            QCOMPARE(gs.player(id)->resources.value("wood"), 20);
+            QCOMPARE(gs.player(id)->resources.value(R("gold")), 10000);
+            QCOMPARE(gs.player(id)->resources.value(R("wood")), 20);
         }
         // Teams: Bob and Bot together, Ann alone.
         QCOMPARE(gs.player(ids[1])->team, gs.player(ids[2])->team);
@@ -100,7 +103,7 @@ private slots:
         GameState gs;
         QList<PlayerId> ids;
         QVERIFY(createGame(reg, params(), &gs, &ids));
-        QSet<QString> templates;
+        QSet<HeroTemplateId> templates;
         for (const PlayerId id : ids) {
             const Town* town = nullptr;
             for (const Town& t : gs.towns()) if (t.owner == id) town = &t;
@@ -111,10 +114,10 @@ private slots:
             QVERIFY(gs.army(hero->army)->totalUnits() >= 10);
             QVERIFY(hero->movementPoints > 0);
             QCOMPARE(hero->movementPoints, armyMovementPoints(*gs.army(hero->army), hero, reg));
-            QVERIFY(!hero->templateId.isEmpty());
+            QVERIFY(hero->templateId.isValid());
             templates.insert(hero->templateId);
-            QVERIFY(reg.terrainType(gs.map().terrainAt(town->pos))->walkable);
-            QCOMPARE(town->race, QString("humans"));
+            QVERIFY(reg.terrain(gs.map().terrainAt(town->pos)).walkable);
+            QCOMPARE(town->race, RC("humans"));
         }
         QCOMPARE(templates.size(), 3);  // three different heroes
     }
@@ -138,12 +141,12 @@ private slots:
         for (const Town& t : gs.towns()) all.append(t.pos);
         for (const Mine& m : gs.mines()) {
             all.append(m.pos);
-            QVERIFY(reg.terrainType(gs.map().terrainAt(m.pos))->walkable);
+            QVERIFY(reg.terrain(gs.map().terrainAt(m.pos)).walkable);
             QVERIFY(!m.owner.isValid());
         }
         for (const MapDwelling& d : gs.mapDwellings()) {
             all.append(d.pos);
-            QVERIFY(reg.terrainType(gs.map().terrainAt(d.pos))->walkable);
+            QVERIFY(reg.terrain(gs.map().terrainAt(d.pos)).walkable);
             QVERIFY(d.available > 0);
         }
         for (int i = 0; i < all.size(); ++i)
@@ -166,8 +169,8 @@ private slots:
         QVERIFY(createGame(reg, params(5), &a, nullptr));
         QVERIFY(createGame(reg, params(5), &b, nullptr));
         QVERIFY(createGame(reg, params(6), &c, nullptr));
-        QCOMPARE(a.toJson(), b.toJson());
-        QVERIFY(a.toJson() != c.toJson());
+        QCOMPARE(a.toJson(reg), b.toJson(reg));
+        QVERIFY(a.toJson(reg) != c.toJson(reg));
     }
 
     void theNewGameCanBeSavedAndLoaded() {
@@ -175,8 +178,8 @@ private slots:
         QVERIFY(createGame(reg, params(), &gs, nullptr));
         GameState loaded;
         QStringList errors;
-        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
-        QCOMPARE(loaded.toJson(), gs.toJson());
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.toJson(reg), gs.toJson(reg));
     }
 
     void rejectsBadSetups() {

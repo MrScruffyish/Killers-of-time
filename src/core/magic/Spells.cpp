@@ -10,7 +10,7 @@ int effectStrength(const SpellEffect& effect, int spellPower) {
     return effect.amount + effect.perPower * spellPower;
 }
 
-QString whyCannotCast(const Hero& hero, const ContentRegistry& content, const QString& spellId,
+QString whyCannotCast(const Hero& hero, const ContentRegistry& content, SpellId spellId,
                       SpellDef::Scope scope, int spellPoints) {
     const SpellDef* spell = content.spell(spellId);
     if (!spell) return QStringLiteral("unknown spell");
@@ -18,7 +18,7 @@ QString whyCannotCast(const Hero& hero, const ContentRegistry& content, const QS
     if (spell->scope != scope)
         return scope == SpellDef::Scope::Battle ? QStringLiteral("%1 cannot be cast in battle").arg(spell->name)
                                                 : QStringLiteral("%1 can only be cast in battle").arg(spell->name);
-    if (hero.trait(QStringLiteral("magic")) < spell->requiredMagic)
+    if (hero.trait(content.known().magic) < spell->requiredMagic)
         return QStringLiteral("%1 needs Magic %2").arg(spell->name).arg(spell->requiredMagic);
     if (spellPoints < spell->cost)
         return QStringLiteral("not enough spell points (%1 needed)").arg(spell->cost);
@@ -26,7 +26,7 @@ QString whyCannotCast(const Hero& hero, const ContentRegistry& content, const QS
 }
 
 ActionResult castAdventureSpell(GameState& state, const ContentRegistry& content, HeroId heroId,
-                                const QString& spellId) {
+                                SpellId spellId) {
     ActionResult result;
     Hero* hero = state.hero(heroId);
     if (!hero) {
@@ -37,7 +37,7 @@ ActionResult castAdventureSpell(GameState& state, const ContentRegistry& content
     if (!result.error.isEmpty()) return result;
     const SpellDef* spell = content.spell(spellId);
     const Army* army = state.army(hero->army);
-    const int power = hero->trait(QStringLiteral("spell_power"));
+    const int power = hero->trait(content.known().spellPower);
     hero->spellPoints -= spell->cost;
     for (const SpellEffect& e : spell->effects) {
         const int strength = std::max(0, effectStrength(e, power));
@@ -61,7 +61,7 @@ ActionResult castAdventureSpell(GameState& state, const ContentRegistry& content
 
 int mageGuildLevel(const Town& town, const ContentRegistry& content) {
     int level = 0;
-    for (const QString& b : town.buildings) {
+    for (const BuildingTypeId b : town.buildings) {
         const BuildingDef* def = content.building(b);
         if (!def) continue;
         for (const BuildingEffect& e : def->effects)
@@ -70,8 +70,8 @@ int mageGuildLevel(const Town& town, const ContentRegistry& content) {
     return level;
 }
 
-QStringList learnSpellsInTown(GameState& state, const ContentRegistry& content, HeroId heroId) {
-    QStringList learned;
+QList<SpellId> learnSpellsInTown(GameState& state, const ContentRegistry& content, HeroId heroId) {
+    QList<SpellId> learned;
     Hero* hero = state.hero(heroId);
     const Army* army = hero ? state.army(hero->army) : nullptr;
     if (!army) return learned;

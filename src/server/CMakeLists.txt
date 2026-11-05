@@ -6,9 +6,12 @@ add_library(kot_server_lib STATIC
     GameServer.cpp
     GameSession.h
     GameSession.cpp
+    ServerConfig.h
+    ServerConfig.cpp
 )
 target_include_directories(kot_server_lib PUBLIC ${KOT_SRC_DIR})
 target_link_libraries(kot_server_lib PUBLIC kot_net kot_ai kot_core Qt6::Network PRIVATE kot_warnings)
+kot_pch(kot_server_lib)
 
 add_executable(kot_server main.cpp)
 target_link_libraries(kot_server PRIVATE kot_server_lib kot_warnings)

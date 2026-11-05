@@ -107,6 +107,20 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     }
     settings->addWidget(m_difficulty);
     settings->addSpacing(20);
+    settings->addWidget(new QLabel(tr("Out when"), this));
+    m_defeat = new QComboBox(this);
+    m_defeat->setObjectName("defeat");
+    for (const auto& [id, name, tip] : {std::tuple{"week", tr("No town for 7 days"), tr("Losing your last town gives you 7 days to take one back")},
+                                        std::tuple{"town", tr("Last town lost"), tr("Losing your last town puts you out at once, heroes and all")},
+                                        std::tuple{"all", tr("No towns, no heroes"), tr("Out only when you have neither towns nor heroes")}}) {
+        m_defeat->addItem(name, QString::fromLatin1(id));
+        m_defeat->setItemData(m_defeat->count() - 1, tip, Qt::ToolTipRole);
+    }
+    settings->addWidget(m_defeat);
+    connect(m_defeat, &QComboBox::activated, this, [this](int) {
+        m_client->setSettings({{"defeat", m_defeat->currentData().toString()}});
+    });
+    settings->addSpacing(20);
     m_hidden = new QCheckBox(tr("Hidden map"), this);
     m_hidden->setObjectName("hiddenMap");
     m_hidden->setToolTip(tr("On: unexplored land is black until you explore it. Off: the whole map (land, towns, mines) is known from the start"));
@@ -267,6 +281,7 @@ void LobbyPage::rebuild() {
     }
     if (!m_seed->hasFocus()) m_seed->setText(QString::number(lobby.settings.seed));
     m_difficulty->setCurrentIndex(std::max(0, m_difficulty->findData(lobby.settings.difficulty)));
+    m_defeat->setCurrentIndex(std::max(0, m_defeat->findData(lobby.settings.defeat)));
     m_fog->setChecked(lobby.settings.fogOfWar);
     m_hidden->setChecked(lobby.settings.hiddenMap);
     if (!m_autosaves->hasFocus()) {
@@ -314,6 +329,7 @@ void LobbyPage::rebuild() {
                        static_cast<QWidget*>(m_mapType)})
         w->setEnabled(host && random);
     m_difficulty->setEnabled(host);
+    m_defeat->setEnabled(host);
     m_autosaves->setEnabled(host);
     m_fog->setEnabled(host);
     m_hidden->setEnabled(host);
@@ -398,7 +414,8 @@ void LobbyPage::rebuild() {
         auto* race = new QComboBox(m_slotHolder);
         race->setIconSize(QSize(24, 24));
         for (const QString& id : m_client->races()) {
-            const core::RaceDef* def = m_content && m_content->races().contains(id) ? &m_content->race(id) : nullptr;
+            const core::RaceId rid = m_content ? m_content->raceId(id) : core::RaceId();
+            const core::RaceDef* def = rid.isValid() ? &m_content->race(rid) : nullptr;
             // A face for the race: one of its typical units.
             static const QMap<QString, QString> face = {{"humans", "cavalier"}, {"sylvan", "elf_archer"}, {"undead", "skeleton"},
                                                          {"dwarves", "dwarf_warrior"}, {"orcs", "orc_warrior"},

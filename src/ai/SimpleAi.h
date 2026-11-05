@@ -74,6 +74,13 @@ private:
     std::uint64_t m_lastTarget = 0;
     QSet<quint32> m_boatTried;                // heroes that bought a boat this turn
     QHash<quint32, QSet<core::Pos>> m_homeLand;  // the island a hero sailed from
+    // Every tile's landmass (connected walkable tiles), worked out once per map (the
+    // terrain never changes): -1 = not walkable. m_regionSize: tiles per landmass.
+    QVector<int> m_regionOf;
+    QVector<int> m_regionSize;
+    int m_regionMapWidth = 0;
+    void labelRegions(const core::GameState& state, const core::ContentRegistry& content);
+    int regionAt(const core::GameState& state, core::Pos p) const;
     // The last attack-like move: when that hero is gone afterwards, the strength he had
     // is remembered for that place (kept across turns).
     struct Attempt {

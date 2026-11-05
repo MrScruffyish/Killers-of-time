@@ -5,7 +5,7 @@
 namespace kot::core {
 
 QJsonObject playerStats(const GameState& state, const ContentRegistry& content) {
-    const QString currency = content.currency() ? content.currency()->id : QStringLiteral("gold");
+    const ResourceId currency = content.currency();
     QJsonObject all;
     for (const Player& p : state.players()) {
         int armyValue = 0, towns = 0, mines = 0, heroes = 0;

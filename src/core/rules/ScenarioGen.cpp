@@ -39,7 +39,7 @@ bool generateScenario(const ContentRegistry& content, const ScenarioGenParams& p
     setup.roads = p.roads;
     setup.monsterPercent = std::clamp(p.monsterPercent, 10, 400);
     static const QStringList colours = {"#d62728", "#1f77b4", "#2ca02c", "#ff7f0e", "#9467bd", "#8c564b", "#e377c2", "#17becf"};
-    const QStringList all = content.raceIds();
+    const QStringList all = content.playableRaceKeys();
     Rng pick(p.seed * 7919 + 13);
     for (int i = 0; i < p.races.size(); ++i) {
         QString race = p.races[i].trimmed();
@@ -80,7 +80,7 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
     if (!validGeneratedId(p.id)) return fail(QStringLiteral("a name has 1-40 letters, digits, '_' or '-'"));
     if (p.chapters < 2 || p.chapters > 6) return fail(QStringLiteral("a campaign has 2 to 6 chapters"));
     if (!QDir().mkpath(scenarioDir) || !QDir().mkpath(campaignDir)) return fail(QStringLiteral("cannot write the files"));
-    const QStringList all = content.raceIds();
+    const QStringList all = content.playableRaceKeys();
     Rng rng(p.seed * 104729 + 7);
     const QString playerRace = p.playerRace == QLatin1String("random") || !all.contains(p.playerRace)
                                    ? all[rng.nextInt(0, static_cast<int>(all.size()) - 1)] : p.playerRace;
@@ -107,7 +107,7 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
                                                                 : QStringLiteral("Defeat everyone.");
         if (!saveScenario(QDir(scenarioDir).filePath(s.id + QStringLiteral(".json")), s.id,
                           QStringLiteral("%1, chapter %2").arg(p.name.isEmpty() ? p.id : p.name).arg(c + 1),
-                          QStringLiteral("%1 against %2 enemies on a %3x%3 map. %4").arg(playerRace).arg(c + 1).arg(s.width).arg(goal), gs, &why))
+                          QStringLiteral("%1 against %2 enemies on a %3x%3 map. %4").arg(playerRace).arg(c + 1).arg(s.width).arg(goal), gs, content, &why))
             return fail(why);
         ids << s.id;
     }

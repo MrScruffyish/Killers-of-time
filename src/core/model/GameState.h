@@ -17,10 +17,10 @@ namespace kot::core {
 
 class ContentRegistry;
 
-// Save format history (GameStateJson.cpp converts older saves on load):
-//   1  first format
-//   2  towns cover 2x2 tiles (v1 saves: things standing on the new walls are moved aside)
-inline constexpr int kSaveFormatVersion = 2;
+// The save format. Only saves of exactly this version load (no conversion of old
+// saves: an old save needs the game version that made it). Bump it when the format
+// changes incompatibly. 3: content ids as numbers (with the content checksum).
+inline constexpr int kSaveFormatVersion = 3;
 
 // How a game is won besides being the last team standing (which always counts).
 struct VictoryCondition {
@@ -41,8 +41,8 @@ struct SaveInfo {
     int day = 0;
     QStringList players;
     int mapWidth = 0, mapHeight = 0;
-    enum class Status { Ok, Converted, Incompatible } status = Status::Ok;
-    QStringList problems;  // why it cannot be loaded, or what was converted
+    enum class Status { Ok, Incompatible } status = Status::Ok;
+    QStringList problems;  // why it cannot be loaded
 };
 SaveInfo inspectSave(const QString& path, const class ContentRegistry& content);
 
@@ -54,17 +54,22 @@ public:
     const QString& difficulty() const { return m_difficulty; }
     const VictoryCondition& victory() const { return m_victory; }
     // This week's event (events.json id, empty = none).
-    const QString& weekEvent() const { return m_weekEvent; }
+    WeekEventId weekEvent() const { return m_weekEvent; }
     // Each player's numbers at the start of every week (GameStats.h), for the end screen.
     QJsonArray& history() { return m_history; }
     const QJsonArray& history() const { return m_history; }
-    void setWeekEvent(const QString& id) { m_weekEvent = id; }
+    void setWeekEvent(WeekEventId id) { m_weekEvent = id; }
     void setVictory(const VictoryCondition& v) { m_victory = v; }
     void setDifficulty(const QString& d) { m_difficulty = d; }
     // Fog of war on: explored tiles out of sight are shaded and their armies hidden.
     // Off: whatever a team has explored stays in sight (Vision.h).
     bool fogOfWar() const { return m_fogOfWar; }
     void setFogOfWar(bool on) { m_fogOfWar = on; }
+    // When a player is out (Victory.h): "week" (7 days without a town), "town" (at
+    // once with his last town), "all" (no towns and no heroes left).
+    const QString& defeatRule() const { return m_defeatRule; }
+
+    void setDefeatRule(const QString& rule) { m_defeatRule = rule; }
     // Hidden map on: unexplored tiles are unknown (black). Off: every team knows the
     // whole land, towns, mines and dwellings from the start.
     bool hiddenMap() const { return m_hiddenMap; }
@@ -86,12 +91,12 @@ public:
     TeamId newTeam() { return newId<TeamId>(); }
 
     PlayerId addPlayer(const QString& name, TeamId team, Player::Controller controller,
-                       const QString& race, const QString& color);
+                       RaceId race, const QString& color);
     ArmyId addArmy(PlayerId owner, Pos pos);
-    TownId addTown(const QString& name, const QString& race, Pos pos, PlayerId owner = {});
-    MapDwellingId addMapDwelling(const QString& unitId, Pos pos, int available, PlayerId owner = {});
+    TownId addTown(const QString& name, RaceId race, Pos pos, PlayerId owner = {});
+    MapDwellingId addMapDwelling(UnitTypeId unitId, Pos pos, int available, PlayerId owner = {});
     MapObjectId addMapObject(MapObject object);  // the id is assigned
-    MineId addMine(const QString& resourceId, int dailyAmount, Pos pos, PlayerId owner = {});
+    MineId addMine(ResourceId resource, int dailyAmount, Pos pos, PlayerId owner = {});
 
     const QMap<PlayerId, Player>& players() const { return m_players; }
     QMap<PlayerId, Player>& players() { return m_players; }
@@ -142,25 +147,28 @@ public:
 
     // Save game as JSON. fromJson validates everything against the content
     // and reports all problems; on failure `out` is left untouched.
-    QJsonObject toJson() const;
-    // Older formats are converted (what was changed goes to `notes`); a newer
-    // format, or one that cannot be converted, is refused with the reason.
-    static bool fromJson(const QJsonObject& json, const ContentRegistry& content, GameState* out,
-                         QStringList* errors, QStringList* notes = nullptr);
+    // Content ids are written as numbers (saves: with the content checksum, so a save
+    // only loads with the same data) or as the text keys of the data files (scenarios,
+    // which are data themselves; and kot_saveview, to read a save).
+    enum class IdStyle { Numbers, Text };
+    QJsonObject toJson(const ContentRegistry& content, IdStyle ids = IdStyle::Numbers) const;
+    // Another save format version is refused with the reason.
+    static bool fromJson(const QJsonObject& json, const ContentRegistry& content, GameState* out, QStringList* errors);
     // Files also carry the game version and the time of saving (for the load list).
-    bool saveToFile(const QString& path, QString* error) const;
-    static bool loadFromFile(const QString& path, const ContentRegistry& content, GameState* out,
-                             QStringList* errors, QStringList* notes = nullptr);
+    bool saveToFile(const QString& path, const ContentRegistry& content, QString* error) const;
+    // What saveToFile writes (with gameVersion and savedAt).
+    QByteArray saveBytes(const ContentRegistry& content) const;
+    static bool loadFromFile(const QString& path, const ContentRegistry& content, GameState* out, QStringList* errors);
 
 private:
-    bool convertFromV1(const ContentRegistry& content, QStringList* notes, QStringList* errors);
-
     int m_day = 1;
     QString m_difficulty = QStringLiteral("normal");
     bool m_fogOfWar = true;
+    QString m_defeatRule = QStringLiteral("week");
+
     bool m_hiddenMap = true;
     VictoryCondition m_victory;
-    QString m_weekEvent;
+    WeekEventId m_weekEvent;
     QJsonArray m_history;
     GameMap m_map;
     Rng m_rng;

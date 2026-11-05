@@ -14,9 +14,9 @@ class ContentRegistry;
 // traits and a full spell point pool. Returns an invalid id and fills `error`
 // when the owner or class is unknown.
 HeroId createHero(GameState& state, const ContentRegistry& content, PlayerId owner,
-                  const QString& name, const QString& classId, Pos pos, QString* error = nullptr);
+                  const QString& name, HeroClassId classId, Pos pos, QString* error = nullptr);
 
-int maxSpellPoints(const Hero& hero);
+int maxSpellPoints(const Hero& hero, const ContentRegistry& content);
 
 // Adds experience. For every level gained (up to the max level): the class's
 // auto-growth traits increase (e.g. max spell points) and one trait pick
@@ -24,29 +24,29 @@ int maxSpellPoints(const Hero& hero);
 int addExperience(Hero& hero, const ContentRegistry& content, int experience);
 
 // Spends one pending pick to boost `traitId` by the class's increment.
-bool pickTrait(Hero& hero, const ContentRegistry& content, const QString& traitId,
+bool pickTrait(Hero& hero, const ContentRegistry& content, TraitId traitId,
                QString* error = nullptr);
 
 // Artifacts. A hero wears a limited number per slot (artifactSlots()); the
 // bonuses of worn ones are added to his traits, carried ones (the backpack) give
 // nothing. Picking one up wears it when its slot has room, else it goes to the
 // backpack; returns true when worn.
-bool takeArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId);
+bool takeArtifact(Hero& hero, const ContentRegistry& content, ArtifactId artifactId);
 // Wears an artifact from the backpack. When its slot is full, `replace` (worn,
 // same slot) or else the first worn one of that slot goes to the backpack.
-bool equipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId,
-                   const QString& replace = {}, QString* error = nullptr);
+bool equipArtifact(Hero& hero, const ContentRegistry& content, ArtifactId artifactId,
+                   ArtifactId replace = {}, QString* error = nullptr);
 // Takes a worn artifact off into the backpack.
-bool unequipArtifact(Hero& hero, const ContentRegistry& content, const QString& artifactId, QString* error = nullptr);
+bool unequipArtifact(Hero& hero, const ContentRegistry& content, ArtifactId artifactId, QString* error = nullptr);
 
 // Two of a player's heroes who meet (ArmyRules armiesMeet: side by side): one gives
 // an artifact (worn or carried) to the other, who wears it when its slot has room,
 // else carries it.
-bool giveArtifact(GameState& state, const ContentRegistry& content, HeroId from, HeroId to, const QString& artifactId,
+bool giveArtifact(GameState& state, const ContentRegistry& content, HeroId from, HeroId to, ArtifactId artifactId,
                   QString* error = nullptr);
 
 // Daily recovery: + "spell_recovery" spell points, capped at the maximum.
 // Returns the spell points actually regained.
-int regenSpellPoints(Hero& hero);
+int regenSpellPoints(Hero& hero, const ContentRegistry& content);
 
 }  // namespace kot::core

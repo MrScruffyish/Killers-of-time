@@ -17,43 +17,42 @@ ActionResult fail(const QString& message) {
     return r;
 }
 
-QString dwellingUnit(const BuildingDef& b) {
+UnitTypeId dwellingUnit(const BuildingDef& b) {
     for (const BuildingEffect& e : b.effects) {
         if (e.type == BuildingEffect::Type::Dwelling) return e.unit;
     }
     return {};
 }
 
-QString missingResource(const ResourceAmounts& have, const ResourceAmounts& cost, int times = 1) {
-    for (auto it = cost.begin(); it != cost.end(); ++it) {
-        if (have.value(it.key()) < it.value() * times) return it.key();
-    }
+// The first resource there is not enough of (invalid: enough of all).
+ResourceId missingResource(const ResourceAmounts& have, const ResourceAmounts& cost, int times = 1) {
+    for (const auto [r, amount] : cost)
+        if (have.value(r) < amount * times) return r;
     return {};
 }
 
 void spend(ResourceAmounts& have, const ResourceAmounts& cost, int times = 1) {
-    for (auto it = cost.begin(); it != cost.end(); ++it) have[it.key()] -= it.value() * times;
+    for (const auto [r, amount] : cost) have[r] -= amount * times;
 }
 
 }  // namespace
 
 QList<Dwelling> dwellings(const Town& town, const ContentRegistry& content) {
-    QSet<QString> built(town.buildings.begin(), town.buildings.end());
-    QSet<QString> replaced;
-    for (const QString& id : town.buildings) {
+    QSet<BuildingTypeId> replaced;
+    for (const BuildingTypeId id : town.buildings) {
         const BuildingDef* b = content.building(id);
-        if (b && !b->upgradeOf.isEmpty()) replaced.insert(b->upgradeOf);
+        if (b && b->upgradeOf.isValid()) replaced.insert(b->upgradeOf);
     }
     QList<Dwelling> result;
-    for (const QString& id : town.buildings) {
+    for (const BuildingTypeId id : town.buildings) {
         const BuildingDef* b = content.building(id);
         if (!b || replaced.contains(id)) continue;
-        const QString unit = dwellingUnit(*b);
-        if (unit.isEmpty()) continue;
-        QString root = id;
+        const UnitTypeId unit = dwellingUnit(*b);
+        if (!unit.isValid()) continue;
+        BuildingTypeId root = id;
         for (int guard = 0; guard < 16; ++guard) {
             const BuildingDef* r = content.building(root);
-            if (!r || r->upgradeOf.isEmpty()) break;
+            if (!r || !r->upgradeOf.isValid()) break;
             root = r->upgradeOf;
         }
         result.append({root, id, unit});
@@ -62,44 +61,44 @@ QList<Dwelling> dwellings(const Town& town, const ContentRegistry& content) {
 }
 
 QString whyCannotBuild(const GameState& state, const ContentRegistry& content, TownId townId,
-                       const QString& buildingId, PlayerId player, bool checkResources) {
+                       BuildingTypeId buildingId, PlayerId player, bool checkResources) {
     const Town* town = state.town(townId);
     if (!town) return QStringLiteral("unknown town");
     if (!player.isValid() || town->owner != player)
         return QStringLiteral("this is not your town");
     const BuildingDef* b = content.building(buildingId);
-    if (!b) return QStringLiteral("unknown building '%1'").arg(buildingId);
+    if (!b) return QStringLiteral("unknown building %1").arg(buildingId.index());
     if (!b->fitsRace(town->race))
-        return QStringLiteral("%1 cannot be built in a %2 town").arg(b->name, town->race);
+        return QStringLiteral("%1 cannot be built in a %2 town").arg(b->name, content.race(town->race).name);
     if (town->buildings.contains(buildingId)) return QStringLiteral("already built");
     for (const BuildingEffect& e : b->effects)
-        if (e.type == BuildingEffect::Type::Shipyard && !freeWaterNext(state, content, town->pos))
+        if (e.type == BuildingEffect::Type::Shipyard && !coastalAt(state, content, town->pos))
             return QStringLiteral("%1 needs a town at the coast").arg(b->name);
     if (town->lastBuildDay == state.day())
         return QStringLiteral("a building was already built here today");
 
-    QStringList needed = b->requiredBuildings;
-    if (!b->upgradeOf.isEmpty()) needed.append(b->upgradeOf);
-    for (const QString& req : needed) {
+    QList<BuildingTypeId> needed = b->requiredBuildings;
+    if (b->upgradeOf.isValid()) needed.append(b->upgradeOf);
+    for (const BuildingTypeId req : needed) {
         if (!town->buildings.contains(req)) {
             const BuildingDef* rb = content.building(req);
-            return QStringLiteral("requires %1").arg(rb ? rb->name : req);
+            return QStringLiteral("requires %1").arg(rb ? rb->name : QString());
         }
     }
-    for (const QString& other : town->buildings) {
+    for (const BuildingTypeId other : town->buildings) {
         const BuildingDef* ob = content.building(other);
         if (b->excludes.contains(other) || (ob && ob->excludes.contains(buildingId)))
-            return QStringLiteral("excluded by %1").arg(ob ? ob->name : other);
+            return QStringLiteral("excluded by %1").arg(ob ? ob->name : QString());
     }
     if (!checkResources) return {};
     const Player* p = state.player(player);
-    const QString missing = p ? missingResource(p->resources, b->cost) : QString();
-    if (!missing.isEmpty()) return QStringLiteral("not enough %1").arg(missing);
+    const ResourceId missing = p ? missingResource(p->resources, b->cost) : ResourceId();
+    if (missing.isValid()) return QStringLiteral("not enough %1").arg(content.resource(missing).key);
     return {};
 }
 
 ActionResult buildBuilding(GameState& state, const ContentRegistry& content, TownId townId,
-                           const QString& buildingId, PlayerId player) {
+                           BuildingTypeId buildingId, PlayerId player) {
     const QString why = whyCannotBuild(state, content, townId, buildingId, player);
     if (!why.isEmpty()) return fail(why);
 
@@ -124,7 +123,7 @@ ActionResult buildBuilding(GameState& state, const ContentRegistry& content, Tow
 }
 
 BuildResult buildBuildingWithTrade(GameState& state, const ContentRegistry& content,
-                                   TownId townId, const QString& buildingId, PlayerId player) {
+                                   TownId townId, BuildingTypeId buildingId, PlayerId player) {
     BuildResult result;
     const QString why = whyCannotBuild(state, content, townId, buildingId, player, false);
     if (!why.isEmpty()) {
@@ -148,7 +147,7 @@ BuildResult buildBuildingWithTrade(GameState& state, const ContentRegistry& cont
 
 QList<RecruitOption> recruitOptions(const Town& town, const ContentRegistry& content) {
     QList<RecruitOption> options;
-    const auto add = [&](const QString& unit, int count) {
+    const auto add = [&](UnitTypeId unit, int count) {
         for (RecruitOption& o : options) {
             if (o.unitId == unit) {
                 o.available += count;
@@ -164,9 +163,9 @@ QList<RecruitOption> recruitOptions(const Town& town, const ContentRegistry& con
     return options;
 }
 
-ActionResult payAndAddUnits(Player& player, const UnitDef& unit, int count, Army& army) {
-    const QString missing = missingResource(player.resources, unit.cost, count);
-    if (!missing.isEmpty()) return fail(QStringLiteral("not enough %1").arg(missing));
+ActionResult payAndAddUnits(const ContentRegistry& content, Player& player, const UnitDef& unit, int count, Army& army) {
+    const ResourceId missing = missingResource(player.resources, unit.cost, count);
+    if (missing.isValid()) return fail(QStringLiteral("not enough %1").arg(content.resource(missing).key));
     Army trial = army;  // check there is room before paying anything
     if (!trial.addUnits(unit.id, count, unit.maxHp))
         return fail(QStringLiteral("the army has no free slot"));
@@ -178,14 +177,14 @@ ActionResult payAndAddUnits(Player& player, const UnitDef& unit, int count, Army
 }
 
 ActionResult recruit(GameState& state, const ContentRegistry& content, TownId townId,
-                     PlayerId player, const QString& unitId, int count, ArmyId target) {
+                     PlayerId player, UnitTypeId unitId, int count, ArmyId target) {
     Town* town = state.town(townId);
     if (!town) return fail(QStringLiteral("unknown town"));
     if (!player.isValid() || town->owner != player)
         return fail(QStringLiteral("this is not your town"));
     if (count < 1) return fail(QStringLiteral("invalid count"));
     const UnitDef* unit = content.unit(unitId);
-    if (!unit) return fail(QStringLiteral("unknown unit '%1'").arg(unitId));
+    if (!unit) return fail(QStringLiteral("unknown unit %1").arg(unitId.index()));
 
     const Dwelling* found = nullptr;
     const QList<Dwelling> all = dwellings(*town, content);
@@ -205,7 +204,7 @@ ActionResult recruit(GameState& state, const ContentRegistry& content, TownId to
     if (army->owner != player || army->pos != town->pos)
         return fail(QStringLiteral("the army is not in this town"));
 
-    const ActionResult paid = payAndAddUnits(*state.player(player), *unit, count, *army);
+    const ActionResult paid = payAndAddUnits(content, *state.player(player), *unit, count, *army);
     if (!paid.ok) return paid;
 
     // Units sent from map dwellings are used first.
@@ -222,7 +221,7 @@ int townGrowth(const GameState& state, const Town& town, const UnitDef& unit, co
     const Player* owner = state.player(town.owner);
     const WeekEventDef* event = content.weekEvent(state.weekEvent());
     int buildings = 0;  // granaries and the like
-    for (const QString& id : town.buildings)
+    for (const BuildingTypeId id : town.buildings)
         if (const BuildingDef* b = content.building(id))
             for (const BuildingEffect& e : b->effects)
                 if (e.type == BuildingEffect::Type::Growth) buildings += e.amount;
@@ -261,7 +260,7 @@ void applyWeeklyGrowth(GameState& state, const ContentRegistry& content) {
 
 ResourceAmounts buildingIncome(const Town& town, const ContentRegistry& content) {
     ResourceAmounts income;
-    for (const QString& id : town.buildings) {
+    for (const BuildingTypeId id : town.buildings) {
         const BuildingDef* b = content.building(id);
         if (!b) continue;
         for (const BuildingEffect& e : b->effects) {

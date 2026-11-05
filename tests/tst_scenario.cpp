@@ -68,13 +68,13 @@ private slots:
         QCOMPARE(gs.map().width(), 40);
         QCOMPARE(gs.players().size(), 3);
         const QList<Player> players = gs.players().values();
-        QCOMPARE(players[0].race, QString("humans"));
-        QVERIFY(reg.races().contains(players[1].race));
+        QCOMPARE(players[0].race, reg.raceId("humans"));
+        QVERIFY(reg.playableRaces().contains(players[1].race));
         QCOMPARE(gs.victory().type, VictoryCondition::Type::Gold);
         QCOMPARE(gs.victory().amount, 50000);
         // It saves and loads as a scenario like any other.
         QTemporaryDir tmp;
-        QVERIFY(saveScenario(tmp.filePath("gen.json"), "gen", "Gen", "", gs, &error));
+        QVERIFY(saveScenario(tmp.filePath("gen.json"), "gen", "Gen", "", gs, reg, &error));
         Scenario s;
         QStringList errors;
         QVERIFY2(loadScenario(tmp.filePath("gen.json"), reg, &s, &errors), qPrintable(errors.join("\n")));
@@ -162,7 +162,7 @@ private slots:
         QVERIFY(week2["players"].toObject()[QString::number(ids[0].value())].toObject()["towns"].toInt() >= 1);
         GameState loaded;
         QStringList errors;
-        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
         QCOMPARE(loaded.history(), gs.history());
     }
 
@@ -183,7 +183,7 @@ private slots:
         QTemporaryDir tmp;
         const GameState map = makeMap({"undead", "sylvan"});
         QString error;
-        QVERIFY(saveScenario(tmp.filePath("test.json"), "test", "Test", "Two races", map, &error));
+        QVERIFY(saveScenario(tmp.filePath("test.json"), "test", "Test", "Two races", map, reg, &error));
         Scenario s;
         QStringList errors;
         QVERIFY2(loadScenario(tmp.filePath("test.json"), reg, &s, &errors), qPrintable(errors.join("\n")));
@@ -199,7 +199,7 @@ private slots:
         QVERIFY2(startScenario(s, reg, params, &gs, &ids, &error), qPrintable(error));
         QCOMPARE(ids.size(), 2);
         QCOMPARE(gs.player(ids[0])->name, QString("Ann"));
-        QCOMPARE(gs.player(ids[0])->race, QString("undead"));  // the scenario decides
+        QCOMPARE(gs.player(ids[0])->race, reg.raceId("undead"));  // the scenario decides
         QCOMPARE(gs.player(ids[1])->controller, Player::Controller::Ai);
         QCOMPARE(gs.player(ids[1])->incomePercent, reg.balance().level("hard").aiIncomePercent);
         QVERIFY(gs.teamOf(ids[0]) != gs.teamOf(ids[1]));
@@ -239,7 +239,7 @@ private slots:
         QString error;
         QVERIFY2(session.start(lobby, &error), qPrintable(error));
         QCOMPARE(session.state().map().width(), 48);
-        QCOMPARE(session.state().player(session.playerOfClient(1))->race, QString("humans"));  // slot 1 of the scenario
+        QCOMPARE(session.state().player(session.playerOfClient(1))->race, reg.raceId("humans"));  // slot 1 of the scenario
     }
 };
 

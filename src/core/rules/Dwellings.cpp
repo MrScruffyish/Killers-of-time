@@ -41,7 +41,7 @@ ActionResult recruitAtDwelling(GameState& state, const ContentRegistry& content,
     if (army->owner != player || army->pos != d->pos)
         return fail(QStringLiteral("the army is not at this dwelling"));
 
-    const ActionResult paid = payAndAddUnits(*state.player(player), *unit, count, *army);
+    const ActionResult paid = payAndAddUnits(content, *state.player(player), *unit, count, *army);
     if (paid.ok) d->available -= count;
     return paid;
 }

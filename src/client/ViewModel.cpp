@@ -1,4 +1,5 @@
 #include "client/ViewModel.h"
+#include "core/content/IdJson.h"
 
 #include "core/model/Entities.h"
 
@@ -10,17 +11,7 @@ namespace {
 
 core::Pos posOf(const QJsonObject& o) { return core::Pos{o.value("x").toInt(), o.value("y").toInt()}; }
 
-core::ResourceAmounts amounts(const QJsonObject& o) {
-    core::ResourceAmounts m;
-    for (auto it = o.begin(); it != o.end(); ++it) m.insert(it.key(), it.value().toInt());
-    return m;
-}
-
-QStringList strings(const QJsonValue& v) {
-    QStringList list;
-    for (const QJsonValue& s : v.toArray()) list << s.toString();
-    return list;
-}
+core::ResourceAmounts amounts(const QJsonValue& v) { return core::amountsFromJson(v.toArray(), core::ResourceAmounts::kMax); }
 
 }  // namespace
 
@@ -111,14 +102,15 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
     v.gameOver = json.value("gameOver").toBool();
     v.difficulty = json.value("difficulty").toString();
     v.victory = json.value("victory").toString();
+    v.defeat = json.value("defeat").toString();
     v.weekEventName = json.value("weekEvent").toObject().value("name").toString();
     v.weekEventText = json.value("weekEvent").toObject().value("description").toString();
     v.campaign = json.value("campaign").toObject();
     v.winnerTeam = json.value("winnerTeam").toInt();
     v.history = json.value("history").toArray();
     v.you = json.value("you").toInt();
-    v.resources = amounts(json.value("resources").toObject());
-    v.income = amounts(json.value("income").toObject());
+    v.resources = amounts(json.value("resources"));
+    v.income = amounts(json.value("income"));
     v.tradePercent = json.value("tradePercent").toInt();
 
     for (const QJsonValue& pv : json.value("players").toArray()) {
@@ -128,9 +120,15 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         p.name = o.value("name").toString();
         p.team = o.value("team").toInt();
         p.color = o.value("color").toString();
-        p.race = o.value("race").toString();
+        p.race = core::RaceId(o.value("race").toInt(-1));
         p.isAi = o.value("isAi").toBool();
         p.eliminated = o.value("eliminated").toBool();
+        p.towns = o.value("towns").toInt();
+        p.heroes = o.value("heroes").toInt();
+        p.mines = o.value("mines").toInt();
+        p.armyValue = o.value("armyValue").toInt();
+        p.townlessDaysLeft = o.value("townlessDaysLeft").toInt();
+        p.away = o.value("away").toBool();
         v.players.append(p);
     }
     const int myTeam = v.myTeam();
@@ -142,13 +140,12 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
     const QJsonObject map = json.value("map").toObject();
     v.width = map.value("width").toInt();
     v.height = map.value("height").toInt();
-    v.terrainPalette = strings(map.value("terrainPalette"));
     for (const QJsonValue& t : map.value("tiles").toArray()) v.tiles.append(t.toInt(-1));
     v.visible = QByteArray::fromBase64(map.value("visible").toString().toLatin1());
     if (v.width <= 0 || v.height <= 0 || v.tiles.size() != v.width * v.height)
         return fail("the map size does not match its tiles");
     for (int t : v.tiles) {
-        if (t >= v.terrainPalette.size()) return fail("a tile refers to a terrain that is not in the palette");
+        if (t >= 32767) return fail("a tile refers to a terrain that does not exist");
     }
 
     for (const QJsonValue& hv : json.value("heroes").toArray()) {
@@ -156,7 +153,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         ViewHero h;
         h.id = o.value("id").toInt();
         h.name = o.value("name").toString();
-        h.classId = o.value("class").toString();
+        h.classId = core::HeroClassId(o.value("class").toInt(-1));
         h.owner = o.value("owner").toInt();
         h.level = o.value("level").toInt(1);
         h.pos = posOf(o);
@@ -165,12 +162,13 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         h.own = ownTeam(h.owner);
         if (o.contains("traits")) {
             h.experience = o.value("experience").toInt();
-            h.traits = amounts(o.value("traits").toObject());
+            const QJsonArray traits = o.value("traits").toArray();
+            for (int i = 0; i < traits.size() && i < core::TraitValues::kMax; ++i) h.traits[core::TraitId(i)] = traits[i].toInt();
             h.spellPoints = o.value("spellPoints").toInt();
             h.pendingTraitPicks = o.value("pendingTraitPicks").toInt();
-            for (const QJsonValue& s : o.value("spells").toArray()) h.spells << s.toString();
-            for (const QJsonValue& a : o.value("artifacts").toArray()) h.artifacts << a.toString();
-            for (const QJsonValue& a : o.value("backpack").toArray()) h.backpack << a.toString();
+            for (const QJsonValue& s : o.value("spells").toArray()) h.spells << core::SpellId(s.toInt(-1));
+            for (const QJsonValue& a : o.value("artifacts").toArray()) h.artifacts << core::ArtifactId(a.toInt(-1));
+            for (const QJsonValue& a : o.value("backpack").toArray()) h.backpack << core::ArtifactId(a.toInt(-1));
             h.movementPoints = o.value("movementPoints").toInt();
             h.movementMax = o.value("movementMax").toInt();
             const QJsonArray d = o.value("destination").toArray();
@@ -188,7 +186,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         for (const QJsonValue& sv : o.value("stacks").toArray()) {
             const QJsonObject so = sv.toObject();
             ViewStack s;
-            s.unit = so.value("unit").toString();
+            s.unit = core::UnitTypeId(so.value("unit").toInt(-1));
             s.count = so.value("count").toInt();
             s.totalHp = so.value("totalHp").toInt(-1);
             s.maxHp = so.value("maxHp").toInt(-1);
@@ -202,7 +200,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         ViewTown t;
         t.id = o.value("id").toInt();
         t.name = o.value("name").toString();
-        t.race = o.value("race").toString();
+        t.race = core::RaceId(o.value("race").toInt(-1));
         t.owner = o.value("owner").toInt();
         t.pos = posOf(o);
         t.own = ownTeam(t.owner);
@@ -212,24 +210,24 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         t.hiredThisWeek = o.value("hiredThisWeek").toBool();
         t.walls = o.value("walls").toInt();
         t.size = o.value("size").toInt();
-        t.buildings = strings(o.value("buildings"));
-        t.tavernOffers = strings(o.value("tavernOffers"));
+        for (const QJsonValue& b : o.value("buildings").toArray()) t.buildings.append(core::BuildingTypeId(b.toInt(-1)));
+        for (const QJsonValue& v : o.value("tavernOffers").toArray()) t.tavernOffers << core::HeroTemplateId(v.toInt(-1));
         for (const QJsonValue& bv : o.value("buildOptions").toArray())
-            t.buildOptions.append({bv.toObject().value("id").toString(), bv.toObject().value("why").toString()});
+            t.buildOptions.append({core::BuildingTypeId(bv.toObject().value("id").toInt(-1)), bv.toObject().value("why").toString()});
         for (const QJsonValue& rv : o.value("recruitOptions").toArray())
-            t.recruitOptions.append({rv.toObject().value("unit").toString(), rv.toObject().value("available").toInt()});
+            t.recruitOptions.append({core::UnitTypeId(rv.toObject().value("unit").toInt(-1)), rv.toObject().value("available").toInt()});
         v.towns.append(t);
     }
     for (const QJsonValue& mv : json.value("mines").toArray()) {
         const QJsonObject o = mv.toObject();
-        v.mines.append({o.value("id").toInt(), o.value("resource").toString(), o.value("dailyAmount").toInt(),
+        v.mines.append({o.value("id").toInt(), core::ResourceId(o.value("resource").toInt()), o.value("dailyAmount").toInt(),
                         o.value("owner").toInt(), posOf(o)});
     }
     for (const QJsonValue& dv : json.value("mapDwellings").toArray()) {
         const QJsonObject o = dv.toObject();
         ViewDwelling d;
         d.id = o.value("id").toInt();
-        d.unit = o.value("unit").toString();
+        d.unit = core::UnitTypeId(o.value("unit").toInt(-1));
         d.owner = o.value("owner").toInt();
         d.pos = posOf(o);
         d.available = o.value("available").toInt(-1);
@@ -240,11 +238,10 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         ViewObject m;
         m.id = o.value("id").toInt();
         m.artifact = o.value("kind").toString() == "artifact";
-        m.artifactId = o.value("artifact").toString();
+        m.artifactId = core::ArtifactId(o.value("artifact").toInt(-1));
         m.site = o.value("site").toString();
         for (const QJsonValue& h : o.value("giftFor").toArray()) m.giftFor << h.toInt();
-        const QJsonObject res = o.value("resources").toObject();
-        for (auto it = res.begin(); it != res.end(); ++it) m.resources.insert(it.key(), it.value().toInt());
+        m.resources = amounts(o.value("resources"));
         m.pos = posOf(o);
         v.objects.append(m);
     }
@@ -264,7 +261,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             ViewBattleUnit bu;
             bu.id = u.value("id").toInt();
             bu.side = u.value("side").toInt();
-            bu.unit = u.value("unit").toString();
+            bu.unit = core::UnitTypeId(u.value("unit").toInt(-1));
             bu.count = u.value("count").toInt();
             bu.frontHp = u.value("frontHp").toInt();
             bu.maxHp = u.value("maxHp").toInt();
@@ -284,7 +281,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         vb.canRetreat = b.value("canRetreat").toBool();
         vb.surrenderCost = b.contains("surrenderCost") ? b.value("surrenderCost").toInt() : -1;
         vb.townDefense = b.value("townDefense").toInt();
-        vb.terrain = b.value("terrain").toString();
+        vb.terrain = b.value("terrain").toInt(-1);
         const QJsonObject siege = b.value("siege").toObject();
         vb.wallLevel = siege.value("level").toInt();
         for (const QJsonValue& w : siege.value("walls").toArray()) {
@@ -301,7 +298,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             vb.obstacles.append({h.toArray().at(0).toInt(), h.toArray().at(1).toInt()});
         for (const QJsonValue& sv : b.value("unitSpells").toArray()) {
             const QJsonObject so = sv.toObject();
-            vb.unitSpells.append({so.value("id").toString(), so.value("target").toString() == "enemy",
+            vb.unitSpells.append({core::SpellId(so.value("id").toInt(-1)), so.value("target").toString() == "enemy",
                                   so.value("cost").toInt(), so.value("castable").toBool()});
         }
         if (b.value("hero").isObject()) {
@@ -311,7 +308,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
             vb.heroHasCast = hero.value("hasCast").toBool();
             for (const QJsonValue& sv : hero.value("spells").toArray()) {
                 const QJsonObject so = sv.toObject();
-                vb.spells.append({so.value("id").toString(), so.value("target").toString() == "enemy",
+                vb.spells.append({core::SpellId(so.value("id").toInt(-1)), so.value("target").toString() == "enemy",
                                   so.value("cost").toInt(), so.value("castable").toBool()});
             }
         }

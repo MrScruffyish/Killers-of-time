@@ -92,15 +92,15 @@ SpellBook::SpellBook(const core::ContentRegistry* content, const QList<Entry>& s
         const core::SpellDef* s = content->spell(e.id);
         if (!s) continue;
         auto* card = new QPushButton(this);
-        card->setObjectName(QStringLiteral("spell_%1").arg(e.id));
-        card->setIcon(QIcon(art::spellIcon(s->id, s->school, 128)));
+        card->setObjectName(QStringLiteral("spell_%1").arg(s ? s->key : QString()));
+        card->setIcon(QIcon(art::spellIcon(s->key, 128)));
         card->setIconSize(QSize(52, 52));
         card->setText(tr("%1   (%2 SP, level %3)\n%4").arg(s->name).arg(s->cost).arg(s->level).arg(s->description));
         card->setStyleSheet("QPushButton { text-align: left; padding: 8px; }");
         card->setMinimumSize(320, 62);
         card->setEnabled(e.castable);
         if (!e.castable && !e.why.isEmpty()) card->setToolTip(e.why);
-        const QString id = e.id;
+        const core::SpellId id = e.id;
         connect(card, &QPushButton::clicked, this, [this, id]() {
             m_chosen = id;
             accept();
@@ -115,9 +115,9 @@ SpellBook::SpellBook(const core::ContentRegistry* content, const QList<Entry>& s
     v->addWidget(cancel, 0, Qt::AlignRight);
 }
 
-QString SpellBook::chooseSpell(const core::ContentRegistry* content, const QList<Entry>& spells, const QString& title, QWidget* parent) {
+core::SpellId SpellBook::chooseSpell(const core::ContentRegistry* content, const QList<Entry>& spells, const QString& title, QWidget* parent) {
     SpellBook book(content, spells, title, parent);
-    return book.exec() == QDialog::Accepted ? book.m_chosen : QString();
+    return book.exec() == QDialog::Accepted ? book.m_chosen : core::SpellId();
 }
 
 }  // namespace kot::client

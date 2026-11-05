@@ -37,6 +37,27 @@ ctest --test-dir build --output-on-failure
 
 Log filtering example: `QT_LOGGING_RULES="kot.*.debug=true" ./build/bin/kot_server`
 
+### Server settings
+`kot_server` reads `~/.config/KillersOfTime/server.json` when it exists (or the file given
+with `--config <file>`), strict JSON, every field optional:
+```json
+{ "port": 45454, "data": "/path/to/data", "saves": "/path/to/saves", "savesMaxMB": 500, "resume": true }
+```
+The command line overrides it: `--port`, `--data`, `--saves`, `--saves-max-mb`, `--resume`.
+`resume`: at start the server goes on with the newest saved game and waits for the players
+(autosaves happen every day, so a restarted server loses at most the current day).
+
+### Playing at different times
+The server keeps the game; nobody needs to be connected. When it is your turn, connect, play,
+end your turn and leave: the game waits at the turn of a player who is away (no computer plays
+for anyone), and a battle against someone who is away is fought by the computer for them.
+Your client makes a secret key for each server (kept in its settings); the server keeps only
+a hash of it with your seat, so you, and nobody else, get the seat back when you connect again. Anyone may save; only the host
+may replace an existing save. A player who is out of the game may still join and watch.
+`savesMaxMB` is the most space the save folder may use (0 or missing: no limit); when a
+save would go over it, the server first removes the oldest saved games (never campaign
+progress) until it fits. Saves go to `~/.local/share/kot_server/saves` by default.
+
 ## Build for playing
 
 The Debug build above is for development and tests; it plays slowly. For playing, use an
@@ -75,10 +96,11 @@ src/core    game data model and rules (no GUI, no networking)
 src/net     protocol shared by client and server
 src/ai      AI players
 src/server  headless server executable
-src/client  Qt Widgets client executable
+src/client  Qt Widgets client executable (loads the PNG art, never draws it)
+src/artgen  the placeholder art drawn in code (kot_artexport writes data/art from it)
 tests/      Qt Test unit tests
 src/tools   content tools (kot_graph, kot_balance, kot_mapgen, kot_aiplay, ...)
-data/       game content (JSON)
+data/       game content (JSON) and art (data/art, PNG)
 docs/       protocol, data, save format and tools docs
 ```
 

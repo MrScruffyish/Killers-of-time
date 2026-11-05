@@ -1,6 +1,8 @@
 #include <QJsonArray>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "net/Protocol.h"
 #include "server/GameSession.h"
@@ -46,6 +48,7 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void init() {
@@ -121,6 +124,9 @@ private slots:
         QVERIFY(pA.isValid() && pB.isValid() && pBot.isValid());
         QCOMPARE(session->state().currentPlayer(), pA);
         QCOMPARE(session->youInfo(pA)["playerId"].toInt(), id(pA));
+        // Seats are bound to the key (hash) of the client that plays them.
+        session->bindSeats(1, "hashA");
+        QCOMPARE(session->state().player(pA)->seatKeyHash, QString("hashA"));
     }
 
     void gameEndsWhenOneTeamIsLeft() {
@@ -147,7 +153,7 @@ private slots:
         for (int dx = -1; dx <= 1 && spot.x < 0; ++dx)
             for (int dy = -1; dy <= 1 && spot.x < 0; ++dy) {
                 const core::Pos p{at.x + dx, at.y + dy};
-                bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrain().value(gs.map().terrainAt(p)).walkable;
+                bool free = (dx || dy) && gs.map().inBounds(p) && reg.terrain(gs.map().terrainAt(p)).walkable;
                 for (const core::Army& a : gs.armies()) free = free && a.pos != p;
                 free = free && !gs.townCovering(p);
                 for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
@@ -156,7 +162,7 @@ private slots:
             }
         QVERIFY(spot.x >= 0);
         const core::ArmyId monsters = gs.addArmy(core::PlayerId(), spot);
-        gs.army(monsters)->addUnits("militia", 3, 6);
+        gs.army(monsters)->addUnits(kot::core::U("militia"), 3, 6);
 
         CommandResult r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
         QVERIFY2(r.ok, qPrintable(r.message));
@@ -221,7 +227,7 @@ private slots:
         const core::Pos at = gs.army(h->army)->pos;
         core::Pos spot{-1, -1};
         for (const core::Pos p : {core::Pos{at.x - 1, at.y + 1}, core::Pos{at.x - 1, at.y}, core::Pos{at.x, at.y + 1}}) {
-            bool free = spot.x < 0 && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable && !gs.townCovering(p);
+            bool free = spot.x < 0 && gs.map().inBounds(p) && reg.terrain(gs.map().terrainAt(p)).walkable && !gs.townCovering(p);
             for (const core::Army& a : gs.armies()) free = free && a.pos != p;
             for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
             for (const core::MapDwelling& d : gs.mapDwellings()) free = free && d.pos != p;
@@ -229,7 +235,7 @@ private slots:
         }
         QVERIFY(spot.x >= 0);
         const core::ArmyId monsters = gs.addArmy(core::PlayerId(), spot);
-        gs.army(monsters)->addUnits("militia", 2, 6);
+        gs.army(monsters)->addUnits(kot::core::U("militia"), 2, 6);
         const int before = gs.army(h->army)->totalUnits();
         CommandResult r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
         QVERIFY2(r.ok, qPrintable(r.message));
@@ -243,13 +249,13 @@ private slots:
         r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", spot.x}, {"y", spot.y}});
         QVERIFY(r.info.contains("joinOffer"));
         const int cost = r.info["joinOffer"].toObject()["cost"].toInt();
-        QCOMPARE(cost, 2 * reg.unit("militia")->cost.value("gold") * reg.balance().battle.joinCostPercent / 100);
-        const int gold = gs.player(pA)->resources.value("gold");
+        QCOMPARE(cost, 2 * reg.unit(kot::core::U("militia"))->cost.value(kot::core::R("gold")) * reg.balance().battle.joinCostPercent / 100);
+        const int gold = gs.player(pA)->resources.value(kot::core::R("gold"));
         r = doIt(1, net::msg::answerJoin, {{"answer", "accept"}});
         QVERIFY2(r.ok, qPrintable(r.message));
         QVERIFY(!gs.army(monsters));
         QCOMPARE(gs.army(h->army)->totalUnits(), before + 2);
-        QCOMPARE(gs.player(pA)->resources.value("gold"), gold - cost);  // they were paid
+        QCOMPARE(gs.player(pA)->resources.value(kot::core::R("gold")), gold - cost);  // they were paid
     }
 
     void bothHumansPlayTheirOwnStacks() {
@@ -260,7 +266,7 @@ private slots:
         core::Pos spot{-1, -1};
         for (const core::Pos p : {core::Pos{at.x + 1, at.y}, core::Pos{at.x - 1, at.y}, core::Pos{at.x, at.y + 1},
                                   core::Pos{at.x, at.y - 1}}) {
-            bool free = spot.x < 0 && gs.map().inBounds(p) && reg.terrainType(gs.map().terrainAt(p))->walkable;
+            bool free = spot.x < 0 && gs.map().inBounds(p) && reg.terrain(gs.map().terrainAt(p)).walkable;
             for (const core::Army& a : gs.armies()) free = free && a.pos != p;
             free = free && !gs.townCovering(p);
             for (const core::Mine& m : gs.mines()) free = free && m.pos != p;
@@ -306,7 +312,7 @@ private slots:
 
     void onlyTheCurrentPlayerMayAct() {
         QCOMPARE(doIt(2, net::msg::endTurn).code, QString("not_your_turn"));
-        QCOMPARE(doIt(2, net::msg::trade, {{"give", "gold"}, {"amount", 1000}, {"get", "wood"}}).code, QString("not_your_turn"));
+        QCOMPARE(doIt(2, net::msg::trade, {{"give", kot::core::R("gold").index()}, {"amount", 1000}, {"get", kot::core::R("wood").index()}}).code, QString("not_your_turn"));
         QCOMPARE(doIt(99, net::msg::endTurn).code, QString("not_a_player"));
     }
 
@@ -325,7 +331,7 @@ private slots:
         const core::Pos start = session->state().army(h->army)->pos;
         // Not right or up: those are the town's walls.
         core::Pos target{start.x - 1, start.y};
-        if (!reg.terrainType(session->state().map().terrainAt(target))->walkable) target = {start.x, start.y + 1};
+        if (!reg.terrain(session->state().map().terrainAt(target)).walkable) target = {start.x, start.y + 1};
         const CommandResult r = doIt(1, net::msg::moveHero, {{"hero", id(h->id)}, {"x", target.x}, {"y", target.y}});
         QVERIFY2(r.ok, qPrintable(r.message));
         QVERIFY(r.info["arrived"].toBool());
@@ -349,26 +355,26 @@ private slots:
 
     void buildingAndRecruiting() {
         const core::Town* town = townOf(pA);
-        QVERIFY(doIt(1, net::msg::build, {{"town", id(town->id)}, {"building", "barracks"}}).ok);
-        QVERIFY(town->buildings.contains("barracks"));
-        QVERIFY(doIt(1, net::msg::recruit, {{"town", id(town->id)}, {"unit", "militia"}, {"count", 5}}).ok);
+        QVERIFY(doIt(1, net::msg::build, {{"town", id(town->id)}, {"building", kot::core::B("barracks").index()}}).ok);
+        QVERIFY(town->buildings.contains(kot::core::B("barracks")));
+        QVERIFY(doIt(1, net::msg::recruit, {{"town", id(town->id)}, {"unit", kot::core::U("militia").index()}, {"count", 5}}).ok);
         QCOMPARE(session->state().army(town->garrison)->totalUnits(), 5);
-        const CommandResult again = doIt(1, net::msg::build, {{"town", id(town->id)}, {"building", "village_hall"}});
+        const CommandResult again = doIt(1, net::msg::build, {{"town", id(town->id)}, {"building", kot::core::B("village_hall").index()}});
         QVERIFY(again.message.contains("already built here today"));
     }
 
     void cannotBuildInSomeoneElsesTown() {
         const core::Town* theirs = townOf(pB);
-        const CommandResult r = doIt(1, net::msg::build, {{"town", id(theirs->id)}, {"building", "barracks"}});
+        const CommandResult r = doIt(1, net::msg::build, {{"town", id(theirs->id)}, {"building", kot::core::B("barracks").index()}});
         QVERIFY(r.message.contains("not your town"));
     }
 
     void tradeAndBuildWithTrade() {
-        QVERIFY(doIt(1, net::msg::trade, {{"give", "gold"}, {"amount", 1000}, {"get", "wood"}}).ok);
-        QCOMPARE(session->state().player(pA)->resources.value("wood"), 29);  // humans trade 10% better
-        session->state().player(pA)->resources["wood"] = 0;
+        QVERIFY(doIt(1, net::msg::trade, {{"give", kot::core::R("gold").index()}, {"amount", 1000}, {"get", kot::core::R("wood").index()}}).ok);
+        QCOMPARE(session->state().player(pA)->resources.value(kot::core::R("wood")), 29);  // humans trade 10% better
+        session->state().player(pA)->resources[kot::core::R("wood")] = 0;
         const core::Town* town = townOf(pA);
-        const CommandResult r = doIt(1, net::msg::build, {{"town", id(town->id)}, {"building", "barracks"}, {"useTrade", true}});
+        const CommandResult r = doIt(1, net::msg::build, {{"town", id(town->id)}, {"building", kot::core::B("barracks").index()}, {"useTrade", true}});
         QVERIFY2(r.ok, qPrintable(r.message));
         QCOMPARE(r.info["trades"].toArray().size(), 1);
     }
@@ -378,13 +384,13 @@ private slots:
         const CommandResult built = doIt(1, net::msg::autoBuild, {});
         QVERIFY(built.ok);
         QCOMPARE(built.info["built"].toArray().size(), 1);
-        QVERIFY(town->buildings.contains("barracks"));
+        QVERIFY(town->buildings.contains(kot::core::B("barracks")));
 
         const CommandResult bought = doIt(1, net::msg::buyAllUnits, {{"strategy", "most"}});
         QVERIFY(bought.ok);
         QCOMPARE(bought.info["unitsBought"].toInt(), 12);
 
-        session->state().player(pA)->resources["gold"] = 10000;
+        session->state().player(pA)->resources[kot::core::R("gold")] = 10000;
         session->state().towns()[town->id].lastBuildDay = 0;
         const CommandResult both = doIt(1, net::msg::buildThenBuy, {{"town", id(town->id)}});
         QVERIFY(both.ok);
@@ -396,11 +402,11 @@ private slots:
     }
 
     void pickTraitNeedsAPendingPick() {
-        const CommandResult r = doIt(1, net::msg::pickTrait, {{"hero", id(heroOf(pA)->id)}, {"trait", "attack"}});
+        const CommandResult r = doIt(1, net::msg::pickTrait, {{"hero", id(heroOf(pA)->id)}, {"trait", kot::core::TR("attack").index()}});
         QCOMPARE(r.code, QString("failed"));
         QVERIFY(r.message.contains("no trait pick"));
         session->state().hero(heroOf(pA)->id)->pendingTraitPicks = 1;
-        QVERIFY(doIt(1, net::msg::pickTrait, {{"hero", id(heroOf(pA)->id)}, {"trait", "attack"}}).ok);
+        QVERIFY(doIt(1, net::msg::pickTrait, {{"hero", id(heroOf(pA)->id)}, {"trait", kot::core::TR("attack").index()}}).ok);
     }
 
     void moveUnitsBetweenOwnArmies() {
@@ -422,15 +428,22 @@ private slots:
         QCOMPARE(view["you"].toInt(), id(pA));
     }
 
-    void leavingHandsThePlayerToThePassiveAi() {
-        session->clientLeft(1);  // it is his turn: the turn passes at once
-        QCOMPARE(session->state().currentPlayer(), pB);
+    void theGameWaitsForAPlayerWhoLeft() {
+        session->bindSeats(1, "hashA");
+        session->clientLeft(1);  // it is his turn: no computer plays it, the game waits
+        QCOMPARE(session->state().currentPlayer(), pA);
         QCOMPARE(session->clients().size(), 1);
         QCOMPARE(doIt(1, net::msg::endTurn).code, QString("not_a_player"));
-        // Bob ends his turn: everyone else is automatic, so the day advances back to Bob.
-        QVERIFY(doIt(2, net::msg::endTurn).ok);
+        QCOMPARE(doIt(2, net::msg::endTurn).code, QString("not_your_turn"));
+        QVERIFY(session->freePlayers().contains(pA));
+        QVERIFY(!session->isConnected(pA));
+        // He comes back (another connection) and plays on.
+        QString error;
+        QVERIFY(!session->joinPlayer(3, pA, "someone else", &error));  // not his
+        QVERIFY(session->seatsFor("someone else", false).isEmpty());
+        QVERIFY2(session->joinPlayer(3, pA, "hashA", &error), qPrintable(error));
+        QVERIFY(doIt(3, net::msg::endTurn).ok);
         QCOMPARE(session->state().currentPlayer(), pB);
-        QCOMPARE(session->state().day(), 2);
     }
 
     void everyoneLeavingDoesNotHang() {

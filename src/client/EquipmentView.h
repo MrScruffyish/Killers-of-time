@@ -5,6 +5,8 @@
 #include <QStringList>
 #include <QWidget>
 
+#include "core/content/ContentIds.h"
+
 namespace kot::core { class ContentRegistry; }
 
 namespace kot::client {
@@ -17,13 +19,13 @@ class EquipmentView : public QWidget {
     Q_OBJECT
 public:
     EquipmentView(const core::ContentRegistry* content, QWidget* parent = nullptr);
-    void setArtifacts(const QStringList& worn, const QStringList& backpack, bool canChange);
+    void setArtifacts(const QList<core::ArtifactId>& worn, const QList<core::ArtifactId>& backpack, bool canChange);
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override { return sizeHint(); }
 
 signals:
-    void equipRequested(const QString& artifact);
-    void unequipRequested(const QString& artifact);
+    void equipRequested(core::ArtifactId artifact);
+    void unequipRequested(core::ArtifactId artifact);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -36,7 +38,7 @@ private:
     struct Box {
         QRectF rect;
         QString slot;      // the place (also for backpack boxes: the artifact's place)
-        QString artifact;  // empty = nothing there
+        core::ArtifactId artifact;  // invalid = nothing there
         bool worn = true;
     };
     void layoutBoxes();
@@ -44,7 +46,7 @@ private:
     QString tooltipFor(const Box& b) const;
 
     const core::ContentRegistry* m_content;
-    QStringList m_worn, m_backpack;
+    QList<core::ArtifactId> m_worn, m_backpack;
     bool m_canChange = false;
     QList<Box> m_boxes;
     int m_hover = -1;

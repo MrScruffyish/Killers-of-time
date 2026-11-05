@@ -17,7 +17,7 @@ namespace kot::core {
 int armyMovementPoints(const Army& army, const Hero* hero, const ContentRegistry& content) {
     const MovementBalance& mb = content.balance().movement;
     int points = mb.base;
-    if (hero) points += mb.perTraitLevel * hero->trait(QStringLiteral("movement_points"));
+    if (hero) points += mb.perTraitLevel * hero->trait(content.known().movementPoints);
 
     int slowest = INT_MAX;
     for (const UnitStack& stack : army.stacks) {
@@ -33,7 +33,7 @@ int armyMovementPoints(const Army& army, const Hero* hero, const ContentRegistry
         }
     }
     points = std::max(points, mb.minimum);
-    if (hero) points += points * hero->trait(QStringLiteral("scouting")) * content.balance().scouting.movementPercentPerLevel / 100;
+    if (hero) points += points * hero->trait(content.known().scouting) * content.balance().scouting.movementPercentPerLevel / 100;
     return points;
 }
 
@@ -43,7 +43,7 @@ int zoneOfControlRadius(int scoutingLevel, const ContentRegistry& content) {
 }
 
 int zoneOfControlRadius(const Hero& hero, const ContentRegistry& content) {
-    return zoneOfControlRadius(hero.trait(QStringLiteral("scouting")), content);
+    return zoneOfControlRadius(hero.trait(content.known().scouting), content);
 }
 
 QList<ArmyId> zoneOfControlAt(const GameState& state, const ContentRegistry& content, const Hero& hero, Pos tile) {
@@ -88,7 +88,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
     if (hero->inBoat) {
         mode = MoveMode::Boat;
         // Landing: step onto the land next to the boat; that ends today's movement.
-        const TerrainDef* t = content.terrainType(state.map().terrainAt(target));
+        const TerrainDef* t = &content.terrain(state.map().terrainAt(target));
         if (t && t->walkable && !t->sailable) {
             if (std::max(std::abs(target.x - army->pos.x), std::abs(target.y - army->pos.y)) != 1) {
                 result.error = QStringLiteral("sail next to the shore to land");
@@ -160,7 +160,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
 
     const HeroClassDef* cls = content.heroClass(hero->classId);
     const MoveCostGrid grid(state.map(), content, mode,
-                            cls ? content.race(cls->race).terrainCostPercent : QMap<QString, int>());
+                            cls ? content.race(cls->race).terrainCostPercent : QVector<int>());
     // The way goes around the zones of control of hostile armies the team can see
     // (not the one being attacked, not those already next to the hero), if there
     // is such a way; else straight on.
@@ -195,7 +195,7 @@ MoveResult moveHero(GameState& state, const ContentRegistry& content, HeroId her
 
     int steps = affordableSteps(path, hero->movementPoints);
     if (steps == 0) {
-        result.error = QStringLiteral("not enough movement points");
+        result.error = QStringLiteral("not enough movement points for the next step today; go on tomorrow");
         return result;
     }
     // Zones of control along the way (armies already in reach at the start do not count).
@@ -378,9 +378,9 @@ void pickUpAt(GameState& state, const ContentRegistry& content, HeroId heroId, P
     for (const MapObject& o : state.mapObjects()) {
         if (o.pos != target || o.kind == MapObject::Kind::Site) continue;
         taken.append(o.id);
-        for (auto it = o.resources.begin(); it != o.resources.end(); ++it) {
-            player->resources[it.key()] += it.value();
-            result->foundResources[it.key()] += it.value();
+        for (const auto [r, amount] : o.resources) {
+            player->resources[r] += amount;
+            result->foundResources[r] += amount;
         }
         if (const ArtifactDef* a = content.artifact(o.artifact)) {
             if (!takeArtifact(*hero, content, a->id)) result->stowedArtifacts.append(a->id);

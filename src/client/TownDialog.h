@@ -36,9 +36,12 @@ private:
     QList<int> myTowns() const;
     void drawScene(const ViewTown& town);
     QString costText(const core::ResourceAmounts& cost) const;
-    QString unitName(const QString& id) const;
-    // What a building does, in a few words (from its effects).
-    QString effectsText(const core::BuildingDef& b) const;
+    QString unitName(core::UnitTypeId id) const;
+    // What a building does (from its effects): brief for the table cell, full for its tooltip.
+    QString effectsText(const core::BuildingDef& b, bool brief = false) const;
+    // A better version of something: an upgradeOf dwelling, or the next hall,
+    // guild level or wall (it requires a non-dwelling building with the same kind of effect).
+    bool isUpgrade(const core::BuildingDef& b) const;
 
     const core::ContentRegistry* m_content;
     GameView m_view;

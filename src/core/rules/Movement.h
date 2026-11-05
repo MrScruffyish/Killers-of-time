@@ -49,10 +49,10 @@ struct MoveResult {
     bool attacked = false;     // the target held hostile armies and battles were fought
     QList<BattleReport> battles;  // in order; stops at the first one not won
     bool heroKilled = false;   // the moving hero lost a battle (he and his army are gone)
-    QStringList learnedSpells;  // arrived in an own town with a mage guild
+    QList<SpellId> learnedSpells;  // arrived in an own town with a mage guild
     ResourceAmounts foundResources;  // picked up a treasure
-    QStringList foundArtifacts;      // picked up artifacts
-    QStringList stowedArtifacts;     // of those, the ones put in the backpack (their slot was full)
+    QList<ArtifactId> foundArtifacts;   // picked up artifacts
+    QList<ArtifactId> stowedArtifacts;  // of those, the ones put in the backpack (their slot was full)
     QString visitedSite;             // a site visited at the end of the move (MapSites.h) ...
     QString siteResult;              // ... and what the hero got there
     bool landed = false;  // left the boat

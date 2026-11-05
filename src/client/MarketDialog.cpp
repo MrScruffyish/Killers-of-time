@@ -81,33 +81,35 @@ MarketDialog::MarketDialog(const core::ContentRegistry* content, QWidget* parent
     connect(m_get, &QListWidget::currentRowChanged, this, &MarketDialog::refreshPreview);
     connect(m_amount, &QSlider::valueChanged, this, &MarketDialog::refreshPreview);
     connect(m_trade, &QPushButton::clicked, this, [this]() {
-        const QString give = chosen(m_give), get = chosen(m_get);
-        emit commandRequested("trade", {{"give", give}, {"amount", m_amount->value()}, {"get", get}},
-                              tr("Trade %1 %2 for %3").arg(m_amount->value()).arg(give, get));
+        const core::ResourceId give = chosen(m_give), get = chosen(m_get);
+        emit commandRequested("trade", {{"give", give.index()}, {"amount", m_amount->value()}, {"get", get.index()}},
+                              tr("Trade %1 %2 for %3").arg(m_amount->value()).arg(keyOf(give), keyOf(get)));
     });
 }
 
-QString MarketDialog::chosen(const QListWidget* list) const {
+core::ResourceId MarketDialog::chosen(const QListWidget* list) const {
     const QListWidgetItem* item = list->currentItem();
-    return item ? item->data(Qt::UserRole).toString() : QString();
+    return item ? core::ResourceId(item->data(Qt::UserRole).toInt()) : core::ResourceId();
 }
+
+QString MarketDialog::keyOf(core::ResourceId r) const { return r.isValid() ? m_content->resource(r).key : QString(); }
 
 void MarketDialog::setView(const GameView& view) {
     m_view = view;
-    const QString give = chosen(m_give), get = chosen(m_get);
+    const core::ResourceId give = chosen(m_give), get = chosen(m_get);
     for (QListWidget* list : {m_give, m_get}) {
         list->blockSignals(true);
         list->clear();
         for (const core::ResourceDef& r : m_content->resources()) {
-            auto* item = new QListWidgetItem(QIcon(art::resourceIcon(r.id, 28)),
+            auto* item = new QListWidgetItem(QIcon(art::resourceIcon(r.key, 28)),
                                              list == m_give ? tr("%1  (%2)").arg(r.name).arg(view.resources.value(r.id)) : r.name, list);
-            item->setData(Qt::UserRole, r.id);
+            item->setData(Qt::UserRole, r.id.index());
         }
         list->blockSignals(false);
     }
-    const auto select = [](QListWidget* list, const QString& id, int fallback) {
+    const auto select = [](QListWidget* list, core::ResourceId id, int fallback) {
         for (int i = 0; i < list->count(); ++i)
-            if (list->item(i)->data(Qt::UserRole).toString() == id) return list->setCurrentRow(i);
+            if (id.isValid() && list->item(i)->data(Qt::UserRole).toInt() == id.index()) return list->setCurrentRow(i);
         list->setCurrentRow(std::min(fallback, list->count() - 1));
     };
     select(m_give, give, 1);
@@ -125,20 +127,20 @@ void MarketDialog::setView(const GameView& view) {
 }
 
 void MarketDialog::refreshPreview() {
-    const QString give = chosen(m_give), get = chosen(m_get);
+    const core::ResourceId give = chosen(m_give), get = chosen(m_get);
     const int have = m_view.resources.value(give);
     const int amount = m_amount->value();
     m_amountLabel->setText(QStringLiteral("<b>%1</b> / %2").arg(amount).arg(have));
-    const int yield = give.isEmpty() || get.isEmpty() || give == get ? 0
+    const int yield = !give.isValid() || !get.isValid() || give == get ? 0
                       : core::tradeYield(*m_content, give, amount, get, m_view.tradePercent);
     QString why;
     if (give == get) why = tr("Choose two different resources.");
-    else if (have <= 0) why = tr("You have no %1 to give.").arg(give);
+    else if (have <= 0) why = tr("You have no %1 to give.").arg(keyOf(give));
     else if (amount <= 0) why = tr("Slide to choose how much to give.");
-    else if (amount > have) why = tr("You only have %1 %2.").arg(have).arg(give);
+    else if (amount > have) why = tr("You only have %1 %2.").arg(have).arg(keyOf(give));
     else if (yield <= 0) why = tr("Too little to get anything back; give more.");
     else if (!m_view.isMyTurn()) why = tr("Trading is possible on your turn.");
-    m_preview->setText(why.isEmpty() ? tr("You give <b>%1 %2</b> and get <b>%3 %4</b>.").arg(amount).arg(give).arg(yield).arg(get) : why);
+    m_preview->setText(why.isEmpty() ? tr("You give <b>%1 %2</b> and get <b>%3 %4</b>.").arg(amount).arg(keyOf(give)).arg(yield).arg(keyOf(get)) : why);
     m_trade->setEnabled(why.isEmpty());
 }
 

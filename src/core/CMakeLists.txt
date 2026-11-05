@@ -1,5 +1,8 @@
 # kot_core: data model and rules. No GUI, no networking. Only QtCore.
 add_library(kot_core STATIC
+    content/ContentIds.h
+    content/IdJson.h
+    content/IdJson.cpp
     Version.h
     util/StrongId.h
     util/Ids.h
@@ -82,6 +85,7 @@ add_library(kot_core STATIC
 )
 target_include_directories(kot_core PUBLIC ${KOT_SRC_DIR})
 target_link_libraries(kot_core PUBLIC Qt6::Core PRIVATE kot_warnings)
+kot_pch(kot_core)
 
 # The version (from the project) and the git commit, refreshed at every build.
 set(KOT_BUILDINFO ${CMAKE_BINARY_DIR}/generated/BuildInfo.h)

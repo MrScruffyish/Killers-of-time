@@ -24,13 +24,19 @@ struct ViewPlayer {
     QString name;
     int team = 0;
     QString color;
-    QString race;
+    core::RaceId race;
     bool isAi = false;
     bool eliminated = false;
+    int towns = 0;
+    int heroes = 0;
+    int mines = 0;
+    int armyValue = 0;          // what the units cost; rounded for other teams
+    int townlessDaysLeft = 0;   // > 0: no town left, out after this many days
+    bool away = false;          // a human who is not connected now
 };
 
 struct ViewStack {
-    QString unit;
+    core::UnitTypeId unit;
     int count = 0;
     int totalHp = -1;  // -1 = not shown (not your team's army)
     int maxHp = -1;
@@ -48,32 +54,32 @@ struct ViewArmy {
 struct ViewHero {
     int id = 0;
     QString name;
-    QString classId;
+    core::HeroClassId classId;
     int owner = 0;
     int level = 1;
     core::Pos pos;
     int army = 0;
     bool own = false;  // full details present (your team)
     int experience = 0;
-    QMap<QString, int> traits;
+    core::TraitValues traits;  // value per trait
     int spellPoints = 0;
     int pendingTraitPicks = 0;
     int movementPoints = 0;
     int movementMax = 0;  // a full day's movement
-    QStringList spells;
-    QStringList artifacts;  // worn
-    QStringList backpack;   // carried, not worn
+    QList<core::SpellId> spells;
+    QList<core::ArtifactId> artifacts;  // worn
+    QList<core::ArtifactId> backpack;   // carried, not worn
     bool inBoat = false;
     std::optional<core::Pos> destination;  // own heroes: the unfinished route's target
 };
 
 struct BuildOption {
-    QString id;
+    core::BuildingTypeId id;
     QString why;  // empty = can be built now
 };
 
 struct RecruitChoice {
-    QString unit;
+    core::UnitTypeId unit;
     int available = 0;
 };
 
@@ -84,21 +90,21 @@ struct ViewTown {
     int walls = 0;         // buildings with a defense effect (fort, citadel), seen from outside
     int size = 0;          // number of buildings
     QString name;
-    QString race;
+    core::RaceId race;
     int owner = 0;
     core::Pos pos;
     bool own = false;
     bool mine = false;  // owned by you (not just a teammate)
     int garrison = 0;
-    QStringList buildings;
-    QStringList tavernOffers;
+    QList<core::BuildingTypeId> buildings;
+    QList<core::HeroTemplateId> tavernOffers;
     QList<BuildOption> buildOptions;
     QList<RecruitChoice> recruitOptions;
 };
 
 struct ViewMine {
     int id = 0;
-    QString resource;
+    core::ResourceId resource;
     int dailyAmount = 0;
     int owner = 0;
     core::Pos pos;
@@ -106,7 +112,7 @@ struct ViewMine {
 
 struct ViewDwelling {
     int id = 0;
-    QString unit;
+    core::UnitTypeId unit;
     int owner = 0;
     core::Pos pos;
     int available = -1;  // -1 = unknown
@@ -115,7 +121,7 @@ struct ViewDwelling {
 struct ViewObject {
     int id = 0;
     bool artifact = false;      // else a treasure pile (or a site)
-    QString artifactId;
+    core::ArtifactId artifactId;
     QString site;               // a place to visit (MapSites.h), else empty
     QList<int> giftFor;         // your heroes who would still get something there
     core::ResourceAmounts resources;
@@ -125,7 +131,7 @@ struct ViewObject {
 struct ViewBattleUnit {
     int id = 0;
     int side = 0;
-    QString unit;
+    core::UnitTypeId unit;
     int count = 0;
     int frontHp = 0;
     int maxHp = 0;
@@ -154,7 +160,7 @@ struct ViewBattle {
     bool canRetreat = false;
     int surrenderCost = -1;  // -1: cannot surrender now
     int townDefense = 0;
-    QString terrain;  // the ground the battle is fought on
+    int terrain = -1;  // the terrain id of the ground the battle is fought on
     // A siege: wall segments (hex -> HP), the gate, the towers, the catapult.
     int wallLevel = 0;
     QMap<core::Pos, int> walls;
@@ -166,7 +172,7 @@ struct ViewBattle {
     QList<core::Pos> obstacles;
     // Your hero in this battle (absent: no hero).
     struct Spell {
-        QString id;
+        core::SpellId id;
         bool targetsEnemy = true;
         int cost = 0;
         bool castable = false;
@@ -189,6 +195,7 @@ struct GameView {
     bool gameOver = false;
     QString difficulty;
     QString victory;  // what wins this game
+    QString defeat;   // when a player is out
     QString weekEventName, weekEventText;
     QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
@@ -200,7 +207,7 @@ struct GameView {
 
     int width = 0;
     int height = 0;
-    QStringList terrainPalette;
+
     QList<int> tiles;     // palette index per tile, -1 = never explored
     QByteArray visible;   // 1 = in sight right now
 

@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/rules/ArmyRules.h"
 
 using namespace kot::core;
@@ -13,11 +15,11 @@ class TstArmyRules : public QObject {
 private slots:
     void init() {
         gs = GameState(1);
-        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
-        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
+        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, RC("humans"), "#0000ff");
         a = gs.addArmy(p1, {2, 2});
         b = gs.addArmy(p1, {2, 2});
-        gs.army(a)->addUnits("militia", 10, 6);
+        gs.army(a)->addUnits(UnitTypeId(201), 10, 6);
     }
 
     void movesPartOfAStack() {
@@ -47,34 +49,34 @@ private slots:
     }
 
     void mergesIntoExistingStack() {
-        gs.army(b)->addUnits("militia", 2, 6);
+        gs.army(b)->addUnits(UnitTypeId(201), 2, 6);
         QVERIFY(moveUnits(gs, a, b, 0, 3).ok);
         QCOMPARE(gs.army(b)->stacks.size(), 1);
         QCOMPARE(gs.army(b)->totalUnits(), 5);
     }
 
     void fullTargetAcceptsOnlyMerges() {
-        for (int i = 0; i < kMaxArmyStacks; ++i) gs.army(b)->addUnits(QString("u%1").arg(i), 1, 5);
+        for (int i = 0; i < kMaxArmyStacks; ++i) gs.army(b)->addUnits(UnitTypeId(1000 + i), 1, 5);
         ActionResult r = moveUnits(gs, a, b, 0, 2);
         QVERIFY(!r.ok);
         QVERIFY(r.error.contains("no free slot"));
         QCOMPARE(gs.army(a)->totalUnits(), 10);  // nothing was lost
-        gs.army(a)->addUnits("u0", 1, 5);
-        QVERIFY(moveUnits(gs, a, b, 1, 1).ok);  // merges into u0
+        gs.army(a)->addUnits(UnitTypeId(1000), 1, 5);
+        QVERIFY(moveUnits(gs, a, b, 1, 1).ok);  // merges into the first
     }
 
     void movingEverythingTakesWhatFits() {
-        gs.army(a)->addUnits("archer", 5, 10);
-        gs.army(a)->addUnits("pikeman", 3, 10);
+        gs.army(a)->addUnits(UnitTypeId(200), 5, 10);
+        gs.army(a)->addUnits(UnitTypeId(202), 3, 10);
         int moved = 0;
         QVERIFY(moveAllUnits(gs, a, b, &moved).ok);
         QCOMPARE(moved, 18);
         QVERIFY(gs.army(a)->stacks.isEmpty());
         QCOMPARE(gs.army(b)->stacks.size(), 3);
         // A full army takes only what joins its stacks.
-        for (int i = 3; i < kMaxArmyStacks; ++i) gs.army(b)->addUnits(QString("u%1").arg(i), 1, 5);
-        gs.army(a)->addUnits("zombie", 4, 10);
-        gs.army(a)->addUnits("militia", 2, 6);
+        for (int i = 3; i < kMaxArmyStacks; ++i) gs.army(b)->addUnits(UnitTypeId(1000 + i), 1, 5);
+        gs.army(a)->addUnits(UnitTypeId(204), 4, 10);
+        gs.army(a)->addUnits(UnitTypeId(201), 2, 6);
         QVERIFY(moveAllUnits(gs, a, b, &moved).ok);
         QCOMPARE(moved, 2);                       // the militia joined
         QCOMPARE(gs.army(a)->totalUnits(), 4);    // the zombies stay

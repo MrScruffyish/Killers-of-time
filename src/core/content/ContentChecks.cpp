@@ -41,11 +41,13 @@ QStringList findLoops(const QStringList& nodes, const std::function<QStringList(
     return loops;
 }
 
-QStringList needs(const ContentRegistry& content, const QString& id) {
-    const BuildingDef* b = content.building(id);
+// (These checks work on the keys of the data files, which they report.)
+QStringList needs(const ContentRegistry& content, const QString& key) {
+    const BuildingDef* b = content.buildingByKey(key);
     if (!b) return {};
-    QStringList out = b->requiredBuildings;
-    if (!b->upgradeOf.isEmpty()) out << b->upgradeOf;
+    QStringList out;
+    for (const BuildingTypeId r : b->requiredBuildings) out << content.building(r)->key;
+    if (b->upgradeOf.isValid()) out << content.building(b->upgradeOf)->key;
     return out;
 }
 
@@ -53,18 +55,22 @@ QStringList needs(const ContentRegistry& content, const QString& id) {
 
 QStringList findBuildingLoops(const ContentRegistry& content) {
     QStringList result;
-    for (const QString& loop : findLoops(content.buildings().keys(), [&](const QString& id) { return needs(content, id); }))
+    QStringList keys;
+    for (const BuildingDef& b : content.buildings()) keys << b.key;
+    for (const QString& loop : findLoops(keys, [&](const QString& id) { return needs(content, id); }))
         result << QStringLiteral("buildings: requirement loop %1").arg(loop);
     return result;
 }
 
 QStringList findUnitUpgradeLoops(const ContentRegistry& content) {
     QStringList result;
-    const auto next = [&](const QString& id) {
-        const UnitDef* u = content.unit(id);
-        return u && !u->upgradesTo.isEmpty() ? QStringList{u->upgradesTo} : QStringList{};
+    const auto next = [&](const QString& key) {
+        const UnitDef* u = content.unitByKey(key);
+        return u && u->upgradesTo.isValid() ? QStringList{content.unit(u->upgradesTo)->key} : QStringList{};
     };
-    for (const QString& loop : findLoops(content.units().keys(), next))
+    QStringList keys;
+    for (const UnitDef& u : content.units()) keys << u.key;
+    for (const QString& loop : findLoops(keys, next))
         result << QStringLiteral("units: upgrade loop %1").arg(loop);
     return result;
 }
@@ -74,27 +80,30 @@ QStringList findUnbuildableBuildings(const ContentRegistry& content) {
     for (const BuildingDef& b : content.buildings()) {
         // Everything it needs, transitively (loops are reported elsewhere).
         QSet<QString> all;
-        QStringList todo = needs(content, b.id);
+        QStringList todo = needs(content, b.key);
         while (!todo.isEmpty()) {
             const QString n = todo.takeLast();
-            if (all.contains(n) || n == b.id) continue;
+            if (all.contains(n) || n == b.key) continue;
             all.insert(n);
             todo << needs(content, n);
         }
         for (const QString& n : all) {
-            const BuildingDef* d = content.building(n);
+            const BuildingDef* d = content.buildingByKey(n);
             if (!d) continue;
-            if (!d->race.isEmpty() && !b.race.isEmpty() && d->race != b.race)
-                result << QStringLiteral("building '%1' (%2) needs '%3' of another race (%4)").arg(b.id, b.race, n, d->race);
+            if (d->race.isValid() && b.race.isValid() && d->race != b.race)
+                result << QStringLiteral("building '%1' (%2) needs '%3' of another race (%4)")
+                              .arg(b.key, content.race(b.race).key, n, content.race(d->race).key);
         }
         QSet<QString> withSelf = all;
-        withSelf.insert(b.id);
+        withSelf.insert(b.key);
         for (const QString& n : withSelf) {
-            const BuildingDef* d = content.building(n);
+            const BuildingDef* d = content.buildingByKey(n);
             if (!d) continue;
-            for (const QString& x : d->excludes)
+            for (const BuildingTypeId xi : d->excludes) {
+                const QString& x = content.building(xi)->key;
                 if (withSelf.contains(x) && n < x)
-                    result << QStringLiteral("building '%1' can never be built: it needs both '%2' and '%3', which exclude each other").arg(b.id, n, x);
+                    result << QStringLiteral("building '%1' can never be built: it needs both '%2' and '%3', which exclude each other").arg(b.key, n, x);
+            }
         }
     }
     return result;

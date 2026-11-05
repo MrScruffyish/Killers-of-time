@@ -33,11 +33,11 @@ BuyReport buyAllUnits(GameState& state, const ContentRegistry& content, PlayerId
 struct AutoBuildReport {
     struct Built {
         TownId town;
-        QString building;
+        BuildingTypeId building;
     };
     struct Choice {
         TownId town;
-        QStringList buildings;  // buildings that would shut out a rival: the player decides
+        QList<BuildingTypeId> buildings;  // buildings that would shut out a rival: the player decides
     };
     QList<Built> built;
     QList<Choice> needsChoice;

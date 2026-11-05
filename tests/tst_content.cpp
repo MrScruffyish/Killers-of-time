@@ -3,6 +3,8 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 
 using namespace kot::core;
@@ -31,6 +33,7 @@ static void writeValidData(const QString& root) {
     writeFile(root, "terrain.json", kTerrain);
     writeFile(root, "traits.json", kTraits);
     writeFile(root, "units/militia.json", kMilitia);
+    writeFile(root, "races/humans.json", R"({"id":"humans","name":"Humans"})");
     writeFile(root, "buildings/hall.json",
               R"({"id":"hall","name":"Hall","race":"humans","cost":{"gold":100},)"
               R"("effects":[{"type":"income","resource":"gold","amount":10}]})");
@@ -64,38 +67,39 @@ private slots:
         ContentRegistry reg;
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
 
         QCOMPARE(reg.resources().size(), 9);
-        QVERIFY(reg.currency());
-        QCOMPARE(reg.currency()->id, QString("gold"));
+        QVERIFY(reg.currency().isValid());
+        QCOMPARE(reg.resource(reg.currency()).key, QString("gold"));
 
-        QVERIFY(reg.terrainType("grass")->walkable);
-        QVERIFY(!reg.terrainType("mountains")->walkable);
-        QVERIFY(!reg.terrainType("mountains")->sailable);
-        QVERIFY(reg.terrainType("sea")->sailable);
-        QVERIFY(reg.terrainType("road")->moveCost < reg.terrainType("grass")->moveCost);
+        QVERIFY(reg.terrainByKey("grass")->walkable);
+        QVERIFY(!reg.terrainByKey("mountains")->walkable);
+        QVERIFY(!reg.terrainByKey("mountains")->sailable);
+        QVERIFY(reg.terrainByKey("sea")->sailable);
+        QVERIFY(reg.terrainByKey("road")->moveCost < reg.terrainByKey("grass")->moveCost);
 
         int counts[3] = {0, 0, 0};
         for (const TraitDef& t : reg.traits()) counts[static_cast<int>(t.group)]++;
         QCOMPARE(counts[static_cast<int>(TraitGroup::Battle)], 7);
         QCOMPARE(counts[static_cast<int>(TraitGroup::Magic)], 4);
         QCOMPARE(counts[static_cast<int>(TraitGroup::Explore)], 3);
-        QVERIFY(!reg.trait("spell_points_max")->pickable);
-        QVERIFY(reg.trait("luck")->pickable);
+        QVERIFY(!reg.trait(TR("spell_points_max"))->pickable);
+        QVERIFY(reg.trait(TR("luck"))->pickable);
 
-        QCOMPARE(reg.unit("militia")->upgradesTo, QString("pikeman"));
-        QVERIFY(reg.unit("battle_snail")->battleSpeed < reg.unit("armoured_eagle")->battleSpeed);
-        QVERIFY(reg.unit("armoured_eagle")->abilities.contains("flying"));
-        QCOMPARE(reg.unit("archer")->range, 5);
-        QCOMPARE(reg.unit("militia")->mapSpeed, reg.unit("militia")->battleSpeed);  // derived
-        QCOMPARE(reg.unit("armoured_eagle")->mapSpeed, 10);                          // explicit
-        QCOMPARE(reg.unit("militia")->cost.value("gold"), 20);
-        QVERIFY(reg.unit("nonexistent") == nullptr);
+        QCOMPARE(reg.unit(U("militia"))->upgradesTo, U("pikeman"));
+        QVERIFY(reg.unit(U("battle_snail"))->battleSpeed < reg.unit(U("armoured_eagle"))->battleSpeed);
+        QVERIFY(reg.unit(U("armoured_eagle"))->has(Ability::Flying));
+        QCOMPARE(reg.unit(U("archer"))->range, 5);
+        QCOMPARE(reg.unit(U("militia"))->mapSpeed, reg.unit(U("militia"))->battleSpeed);  // derived
+        QCOMPARE(reg.unit(U("armoured_eagle"))->mapSpeed, 10);                          // explicit
+        QCOMPARE(reg.unit(U("militia"))->cost.value(R("gold")), 20);
+        QVERIFY(reg.unit(U("nonexistent")) == nullptr);
 
-        QVERIFY(reg.heroClass("knight"));
-        QVERIFY(reg.heroClass("wizard"));
-        QVERIFY(reg.heroClass("wizard")->baseTraits.value("magic") >
-                reg.heroClass("knight")->baseTraits.value("magic"));
+        QVERIFY(reg.heroClass(C("knight")));
+        QVERIFY(reg.heroClass(C("wizard")));
+        QVERIFY(reg.heroClass(C("wizard"))->baseTraits.value(TR("magic")) >
+                reg.heroClass(C("knight"))->baseTraits.value(TR("magic")));
         QVERIFY(reg.maxLevel() >= 5);
 
         const MovementBalance& mb = reg.balance().movement;
@@ -166,7 +170,7 @@ private slots:
         QString u = kMilitia;
         u.replace(R"("gold":20)", R"("unobtainium":5)");
         writeFile(tmp.path(), "units/militia.json", u);
-        expectError(tmp.path(), "cost uses unknown resource 'unobtainium'");
+        expectError(tmp.path(), "cost: unknown resource 'unobtainium'");
     }
 
     void unitUpgradeTargetUnknown() {
@@ -218,11 +222,18 @@ private slots:
         QVERIFY(all.contains("unknown field 'atack'"));
     }
 
+    void raceNeedsAFile() {
+        QTemporaryDir tmp;
+        writeValidData(tmp.path());
+        writeFile(tmp.path(), "hero_classes.json", R"({"heroClasses":[{"id":"knight","name":"K","race":"elves"}]})");
+        expectError(tmp.path(), "race 'elves' has no file in races/");
+    }
+
     void heroClassUnknownTrait() {
         QTemporaryDir tmp;
         writeValidData(tmp.path());
         writeFile(tmp.path(), "hero_classes.json",
-                  R"({"heroClasses":[{"id":"k","name":"K","race":"humans","baseTraits":{"nope":1}}]})");
+                  R"({"heroClasses":[{"id":"knight","name":"K","race":"humans","baseTraits":{"nope":1}}]})");
         expectError(tmp.path(), "baseTraits uses unknown trait 'nope'");
     }
 
@@ -232,7 +243,7 @@ private slots:
         writeFile(tmp.path(), "traits.json",
                   R"({"traits":[{"id":"sp","name":"SP","group":"magic","pickable":false}]})");
         writeFile(tmp.path(), "hero_classes.json",
-                  R"({"heroClasses":[{"id":"k","name":"K","race":"humans","pickIncrement":{"sp":1}}]})");
+                  R"({"heroClasses":[{"id":"knight","name":"K","race":"humans","pickIncrement":{"sp":1}}]})");
         expectError(tmp.path(), "which is not pickable");
     }
 
@@ -266,7 +277,7 @@ private slots:
         writeValidData(tmp.path());
         writeFile(tmp.path(), "buildings/hall.json",
                   R"({"id":"hall","name":"Hall","race":"humans","requires":["castle"]})");
-        expectError(tmp.path(), "refers to unknown building 'castle'");
+        expectError(tmp.path(), "requires: unknown building 'castle'");
     }
 
     void buildingUnknownEffectType() {
@@ -328,7 +339,7 @@ private slots:
         QTemporaryDir tmp;
         writeValidData(tmp.path());
         writeFile(tmp.path(), "heroes.json", R"({"heroes":[{"id":"x","name":"X","class":"jester"}]})");
-        expectError(tmp.path(), "hero 'x': unknown class 'jester'");
+        expectError(tmp.path(), "heroes.json[0]: unknown class 'jester'");
     }
 
     void realHeroTemplatesLoad() {
@@ -336,13 +347,13 @@ private slots:
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
         QVERIFY(reg.heroTemplates().size() >= 6);
-        for (const QString& race : reg.raceIds()) {  // every race can hire a few heroes
+        for (const RaceId race : reg.playableRaces()) {  // every race can hire a few heroes
             int n = 0;
             for (const HeroTemplateDef& t : reg.heroTemplates()) n += reg.heroClass(t.classId)->race == race;
-            QVERIFY2(n >= 4, qPrintable(race));
+            QVERIFY2(n >= 4, qPrintable(reg.race(race).key));
         }
-        QCOMPARE(reg.heroTemplate("merlin")->classId, QString("wizard"));
-        QVERIFY(reg.building("tavern"));
+        QCOMPARE(reg.heroTemplate(H("merlin"))->classId, C("wizard"));
+        QVERIFY(reg.building(B("tavern")));
         QCOMPARE(reg.balance().economy.heroCost, 2500);
     }
 
@@ -350,10 +361,10 @@ private slots:
         ContentRegistry reg;
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
-        QVERIFY(reg.building("barracks"));
-        QCOMPARE(reg.building("pike_barracks")->upgradeOf, QString("barracks"));
-        QVERIFY(reg.building("eagle_roost")->excludes.contains("snail_pen"));
-        QVERIFY(reg.building("snail_pen")->excludes.contains("eagle_roost"));
+        QVERIFY(reg.building(B("barracks")));
+        QCOMPARE(reg.building(B("pike_barracks"))->upgradeOf, B("barracks"));
+        QVERIFY(reg.building(B("eagle_roost"))->excludes.contains(B("snail_pen")));
+        QVERIFY(reg.building(B("snail_pen"))->excludes.contains(B("eagle_roost")));
     }
 
     void reportsAllErrorsAtOnce() {

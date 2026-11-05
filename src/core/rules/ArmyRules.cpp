@@ -74,7 +74,7 @@ ActionResult moveAllUnits(GameState& state, ArmyId fromId, ArmyId toId, int* mov
 
 double armyStrength(const GameState& state, const ContentRegistry& content, const Army& army) {
     const Hero* hero = state.hero(army.hero);
-    const int bonus = hero ? hero->trait(QStringLiteral("attack")) + hero->trait(QStringLiteral("defense")) : 0;
+    const int bonus = hero ? hero->trait(content.known().attack) + hero->trait(content.known().defense) : 0;
     double total = 0;
     for (const UnitStack& s : army.stacks) {
         const UnitDef* u = content.unit(s.unitTypeId());
@@ -107,7 +107,7 @@ int joinCost(const GameState& state, const ContentRegistry& content, ArmyId mons
     if (!monsters) return 0;
     long long gold = 0;
     for (const UnitStack& s : monsters->stacks)
-        if (const UnitDef* u = content.unit(s.unitTypeId())) gold += static_cast<long long>(s.count()) * u->cost.value(QStringLiteral("gold"));
+        if (const UnitDef* u = content.unit(s.unitTypeId())) gold += static_cast<long long>(s.count()) * u->cost.value(content.currency());
     return static_cast<int>(gold * content.balance().battle.joinCostPercent / 100);
 }
 
@@ -119,8 +119,8 @@ ActionResult acceptJoin(GameState& state, const ContentRegistry& content, HeroId
     const Army* mine = state.army(hero->army);
     const int price = joinCost(state, content, monstersId);
     Player* owner = state.player(hero->owner);
-    if (!owner || owner->resources.value(QStringLiteral("gold")) < price)
-        return fail(QStringLiteral("they ask %1 gold, you have %2").arg(price).arg(owner ? owner->resources.value(QStringLiteral("gold")) : 0));
+    if (!owner || owner->resources.value(content.currency()) < price)
+        return fail(QStringLiteral("they ask %1 gold, you have %2").arg(price).arg(owner ? owner->resources.value(content.currency()) : 0));
     // Next to them, or as close as the move got (an offer from their zone of control).
     if (std::max(std::abs(mine->pos.x - monsters->pos.x), std::abs(mine->pos.y - monsters->pos.y)) > 3)
         return fail(QStringLiteral("the hero is not near them"));
@@ -128,7 +128,7 @@ ActionResult acceptJoin(GameState& state, const ContentRegistry& content, HeroId
     monsters->owner = hero->owner;
     monsters->pos = mine->pos;
     const ActionResult r = moveAllUnits(state, monstersId, hero->army);
-    if (r.ok) owner->resources[QStringLiteral("gold")] -= price;
+    if (r.ok) owner->resources[content.currency()] -= price;
     if (r.ok && state.army(monstersId) && state.army(monstersId)->totalUnits() == 0) state.armies().remove(monstersId);
     return r;
 }

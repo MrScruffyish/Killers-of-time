@@ -69,14 +69,54 @@ game's own data checks run again.
 
 ```
 kot_aiplay [--games 6] [--days 56] [--players 3] [--size 64] [--map continent|islands]
-           [--profiles simple,aggressive,...] [--races humans,undead,...] [--seed 1]
+           [--profiles simple,aggressive,...] [--races humans,undead,...] [--seed 1] [--views]
 ```
 Plays whole games of AI players only on random maps (races rotate over the seats from
 game to game) and prints, averaged over the games at the end of each week, what each
 seat has: heroes, towns, army strength (all its armies, garrisons too), gold and heroes
 lost so far. Then wins, eliminations, days spent without a hero, and how heroes were
 lost (attacking a town, monsters or a hero, attacked, or fled). For judging AI changes:
-run it before and after.
+run it before and after. It also prints the time spent in the AI and rules, and a
+`fingerprint` of each game's end state (equal fingerprints = the same game; a check that a
+refactoring did not change how the game plays). `--save <file>` saves the last game's end. `--views`
+builds every player's view after each turn, as the server sends it after every command,
+and prints its cost: build and JSON time, size and compressed size (for profiling the server).
+
+## kot_artexport: the art as PNG files
+
+```
+kot_artexport [--data dir] [--out dir]     (default: <data>/art)
+kot_artexport --timing draw|load
+```
+The client never draws pictures: it only loads PNG files from `data/art` (client/Art.h) and
+shows a magenta "?" placeholder (with a warning naming the file) for a missing one. The
+pictures are drawn in code by the art generator (`src/artgen`, library `kot_artgen`, used only
+by this tool and tst_art), which this tool runs: every picture the content can need (units by
+rank, dwellings, towns per race/walls/stage, mines, chests, resources, heroes on foot and in
+boats, portraits (6 faces per class), artifacts, spells, map sites, buttons, mouse pointers,
+terrain tiles, edges, decorations, trees/hills/peaks, fog, coasts, and the town screen: a
+backdrop per race, one figure per building kind, walls, boat). Paths are in
+`src/client/ArtPaths.h` (e.g. `unit/militia/0.png`, `terrain/grass/tile2.png`). Masters are
+512x512 (trees/hills/peaks 1024, the town screen 2700x510 and building figures 600x728,
+pointers 128); the client scales them smoothly to the size shown. About 1750 files, 72 MB,
+90 s. Pictures with the owner's colour are two files:
+`<path>.png` (drawn with black as the owner colour) and `<path>.tint.png` (how much of the
+owner colour each pixel takes); the client puts them together as base + tint * colour, so
+any player colour works. A better picture can replace a file as long as it keeps that rule.
+tst_art checks that `data/art` holds exactly the files the export writes.
+Run it again after changing the art code or the content (new units, spells, ...). `--timing`
+only measures drawing or loading.
+
+## kot_saveview: a save in readable form
+
+```
+kot_saveview [--data dir] [--compact] <save.json>
+```
+Saves store content ids (units, buildings, resources, ...) as numbers: positions in the
+content lists, which only mean something with the same game data (`contentChecksum`). This
+prints the save as indented JSON with the names from the data files instead
+(`"resource": "gold"`, `"resources": {"gold": 750}`), the same form scenarios are stored in.
+It needs the data the save was made with; with other data it says so.
 
 ## kot_mapgen: random scenarios
 
@@ -102,3 +142,15 @@ player per race and writes `data/scenarios/<id>.json`. Open it in `kot_editor` t
   offers it as a map from then on.
 
 `KOT_SCREENSHOT=file.png kot_editor ...` saves a picture of the window and quits.
+
+## kot_viewbench: how fast the adventure map is drawn
+
+```
+kot_viewbench [--data dir] [--size 128] [--frames 200] [--tile px] [--gl] [--shots dir]
+```
+Draws one 128x128 game (whole map explored) in a 1280x800 window two ways: the client's
+`MapView`, and the same map as a `QGraphicsView` scene (one item per tile, edge, coast piece,
+decoration, tree group and map object). Per zoom step (16, 48, 96 px) it times scrolling
+over the map and a still map with a walking hero (ms per frame: the change, the paint and
+the hand-over to the window system). `--gl` also draws the scene with OpenGL (needs a real
+screen), `--shots` saves a picture of each view to check they show the same thing.

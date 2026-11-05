@@ -1,6 +1,8 @@
 #include <QSet>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/MapGenerator.h"
 #include "core/rules/Pathfinding.h"
@@ -39,20 +41,21 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void sameSeedSameMap() {
         GameMap a, b;
         QVERIFY(generateMap(reg, params(64, 7), &a));
         QVERIFY(generateMap(reg, params(64, 7), &b));
-        QCOMPARE(a.tiles(), b.tiles());
+        QCOMPARE(terrainKeys(a), terrainKeys(b));
     }
 
     void differentSeedsDiffer() {
         GameMap a, b;
         QVERIFY(generateMap(reg, params(64, 7), &a));
         QVERIFY(generateMap(reg, params(64, 8), &b));
-        QVERIFY(a.tiles() != b.tiles());
+        QVERIFY(terrainKeys(a) != terrainKeys(b));
     }
 
     void sizeAndKnownTerrain() {
@@ -62,8 +65,8 @@ private slots:
         QVERIFY(generateMap(reg, p, &m));
         QCOMPARE(m.width(), 50);
         QCOMPARE(m.height(), 30);
-        QCOMPARE(m.tiles().size(), 50 * 30);
-        for (const QString& t : m.tiles()) QVERIFY2(reg.terrainType(t), qPrintable(t));
+        QCOMPARE(terrainKeys(m).size(), 50 * 30);
+        for (const QString& t : terrainKeys(m)) QVERIFY2(reg.terrainByKey(t), qPrintable(t));
     }
 
     void hasVarietyAndReasonableSea() {
@@ -72,12 +75,12 @@ private slots:
             QVERIFY(generateMap(reg, params(96, seed), &m));
             QSet<QString> kinds;
             int sea = 0;
-            for (const QString& t : m.tiles()) {
+            for (const QString& t : terrainKeys(m)) {
                 kinds.insert(t);
                 if (t == "sea") ++sea;
             }
             QVERIFY2(kinds.size() >= 6, qPrintable(QString("seed %1: %2 kinds").arg(seed).arg(kinds.size())));
-            const double seaFraction = double(sea) / m.tiles().size();
+            const double seaFraction = double(sea) / terrainKeys(m).size();
             QVERIFY2(seaFraction > 0.25 && seaFraction < 0.40, qPrintable(QString::number(seaFraction)));
         }
     }
@@ -87,7 +90,7 @@ private slots:
             GameMap m;
             QVERIFY(generateMap(reg, params(80, seed), &m));
             int mountains = 0, hills = 0;
-            for (const QString& t : m.tiles()) {
+            for (const QString& t : terrainKeys(m)) {
                 if (t == "mountains") ++mountains;
                 if (t == "hills") ++hills;
             }
@@ -99,8 +102,8 @@ private slots:
     void edgesAreSea() {
         GameMap m;
         QVERIFY(generateMap(reg, params(64, 2), &m));
-        QCOMPARE(m.terrainAt({0, 0}), QString("sea"));
-        QCOMPARE(m.terrainAt({63, 63}), QString("sea"));
+        QCOMPARE(m.terrainAt({0, 0}), T("sea"));
+        QCOMPARE(m.terrainAt({63, 63}), T("sea"));
     }
 
     void riversCanBeDisabled() {
@@ -108,7 +111,7 @@ private slots:
         p.rivers = 0;
         GameMap m;
         QVERIFY(generateMap(reg, p, &m));
-        QVERIFY(!m.tiles().contains("river"));
+        QVERIFY(!terrainKeys(m).contains("river"));
     }
 
     void someLandIsConnected() {

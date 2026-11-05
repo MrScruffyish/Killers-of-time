@@ -1,4 +1,4 @@
-# Save game format (version 1)
+# Save game format (version 3)
 
 `GameState::toJson()` / `GameState::fromJson()` (`src/core/model/GameStateJson.cpp`).
 Files are written compactly and atomically (`QSaveFile`). Loading checks the
@@ -10,8 +10,9 @@ Top level fields: `formatVersion`, `day`, `nextId`, `currentIndex`, `map`, `rng`
 
 - **Ids** are unique across all object kinds (players, heroes, armies, towns, mines).
   Team ids come from the same counter but are shared by the players of a team.
-- **map**: `width`, `height`, `terrainPalette` (list of terrain ids) and `tiles`
-  (row-major list of palette indices, `width * height` entries).
+- **map**: `width`, `height` and `tiles` (row-major, `width * height` entries): the terrain
+  id of each tile; with text ids also `terrainPalette` (terrain keys), and `tiles` are
+  indices into it.
 - **explored**: per team id, base64 of one byte per tile (1 = explored), `width * height` bytes.
 - **rng**: `seed` as a string (64-bit numbers do not fit a JSON number) and the exact
   generator `state`, so a loaded game continues with the same random numbers.
@@ -30,10 +31,21 @@ Cross-checks on load: owners are players, positions are on the map, unit/trait/
 terrain/resource/class ids exist, a hero and his army point at each other, no
 duplicate ids, at most 10 stacks per army.
 
-Bump `kSaveFormatVersion` when the format changes incompatibly, and add a conversion
-from the previous format in `GameStateJson.cpp` when one is possible (a save of a newer
-format is always refused with a message). History: 1 first format; 2 towns cover 2x2
-tiles (converting a v1 save moves whatever stands on the new walls aside).
+Content ids: `contentIds` is `numbers` (saves; the default) or `text` (scenarios, which
+are data themselves, and `kot_saveview`'s output). With numbers, an id is the position of
+the item in its content list (sorted by its key in the data files) and the save has
+`contentChecksum` (`ContentRegistry::checksum`, all keys in id order): a save made with
+other game data is refused. Resource amounts are then arrays, one number per resource id,
+trailing zeros left out (`[750, 0, 2]`); with text they are objects (`{"gold": 750}`). A
+mine's `resource` is a number or a key; so is a unit (`unit` of stacks and map dwellings), and
+`importedUnits` is keyed by unit id (as text) or key. A town's `buildings` are building ids or keys,
+`recruitPool` is keyed by building id (as text) or key. A hero's `spells` are spell ids or keys; a player's and a town's `race` a race id or key.
+
+Only saves of exactly `kSaveFormatVersion` load: there is no conversion of older saves
+(an old save needs the game version that made it). Bump the version when the format
+changes incompatibly. History: 1 first format; 2 towns cover 2x2 tiles; 3 content ids
+(units, buildings, resources, ...) are numbers (positions in the content lists), with a
+checksum of the content they belong to.
 Save files (not scenarios) also have `gameVersion` (the game that saved it) and `savedAt`
 (ISO date and time); both are shown in the load list.
 
@@ -44,9 +56,9 @@ Heroes may have `artifacts` (worn artifact ids; their bonuses are already in `tr
 `mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`/`site`), `x`, `y`, `resources` or `artifact`;
 sites have `site` (shrine, magic_well, obelisk, arena, learning_stone) and `visited` (hero id, or
 1000000 + team id for the obelisk -> day of the visit).
-The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses).
+The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses) and `townlessSince` (the day the player lost his last town; 7 days later he is out).
 Army stacks may have `experience` (average per unit, veterancy).
 `victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie). Last team standing always wins too.
 `weekEvent` (optional): this week's event id.
-`fogOfWar: false` (optional): no fog of war, explored land stays in sight. `hiddenMap: false` (optional): the map was revealed at the start (places on explored land are always known).
+`fogOfWar: false` (optional): no fog of war, explored land stays in sight. `defeat` (optional, default `week`): when a player is out, `week` (7 days without a town), `town` (at once with his last town) or `all` (no towns and no heroes). `hiddenMap: false` (optional): the map was revealed at the start (places on explored land are always known).
 Heroes may have `inBoat: true` (sailing) and `destination: [x, y]` (the target of a move that ran out of movement; cleared on arrival).

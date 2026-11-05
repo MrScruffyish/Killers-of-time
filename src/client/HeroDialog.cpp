@@ -71,7 +71,7 @@ void HeroDialog::rebuild() {
     columns->addSpacing(12);
     columns->addLayout(right, 0);
     const core::HeroClassDef* cls = m_content->heroClass(h->classId);
-    setWindowTitle(tr("%1, %2").arg(h->name, cls ? cls->name : h->classId));
+    setWindowTitle(tr("%1, %2").arg(h->name, cls ? cls->name : QString()));
 
     // Level and experience.
     const QList<int>& xp = m_content->xpThresholds();
@@ -84,7 +84,7 @@ void HeroDialog::rebuild() {
         const ViewPlayer* owner = m_view.player(h->owner);
         face->setPixmap(art::portrait(h->classId, owner ? QColor(owner->color) : QColor("#999999"), h->id, 96));
         head->addWidget(face);
-        head->addWidget(new QLabel(tr("<h2>%1</h2>Level %2 %3").arg(h->name).arg(h->level).arg(cls ? cls->name : h->classId), m_body), 1);
+        head->addWidget(new QLabel(tr("<h2>%1</h2>Level %2 %3").arg(h->name).arg(h->level).arg(cls ? cls->name : QString()), m_body), 1);
         v->addLayout(head);
     }
     if (next > 0) {
@@ -99,7 +99,7 @@ void HeroDialog::rebuild() {
     v->addWidget(new QLabel(tr("Movement %1    Spell points %2 / %3")
                                 .arg(h->movementPoints / 100.0, 0, 'f', 1)
                                 .arg(h->spellPoints)
-                                .arg(h->traits.value("spell_points_max")),
+                                .arg(h->traits.value(m_content->known().spellPointsMax)),
                             m_body));
     if (h->pendingTraitPicks > 0)
         v->addWidget(new QLabel(tr("<b style='color:#ffd84a'>Level up! Choose %1 trait(s) to improve with the + buttons.</b>")
@@ -122,13 +122,13 @@ void HeroDialog::rebuild() {
             grid->addWidget(new QLabel(QString::number(h->traits.value(t.id)), box), row, 1);
             if (h->pendingTraitPicks > 0 && t.pickable && m_view.isMyTurn()) {
                 auto* plus = new QPushButton(QStringLiteral("+"), box);
-                plus->setObjectName(QStringLiteral("pick_%1").arg(t.id));
+                plus->setObjectName(QStringLiteral("pick_%1").arg(t.key));
                 plus->setFixedWidth(30);
-                plus->setToolTip(tr("Improve %1 (+%2)").arg(t.name).arg(cls ? cls->pickIncrement.value(t.id, 1) : 1));
-                const QString id = t.id;
+                plus->setToolTip(tr("Improve %1 (+%2)").arg(t.name).arg(cls && cls->pickIncrement.value(t.id) > 0 ? cls->pickIncrement.value(t.id) : 1));
+                const core::TraitId id = t.id;
                 const int hero = h->id;
                 connect(plus, &QPushButton::clicked, this, [this, id, hero, name = t.name]() {
-                    emit commandRequested("pick_trait", {{"hero", hero}, {"trait", id}}, tr("Improve %1").arg(name));
+                    emit commandRequested("pick_trait", {{"hero", hero}, {"trait", id.index()}}, tr("Improve %1").arg(name));
                 });
                 grid->addWidget(plus, row, 2);
             }
@@ -145,12 +145,12 @@ void HeroDialog::rebuild() {
     if (const ViewArmy* a = m_view.army(h->army)) {
         for (const ViewStack& s : a->stacks) {
             const core::UnitDef* u = m_content->unit(s.unit);
-            QString text = QStringLiteral("%1 x <b>%2</b>").arg(s.count).arg(u ? u->name : s.unit);
+            QString text = QStringLiteral("%1 x <b>%2</b>").arg(s.count).arg(u ? u->name : QString());
             if (s.stars > 0) text += QStringLiteral(" <span style='color:#ffd84a'>%1</span>").arg(QString(s.stars, QChar(0x2605)));
             if (u)
                 text += tr(" &nbsp; <i>att %1 def %2 dmg %3-%4 hp %5 speed %6%7</i>")
                             .arg(u->attack).arg(u->defense).arg(u->damageMin).arg(u->damageMax).arg(u->maxHp).arg(u->battleSpeed)
-                            .arg(u->abilities.isEmpty() ? QString() : ", " + u->abilities.join(", "));
+                            .arg(u->abilities ? ", " + core::abilityNames(u->abilities).join(", ") : QString());
             auto* row = new QHBoxLayout();
             auto* icon = new QLabel(armyBox);
             icon->setPixmap(art::unitIcon(s.unit, u ? u->rank : 0, 40));
@@ -165,10 +165,10 @@ void HeroDialog::rebuild() {
     // Spells and artifacts.
     auto* spellBox = new QGroupBox(tr("Spellbook"), m_body);
     auto* sl = new QVBoxLayout(spellBox);
-    for (const QString& id : h->spells) {
+    for (const core::SpellId id : h->spells) {
         const core::SpellDef* s = m_content->spell(id);
         if (!s) continue;
-        const bool canUse = h->traits.value("magic") >= s->requiredMagic;
+        const bool canUse = h->traits.value(m_content->known().magic) >= s->requiredMagic;
         sl->addWidget(new QLabel(tr("<b>%1</b> (%2, level %3, %4 SP%5) %6")
                                      .arg(s->name, s->school).arg(s->level).arg(s->cost)
                                      .arg(canUse ? QString() : tr(", needs Magic %1").arg(s->requiredMagic))
@@ -183,13 +183,13 @@ void HeroDialog::rebuild() {
     const bool canChange = m_view.currentPlayer == m_view.you && h->owner == m_view.you;
     gear->setArtifacts(h->artifacts, h->backpack, canChange);
     const int heroId = h->id;
-    connect(gear, &EquipmentView::equipRequested, this, [this, heroId](const QString& id) {
+    connect(gear, &EquipmentView::equipRequested, this, [this, heroId](core::ArtifactId id) {
         const core::ArtifactDef* a = m_content->artifact(id);
-        emit commandRequested(net::msg::equipArtifact, {{"hero", heroId}, {"artifact", id}}, tr("Wear the %1").arg(a ? a->name : id));
+        emit commandRequested(net::msg::equipArtifact, {{"hero", heroId}, {"artifact", id.index()}}, tr("Wear the %1").arg(a ? a->name : QString()));
     });
-    connect(gear, &EquipmentView::unequipRequested, this, [this, heroId](const QString& id) {
+    connect(gear, &EquipmentView::unequipRequested, this, [this, heroId](core::ArtifactId id) {
         const core::ArtifactDef* a = m_content->artifact(id);
-        emit commandRequested(net::msg::unequipArtifact, {{"hero", heroId}, {"artifact", id}}, tr("Take off the %1").arg(a ? a->name : id));
+        emit commandRequested(net::msg::unequipArtifact, {{"hero", heroId}, {"artifact", id.index()}}, tr("Take off the %1").arg(a ? a->name : QString()));
     });
     artl->addWidget(gear, 0, Qt::AlignHCenter);
     if (h->artifacts.isEmpty() && h->backpack.isEmpty())
@@ -197,6 +197,10 @@ void HeroDialog::rebuild() {
     right->addWidget(artBox);
     right->addStretch(1);
     v->addStretch(1);
+    // Wide enough for everything (a remembered smaller size would need sideways scrolling).
+    const int need = m_body->sizeHint().width() + 60;
+    const QRect screen = this->screen() ? this->screen()->availableGeometry() : QRect(0, 0, 1280, 800);
+    if (width() < need) resize(std::min(need, screen.width() - 40), height());
 }
 
 }  // namespace kot::client

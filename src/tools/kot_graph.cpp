@@ -31,14 +31,16 @@ QString quoted(const QString& s) {
     return '"' + q + '"';
 }
 
-QString costText(const ResourceAmounts& cost) {
+QString costText(const ContentRegistry& content, const ResourceAmounts& cost) {
     QStringList parts;
-    for (auto it = cost.begin(); it != cost.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value()).arg(it.key());
+    for (const auto [r, amount] : cost) parts << QStringLiteral("%1 %2").arg(amount).arg(content.resource(r).key);
     return parts.join(", ");
 }
 
+QString raceKey(const ContentRegistry& c, RaceId id) { return id.isValid() ? c.race(id).key : QString(); }
+
 QStringList racesOf(const ContentRegistry& content, const QString& only) {
-    return only.isEmpty() ? content.raceIds() : QStringList{only};
+    return only.isEmpty() ? content.playableRaceKeys() : QStringList{only};
 }
 
 // Requirements are arrows from what you need to what it allows (the order you build
@@ -50,20 +52,20 @@ QString buildingsGraph(const ContentRegistry& content, const QString& race) {
     s << "digraph buildings {\n  rankdir=LR;\n  node [shape=box, style=\"rounded,filled\", fillcolor=\"#f4f0e0\", fontname=\"Helvetica\"];\n"
       << "  edge [fontname=\"Helvetica\", fontsize=9];\n";
     const QStringList races = racesOf(content, race);
-    const auto shown = [&](const BuildingDef& b) { return b.race.isEmpty() || races.contains(b.race); };
+    const auto shown = [&](const BuildingDef& b) { return !b.race.isValid() || races.contains(raceKey(content, b.race)); };
     s << "  subgraph cluster_shared {\n    label=\"every race\"; style=dashed; color=grey;\n";
     for (const BuildingDef& b : content.buildings())
-        if (b.race.isEmpty())
-            s << "    " << quoted(b.id) << " [label=" << quoted(b.name + "\n" + costText(b.cost)) << ", fillcolor=\"#e6e6e6\"];\n";
+        if (!b.race.isValid())
+            s << "    " << quoted(b.key) << " [label=" << quoted(b.name + "\n" + costText(content, b.cost)) << ", fillcolor=\"#e6e6e6\"];\n";
     s << "  }\n";
     for (const QString& r : races) {
-        s << "  subgraph " << quoted("cluster_" + r) << " {\n    label=" << quoted(content.race(r).name.isEmpty() ? r : content.race(r).name)
+        s << "  subgraph " << quoted("cluster_" + r) << " {\n    label=" << quoted(content.race(content.raceId(r)).name.isEmpty() ? r : content.race(content.raceId(r)).name)
           << "; color=\"#8080c0\";\n";
         for (const BuildingDef& b : content.buildings())
-            if (b.race == r) s << "    " << quoted(b.id) << " [label=" << quoted(b.name + "\n" + costText(b.cost)) << "];\n";
+            if (raceKey(content, b.race) == r) s << "    " << quoted(b.key) << " [label=" << quoted(b.name + "\n" + costText(content, b.cost)) << "];\n";
         for (const UnitDef& u : content.units())
-            if (u.race == r)
-                s << "    " << quoted("unit:" + u.id) << " [label=" << quoted(QStringLiteral("%1 (tier %2)").arg(u.name).arg(u.tier))
+            if (raceKey(content, u.race) == r)
+                s << "    " << quoted("unit:" + u.key) << " [label=" << quoted(QStringLiteral("%1 (tier %2)").arg(u.name).arg(u.tier))
                   << ", shape=ellipse, fillcolor=\"#d8f0d0\"];\n";
         s << "  }\n";
     }
@@ -72,23 +74,23 @@ QString buildingsGraph(const ContentRegistry& content, const QString& race) {
         if (!shown(b)) continue;
         for (const BuildingEffect& e : b.effects) {
             const UnitDef* u = e.type == BuildingEffect::Type::Dwelling ? content.unit(e.unit) : nullptr;
-            if (u && !races.contains(u->race))
-                s << "  " << quoted("unit:" + u->id) << " [label=" << quoted(QStringLiteral("%1 (tier %2, %3)").arg(u->name).arg(u->tier).arg(u->race))
+            if (u && !races.contains(raceKey(content, u->race)))
+                s << "  " << quoted("unit:" + u->key) << " [label=" << quoted(QStringLiteral("%1 (tier %2, %3)").arg(u->name).arg(u->tier).arg(raceKey(content, u->race)))
                   << ", shape=ellipse, fillcolor=\"#d8f0d0\"];\n";
         }
     }
     for (const BuildingDef& b : content.buildings()) {
         if (!shown(b)) continue;
-        for (const QString& req : b.requiredBuildings) s << "  " << quoted(req) << " -> " << quoted(b.id) << ";\n";
-        if (!b.upgradeOf.isEmpty())
-            s << "  " << quoted(b.upgradeOf) << " -> " << quoted(b.id) << " [color=blue, label=\"upgrade\"];\n";
-        for (const QString& x : b.excludes)
-            if (b.id < x || !content.building(x) || !content.building(x)->excludes.contains(b.id))
-                s << "  " << quoted(b.id) << " -> " << quoted(x)
+        for (const BuildingTypeId req : b.requiredBuildings) s << "  " << quoted(content.building(req)->key) << " -> " << quoted(b.key) << ";\n";
+        if (b.upgradeOf.isValid())
+            s << "  " << quoted(content.building(b.upgradeOf)->key) << " -> " << quoted(b.key) << " [color=blue, label=\"upgrade\"];\n";
+        for (const BuildingTypeId x : b.excludes)
+            if (b.id < x || !content.building(x)->excludes.contains(b.id))
+                s << "  " << quoted(b.key) << " -> " << quoted(content.building(x)->key)
                   << " [color=red, style=dashed, dir=none, constraint=false, label=\"either / or\"];\n";
         for (const BuildingEffect& e : b.effects)
             if (e.type == BuildingEffect::Type::Dwelling && content.unit(e.unit))
-                s << "  " << quoted(b.id) << " -> " << quoted("unit:" + e.unit) << " [color=\"#40a040\", style=dotted];\n";
+                s << "  " << quoted(b.key) << " -> " << quoted("unit:" + content.unit(e.unit)->key) << " [color=\"#40a040\", style=dotted];\n";
     }
     s << "}\n";
     return out;
@@ -101,25 +103,25 @@ QString unitsGraph(const ContentRegistry& content, const QString& race) {
     QStringList races = racesOf(content, race);
     if (race.isEmpty())  // races without a town too (neutral monsters)
         for (const UnitDef& u : content.units())
-            if (!races.contains(u.race)) races << u.race;
+            if (!races.contains(raceKey(content, u.race))) races << raceKey(content, u.race);
     for (const QString& r : races) {
-        s << "  subgraph " << quoted("cluster_" + r) << " {\n    label=" << quoted(content.race(r).name.isEmpty() ? r : content.race(r).name) << ";\n";
+        s << "  subgraph " << quoted("cluster_" + r) << " {\n    label=" << quoted(content.race(content.raceId(r)).name.isEmpty() ? r : content.race(content.raceId(r)).name) << ";\n";
         for (const UnitDef& u : content.units()) {
-            if (u.race != r) continue;
+            if (raceKey(content, u.race) != r) continue;
             const QString label = QStringLiteral("%1 (tier %2)\natt %3  def %4  dmg %5-%6\nhp %7  speed %8%9\n%10 / week, %11%12")
                                       .arg(u.name).arg(u.tier).arg(u.attack).arg(u.defense).arg(u.damageMin).arg(u.damageMax)
                                       .arg(u.maxHp).arg(u.battleSpeed)
                                       .arg(u.range > 0 ? QStringLiteral("  range %1").arg(u.range) : QString())
-                                      .arg(u.weeklyGrowth).arg(costText(u.cost))
-                                      .arg(u.abilities.isEmpty() ? QString() : "\n" + u.abilities.join(", "));
-            s << "    " << quoted(u.id) << " [label=" << quoted(label) << "];\n";
+                                      .arg(u.weeklyGrowth).arg(costText(content, u.cost))
+                                      .arg(u.abilities ? "\n" + abilityNames(u.abilities).join(", ") : QString());
+            s << "    " << quoted(u.key) << " [label=" << quoted(label) << "];\n";
         }
         // Tiers in columns, left to right (invisible edges keep the order).
         QString previous;
         for (int tier = 1; tier <= 7; ++tier) {
             QStringList same;
             for (const UnitDef& u : content.units())
-                if (u.race == r && u.tier == tier) same << quoted(u.id);
+                if (raceKey(content, u.race) == r && u.tier == tier) same << quoted(u.key);
             if (same.isEmpty()) continue;
             if (same.size() > 1) s << "    { rank=same; " << same.join("; ") << "; }\n";
             if (!previous.isEmpty()) s << "    " << previous << " -> " << same.first() << " [style=invis];\n";
@@ -128,8 +130,8 @@ QString unitsGraph(const ContentRegistry& content, const QString& race) {
         s << "  }\n";
     }
     for (const UnitDef& u : content.units())
-        if (!u.upgradesTo.isEmpty() && (race.isEmpty() || u.race == race))
-            s << "  " << quoted(u.id) << " -> " << quoted(u.upgradesTo) << " [color=blue, label=\"upgrade\"];\n";
+        if (u.upgradesTo.isValid() && (race.isEmpty() || raceKey(content, u.race) == race))
+            s << "  " << quoted(u.key) << " -> " << quoted(content.unit(u.upgradesTo)->key) << " [color=blue, label=\"upgrade\"];\n";
     s << "}\n";
     return out;
 }
@@ -145,7 +147,7 @@ QString spellsGraph(const ContentRegistry& content) {
         s << "  subgraph " << quoted("cluster_" + school) << " {\n    label=" << quoted(school) << ";\n";
         for (const SpellDef& sp : content.spells())
             if (sp.school == school)
-                s << "    " << quoted(sp.id) << " [label=" << quoted(QStringLiteral("%1\nlevel %2, %3 SP, magic %4\n%5")
+                s << "    " << quoted(sp.key) << " [label=" << quoted(QStringLiteral("%1\nlevel %2, %3 SP, magic %4\n%5")
                                                                     .arg(sp.name).arg(sp.level).arg(sp.cost).arg(sp.requiredMagic)
                                                                     .arg(sp.scope == SpellDef::Scope::Battle ? "battle" : "adventure"))
                   << "];\n";
@@ -153,10 +155,10 @@ QString spellsGraph(const ContentRegistry& content) {
     }
     // Which race's mage guilds teach which school.
     for (const RaceDef& r : content.races()) {
-        s << "  " << quoted("race:" + r.id) << " [label=" << quoted(r.name) << ", shape=house, fillcolor=\"#f4f0e0\"];\n";
+        s << "  " << quoted("race:" + r.key) << " [label=" << quoted(r.name) << ", shape=house, fillcolor=\"#f4f0e0\"];\n";
         for (const SpellDef& sp : content.spells())
             if (r.spellSchools.isEmpty() || r.spellSchools.contains(sp.school))
-                s << "  " << quoted("race:" + r.id) << " -> " << quoted(sp.id) << " [color=\"#a0a0a0\"];\n";
+                s << "  " << quoted("race:" + r.key) << " -> " << quoted(sp.key) << " [color=\"#a0a0a0\"];\n";
     }
     s << "}\n";
     return out;
@@ -219,8 +221,8 @@ int main(int argc, char** argv) {
     }
     const QString what = args.first();
     const QString race = parser.value(raceOption);
-    if (!race.isEmpty() && !content.raceIds().contains(race)) {
-        std::fprintf(stderr, "kot_graph: unknown race '%s' (%s)\n", qPrintable(race), qPrintable(content.raceIds().join(", ")));
+    if (!race.isEmpty() && !content.playableRaceKeys().contains(race)) {
+        std::fprintf(stderr, "kot_graph: unknown race '%s' (%s)\n", qPrintable(race), qPrintable(content.playableRaceKeys().join(", ")));
         return 2;
     }
     if (what == QLatin1String("check")) {

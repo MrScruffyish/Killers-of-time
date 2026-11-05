@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QString>
+
+#include "core/content/ContentIds.h"
 #include <algorithm>
 
 namespace kot::core {
@@ -33,12 +35,12 @@ public:
 
     UnitStack() = default;
     // `count` units at full health, each with `maxHpPerUnit` HP (clamped to >= 1).
-    UnitStack(QString unitTypeId, int count, int maxHpPerUnit);
+    UnitStack(UnitTypeId unitType, int count, int maxHpPerUnit);
 
     // Rebuild a (possibly wounded) stack, e.g. when loading a save game.
-    static UnitStack fromTotalHp(QString unitTypeId, int totalHp, int maxHpPerUnit);
+    static UnitStack fromTotalHp(UnitTypeId unitType, int totalHp, int maxHpPerUnit);
 
-    const QString& unitTypeId() const { return m_unitTypeId; }
+    UnitTypeId unitTypeId() const { return m_unitTypeId; }
     int maxHp() const { return m_maxHp; }
     int totalHp() const { return m_totalHp; }
     int count() const;
@@ -70,7 +72,7 @@ public:
     void setExperience(int perUnit) { m_experience = std::max(0, perUnit); }
 
 private:
-    QString m_unitTypeId;
+    UnitTypeId m_unitTypeId;
     int m_maxHp = 1;
     int m_totalHp = 0;
     int m_experience = 0;

@@ -28,7 +28,8 @@ QString HelpDialog::helpHtml() {
     QString h;
     h += tr("<h2>Killers of Time</h2>"
             "<p>Take turns with the other players. Each day you move your heroes, build in your towns and buy units. "
-            "A player with no towns and no heroes is out; the last team standing wins.</p>");
+            "A player who loses his last town has 7 days to take one back, else he is out (the game setup can change this: "
+            "out at once, or only with no towns and no heroes); the last team standing wins. K shows every player's towns, heroes and army strength.</p>");
 
     h += tr("<h3>Keys on the map</h3><table>");
     h += row(tr("E"), tr("End the turn"));
@@ -39,6 +40,7 @@ QString HelpDialog::helpHtml() {
     h += row(tr("T"), tr("Next town (the map looks there)"));
     h += row(tr("O"), tr("Open the town"));
     h += row(tr("M"), tr("Market: trade resources"));
+    h += row(tr("K"), tr("Kingdoms: every player's towns, heroes, mines and army strength"));
     h += row(tr("+ and -"), tr("Bigger or smaller map icons (also Ctrl + mouse wheel)"));
     h += row(tr("F1"), tr("This help"));
     h += QStringLiteral("</table>");
@@ -91,7 +93,8 @@ QString HelpDialog::helpHtml() {
             "<li>Walk onto an enemy hero, a defended town or monsters to fight.</li>"
             "<li>Units act by speed. Each unit hits back once a round when attacked. Shooters shoot from afar "
             "and have a limited number of shots; with an enemy next to them they cannot shoot.</li>"
-            "<li>Retreat saves the hero (it flees to your nearest town with no hero) but loses the army.</li>"
+            "<li>Retreat saves the hero (it flees to your nearest town with no hero) but loses the army. "
+            "Surrender (against another player) costs gold; hero and army go to that town. Without such a town you must fight.</li>"
             "<li>Survivors heal after the battle. Units that fight gain stars of experience.</li>"
             "</ul>");
     return h;

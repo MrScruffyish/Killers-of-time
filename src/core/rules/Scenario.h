@@ -34,8 +34,9 @@ struct Scenario {
 
 // Reads and fully validates a scenario file.
 bool loadScenario(const QString& path, const ContentRegistry& content, Scenario* out, QStringList* errors);
+// Scenarios are data: content ids are written as the text keys of the data files.
 bool saveScenario(const QString& path, const QString& id, const QString& name, const QString& description,
-                  const GameState& state, QString* error);
+                  const GameState& state, const ContentRegistry& content, QString* error);
 // The scenarios in `dir` (files that do not load are skipped).
 QList<ScenarioInfo> listScenarios(const QString& dir, const ContentRegistry& content);
 

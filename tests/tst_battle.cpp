@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/battle/AutoBattle.h"
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
@@ -14,14 +16,14 @@ class TstBattle : public QObject {
     PlayerId p1, p2;
 
     HeroId makeHero(PlayerId owner, Pos pos, const QString& unit = QString(), int count = 0) {
-        const HeroId h = createHero(gs, reg, owner, "H", "knight", pos);
-        if (count > 0) armyOf(h).addUnits(unit, count, reg.unit(unit)->maxHp);
+        const HeroId h = createHero(gs, reg, owner, "H", C("knight"), pos);
+        if (count > 0) armyOf(h).addUnits(U(qPrintable(unit)), count, reg.unit(U(qPrintable(unit)))->maxHp);
         return h;
     }
     Army& armyOf(HeroId id) { return *gs.army(gs.hero(id)->army); }
     ArmyId monsters(Pos pos, const QString& unit, int count) {
         const ArmyId a = gs.addArmy(PlayerId(), pos);
-        gs.army(a)->addUnits(unit, count, reg.unit(unit)->maxHp);
+        gs.army(a)->addUnits(U(qPrintable(unit)), count, reg.unit(U(qPrintable(unit)))->maxHp);
         return a;
     }
 
@@ -29,14 +31,15 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
         QVERIFY(reg.balance().battle.maxRounds > 0);
     }
 
     void init() {
         gs = GameState(7);
-        gs.setMap(GameMap(12, 12, "grass"));
-        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
-        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
+        gs.setMap(GameMap(12, 12, T("grass")));
+        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, RC("humans"), "#0000ff");
     }
 
     void strongArmyBeatsMonsters() {
@@ -45,7 +48,7 @@ private slots:
         const BattleReport b = resolveBattle(gs, reg, gs.hero(h)->army, m);
         QVERIFY(b.attackerWon());
         QVERIFY(!gs.army(m));                       // monsters removed
-        QCOMPARE(b.defender.losses.value("militia"), 5);
+        QCOMPARE(b.defender.losses.value(U("militia")), 5);
         QCOMPARE(b.experience, 5 * 6 * reg.balance().battle.experiencePerHp);
         QCOMPARE(gs.hero(h)->experience, b.experience);
         for (const UnitStack& s : armyOf(h).stacks) QCOMPARE(s.totalHp(), s.count() * s.maxHp());  // healed
@@ -70,10 +73,10 @@ private slots:
             for (int strong = 0; strong < 2; ++strong) {
                 init();
                 gs = GameState(seed);
-                gs.setMap(GameMap(12, 12, "grass"));
-                p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
+                gs.setMap(GameMap(12, 12, T("grass")));
+                p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
                 const HeroId h = makeHero(p1, {0, 0}, "pikeman", 12);
-                if (strong) gs.hero(h)->traits["attack"] = 20;
+                if (strong) gs.hero(h)->traits[TR("attack")] = 20;
                 const ArmyId m = monsters({1, 0}, "pikeman", 14);
                 if (resolveBattle(gs, reg, gs.hero(h)->army, m).attackerWon()) ++(strong ? strongWins : plainWins);
             }
@@ -86,7 +89,7 @@ private slots:
         for (int run = 0; run < 2; ++run) {
             init();
             const HeroId h = makeHero(p1, {0, 0}, "pikeman", 15);
-            armyOf(h).addUnits("archer", 4, 10);
+            armyOf(h).addUnits(U("archer"), 4, 10);
             const ArmyId m = monsters({1, 0}, "pikeman", 18);
             const QJsonObject j = battleReportToJson(resolveBattle(gs, reg, gs.hero(h)->army, m));
             if (run == 0) first = j;
@@ -108,7 +111,7 @@ private slots:
     }
 
     void tooFarAwayJustWalks() {
-        gs.setMap(GameMap(40, 3, "grass"));
+        gs.setMap(GameMap(40, 3, T("grass")));
         const HeroId h = makeHero(p1, {0, 0}, "pikeman", 30);
         const ArmyId m = monsters({30, 0}, "militia", 4);
         const MoveResult r = moveHero(gs, reg, h, {30, 0});
@@ -119,8 +122,8 @@ private slots:
 
     void attackingEnemyTownFightsGarrisonAndCaptures() {
         const HeroId h = makeHero(p1, {0, 0}, "pikeman", 40);
-        const TownId town = gs.addTown("Fort", "humans", {3, 0}, p2);
-        gs.army(gs.town(town)->garrison)->addUnits("militia", 5, 6);
+        const TownId town = gs.addTown("Fort", RC("humans"), {3, 0}, p2);
+        gs.army(gs.town(town)->garrison)->addUnits(U("militia"), 5, 6);
         const MoveResult r = moveHero(gs, reg, h, {3, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
         QVERIFY(r.battles.value(0).attackerWon());
@@ -135,8 +138,8 @@ private slots:
 
     void visitingEnemyHeroDefendsTownFirst() {
         const HeroId h = makeHero(p1, {0, 0}, "pikeman", 60);
-        const TownId town = gs.addTown("Fort", "humans", {3, 0}, p2);
-        gs.army(gs.town(town)->garrison)->addUnits("militia", 3, 6);
+        const TownId town = gs.addTown("Fort", RC("humans"), {3, 0}, p2);
+        gs.army(gs.town(town)->garrison)->addUnits(U("militia"), 3, 6);
         const HeroId defender = makeHero(p2, {3, 0}, "militia", 3);
         const MoveResult r = moveHero(gs, reg, h, {3, 0});
         QVERIFY2(r.ok, qPrintable(r.error));

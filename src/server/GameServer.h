@@ -40,6 +40,12 @@ public:
         refreshContentLists();
     }
     const QString& saveDir() const { return m_saveDir; }
+    // Most space the save folder may use (all its files); 0 = no limit. A save that
+    // would go over it first removes the oldest saved games (writeSave).
+    void setSaveLimitBytes(qint64 bytes) { m_saveLimitBytes = bytes; }
+    // Loads the newest saved game (not campaign progress) and waits for the players
+    // (after a server restart: --resume). False when there is none that loads.
+    bool resumeNewestSave(QString* error);
 
 signals:
     void clientCountChanged(int count);
@@ -54,6 +60,7 @@ private:
         int id = 0;
         net::Connection* connection = nullptr;
         bool greeted = false;
+        QString keyHash;  // SHA-256 of the key from his hello: his seats are bound to it
     };
 
     void onMessage(int clientId, const net::Message& message);
@@ -67,7 +74,8 @@ private:
     // Saved games, joining a running game. Return true if the message was one of these.
     bool handleSaveOrJoin(Client& client, const net::Message& message);
     void reply(Client& client, const net::Message& request, const QJsonObject& info);
-    QJsonArray freePlayersJson() const;
+    // The seats this client may choose (nobody has played them yet).
+    QJsonArray freePlayersJson(const Client& client) const;
     QString savePath(const QString& name, QString* error) const;
     void sendGameStarted(Client& client);
 
@@ -80,6 +88,13 @@ private:
     std::unique_ptr<GameSession> m_session;
     int m_nextClientId = 1;
     QString m_saveDir;
+    qint64 m_saveLimitBytes = 0;
+    // Writes the running game to `path` within the save limit: the oldest saved games
+    // (not campaign progress, not `path` itself) are removed until it fits.
+    bool writeSave(const QString& path, QString* error);
+    // Runs a saved game; connected clients whose codes fit get their seats back, the
+    // others are offered the free ones.
+    bool loadSaveFile(const QString& path, QString* error);
     int m_lastAutosaveDay = 0;
     QString m_gameStamp;  // when this game was started or loaded: part of its autosave names
     // A save at the start of every new day, the oldest beyond the lobby's

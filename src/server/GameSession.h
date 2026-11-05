@@ -58,12 +58,19 @@ public:
     QList<int> clients() const { return m_clientPlayers.keys(); }
 
     CommandResult handle(int clientId, const net::Message& command);
-    // A human left: his player is now played by the passive AI (the game goes on).
+    // A human left: his seat stays his, the game waits at his turn.
     void clientLeft(int clientId);
     // Human players nobody plays right now (left, or not taken yet after loading).
     QList<core::PlayerId> freePlayers() const;
-    // A client takes over a free human player (more than one: hot-seat). Fills `error` when that is not possible.
-    bool joinPlayer(int clientId, core::PlayerId player, QString* error);
+    // Free seats a client with this key (hash) may take: those bound to his key, and
+    // those nobody has played yet (`ownOnly`: only his).
+    QList<core::PlayerId> seatsFor(const QString& keyHash, bool ownOnly) const;
+    // A client takes over a free human player (more than one: hot-seat): one nobody has
+    // played, or one bound to his key; the seat is then bound to his key (if it was not).
+    // Fills `error` when that is not possible.
+    bool joinPlayer(int clientId, core::PlayerId player, const QString& keyHash, QString* error);
+    // Binds the seats the client plays now (after the start) to his key.
+    void bindSeats(int clientId, const QString& keyHash);
 
     // True while a battle waits for a human; only battle_action is accepted then.
     bool battleRunning() const { return m_battle != nullptr; }
@@ -76,6 +83,9 @@ public:
     // defender was a town's garrison.
     using BattleObserver = std::function<void(const core::BattleReport& report, bool townDefended)>;
     void setBattleObserver(BattleObserver observer) { m_battleObserver = std::move(observer); }
+    // A human player whose person is connected now.
+    bool isConnected(core::PlayerId p) const;
+    // Who the client plays.
     QJsonObject youInfo(core::PlayerId player) const;
 
 private:
@@ -99,6 +109,7 @@ private:
     void afterCommand();
     void playAiTurn(core::PlayerId player, ai::IAiPlayer& ai);
     bool isAuto(core::PlayerId p) const { return m_autoPlayers.contains(p); }
+
 
     const core::ContentRegistry& m_content;
     core::GameState m_state;

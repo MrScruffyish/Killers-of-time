@@ -30,6 +30,8 @@ using namespace kot::tools;
 
 namespace {
 
+ResourceId g_gold;  // the currency, set when the data is loaded (for the gold column)
+
 // Editable columns: header, JSON field, getter, setter.
 struct Column {
     const char* title;
@@ -48,7 +50,7 @@ const QList<Column>& columns() {
         {"speed", "battleSpeed", [](const UnitDef& u) { return u.battleSpeed; }, [](UnitDef& u, int v) { u.battleSpeed = std::max(1, v); }},
         {"initiative", "initiative", [](const UnitDef& u) { return u.initiative; }, [](UnitDef& u, int v) { u.initiative = std::max(1, v); }},
         {"growth", "weeklyGrowth", [](const UnitDef& u) { return u.weeklyGrowth; }, [](UnitDef& u, int v) { u.weeklyGrowth = v; }},
-        {"gold", "cost.gold", [](const UnitDef& u) { return u.cost.value("gold"); }, [](UnitDef& u, int v) { u.cost["gold"] = v; }},
+        {"gold", "cost.gold", [](const UnitDef& u) { return u.cost.value(g_gold); }, [](UnitDef& u, int v) { u.cost[g_gold] = v; }},
     };
     return c;
 }
@@ -130,6 +132,7 @@ private:
             QMessageBox::critical(this, tr("Cannot load"), errors.join('\n'));
             return;
         }
+        g_gold = m_content.currency();
         m_changed.clear();
         m_changedResources = false;
         fillUnits();
@@ -156,12 +159,12 @@ private:
                 m_units->setItem(r, col, item);
                 return item;
             };
-            fixed(0, u.id);
-            fixed(1, u.race);
+            fixed(0, u.key);
+            fixed(1, m_content.race(u.race).key);
             for (int c = 0; c < cols.size(); ++c) {
                 auto* item = new QTableWidgetItem();
                 item->setData(Qt::EditRole, cols[c].get(u));
-                if (m_changed.contains(u.id)) item->setBackground(QColor("#fff3c0"));
+                if (m_changed.contains(u.key)) item->setBackground(QColor("#fff3c0"));
                 m_units->setItem(r, 2 + c, item);
             }
             const UnitRow& row = rows[r];
@@ -203,7 +206,7 @@ private:
         m_resources->setRowCount(m_content.resources().size());
         int r = 0;
         for (const ResourceDef& res : m_content.resources()) {
-            auto* name = new QTableWidgetItem(res.id);
+            auto* name = new QTableWidgetItem(res.key);
             name->setFlags(name->flags() & ~Qt::ItemIsEditable);
             m_resources->setItem(r, 0, name);
             auto* value = new QTableWidgetItem();
@@ -218,7 +221,8 @@ private:
 
     void onResourceEdited(int row, int col) {
         if (m_filling || col != 1) return;
-        const ResourceDef* old = m_content.resource(m_resources->item(row, 0)->text());
+        const ResourceId id = m_content.resourceId(m_resources->item(row, 0)->text());
+        const ResourceDef* old = id.isValid() ? &m_content.resource(id) : nullptr;
         if (!old || old->isCurrency) return;
         ResourceDef r = *old;
         r.value = std::max(1, m_resources->item(row, 1)->data(Qt::EditRole).toInt());
@@ -234,7 +238,7 @@ private:
         const int c = col - 2;
         if (c < 0 || c >= columns().size()) return;
         const QString id = m_units->item(row, 0)->text();
-        const UnitDef* old = m_content.unit(id);
+        const UnitDef* old = m_content.unitByKey(id);
         if (!old) return;
         UnitDef u = *old;
         columns()[c].set(u, m_units->item(row, col)->data(Qt::EditRole).toInt());
@@ -271,7 +275,7 @@ private:
     void saveChanges() {
         int saved = 0;
         for (const QString& id : m_changed) {
-            const UnitDef* u = m_content.unit(id);
+            const UnitDef* u = m_content.unitByKey(id);
             QFile f(QDir(m_dataDir).filePath(QStringLiteral("units/%1.json").arg(id)));
             if (!u || !f.open(QIODevice::ReadOnly)) continue;
             QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
@@ -298,7 +302,8 @@ private:
                 QJsonArray list = root.value("resources").toArray();
                 for (int i = 0; i < list.size(); ++i) {
                     QJsonObject o = list[i].toObject();
-                    if (const ResourceDef* r = m_content.resource(o.value("id").toString()); r && !r->isCurrency) o.insert("value", r->value);
+                    if (const ResourceId id = m_content.resourceId(o.value("id").toString()); id.isValid() && !m_content.resource(id).isCurrency)
+                        o.insert("value", m_content.resource(id).value);
                     list[i] = o;
                 }
                 root.insert("resources", list);

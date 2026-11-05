@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     const QString out = parser.isSet(outOption) ? parser.value(outOption) : QDir(dir).filePath(QStringLiteral("scenarios/%1.json").arg(id));
-    if (!saveScenario(out, id, parser.value(nameOption).isEmpty() ? id : parser.value(nameOption), parser.value(descOption), gs, &error)) {
+    if (!saveScenario(out, id, parser.value(nameOption).isEmpty() ? id : parser.value(nameOption), parser.value(descOption), gs, content, &error)) {
         std::fprintf(stderr, "kot_mapgen: %s\n", qPrintable(error));
         return 1;
     }

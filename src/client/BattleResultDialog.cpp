@@ -142,7 +142,7 @@ BattleResultDialog::BattleResultDialog(const core::ContentRegistry* content, con
     if (b["loserHeroKilled"].toBool()) lines << (m_outcome == Outcome::Victory ? tr("The enemy hero fell.") : tr("<b>Your hero fell.</b>"));
     if (b.contains("raised")) {
         const QJsonObject r = b["raised"].toObject();
-        const core::UnitDef* u = content ? content->unit(r["unit"].toString()) : nullptr;
+        const core::UnitDef* u = content ? content->unit(core::UnitTypeId(r["unit"].toInt(-1))) : nullptr;
         lines << tr("%1 %2 rose from the fallen and joined the winner.").arg(r["count"].toInt()).arg(u ? u->name : r["unit"].toString());
     }
     if (b.contains("lootGold")) lines << tr("The winner plundered %1 gold.").arg(b["lootGold"].toInt());
@@ -152,6 +152,7 @@ BattleResultDialog::BattleResultDialog(const core::ContentRegistry* content, con
                                               : tr("Your hero escaped (without his army)."));
     if (b["surrendered"].toBool())
         lines << (m_outcome == Outcome::Victory ? tr("The enemy surrendered and paid <b>%1 gold</b>.").arg(b["surrenderGold"].toInt())
+                                                : b.contains("retreatedTo") ? tr("You surrendered and paid %1 gold; your army lives and goes to %2.").arg(b["surrenderGold"].toInt()).arg(b["retreatedTo"].toString())
                                                 : tr("You surrendered and paid %1 gold; your army lives.").arg(b["surrenderGold"].toInt()));
     auto* info = new QLabel(lines.join("<br>"), this);
     info->setTextFormat(Qt::RichText);
@@ -168,9 +169,9 @@ BattleResultDialog::BattleResultDialog(const core::ContentRegistry* content, con
         const QJsonObject l = side["losses"].toObject();
         int i = 0;
         for (auto it = l.begin(); it != l.end(); ++it, ++i) {
-            const core::UnitDef* u = content->unit(it.key());
+            const core::UnitDef* u = content->unit(core::UnitTypeId(it.key().toInt()));  // unit id -> count
             auto* icon = new QLabel(this);
-            icon->setPixmap(art::unitIcon(it.key(), u ? u->rank : 0, 44));
+            icon->setPixmap(art::unitIcon(core::UnitTypeId(it.key().toInt()), u ? u->rank : 0, 44));
             icon->setToolTip(u ? u->name : it.key());
             grid->addWidget(icon, i / 4 * 2, i % 4, Qt::AlignCenter);
             grid->addWidget(new QLabel(QStringLiteral("<b>-%1</b> %2").arg(it.value().toInt()).arg(u ? u->name : it.key()), this),

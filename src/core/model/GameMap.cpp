@@ -4,14 +4,12 @@
 
 namespace kot::core {
 
-GameMap::GameMap(int width, int height, const QString& terrainId)
-    : m_width(std::max(0, width)),
-      m_height(std::max(0, height)),
-      m_tiles(static_cast<qsizetype>(m_width) * m_height, terrainId) {}
+GameMap::GameMap(int width, int height, TerrainId terrain)
+    : m_width(std::max(0, width)), m_height(std::max(0, height)), m_cells(static_cast<qsizetype>(m_width) * m_height, terrain) {}
 
-GameMap GameMap::fromTiles(int width, int height, QList<QString> tiles) {
-    GameMap map(width, height, QString());
-    if (tiles.size() == map.m_tiles.size()) map.m_tiles = std::move(tiles);
+GameMap GameMap::fromCells(int width, int height, QVector<TerrainId> cells) {
+    GameMap map(width, height, TerrainId());
+    if (cells.size() == map.m_cells.size()) map.m_cells = std::move(cells);
     return map;
 }
 

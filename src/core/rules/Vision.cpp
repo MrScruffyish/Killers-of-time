@@ -9,7 +9,7 @@ namespace kot::core {
 int heroVisionRadius(const Hero& hero, const ContentRegistry& content) {
     const HeroClassDef* cls = content.heroClass(hero.classId);
     const int race = cls ? content.race(cls->race).visionBonus : 0;  // sylvan: keen eyes
-    return hero.trait(QStringLiteral("scouting_radius")) + hero.trait(QStringLiteral("scouting")) * content.balance().scouting.visionPerLevel + race;
+    return hero.trait(content.known().scoutingRadius) + hero.trait(content.known().scouting) * content.balance().scouting.visionPerLevel + race;
 }
 
 QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegistry& content) {
@@ -40,7 +40,7 @@ QByteArray visibleTiles(const GameState& state, TeamId team, const ContentRegist
     for (const Town& t : state.towns()) {
         if (!t.owner.isValid() || state.teamOf(t.owner) != team) continue;
         int radius = vb.townRadius;  // watchtowers see farther
-        for (const QString& id : t.buildings)
+        for (const BuildingTypeId id : t.buildings)
             if (const BuildingDef* b = content.building(id))
                 for (const BuildingEffect& e : b->effects)
                     if (e.type == BuildingEffect::Type::Vision) radius += e.amount;

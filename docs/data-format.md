@@ -11,6 +11,11 @@ General rules:
   are ignored, so use `"_comment": "..."` for notes.
 - Integers must be whole numbers within the documented range.
 
+## art/ (optional)
+PNG pictures (256x256, transparent) that the client loads instead of drawing them in code;
+made by `kot_artexport` (docs/tools.md), which also explains the names and the `.tint.png`
+files of pictures in the owner's colour. The content loader does not read this folder.
+
 ## resources.json
 ```json
 { "resources": [ { "id": "gold", "name": "Gold", "currency": true }, ... ] }
@@ -45,7 +50,7 @@ Trait value tables and hero-class growth come in a later slice.
 | Field | Type | Default | Notes |
 |---|---|---|---|
 | id, name | string | required | |
-| race | id | required | race files do not exist yet |
+| race | id | required | a file in races/ (`neutral` for the wild creatures) |
 | tier | int 1..7 | required | |
 | attack, defense | int 0..1000 | required | |
 | damageMin, damageMax | int | required | min <= max |
@@ -154,7 +159,7 @@ in a town of their team with a `{"type": "mageGuild", "level": n}` building (all
 that level, when they start their turn there or walk in). Hero classes may have
 `startingSpells`.
 
-## races/<id>.json (one file per race; the folder is optional)
+## races/<id>.json (one file per race)
 ```json
 { "id": "undead", "name": "Undead", "description": "...",
   "growthPercent": 25, "incomePercent": -20, "terrainCostPercent": { "swamp": 50 },
@@ -174,8 +179,9 @@ that level, when they start their turn there or walk in). Hero classes may have
 | visionBonus | its heroes see this many tiles farther |
 | spellSchoolPercent | school -> damage percent of the side's spells (100 = normal) |
 
-Units, buildings and hero classes name their race. When the folder exists, every hero class's
-race needs a file. A building without `race` can be built by every race (tavern, village hall,
+Units, buildings and hero classes name their race, and every race named needs a file
+(`neutral.json`: creatures of no people, with no bonuses). The playable races are the ones with
+a hero class. A building without `race` can be built by every race (tavern, village hall,
 mage guilds).
 
 ## Unit abilities (`abilities` in units/<id>.json)

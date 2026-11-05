@@ -72,7 +72,7 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         const RaceDef& race = content.race(pl->race);
         if (race.battleLootPercent > 0) {
             report.lootGold = killedHp[loser] * race.battleLootPercent / 100;
-            pl->resources[QStringLiteral("gold")] += report.lootGold;
+            pl->resources[content.currency()] += report.lootGold;
         }
         const UnitDef* raised = race.raiseDeadPercent > 0 ? content.unit(race.raiseDeadUnit) : nullptr;
         Army* army = state.army(battle.army(winner));
@@ -90,11 +90,22 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         const int price = battle.surrenderCost(loser);
         Player* payer = state.player(battle.owner(loser));
         Player* payee = state.player(battle.owner(winner));
-        const int paid = payer ? std::min(price, payer->resources.value(QStringLiteral("gold"))) : 0;
-        if (payer) payer->resources[QStringLiteral("gold")] -= paid;
-        if (payee) payee->resources[QStringLiteral("gold")] += paid;
+        const int paid = payer ? std::min(price, payer->resources.value(content.currency())) : 0;
+        if (payer) payer->resources[content.currency()] -= paid;
+        if (payee) payee->resources[content.currency()] += paid;
         report.surrendered = true;
         report.surrenderGold = paid;
+        // He leaves with his army for his nearest free town and rests there today
+        // (else he could be attacked again and again on the same spot).
+        if (const Town* refuge = retreatTown(state, *lost)) {
+            lost->pos = refuge->pos;
+            report.retreatedTo = refuge->name;
+            if (Hero* h = state.hero(lost->hero)) {
+                h->movementPoints = 0;
+                h->destination.reset();
+                h->inBoat = false;
+            }
+        }
         return report;
     }
     if (battle.retreated(loser)) {  // the hero got away; his army is lost
@@ -105,20 +116,7 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         lost->stacks.clear();
         report.retreated = true;
         // He flees to the nearest own town with no hero in it, and rests there today.
-        const Town* best = nullptr;
-        int bestDist = 0;
-        for (const Town& t : state.towns()) {
-            if (t.owner != lost->owner || t.pos == lost->pos) continue;
-            bool taken = false;
-            for (const Army& a : state.armies()) taken = taken || (a.id != lost->id && a.hasHero() && a.pos == t.pos);
-            if (taken) continue;
-            const int d = std::abs(t.pos.x - lost->pos.x) + std::abs(t.pos.y - lost->pos.y);
-            if (!best || d < bestDist) {
-                best = &t;
-                bestDist = d;
-            }
-        }
-        if (best) {
+        if (const Town* best = retreatTown(state, *lost)) {
             lost->pos = best->pos;
             report.retreatedTo = best->name;
             if (Hero* h = state.hero(lost->hero)) {
@@ -147,10 +145,10 @@ QString buySiegeEngine(GameState& state, const ContentRegistry& content, Battle&
     Player* owner = state.player(battle.owner(0));
     if (!owner) return QStringLiteral("only a player's army can build one");
     const ResourceAmounts& cost = content.balance().siege.engineCost;
-    for (auto it = cost.begin(); it != cost.end(); ++it)
-        if (owner->resources.value(it.key()) < it.value())
-            return QStringLiteral("a catapult costs %1 %2, you have %3").arg(it.value()).arg(it.key()).arg(owner->resources.value(it.key()));
-    for (auto it = cost.begin(); it != cost.end(); ++it) owner->resources[it.key()] -= it.value();
+    for (const auto [r, amount] : cost)
+        if (owner->resources.value(r) < amount)
+            return QStringLiteral("a catapult costs %1 %2, you have %3").arg(amount).arg(content.resource(r).key).arg(owner->resources.value(r));
+    for (const auto [r, amount] : cost) owner->resources[r] -= amount;
     return battle.buildSiegeEngine(events);
 }
 
@@ -170,7 +168,7 @@ QJsonObject battleReportToJson(const BattleReport& report) {
         o.insert("owner", static_cast<int>(s.owner.value()));
         o.insert("hero", static_cast<int>(s.hero.value()));
         QJsonObject losses;
-        for (auto it = s.losses.begin(); it != s.losses.end(); ++it) losses.insert(it.key(), it.value());
+        for (auto it = s.losses.begin(); it != s.losses.end(); ++it) losses.insert(QString::number(it.key().index()), it.value());  // unit id -> killed
         o.insert("losses", losses);
         return o;
     };
@@ -185,7 +183,7 @@ QJsonObject battleReportToJson(const BattleReport& report) {
     o.insert("levelsGained", report.levelsGained);
     o.insert("loserHeroKilled", report.loserHeroKilled);
     if (report.retreated) o.insert("retreated", true);
-    if (report.raisedCount > 0) o.insert("raised", QJsonObject{{"unit", report.raisedUnit}, {"count", report.raisedCount}});
+    if (report.raisedCount > 0) o.insert("raised", QJsonObject{{"unit", report.raisedUnit.index()}, {"count", report.raisedCount}});
     if (report.lootGold > 0) o.insert("lootGold", report.lootGold);
     if (!report.retreatedTo.isEmpty()) o.insert("retreatedTo", report.retreatedTo);
     if (report.surrendered) {

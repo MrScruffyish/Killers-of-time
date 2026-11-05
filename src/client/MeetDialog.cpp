@@ -80,7 +80,7 @@ QWidget* MeetDialog::column(const ViewHero& hero, const ViewHero& other, bool le
             auto* icon = new QLabel(box);
             icon->setPixmap(art::unitIcon(s.unit, u ? u->rank : 0, 32));
             line->addWidget(icon);
-            QString text = QStringLiteral("%1 x %2").arg(s.count).arg(u ? u->name : s.unit);
+            QString text = QStringLiteral("%1 x %2").arg(s.count).arg(u ? u->name : QString());
             if (s.stars > 0) text += QStringLiteral(" ") + QString(s.stars, QChar(0x2605));
             line->addWidget(new QLabel(text, box), 1);
             auto* count = new QSpinBox(box);
@@ -92,7 +92,7 @@ QWidget* MeetDialog::column(const ViewHero& hero, const ViewHero& other, bool le
             give->setToolTip(tr("Give to %1").arg(other.name));
             give->setEnabled(canAct);
             const int fromId = army->id, toId = to->id, index = i;
-            const QString name = u ? u->name : s.unit;
+            const QString name = u ? u->name : QString();
             connect(give, &QPushButton::clicked, this, [=, this]() {
                 emit commandRequested(net::msg::moveUnits, {{"from", fromId}, {"to", toId}, {"stack", index}, {"count", count->value()}},
                                       tr("Give %1 %2 to %3").arg(count->value()).arg(name, other.name));
@@ -113,26 +113,27 @@ QWidget* MeetDialog::column(const ViewHero& hero, const ViewHero& other, bool le
     }
 
     v->addWidget(new QLabel(tr("<b>Artifacts</b>"), box));
-    QStringList gear = hero.artifacts;
+    QList<core::ArtifactId> gear = hero.artifacts;
     gear += hero.backpack;
     for (int i = 0; i < gear.size(); ++i) {
-        const QString& id = gear[i];
+        const core::ArtifactId id = gear[i];
         const core::ArtifactDef* a = m_content->artifact(id);
+        const QString key = a ? a->key : QString();
         auto* line = new QHBoxLayout();
         auto* icon = new QLabel(box);
-        icon->setPixmap(art::artifactIcon(id, a ? a->slot : QStringLiteral("misc"), 28));
+        icon->setPixmap(art::artifactIcon(key, 28));
         line->addWidget(icon);
-        auto* label = new QLabel(QStringLiteral("%1%2").arg(a ? a->name : id, i < hero.artifacts.size() ? QString() : tr(" (carried)")), box);
+        auto* label = new QLabel(QStringLiteral("%1%2").arg(a ? a->name : QString(), i < hero.artifacts.size() ? QString() : tr(" (carried)")), box);
         if (a) label->setToolTip(a->description);
         line->addWidget(label, 1);
         auto* give = new QPushButton(arrow, box);
-        give->setObjectName(QStringLiteral("meetArtifact_%1_%2").arg(hero.id).arg(id));
+        give->setObjectName(QStringLiteral("meetArtifact_%1_%2").arg(hero.id).arg(key));
         give->setToolTip(tr("Give to %1").arg(other.name));
         give->setEnabled(canAct);
         const int fromId = hero.id, toId = other.id;
-        const QString name = a ? a->name : id;
+        const QString name = a ? a->name : QString();
         connect(give, &QPushButton::clicked, this, [=, this]() {
-            emit commandRequested(net::msg::giveArtifact, {{"from", fromId}, {"to", toId}, {"artifact", id}},
+            emit commandRequested(net::msg::giveArtifact, {{"from", fromId}, {"to", toId}, {"artifact", id.index()}},
                                   tr("Give the %1 to %2").arg(name, other.name));
         });
         line->addWidget(give);

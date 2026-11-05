@@ -17,7 +17,7 @@ HireResult fail(const QString& message) {
 }  // namespace
 
 bool hasTavern(const Town& town, const ContentRegistry& content) {
-    for (const QString& id : town.buildings) {
+    for (const BuildingTypeId id : town.buildings) {
         const BuildingDef* b = content.building(id);
         if (!b) continue;
         for (const BuildingEffect& e : b->effects) {
@@ -27,11 +27,11 @@ bool hasTavern(const Town& town, const ContentRegistry& content) {
     return false;
 }
 
-QStringList freeHeroTemplates(const GameState& state, const ContentRegistry& content,
-                              const QString& race) {
-    QSet<QString> inPlay;
+QList<HeroTemplateId> freeHeroTemplates(const GameState& state, const ContentRegistry& content,
+                              RaceId race) {
+    QSet<HeroTemplateId> inPlay;
     for (const Hero& h : state.heroes()) inPlay.insert(h.templateId);
-    QStringList result;
+    QList<HeroTemplateId> result;
     for (const HeroTemplateDef& t : content.heroTemplates()) {
         const HeroClassDef* cls = content.heroClass(t.classId);
         if (cls && cls->race == race && !inPlay.contains(t.id)) result.append(t.id);
@@ -40,16 +40,16 @@ QStringList freeHeroTemplates(const GameState& state, const ContentRegistry& con
 }
 
 void refreshTavernOffers(GameState& state, const ContentRegistry& content, TownId onlyTown) {
-    QSet<QString> taken;  // offered in an earlier town of this draw (or, for one town, in the others)
+    QSet<HeroTemplateId> taken;  // offered in an earlier town of this draw (or, for one town, in the others)
     if (onlyTown.isValid())
         for (const Town& town : state.towns())
-            if (town.id != onlyTown) taken.unite(QSet<QString>(town.tavernOffers.begin(), town.tavernOffers.end()));
+            if (town.id != onlyTown) taken.unite(QSet<HeroTemplateId>(town.tavernOffers.begin(), town.tavernOffers.end()));
     for (Town& town : state.towns()) {
         if (onlyTown.isValid() && town.id != onlyTown) continue;
         town.tavernOffers.clear();
         if (!hasTavern(town, content)) continue;
-        QStringList candidates;
-        for (const QString& id : freeHeroTemplates(state, content, town.race)) {
+        QList<HeroTemplateId> candidates;
+        for (const HeroTemplateId id : freeHeroTemplates(state, content, town.race)) {
             if (!taken.contains(id)) candidates.append(id);
         }
         const int wanted = content.balance().economy.tavernOffers;
@@ -62,7 +62,7 @@ void refreshTavernOffers(GameState& state, const ContentRegistry& content, TownI
 }
 
 HireResult hireHero(GameState& state, const ContentRegistry& content, TownId townId,
-                    PlayerId playerId, const QString& templateId, bool useTrade) {
+                    PlayerId playerId, HeroTemplateId templateId, bool useTrade) {
     Town* town = state.town(townId);
     if (!town) return fail(QStringLiteral("unknown town"));
     Player* player = state.player(playerId);
@@ -84,11 +84,12 @@ HireResult hireHero(GameState& state, const ContentRegistry& content, TownId tow
             return fail(QStringLiteral("another hero is already in the town"));
     }
 
-    const QString currency = content.currency() ? content.currency()->id : QString();
-    const ResourceAmounts cost = {{currency, content.balance().economy.heroCost}};
+    const ResourceId currency = content.currency();
+    ResourceAmounts cost;
+    cost[currency] = content.balance().economy.heroCost;
     QList<TradeStep> plan;
     if (player->resources.value(currency) < cost.value(currency)) {
-        if (!useTrade) return fail(QStringLiteral("not enough %1").arg(currency));
+        if (!useTrade) return fail(QStringLiteral("not enough %1").arg(content.resource(currency).key));
         const auto trades = planTradeFor(content, player->resources, cost, tradeEfficiency(state, content, player->id));
         if (!trades) return fail(QStringLiteral("cannot be afforded, even by trading"));
         plan = *trades;

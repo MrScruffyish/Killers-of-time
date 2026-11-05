@@ -11,12 +11,12 @@ int effectiveMaxHp(int baseMaxHp, const HpBonus& bonus) {
     return std::max(1, static_cast<int>(std::lround(value)));
 }
 
-UnitStack::UnitStack(QString unitTypeId, int count, int maxHpPerUnit)
+UnitStack::UnitStack(UnitTypeId unitTypeId, int count, int maxHpPerUnit)
     : m_unitTypeId(std::move(unitTypeId)),
       m_maxHp(std::max(1, maxHpPerUnit)),
       m_totalHp(std::max(0, count) * m_maxHp) {}
 
-UnitStack UnitStack::fromTotalHp(QString unitTypeId, int totalHp, int maxHpPerUnit) {
+UnitStack UnitStack::fromTotalHp(UnitTypeId unitTypeId, int totalHp, int maxHpPerUnit) {
     UnitStack s(std::move(unitTypeId), 0, maxHpPerUnit);
     s.m_totalHp = std::max(0, totalHp);
     return s;

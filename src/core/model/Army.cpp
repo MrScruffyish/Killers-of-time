@@ -8,7 +8,7 @@ int Army::totalUnits() const {
     return total;
 }
 
-bool Army::addUnits(const QString& unitTypeId, int count, int maxHpPerUnit) {
+bool Army::addUnits(UnitTypeId unitTypeId, int count, int maxHpPerUnit) {
     if (count <= 0) return true;
     for (UnitStack& s : stacks) {
         if (s.unitTypeId() == unitTypeId && s.maxHp() == maxHpPerUnit) {

@@ -14,6 +14,7 @@
 #include "net/LobbyClient.h"
 #include "net/Protocol.h"
 #include "server/GameServer.h"
+#include "server/ServerConfig.h"
 
 using namespace kot::net;
 using kot::server::GameServer;
@@ -62,8 +63,11 @@ class TstNetwork : public QObject {
     QScopedPointer<GameServer> server;
     kot::core::ContentRegistry content;
 
-    std::unique_ptr<LobbyClient> connectClient(const QString& name) {
+    // A client with its own new key (a different person), or with `key` (the same one again).
+    std::unique_ptr<LobbyClient> connectClient(const QString& name, const QString& key = QString()) {
         auto c = std::make_unique<LobbyClient>();
+        c->setContentChecksum(content.checksum());
+        c->setPlayerKey(key.isEmpty() ? LobbyClient::newPlayerKey() : key);
         c->connectToServer("127.0.0.1", server->port(), name);
         return c;
     }
@@ -215,6 +219,17 @@ private slots:
         QCOMPARE(server->clientCount(), 0);
     }
 
+    void otherGameDataIsRefused() {
+        server->setContent(&content);
+        LobbyClient c;
+        c.setContentChecksum("not-the-same");
+        QSignalSpy failed(&c, &LobbyClient::connectionFailed);
+        QString code;
+        connect(&c, &LobbyClient::errorReceived, this, [&](const QString& k, const QString&, int) { code = k; });
+        c.connectToServer("127.0.0.1", server->port(), "Eve");
+        QTRY_COMPARE_WITH_TIMEOUT(code, QString("content_mismatch"), 3000);
+    }
+
     void firstMessageMustBeHello() {
         RawClient raw(server->port());
         QTRY_VERIFY_WITH_TIMEOUT(raw.connected, 3000);
@@ -299,7 +314,7 @@ private slots:
         QCOMPARE(a->view()["day"].toInt(), 2);
     }
 
-    void aPlayerLeavingDoesNotStopTheGame() {
+    void theGameWaitsForAPlayerWhoLeft() {
         server->setContent(&content);
         auto a = connectClient("Ann");
         auto b = connectClient("Bob");
@@ -309,12 +324,18 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(a->lobby().slotList[1].ready && a->lobby().slotList[0].ready, 3000);
         a->startGame();
         QTRY_VERIFY_WITH_TIMEOUT(!a->view().isEmpty() && !b->view().isEmpty(), 3000);
-        const int idA = a->you()["playerId"].toInt();
+        const int idB = b->you()["playerId"].toInt();
         b->disconnectFromServer();
         QTRY_COMPARE_WITH_TIMEOUT(server->clientCount(), 1, 3000);
-        a->sendCommand(msg::endTurn);  // Bob is now automatic, so it is Ann's turn again on day 2
-        QTRY_COMPARE_WITH_TIMEOUT(a->view()["day"].toInt(), 2, 3000);
-        QCOMPARE(a->view()["currentPlayer"].toInt(), idA);
+        a->sendCommand(msg::endTurn);  // now Bob's turn, and he is away: no computer plays it
+        QTRY_COMPARE_WITH_TIMEOUT(a->view()["currentPlayer"].toInt(), idB, 3000);
+        QTest::qWait(300);
+        QCOMPARE(a->view()["currentPlayer"].toInt(), idB);
+        QCOMPARE(a->view()["day"].toInt(), 1);
+        bool away = false;
+        for (const QJsonValue& p : a->view()["players"].toArray())
+            if (p.toObject()["id"].toInt() == idB) away = p.toObject()["away"].toBool();
+        QVERIFY(away);  // shown as not connected
     }
 
     void aPlayerWhoLeftCanComeBack() {
@@ -326,12 +347,18 @@ private slots:
         b->disconnectFromServer();
         QTRY_COMPARE_WITH_TIMEOUT(server->clientCount(), 1, 3000);
 
-        auto b2 = connectClient("Bob again");
-        QSignalSpy offered(b2.get(), &LobbyClient::playerChoiceOffered);
-        QTRY_COMPARE_WITH_TIMEOUT(offered.count(), 1, 3000);
-        QCOMPARE(b2->freePlayers().size(), 1);
-        QCOMPARE(b2->freePlayers()[0].toObject()["id"].toInt(), idB);
-        b2->joinGame(idB);
+        // Someone else (another key) cannot take Bob's seat while he is away ...
+        auto stranger = connectClient("Not Bob");
+        QString strangerCode;
+        connect(stranger.get(), &LobbyClient::errorReceived, this, [&](const QString& c, const QString&, int) { strangerCode = c; });
+        QTRY_VERIFY_WITH_TIMEOUT(stranger->isConnected(), 3000);
+        QVERIFY(stranger->freePlayers().isEmpty());
+        stranger->joinGame(idB);
+        QTRY_COMPARE_WITH_TIMEOUT(strangerCode, QString("failed"), 3000);
+        stranger.reset();
+        QTRY_COMPARE_WITH_TIMEOUT(server->clientCount(), 1, 3000);
+        // ... Bob's client comes with his key and gets his seat back at once.
+        auto b2 = connectClient("Bob again", b->playerKey());
         QTRY_COMPARE_WITH_TIMEOUT(b2->you()["playerId"].toInt(), idB, 3000);
         QCOMPARE(b2->view()["you"].toInt(), idB);
 
@@ -379,21 +406,17 @@ private slots:
         }
 
         // A fresh server loads it; both players take their places again.
+        const QString keyA = a->playerKey(), keyB = b->playerKey();
         a.reset();
         b.reset();
         server.reset(new GameServer({"humans"}, {"simple", "passive"}));
         QVERIFY(server->start(0));
         server->setContent(&content);
         server->setSaveDir(saves.path());
-        auto a2 = connectClient("Ann");
-        auto b2 = connectClient("Bob");
+        auto a2 = connectClient("Ann", keyA);
+        auto b2 = connectClient("Bob", keyB);
         QTRY_COMPARE_WITH_TIMEOUT(b2->lobby().members.size(), 2, 3000);
-        QSignalSpy offeredB(b2.get(), &LobbyClient::playerChoiceOffered);
-        a2->loadGame("my-game_1");
-        QTRY_COMPARE_WITH_TIMEOUT(offeredB.count(), 1, 3000);
-        QCOMPARE(b2->freePlayers().size(), 2);
-        b2->joinGame(idB);
-        a2->joinGame(idA);
+        a2->loadGame("my-game_1");  // each gets his own seat back (by his key)
         QTRY_COMPARE_WITH_TIMEOUT(b2->you()["playerId"].toInt(), idB, 3000);
         QTRY_COMPARE_WITH_TIMEOUT(a2->you()["playerId"].toInt(), idA, 3000);
         QTRY_COMPARE_WITH_TIMEOUT(b2->view()["currentPlayer"].toInt(), idB, 3000);
@@ -435,6 +458,118 @@ private slots:
         kot::core::GameState loaded;
         QVERIFY(kot::core::GameState::loadFromFile(saves.filePath(names[1]), content, &loaded, nullptr));
         QCOMPARE(loaded.day(), 5);
+    }
+
+    void onlyTheHostReplacesASave() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a = connectClient("Ann");  // the host
+        auto b = connectClient("Bob");
+        startTwoPlayerGame(*a, *b);
+        QJsonObject info;
+        connect(a.get(), &LobbyClient::commandResult, this, [&](int, const QJsonObject& i) { info = i; });
+        QString codeB;
+        connect(b.get(), &LobbyClient::errorReceived, this, [&](const QString& c, const QString&, int) { codeB = c; });
+        b->saveGame("ours");  // a guest may save ...
+        QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(saves.filePath("ours.json")), 3000);
+        b->saveGame("ours");  // ... but not replace a save
+        QTRY_COMPARE_WITH_TIMEOUT(codeB, QString("save_exists"), 3000);
+        a->saveGame("ours");  // the host may
+        QTRY_COMPARE_WITH_TIMEOUT(info["name"].toString(), QString("ours"), 3000);
+    }
+
+    void aRestartedServerResumesTheGame() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        const auto [idA, idB] = startTwoPlayerGame(*a, *b);
+        a->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(b->view()["currentPlayer"].toInt(), idB, 3000);
+        b->saveGame("before-restart");
+        QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(saves.filePath("before-restart.json")), 3000);
+        const QString keyA = a->playerKey(), keyB = b->playerKey();
+        a.reset();
+        b.reset();
+        // The server goes down and comes back with --resume: the game waits for them.
+        server.reset(new GameServer({"humans"}, {"simple", "passive"}));
+        QVERIFY(server->start(0));
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        QString error;
+        QVERIFY2(server->resumeNewestSave(&error), qPrintable(error));
+        // Bob comes first (his turn); each gets his own seat back by his code.
+        auto b2 = connectClient("Bob", keyB);
+        QTRY_COMPARE_WITH_TIMEOUT(b2->you()["playerId"].toInt(), idB, 3000);
+        QCOMPARE(b2->view()["currentPlayer"].toInt(), idB);
+        b2->sendCommand(msg::endTurn);  // then nothing happens until Ann comes
+        QTRY_COMPARE_WITH_TIMEOUT(b2->view()["currentPlayer"].toInt(), idA, 3000);
+        auto a2 = connectClient("Ann", keyA);
+        QTRY_COMPARE_WITH_TIMEOUT(a2->you()["playerId"].toInt(), idA, 3000);
+        a2->sendCommand(msg::endTurn);
+        QTRY_COMPARE_WITH_TIMEOUT(b2->view()["day"].toInt(), 2, 3000);
+    }
+
+    void fullSaveSpaceRemovesTheOldestSaves() {
+        QTemporaryDir saves;
+        const auto oldFile = [&](const QString& name, int kb, int daysAgo) {
+            QFile f(saves.filePath(name));
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(QByteArray(kb * 1024, ' '));
+            f.close();
+            QVERIFY(f.open(QIODevice::ReadWrite));
+            QVERIFY(f.setFileTime(QDateTime::currentDateTime().addDays(-daysAgo), QFileDevice::FileModificationTime));
+        };
+        oldFile("oldest.json", 400, 3);
+        oldFile("older.json", 400, 2);
+        oldFile("campaign_x.json", 150, 5);  // campaign progress: never removed
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        server->setSaveLimitBytes(960 * 1024);  // 960 KB: 950 used, the save needs more
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        startTwoPlayerGame(*a, *b);
+        QJsonObject info;
+        connect(a.get(), &LobbyClient::commandResult, this, [&](int, const QJsonObject& i) { info = i; });
+        a->saveGame("mine");
+        QTRY_COMPARE_WITH_TIMEOUT(info["name"].toString(), QString("mine"), 3000);
+        QVERIFY(QFile::exists(saves.filePath("mine.json")));
+        QVERIFY(!QFile::exists(saves.filePath("oldest.json")));  // made room
+        QVERIFY(QFile::exists(saves.filePath("campaign_x.json")));
+        qint64 used = 0;
+        for (const QFileInfo& f : QDir(saves.path()).entryInfoList(QDir::Files)) used += f.size();
+        QVERIFY(used <= 960 * 1024);
+        QVERIFY(QFile::exists(saves.filePath("older.json")));  // only as much as needed went
+        // A save bigger than the whole space is refused.
+        server->setSaveLimitBytes(1024);
+        QString code;
+        connect(a.get(), &LobbyClient::errorReceived, this, [&](const QString& c, const QString&, int) { code = c; });
+        a->saveGame("too-big");
+        QTRY_COMPARE_WITH_TIMEOUT(code, QString("failed"), 3000);
+        QVERIFY(!QFile::exists(saves.filePath("too-big.json")));
+    }
+
+    void serverConfigFile() {
+        QTemporaryDir dir;
+        const auto write = [&](const QByteArray& json) {
+            QFile f(dir.filePath("server.json"));
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(json);
+        };
+        write(R"({"port": 4000, "saves": "/tmp/x", "savesMaxMB": 250})");
+        kot::server::ServerConfig c;
+        QStringList errors;
+        QVERIFY2(c.load(dir.filePath("server.json"), true, &errors), qPrintable(errors.join("; ")));
+        QCOMPARE(c.port, 4000);
+        QCOMPARE(c.saveDir, QString("/tmp/x"));
+        QCOMPARE(c.savesMaxMB, 250);
+        QVERIFY(c.dataDir.isEmpty());
+        write(R"({"port": 4000, "savesMax": 250})");  // unknown field
+        QVERIFY(!kot::server::ServerConfig().load(dir.filePath("server.json"), true, &errors));
+        QVERIFY(!kot::server::ServerConfig().load(dir.filePath("missing.json"), true, &errors));
+        QVERIFY(kot::server::ServerConfig().load(dir.filePath("missing.json"), false, &errors));  // the default path need not exist
     }
 
     void campaignChaptersAreSavedWhenTheyStart() {

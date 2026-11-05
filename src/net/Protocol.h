@@ -5,10 +5,14 @@
 
 namespace kot::net {
 
-inline constexpr int kProtocolVersion = 1;
+inline constexpr int kProtocolVersion = 2;  // 2: compressed frames
 inline constexpr quint16 kDefaultPort = 45454;
 // A frame is a 4-byte big-endian length followed by that many bytes of UTF-8 JSON.
 inline constexpr quint32 kMaxFrameBytes = 16 * 1024 * 1024;
+// Frames whose JSON is at least this big are sent zlib-compressed; the top bit of the
+// frame length marks them (docs/protocol.md).
+inline constexpr int kCompressFromBytes = 1024;
+inline constexpr quint32 kCompressedFlag = 0x80000000u;
 
 // Message types (the "type" field of every message). See docs/protocol.md.
 namespace msg {

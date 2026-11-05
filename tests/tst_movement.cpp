@@ -4,6 +4,8 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Movement.h"
@@ -18,7 +20,7 @@ class TstMovement : public QObject {
     PlayerId p1, p2;
 
     HeroId makeHero(PlayerId owner, Pos pos) {
-        return createHero(gs, reg, owner, "H", "knight", pos);
+        return createHero(gs, reg, owner, "H", C("knight"), pos);
     }
     Army& armyOf(HeroId id) { return *gs.army(gs.hero(id)->army); }
 
@@ -26,13 +28,14 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void init() {
         gs = GameState(1);
-        gs.setMap(GameMap(10, 10, "grass"));
-        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, "humans", "#ff0000");
-        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, "humans", "#0000ff");
+        gs.setMap(GameMap(10, 10, T("grass")));
+        p1 = gs.addPlayer("A", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Human, RC("humans"), "#0000ff");
     }
 
     // ---- daily movement points
@@ -45,18 +48,18 @@ private slots:
     void slowUnitsLowerMovementALittle() {
         const HeroId h = makeHero(p1, {0, 0});
         Army& a = armyOf(h);
-        a.addUnits("armoured_eagle", 2, 45);
+        a.addUnits(U("armoured_eagle"), 2, 45);
         QCOMPARE(armyMovementPoints(a, gs.hero(h), reg), 1100);  // mapSpeed 10: no penalty
-        a.addUnits("militia", 5, 6);                              // mapSpeed 4: -100
+        a.addUnits(U("militia"), 5, 6);                              // mapSpeed 4: -100
         QCOMPARE(armyMovementPoints(a, gs.hero(h), reg), 1000);
-        a.addUnits("battle_snail", 1, 30);                        // mapSpeed 1: -300
+        a.addUnits(U("battle_snail"), 1, 30);                        // mapSpeed 1: -300
         QCOMPARE(armyMovementPoints(a, gs.hero(h), reg), 800);
     }
 
     void eliminatedStacksDoNotSlowTheArmy() {
         const HeroId h = makeHero(p1, {0, 0});
         Army& a = armyOf(h);
-        a.addUnits("battle_snail", 1, 30);
+        a.addUnits(U("battle_snail"), 1, 30);
         a.stacks[0].applyDamage(1000);
         QCOMPARE(armyMovementPoints(a, gs.hero(h), reg), 1100);
     }
@@ -64,7 +67,7 @@ private slots:
     void movementTraitPickGivesMorePoints() {
         const HeroId h = makeHero(p1, {0, 0});
         addExperience(*gs.hero(h), reg, 1000);
-        QVERIFY(pickTrait(*gs.hero(h), reg, "movement_points"));
+        QVERIFY(pickTrait(*gs.hero(h), reg, TR("movement_points")));
         QCOMPARE(armyMovementPoints(armyOf(h), gs.hero(h), reg), 1200);
     }
 
@@ -92,7 +95,7 @@ private slots:
         QStringList errors;
         QVERIFY2(strict.loadFromDirectory(tmp.path(), &errors), qPrintable(errors.join("\n")));
         const HeroId h = makeHero(p1, {0, 0});
-        armyOf(h).addUnits("battle_snail", 1, 30);  // 1100 - 300 = 800 < 950
+        armyOf(h).addUnits(U("battle_snail"), 1, 30);  // 1100 - 300 = 800 < 950
         QCOMPARE(armyMovementPoints(armyOf(h), gs.hero(h), strict), 950);
     }
 
@@ -119,7 +122,7 @@ private slots:
     }
 
     void moveStopsWhenOutOfMovementAndContinuesNextDay() {
-        gs.setMap(GameMap(20, 10, "grass"));
+        gs.setMap(GameMap(20, 10, T("grass")));
         const HeroId h = makeHero(p1, {0, 0});  // 1100 movement points
         MoveResult r = moveHero(gs, reg, h, {15, 0});  // needs 1500
         QVERIFY(r.ok);
@@ -142,13 +145,13 @@ private slots:
     }
 
     void unfinishedMoveRemembersTheDestination() {
-        gs.setMap(GameMap(20, 10, "grass"));
+        gs.setMap(GameMap(20, 10, T("grass")));
         const HeroId h = makeHero(p1, {0, 0});
         QVERIFY(moveHero(gs, reg, h, {15, 0}).ok);
         QCOMPARE(gs.hero(h)->destination, std::optional<Pos>(Pos{15, 0}));
         GameState loaded;
         QStringList errors;
-        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
         QCOMPARE(loaded.hero(h)->destination, std::optional<Pos>(Pos{15, 0}));
         refreshHeroMovement(gs, reg, p1);
         QVERIFY(moveHero(gs, reg, h, {15, 0}).arrived);
@@ -157,12 +160,12 @@ private slots:
 
     // ---- zone of control and scouting
     void monstersAttackAHeroWhoComesTooClose() {
-        gs.setMap(GameMap(20, 3, "grass"));  // a corridor: no way around them
+        gs.setMap(GameMap(20, 3, T("grass")));  // a corridor: no way around them
         const HeroId h = makeHero(p1, {0, 0});
-        gs.hero(h)->traits["scouting_radius"] = 12;  // sees the monsters from the start
-        armyOf(h).addUnits("pikeman", 40, 10);
+        gs.hero(h)->traits[TR("scouting_radius")] = 12;  // sees the monsters from the start
+        armyOf(h).addUnits(U("pikeman"), 40, 10);
         const ArmyId m = gs.addArmy(PlayerId(), {8, 2});
-        gs.army(m)->addUnits("militia", 2, 6);
+        gs.army(m)->addUnits(U("militia"), 2, 6);
         QCOMPARE(zoneOfControlRadius(*gs.hero(h), reg), 2);
         const MoveResult r = moveHero(gs, reg, h, {12, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
@@ -175,11 +178,11 @@ private slots:
     }
 
     void aHeroStopsWhenAnUnseenEnemyComesIntoSight() {
-        gs.setMap(GameMap(30, 3, "grass"));  // a corridor
+        gs.setMap(GameMap(30, 3, T("grass")));  // a corridor
         const HeroId h = makeHero(p1, {0, 0});  // sees 5 tiles
-        armyOf(h).addUnits("pikeman", 40, 10);
+        armyOf(h).addUnits(U("pikeman"), 40, 10);
         const ArmyId m = gs.addArmy(PlayerId(), {12, 2});  // out of sight at the start
-        gs.army(m)->addUnits("militia", 2, 6);
+        gs.army(m)->addUnits(U("militia"), 2, 6);
         MoveResult r = moveHero(gs, reg, h, {20, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
         QVERIFY(r.spotted);
@@ -193,12 +196,12 @@ private slots:
     }
 
     void theWayGoesAroundVisibleEnemies() {
-        gs.setMap(GameMap(20, 12, "grass"));
+        gs.setMap(GameMap(20, 12, T("grass")));
         const HeroId h = makeHero(p1, {0, 5});
-        gs.hero(h)->traits["scouting_radius"] = 20;  // sees them from the start
-        armyOf(h).addUnits("pikeman", 10, 10);
+        gs.hero(h)->traits[TR("scouting_radius")] = 20;  // sees them from the start
+        armyOf(h).addUnits(U("pikeman"), 10, 10);
         const ArmyId m = gs.addArmy(PlayerId(), {8, 5});
-        gs.army(m)->addUnits("troll", 20, 45);
+        gs.army(m)->addUnits(U("troll"), 20, 45);
         refreshHeroMovement(gs, reg, p1);
         gs.hero(h)->movementPoints = 5000;
         const MoveResult r = moveHero(gs, reg, h, {16, 5});
@@ -212,7 +215,7 @@ private slots:
     void walkingAwayFromAnArmyAlreadyInReachIsFree() {
         const HeroId h = makeHero(p1, {1, 1});
         const ArmyId m = gs.addArmy(PlayerId(), {2, 2});
-        gs.army(m)->addUnits("militia", 2, 6);
+        gs.army(m)->addUnits(U("militia"), 2, 6);
         const MoveResult r = moveHero(gs, reg, h, {6, 1});
         QVERIFY(r.ok);
         QVERIFY(!r.ambushed);
@@ -220,18 +223,18 @@ private slots:
     }
 
     void scoutingShrinksTheZoneAndAddsVisionAndMovement() {
-        gs.setMap(GameMap(20, 10, "grass"));
+        gs.setMap(GameMap(20, 10, T("grass")));
         const HeroId h = makeHero(p1, {0, 0});
         const int before = armyMovementPoints(armyOf(h), gs.hero(h), reg);
-        gs.hero(h)->traits["scouting"] = 2;
+        gs.hero(h)->traits[TR("scouting")] = 2;
         QCOMPARE(zoneOfControlRadius(*gs.hero(h), reg), 1);
         QCOMPARE(armyMovementPoints(armyOf(h), gs.hero(h), reg), before + before * 10 / 100);
-        gs.hero(h)->traits["scouting"] = 20;
+        gs.hero(h)->traits[TR("scouting")] = 20;
         QCOMPARE(zoneOfControlRadius(*gs.hero(h), reg), 1);  // never below the minimum
-        gs.hero(h)->traits["scouting"] = 2;
+        gs.hero(h)->traits[TR("scouting")] = 2;
         // Two tiles from the monsters is fine now, one is not.
         const ArmyId m = gs.addArmy(PlayerId(), {8, 2});
-        gs.army(m)->addUnits("militia", 2, 6);
+        gs.army(m)->addUnits(U("militia"), 2, 6);
         MoveResult r = moveHero(gs, reg, h, {6, 0});
         QVERIFY(r.arrived && !r.ambushed);
         r = moveHero(gs, reg, h, {7, 0});
@@ -248,7 +251,7 @@ private slots:
 
     void cannotWalkThroughObjects() {
         const HeroId h = makeHero(p1, {0, 0});
-        gs.addMine("gold", 1000, {5, 0});
+        gs.addMine(R("gold"), 1000, {5, 0});
         // Walking past the mine goes around it (4 straight + 2 diagonal = 682).
         const MoveResult r = moveHero(gs, reg, h, {6, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
@@ -259,7 +262,7 @@ private slots:
 
     void visitingNeutralMineCapturesIt() {
         const HeroId h = makeHero(p1, {0, 0});
-        const MineId mine = gs.addMine("gold", 1000, {3, 0});
+        const MineId mine = gs.addMine(R("gold"), 1000, {3, 0});
         const MoveResult r = moveHero(gs, reg, h, {3, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
         QVERIFY(r.arrived);
@@ -270,16 +273,16 @@ private slots:
 
     void enemyMineIsTakenOver() {
         const HeroId h = makeHero(p1, {0, 0});
-        const MineId mine = gs.addMine("wood", 2, {2, 0}, p2);
+        const MineId mine = gs.addMine(R("wood"), 2, {2, 0}, p2);
         QCOMPARE(moveHero(gs, reg, h, {2, 0}).capturedMine, mine);
         QCOMPARE(gs.mine(mine)->owner, p1);
     }
 
     void ownAndTeammatesMinesAreJustVisited() {
-        const PlayerId ally = gs.addPlayer("C", gs.player(p1)->team, Player::Controller::Ai, "humans", "#00ff00");
+        const PlayerId ally = gs.addPlayer("C", gs.player(p1)->team, Player::Controller::Ai, RC("humans"), "#00ff00");
         const HeroId h = makeHero(p1, {0, 0});
-        const MineId own = gs.addMine("gold", 1000, {2, 0}, p1);
-        const MineId friendly = gs.addMine("gold", 1000, {2, 2}, ally);
+        const MineId own = gs.addMine(R("gold"), 1000, {2, 0}, p1);
+        const MineId friendly = gs.addMine(R("gold"), 1000, {2, 2}, ally);
         QVERIFY(!moveHero(gs, reg, h, {2, 0}).capturedMine.isValid());
         QVERIFY(!moveHero(gs, reg, h, {2, 2}).capturedMine.isValid());
         QCOMPARE(gs.mine(own)->owner, p1);
@@ -287,9 +290,9 @@ private slots:
     }
 
     void partialMoveDoesNotCapture() {
-        gs.setMap(GameMap(30, 3, "grass"));
+        gs.setMap(GameMap(30, 3, T("grass")));
         const HeroId h = makeHero(p1, {0, 0});
-        const MineId mine = gs.addMine("gold", 1000, {20, 0});  // 2000 away, 1100 points
+        const MineId mine = gs.addMine(R("gold"), 1000, {20, 0});  // 2000 away, 1100 points
         const MoveResult r = moveHero(gs, reg, h, {20, 0});
         QVERIFY(r.ok);
         QVERIFY(!r.arrived);
@@ -298,7 +301,7 @@ private slots:
 
     void emptyNeutralTownIsCaptured() {
         const HeroId h = makeHero(p1, {0, 0});
-        const TownId town = gs.addTown("Hamlet", "humans", {2, 0});
+        const TownId town = gs.addTown("Hamlet", RC("humans"), {2, 0});
         const MoveResult r = moveHero(gs, reg, h, {2, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
         QCOMPARE(r.capturedTown, town);
@@ -308,8 +311,8 @@ private slots:
 
     void defendedEnemyTownNeedsUnitsToAttack() {
         const HeroId h = makeHero(p1, {0, 0});  // no units
-        const TownId town = gs.addTown("Fort", "humans", {2, 0}, p2);
-        gs.army(gs.town(town)->garrison)->addUnits("pikeman", 5, 10);
+        const TownId town = gs.addTown("Fort", RC("humans"), {2, 0}, p2);
+        gs.army(gs.town(town)->garrison)->addUnits(U("pikeman"), 5, 10);
         const MoveResult r = moveHero(gs, reg, h, {2, 0});
         QVERIFY(!r.ok);
         QVERIFY(r.error.contains("no units"));
@@ -319,8 +322,8 @@ private slots:
 
     void ownTownWithGarrisonCanBeEntered() {
         const HeroId h = makeHero(p1, {0, 0});
-        const TownId town = gs.addTown("Home", "humans", {2, 0}, p1);
-        gs.army(gs.town(town)->garrison)->addUnits("pikeman", 5, 10);
+        const TownId town = gs.addTown("Home", RC("humans"), {2, 0}, p1);
+        gs.army(gs.town(town)->garrison)->addUnits(U("pikeman"), 5, 10);
         const MoveResult r = moveHero(gs, reg, h, {2, 0});
         QVERIFY2(r.ok, qPrintable(r.error));
         QVERIFY(r.arrived);
@@ -328,7 +331,7 @@ private slots:
     }
 
     void onlyOneHeroPerTown() {
-        const TownId town = gs.addTown("Home", "humans", {2, 1}, p1);
+        const TownId town = gs.addTown("Home", RC("humans"), {2, 1}, p1);
         Q_UNUSED(town);
         makeHero(p1, {2, 1});                 // already in the town
         const HeroId second = makeHero(p1, {0, 1});
@@ -339,7 +342,7 @@ private slots:
     }
 
     void movingRevealsMap() {
-        gs.setMap(GameMap(30, 10, "grass"));
+        gs.setMap(GameMap(30, 10, T("grass")));
         const HeroId h = makeHero(p1, {2, 5});
         const TeamId team = gs.player(p1)->team;
         QVERIFY(gs.exploredMap(team).isEmpty() || gs.exploredMap(team)[0] == 0);
@@ -358,7 +361,7 @@ private slots:
     }
 
     void noPathAcrossWaterOnFoot() {
-        for (int y = 0; y < 10; ++y) gs.map().setTerrain({5, y}, "sea");
+        for (int y = 0; y < 10; ++y) gs.map().setTerrain({5, y}, T("sea"));
         const HeroId h = makeHero(p1, {0, 0});
         const MoveResult r = moveHero(gs, reg, h, {8, 0});
         QVERIFY(!r.ok);
@@ -367,7 +370,7 @@ private slots:
 
     void boatModeSailsOnWater() {
         for (int y = 0; y < 10; ++y)
-            for (int x = 2; x < 8; ++x) gs.map().setTerrain({x, y}, "sea");
+            for (int x = 2; x < 8; ++x) gs.map().setTerrain({x, y}, T("sea"));
         const HeroId h = makeHero(p1, {3, 3});
         MoveResult r = moveHero(gs, reg, h, {7, 3}, MoveMode::Boat);
         QVERIFY2(r.ok, qPrintable(r.error));

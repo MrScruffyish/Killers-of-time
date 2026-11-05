@@ -4,6 +4,8 @@
 #include <QColor>
 #include <QList>
 #include <QHash>
+#include <QPixmap>
+#include <QSet>
 #include <QElapsedTimer>
 #include <QPointF>
 #include <optional>
@@ -67,10 +69,15 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void paintGround(QPainter& p);   // terrain, edges, coasts, trees and fog (cached)
+    void paintObjects(QPainter& p);  // everything on top: towns, armies, heroes, routes, banner
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void leaveEvent(QEvent* event) override;
@@ -89,9 +96,32 @@ private:
 
     const core::ContentRegistry* m_content;
     GameView m_view;
-    QList<QColor> m_paletteColors;
+    QStringList m_terrainKeys;      // per terrain id
     int m_selectedHero = 0;
     int m_tile = 48;  // one of art::kZoomSteps
+    // The ground (terrain, edges, coasts, trees, shade) is painted in square chunks of the
+    // map, kept until their part of the map changes, the zoom or the grid: scrolling only
+    // puts chunks on the screen (paintEvent, setView).
+    static constexpr int kChunk = 256;  // pixels (logical)
+    QHash<quint32, QPixmap> m_chunks;   // key: chunk y << 16 | x
+    QList<quint32> m_chunkUse;          // least recently used first (at most kMaxChunks kept)
+    QPixmap m_screenGround;             // fog + chunks for the current scroll (walking heroes only redraw what is on top)
+    QString m_screenKey;
+    int m_groundVersion = 0;            // +1 when chunks were dropped
+    // Arrow keys held: the map glides (faster the longer they are held), not a tile per key repeat.
+    class QTimer* m_keyScroll;
+    QElapsedTimer m_keyClock, m_keyHeld;
+    int m_keyDirections = 0;  // bits: 1 left, 2 right, 4 up, 8 down
+    QPointF m_keyRest;        // the part of a pixel not scrolled yet
+    class QTimer* m_prefetch;           // paints the chunks around the screen when idle
+    void prefetchChunk();
+    QString m_chunkKey;                 // zoom, grid, pixel ratio of the chunks
+    std::optional<QRect> m_groundArea;  // while a chunk is painted: its part of the map (map pixels)
+    void dropChunksAround(const QSet<core::Pos>& tiles);
+    const QPixmap& chunk(int cx, int cy, qreal dpr);
+    QPoint mapOrigin() const;  // the map pixel at the paint area's top left
+    QSize paintSize() const;
+    void paintFog(QPainter& p);
     QPoint m_pressPos;
     MovePlanner m_planner;
     MovePlan m_plan;       // under the mouse

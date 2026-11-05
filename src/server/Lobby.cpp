@@ -276,6 +276,10 @@ LobbyResult Lobby::setSettings(int actorId, const QJsonObject& patch) {
             if (!v.isDouble() || v.toInt() < 0 || v.toInt() > 100)
                 return LobbyResult::failure("invalid_value", "autosaves: 0 to 100");
             s.autosaves = v.toInt();
+        } else if (key == "defeat") {
+            if (!v.isString() || !QStringList{"week", "town", "all"}.contains(v.toString()))
+                return LobbyResult::failure("invalid_value", "defeat: week, town or all");
+            s.defeat = v.toString();
         } else if (key == "difficulty") {
             static const QStringList levels = {"easy", "normal", "hard", "expert"};
             if (!v.isString() || !levels.contains(v.toString()))

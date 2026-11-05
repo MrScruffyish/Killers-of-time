@@ -21,18 +21,18 @@ int effectStrength(const SpellEffect& effect, int spellPower);
 // Why `hero` cannot cast `spellId` now in `scope` (empty = he can). Checks the
 // spellbook, the scope, the Magic level and the spell points (`spellPoints`, so a
 // battle can pass its own running count).
-QString whyCannotCast(const Hero& hero, const ContentRegistry& content, const QString& spellId,
+QString whyCannotCast(const Hero& hero, const ContentRegistry& content, SpellId spellId,
                       SpellDef::Scope scope, int spellPoints);
 
 // Casts an adventure-map spell (movement, reveal). Costs the spell points.
 ActionResult castAdventureSpell(GameState& state, const ContentRegistry& content, HeroId hero,
-                                const QString& spellId);
+                                SpellId spellId);
 
 // The best mage guild level of a town (0 = none).
 int mageGuildLevel(const Town& town, const ContentRegistry& content);
 
 // A hero standing in a town of his team that has a mage guild learns every spell
 // up to the guild's level, of the schools the town's race teaches. Returns the spells learned.
-QStringList learnSpellsInTown(GameState& state, const ContentRegistry& content, HeroId hero);
+QList<SpellId> learnSpellsInTown(GameState& state, const ContentRegistry& content, HeroId hero);
 
 }  // namespace kot::core

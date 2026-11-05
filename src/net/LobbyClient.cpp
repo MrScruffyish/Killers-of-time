@@ -1,6 +1,7 @@
 #include "net/LobbyClient.h"
 
 #include <QJsonArray>
+#include <QRandomGenerator>
 
 #include "net/Protocol.h"
 
@@ -17,6 +18,12 @@ bool LobbyClient::isHost() const {
     return false;
 }
 
+QString LobbyClient::newPlayerKey() {
+    QByteArray bytes(16, '\0');
+    QRandomGenerator::system()->fillRange(reinterpret_cast<quint32*>(bytes.data()), 4);  // not guessable
+    return QString::fromLatin1(bytes.toHex());
+}
+
 void LobbyClient::connectToServer(const QString& host, quint16 port, const QString& playerName) {
     disconnectFromServer();
     m_name = playerName;
@@ -30,6 +37,8 @@ void LobbyClient::connectToServer(const QString& host, quint16 port, const QStri
         hello.seq = m_nextSeq++;
         hello.body.insert("protocol", kProtocolVersion);
         hello.body.insert("name", m_name);
+        hello.body.insert("content", m_contentChecksum);
+        hello.body.insert("playerKey", m_playerKey);
         m_connection->send(hello);
     });
     connect(m_connection, &Connection::messageReceived, this, &LobbyClient::onMessage);

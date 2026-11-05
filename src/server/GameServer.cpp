@@ -1,11 +1,14 @@
 #include "server/GameServer.h"
 
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QRegularExpression>
+#include <QSaveFile>
 #include <algorithm>
 
 #include "core/Version.h"
@@ -178,6 +181,15 @@ void GameServer::handleHello(Client& client, const Message& message) {
         client.connection->close();
         return;
     }
+    // Game messages carry content ids as numbers: the client needs the same game data.
+    if (m_content && message.body.value("content").toString() != m_content->checksum()) {
+        sendError(client, "content_mismatch",
+                  QStringLiteral("the server has other game data (content %1, yours %2): use the same game version and data")
+                      .arg(m_content->checksum(), message.body.value("content").toString()),
+                  message.seq);
+        client.connection->close();
+        return;
+    }
     QString name = message.body.value("name").toString().trimmed();
     if (name.isEmpty()) name = QStringLiteral("Player %1").arg(client.id);
     name = name.left(24);
@@ -194,10 +206,27 @@ void GameServer::handleHello(Client& client, const Message& message) {
     welcome.body.insert("aiProfiles", QJsonArray::fromStringList(m_aiProfiles));
     welcome.body.insert("scenarios", m_scenarios);
     welcome.body.insert("campaigns", campaignsJson());
-    if (m_session && m_session->active()) welcome.body.insert("freePlayers", freePlayersJson());
+    // Coming back to a running game: the seats whose secret codes his client kept are
+    // his again (games played at different times); else he chooses a free one.
+    QList<core::PlayerId> own;
+    // Only the hash of his key is kept (with his seats, in the game and its saves).
+    const QString key = message.body.value("playerKey").toString();
+    client.keyHash = key.isEmpty() ? QString()
+                                   : QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha256).toHex());
+    if (m_session && m_session->active()) {
+        own = m_session->seatsFor(client.keyHash, true);
+        if (own.isEmpty()) welcome.body.insert("freePlayers", freePlayersJson(client));
+    }
     client.connection->send(welcome);
     broadcastLobby();
     emit clientCountChanged(clientCount());
+    if (!own.isEmpty()) {
+        QString error;
+        for (const core::PlayerId p : own)
+            if (m_session->joinPlayer(client.id, p, client.keyHash, &error)) qCInfo(lcKotServer) << name << "is back as player" << p.value();
+        sendGameStarted(client);
+        sendGameStates();
+    }
 }
 
 void GameServer::handleLobbyMessage(Client& client, const Message& message) {
@@ -283,7 +312,9 @@ void GameServer::startGame() {
     }
     if (m_session) {
         for (Client& c : m_clients) {
-            if (c.greeted && m_session->playerOfClient(c.id).isValid()) sendGameStarted(c);
+            if (!c.greeted || !m_session->playerOfClient(c.id).isValid()) continue;
+            m_session->bindSeats(c.id, c.keyHash);  // his seats are his from now on
+            sendGameStarted(c);
         }
         m_lastAutosaveDay = m_session->state().day();  // day 1 is the start itself
         m_gameStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
@@ -303,7 +334,7 @@ void GameServer::autosave() {
     if (m_gameStamp.isEmpty()) m_gameStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
     const QString name = QStringLiteral("autosave_%1_day%2").arg(m_gameStamp).arg(day, 4, 10, QLatin1Char('0'));
     const QString path = savePath(name, &error);
-    if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) {
+    if (path.isEmpty() || !writeSave(path, &error)) {
         qCWarning(lcKotServer) << "Autosave failed:" << error;
         return;
     }
@@ -321,7 +352,100 @@ void GameServer::saveCampaignStart() {
     QString error;
     const QString name = QStringLiteral("campaign_%1_chapter%2_start").arg(m_session->campaignId()).arg(m_session->campaignChapter() + 1);
     const QString path = savePath(name.left(40), &error);
-    if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) qCWarning(lcKotServer) << "Campaign save failed:" << error;
+    if (path.isEmpty() || !writeSave(path, &error)) qCWarning(lcKotServer) << "Campaign save failed:" << error;
+}
+
+bool GameServer::loadSaveFile(const QString& path, QString* error) {
+    core::GameState state;
+    QStringList errors;
+    if (!m_content || !core::GameState::loadFromFile(path, *m_content, &state, &errors)) {
+        if (error) *error = QStringLiteral("this saved game cannot be loaded: ") + errors.join("; ");
+        return false;
+    }
+    m_session = std::make_unique<GameSession>(*m_content);
+    m_session->startFromState(std::move(state));
+    m_lastAutosaveDay = m_session->state().day();
+    m_gameStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
+    qCInfo(lcKotServer) << "Loaded the game" << path;
+    // Who has a code for a seat gets it back; the others choose a free one.
+    QList<int> back;
+    for (Client& c : m_clients) {
+        if (!c.greeted) continue;
+        QString why;
+        for (const core::PlayerId p : m_session->seatsFor(c.keyHash, true))
+            if (m_session->joinPlayer(c.id, p, c.keyHash, &why)) back << c.id;
+    }
+    for (Client& c : m_clients) {
+        if (!c.greeted) continue;
+        if (back.contains(c.id)) {
+            sendGameStarted(c);
+            continue;
+        }
+        Message loaded;
+        loaded.type = net::msg::gameLoaded;
+        loaded.body.insert("freePlayers", freePlayersJson(c));
+        c.connection->send(loaded);
+    }
+    if (!back.isEmpty()) sendGameStates();
+    return true;
+}
+
+bool GameServer::resumeNewestSave(QString* error) {
+    if (m_saveDir.isEmpty()) {
+        if (error) *error = QStringLiteral("no save folder");
+        return false;
+    }
+    for (const QFileInfo& f : QDir(m_saveDir).entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Time)) {
+        if (f.completeBaseName().startsWith("campaign_") && !f.completeBaseName().contains("_chapter")) continue;  // progress
+        QString why;
+        if (loadSaveFile(f.filePath(), &why)) return true;
+        qCWarning(lcKotServer) << "Cannot resume" << f.fileName() << why;
+    }
+    if (error) *error = QStringLiteral("no saved game here loads");
+    return false;
+}
+
+bool GameServer::writeSave(const QString& path, QString* error) {
+    const QByteArray bytes = m_session->state().saveBytes(*m_content);
+    if (m_saveLimitBytes > 0) {
+        if (bytes.size() > m_saveLimitBytes) {
+            if (error) *error = QStringLiteral("the save (%1 KB) is bigger than the server's whole save space (%2 KB)")
+                                    .arg(bytes.size() / 1024).arg(m_saveLimitBytes / 1024);
+            return false;
+        }
+        // Everything in the save folder counts (generated maps too); only saved games
+        // are removed, oldest first.
+        qint64 used = 0;
+        QFileInfoList games;
+        for (QDirIterator it(m_saveDir, QDir::Files, QDirIterator::Subdirectories); it.hasNext();) {
+            const QFileInfo f(it.next());
+            if (f.absoluteFilePath() == QFileInfo(path).absoluteFilePath()) continue;  // replaced by the new one
+            used += f.size();
+            const bool progress = f.completeBaseName().startsWith("campaign_") && !f.completeBaseName().contains("_chapter");
+            if (f.absolutePath() == QDir(m_saveDir).absolutePath() && f.suffix() == QLatin1String("json") && !progress) games << f;
+        }
+        std::sort(games.begin(), games.end(), [](const QFileInfo& a, const QFileInfo& b) {
+            if (a.lastModified() != b.lastModified()) return a.lastModified() < b.lastModified();
+            return a.fileName() < b.fileName();
+        });
+        while (used + bytes.size() > m_saveLimitBytes && !games.isEmpty()) {
+            const QFileInfo oldest = games.takeFirst();
+            if (QFile::remove(oldest.filePath())) {
+                used -= oldest.size();
+                qCInfo(lcKotServer) << "Save space full: removed the oldest save" << oldest.fileName();
+            }
+        }
+        if (used + bytes.size() > m_saveLimitBytes) {
+            if (error) *error = QStringLiteral("the server's save space is full (%1 of %2 KB)").arg(used / 1024).arg(m_saveLimitBytes / 1024);
+            return false;
+        }
+    }
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
+        if (error) *error = file.errorString();
+        return false;
+    }
+    return true;
 }
 
 void GameServer::sendGameStates() {
@@ -353,10 +477,10 @@ void GameServer::reply(Client& client, const Message& request, const QJsonObject
     client.connection->send(m);
 }
 
-QJsonArray GameServer::freePlayersJson() const {
+QJsonArray GameServer::freePlayersJson(const Client& client) const {
     QJsonArray list;
     if (!m_session) return list;
-    for (const core::PlayerId p : m_session->freePlayers()) {
+    for (const core::PlayerId p : m_session->seatsFor(client.keyHash, false)) {
         const core::Player* player = m_session->state().player(p);
         list.append(QJsonObject{{"id", static_cast<int>(p.value())}, {"name", player ? player->name : QString()}});
     }
@@ -425,7 +549,7 @@ void GameServer::generateContent(Client& client, const Message& message) {
             !core::saveScenario(QDir(scenarioDir).filePath(id + ".json"), id, b.value("name").toString(id),
                                 b.value("description").toString(QStringLiteral("A random map, %1x%2, %3 players.")
                                                                     .arg(p.width).arg(p.height).arg(p.races.size())),
-                                gs, &error)) {
+                                gs, *m_content, &error)) {
             sendError(client, "failed", error.isEmpty() ? QStringLiteral("cannot write the scenario") : error, message.seq);
             return;
         }
@@ -454,7 +578,14 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
         }
         const QString name = message.body.value("name").toString();
         const QString path = savePath(name, &error);
-        if (path.isEmpty() || !m_session->state().saveToFile(path, &error)) {
+        // Any player may save (with players coming at different times the host may be
+        // away; the save space limit keeps the disk safe), but only the host may replace
+        // an existing save.
+        if (!path.isEmpty() && QFile::exists(path) && m_lobby.hostId() != client.id) {
+            sendError(client, "save_exists", QStringLiteral("there is already a save called '%1'; only the host can replace it").arg(name), message.seq);
+            return true;
+        }
+        if (path.isEmpty() || !writeSave(path, &error)) {
             sendError(client, "failed", error, message.seq);
             return true;
         }
@@ -473,7 +604,7 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
                 names << f.completeBaseName();
                 if (!m_content) continue;
                 const core::SaveInfo s = core::inspectSave(f.filePath(), *m_content);
-                static const char* status[] = {"ok", "converted", "incompatible"};
+                static const char* status[] = {"ok", "incompatible"};
                 games.append(QJsonObject{{"name", s.name}, {"gameVersion", s.gameVersion}, {"savedAt", s.savedAt},
                                          {"formatVersion", s.formatVersion}, {"day", s.day},
                                          {"players", QJsonArray::fromStringList(s.players)},
@@ -511,26 +642,11 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
             return true;
         }
         const QString path = savePath(message.body.value("name").toString(), &error);
-        core::GameState state;
-        QStringList errors, notes;
-        if (path.isEmpty() || !core::GameState::loadFromFile(path, *m_content, &state, &errors, &notes)) {
-            sendError(client, "incompatible_save",
-                      path.isEmpty() ? error : QStringLiteral("this saved game cannot be loaded: ") + errors.join("; "), message.seq);
+        if (path.isEmpty() || !loadSaveFile(path, &error)) {
+            sendError(client, "incompatible_save", error, message.seq);
             return true;
         }
-        if (!notes.isEmpty()) qCInfo(lcKotServer) << "Converted" << path << notes;
-        m_session = std::make_unique<GameSession>(*m_content);
-        m_session->startFromState(std::move(state));
-        m_lastAutosaveDay = m_session->state().day();
-        m_gameStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
-        qCInfo(lcKotServer) << "Loaded the game" << path;
-        reply(client, message, {{"name", message.body.value("name").toString()}, {"converted", QJsonArray::fromStringList(notes)}});
-        Message loaded;
-        loaded.type = net::msg::gameLoaded;
-        loaded.body.insert("freePlayers", freePlayersJson());
-        for (Client& c : m_clients) {
-            if (c.greeted) c.connection->send(loaded);
-        }
+        reply(client, message, {{"name", message.body.value("name").toString()}});
         return true;
     }
     if (message.type == net::msg::joinGame) {
@@ -539,7 +655,7 @@ bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {
             return true;
         }
         const core::PlayerId player(static_cast<quint32>(message.body.value("player").toInt()));
-        if (!m_session->joinPlayer(client.id, player, &error)) {
+        if (!m_session->joinPlayer(client.id, player, client.keyHash, &error)) {
             sendError(client, "failed", error, message.seq);
             return true;
         }

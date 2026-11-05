@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Vision.h"
@@ -19,20 +21,21 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void init() {
         gs = GameState(1);
-        gs.setMap(GameMap(30, 30, "grass"));
+        gs.setMap(GameMap(30, 30, T("grass")));
         t1 = gs.newTeam();
         t2 = gs.newTeam();
-        p1 = gs.addPlayer("A", t1, Player::Controller::Human, "humans", "#ff0000");
-        p2 = gs.addPlayer("B", t2, Player::Controller::Human, "humans", "#0000ff");
+        p1 = gs.addPlayer("A", t1, Player::Controller::Human, RC("humans"), "#ff0000");
+        p2 = gs.addPlayer("B", t2, Player::Controller::Human, RC("humans"), "#0000ff");
     }
 
     void heroSeesARoundArea() {
-        const HeroId h = createHero(gs, reg, p1, "H", "knight", {15, 15});
-        gs.hero(h)->traits["scouting_radius"] = 3;
+        const HeroId h = createHero(gs, reg, p1, "H", C("knight"), {15, 15});
+        gs.hero(h)->traits[TR("scouting_radius")] = 3;
         const QByteArray v = visibleTiles(gs, t1, reg);
         QVERIFY(seen(v, 30, {15, 15}));
         QVERIFY(seen(v, 30, {18, 15}));   // straight, distance 3
@@ -42,7 +45,7 @@ private slots:
     }
 
     void withoutFogOfWarWhatWasExploredStaysInSight() {
-        const HeroId h = createHero(gs, reg, p1, "H", "knight", {2, 2});
+        const HeroId h = createHero(gs, reg, p1, "H", C("knight"), {2, 2});
         updateExplored(gs, reg, t1);
         gs.army(gs.hero(h)->army)->pos = {25, 25};  // walked far away
         const QByteArray fogged = visibleTiles(gs, t1, reg);
@@ -55,29 +58,29 @@ private slots:
         gs.setHiddenMap(false);
         GameState loaded;
         QStringList errors;
-        QVERIFY2(GameState::fromJson(gs.toJson(), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
         QVERIFY(!loaded.fogOfWar());
         QVERIFY(!loaded.hiddenMap());
     }
 
     void biggerRadiusSeesMore() {
-        const HeroId h = createHero(gs, reg, p1, "H", "knight", {15, 15});
-        gs.hero(h)->traits["scouting_radius"] = 6;
+        const HeroId h = createHero(gs, reg, p1, "H", C("knight"), {15, 15});
+        gs.hero(h)->traits[TR("scouting_radius")] = 6;
         QVERIFY(seen(visibleTiles(gs, t1, reg), 30, {21, 15}));
     }
 
     void edgesDoNotCrash() {
-        createHero(gs, reg, p1, "H", "knight", {0, 0});
-        createHero(gs, reg, p1, "G", "knight", {29, 29});
+        createHero(gs, reg, p1, "H", C("knight"), {0, 0});
+        createHero(gs, reg, p1, "G", C("knight"), {29, 29});
         const QByteArray v = visibleTiles(gs, t1, reg);
         QVERIFY(seen(v, 30, {0, 0}));
         QVERIFY(seen(v, 30, {29, 29}));
     }
 
     void teamsShareVisionOthersDoNot() {
-        const PlayerId ally = gs.addPlayer("C", t1, Player::Controller::Ai, "humans", "#00ff00");
-        createHero(gs, reg, ally, "Ally", "knight", {5, 5});
-        createHero(gs, reg, p2, "Enemy", "knight", {25, 25});
+        const PlayerId ally = gs.addPlayer("C", t1, Player::Controller::Ai, RC("humans"), "#00ff00");
+        createHero(gs, reg, ally, "Ally", C("knight"), {5, 5});
+        createHero(gs, reg, p2, "Enemy", C("knight"), {25, 25});
         const QByteArray v1 = visibleTiles(gs, t1, reg);
         QVERIFY(seen(v1, 30, {5, 5}));
         QVERIFY(!seen(v1, 30, {25, 25}));
@@ -87,9 +90,9 @@ private slots:
     }
 
     void ownedTownsAndMinesGiveVision() {
-        gs.addTown("T", "humans", {10, 10}, p1);
-        gs.addMine("gold", 1000, {20, 20}, p1);
-        gs.addMine("wood", 2, {3, 20});  // neutral: gives nothing
+        gs.addTown("T", RC("humans"), {10, 10}, p1);
+        gs.addMine(R("gold"), 1000, {20, 20}, p1);
+        gs.addMine(R("wood"), 2, {3, 20});  // neutral: gives nothing
         const QByteArray v = visibleTiles(gs, t1, reg);
         QVERIFY(seen(v, 30, {14, 10}));   // town radius 5
         QVERIFY(seen(v, 30, {20, 21}));   // mine radius 2
@@ -97,15 +100,15 @@ private slots:
     }
 
     void watchtowerSeesFarther() {
-        const TownId t = gs.addTown("T", "humans", {10, 10}, p1);
+        const TownId t = gs.addTown("T", RC("humans"), {10, 10}, p1);
         QVERIFY(!seen(visibleTiles(gs, t1, reg), 30, {18, 10}));  // town radius 5
-        gs.town(t)->buildings << "village_hall" << "watchtower";
+        gs.town(t)->buildings << B("village_hall") << B("watchtower");
         QVERIFY(seen(visibleTiles(gs, t1, reg), 30, {18, 10}));   // +4
     }
 
     void exploredMemoryStaysAfterLeaving() {
-        const HeroId h = createHero(gs, reg, p1, "H", "knight", {5, 5});
-        gs.hero(h)->traits["scouting_radius"] = 3;
+        const HeroId h = createHero(gs, reg, p1, "H", C("knight"), {5, 5});
+        gs.hero(h)->traits[TR("scouting_radius")] = 3;
         updateExplored(gs, reg, t1);
         gs.army(gs.hero(h)->army)->pos = {20, 20};
         updateExplored(gs, reg, t1);

@@ -3,7 +3,7 @@
 namespace kot::core {
 
 PlayerId GameState::addPlayer(const QString& name, TeamId team, Player::Controller controller,
-                              const QString& race, const QString& color) {
+                              RaceId race, const QString& color) {
     Player p;
     p.id = newId<PlayerId>();
     p.name = name;
@@ -25,7 +25,7 @@ ArmyId GameState::addArmy(PlayerId owner, Pos pos) {
     return a.id;
 }
 
-TownId GameState::addTown(const QString& name, const QString& race, Pos pos, PlayerId owner) {
+TownId GameState::addTown(const QString& name, RaceId race, Pos pos, PlayerId owner) {
     Town t;
     t.id = newId<TownId>();
     t.name = name;
@@ -43,7 +43,7 @@ MapObjectId GameState::addMapObject(MapObject object) {
     return object.id;
 }
 
-MapDwellingId GameState::addMapDwelling(const QString& unitId, Pos pos, int available,
+MapDwellingId GameState::addMapDwelling(UnitTypeId unitId, Pos pos, int available,
                                         PlayerId owner) {
     MapDwelling d;
     d.id = newId<MapDwellingId>();
@@ -55,10 +55,10 @@ MapDwellingId GameState::addMapDwelling(const QString& unitId, Pos pos, int avai
     return d.id;
 }
 
-MineId GameState::addMine(const QString& resourceId, int dailyAmount, Pos pos, PlayerId owner) {
+MineId GameState::addMine(ResourceId resource, int dailyAmount, Pos pos, PlayerId owner) {
     Mine m;
     m.id = newId<MineId>();
-    m.resourceId = resourceId;
+    m.resource = resource;
     m.dailyAmount = dailyAmount;
     m.pos = pos;
     m.owner = owner;

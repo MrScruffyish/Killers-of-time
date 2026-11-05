@@ -4,14 +4,15 @@
 #include <QMap>
 #include <QString>
 #include <QStringList>
+#include <QVector>
+
+#include "core/content/ContentIds.h"
 
 namespace kot::core {
 
-// resource id -> amount, e.g. {"gold": 100, "wood": 2}. Ordered for determinism.
-using ResourceAmounts = QMap<QString, int>;
-
 struct ResourceDef {
-    QString id;
+    ResourceId id;
+    QString key;  // the id in the data files ("gold")
     QString name;
     bool isCurrency = false;  // exactly one resource (gold) is the currency
     int value = 100;          // worth in gold (the currency itself is 1); used for trading
@@ -19,7 +20,8 @@ struct ResourceDef {
 
 // Movement cost is in hundredths of a movement point: 100 = one standard tile.
 struct TerrainDef {
-    QString id;
+    TerrainId id;
+    QString key;  // the id in the data files ("grass")
     QString name;
     bool walkable = true;      // can be entered on foot
     bool sailable = false;     // can be entered by boat
@@ -32,8 +34,16 @@ enum class TraitGroup { Battle, Magic, Explore };
 
 QString traitGroupName(TraitGroup group);
 
+// The traits the rules name (looked up by key when the data is loaded; a trait the
+// data does not have is invalid and counts as 0).
+struct KnownTraits {
+    TraitId attack, defense, morale, luck, hitPoints, magic, spellPower, spellRecovery, spellPointsMax,
+        movementPoints, scouting, scoutingRadius, attackRange;
+};
+
 struct TraitDef {
-    QString id;
+    TraitId id;
+    QString key;  // the id in the data files ("attack")
     QString name;
     TraitGroup group = TraitGroup::Battle;
     bool pickable = true;  // can the player choose it at level-up?
@@ -47,14 +57,15 @@ struct TraitDef {
 //                  (e.g. spell_points_max)
 //   startingArmy:  units the hero of this class starts a new game with
 struct HeroClassDef {
-    QString id;
+    HeroClassId id;
+    QString key;  // the id in the data files ("knight")
     QString name;
-    QString race;
-    QMap<QString, int> baseTraits;
-    QMap<QString, int> pickIncrement;
-    QMap<QString, int> autoGrowth;
-    QMap<QString, int> startingArmy;  // unit id -> count a new game hero starts with
-    QStringList startingSpells;       // spells every hero of this class knows from the start
+    RaceId race;
+    TraitValues baseTraits;
+    TraitValues pickIncrement;  // 0 = 1 (the default)
+    TraitValues autoGrowth;
+    QMap<UnitTypeId, int> startingArmy;  // unit -> count a new game hero starts with
+    QList<SpellId> startingSpells;    // spells every hero of this class knows from the start
 };
 
 // Daily movement of an army: base + perTraitLevel * hero Movement Points trait,
@@ -79,8 +90,8 @@ struct EconomyBalance {
     int heroCost = 2500;              // gold to hire a hero in a tavern
     int tavernOffers = 2;             // heroes a tavern offers at a time
     int maxHeroesPerPlayer = 8;
-    ResourceAmounts startingResources{{"gold", 10000}};
-    ResourceAmounts boatCost{{"gold", 1000}, {"wood", 10}};
+    ResourceAmounts startingResources;  // (defaults when balance.json has none: see ContentRegistry)
+    ResourceAmounts boatCost;
 };
 // Auto-resolved battles (core/battle/AutoBattle.h). Percentages per point of
 // attack minus defense, with caps.
@@ -128,7 +139,7 @@ struct SiegeBalance {
     int towerDamagePerLevel = 15;       // HP a tower's shot does, per wall level
     int defenderShotPercentPerLevel = 20;  // defending shooters do this much more damage per wall level
     int catapultDamageMin = 30, catapultDamageMax = 45;  // per shot at a wall
-    ResourceAmounts engineCost{{"gold", 600}, {"wood", 10}};  // the catapult, for one battle
+    ResourceAmounts engineCost;  // the catapult, for one battle
 };
 struct ScoutingBalance {
     int visionPerLevel = 1;
@@ -171,24 +182,26 @@ struct BuildingEffect {
         Vision     // the town sees `amount` tiles farther
     };
     Type type = Type::Income;
-    QString unit;
-    QString resource;
+    UnitTypeId unit;
+    ResourceId resource;
     int amount = 0;
 };
 
 // A race (faction): its bonuses and weaknesses as data (PROJECT.md 5.4).
-// Units, buildings and hero classes name their race; a race without a file gets
-// these defaults.
+// Units, buildings and hero classes name their race, which needs a file in races/
+// (neutral.json for the units of no people).
 struct RaceDef {
-    QString id;
+    RaceId id;
+    QString key;
     QString name;
     QString description;
     int growthPercent = 0;   // weekly growth of the race's town dwellings, +/- percent
     int incomePercent = 0;   // base gold of the race's towns, +/- percent
-    QMap<QString, int> terrainCostPercent;  // terrain id -> move cost percent for the race's heroes
+    // Move cost percent for the race's heroes, per terrain id (empty, or 100: normal).
+    QVector<int> terrainCostPercent;
     QStringList spellSchools;  // schools its mage guilds teach (empty = all)
     // The race's own ability (all optional, see data-format.md):
-    QString raiseDeadUnit;        // after a won battle, this unit rises from the fallen enemies ...
+    UnitTypeId raiseDeadUnit;     // after a won battle, this unit rises from the fallen enemies ...
     int raiseDeadPercent = 0;     // ... this percent of the enemy HP killed
     int battleLootPercent = 0;    // gold after a won battle: this percent of the enemy HP killed
     int tradeBonus = 0;           // more percent of the fair value when trading
@@ -202,16 +215,17 @@ struct RaceDef {
 // of the `excludes` may be built (either way round), and `upgradeOf` (a dwelling
 // building) must be built: this building then replaces it with the upgraded unit.
 struct BuildingDef {
-    QString id;
+    BuildingTypeId id;
+    QString key;  // the id in the data files ("village_hall")
     QString name;
-    QString race;
+    RaceId race;  // invalid: every race
     ResourceAmounts cost;
-    QStringList requiredBuildings;
-    QStringList excludes;
-    QString upgradeOf;
+    QList<BuildingTypeId> requiredBuildings;
+    QList<BuildingTypeId> excludes;
+    BuildingTypeId upgradeOf;  // invalid: not an upgrade
     QList<BuildingEffect> effects;
 
-    bool fitsRace(const QString& townRace) const { return race.isEmpty() || race == townRace; }
+    bool fitsRace(RaceId townRace) const { return !race.isValid() || race == townRace; }
 };
 
 // One building block of a spell (PROJECT.md 5.9). Its strength is
@@ -232,7 +246,8 @@ struct SpellEffect {
 struct SpellDef {
     enum class Scope { Battle, Adventure };
     enum class Target { None, Enemy, Ally };  // battle spells: whom they are cast on
-    QString id;
+    SpellId id;
+    QString key;  // the id in the data files ("fireball")
     QString name;
     QString school;
     QString description;
@@ -247,10 +262,11 @@ struct SpellDef {
 
 // Found on the map; the hero who picks it up keeps it and gets its trait bonuses.
 struct ArtifactDef {
-    QString id;
+    ArtifactId id;
+    QString key;  // the id in the data files ("spyglass")
     QString name;
     QString description;
-    QMap<QString, int> traits;  // trait id -> bonus
+    TraitValues traits;  // bonus per trait
     int value = 1;              // rough worth, 1 (minor) .. 3 (major); stronger guards
     QString slot = QStringLiteral("misc");  // where it is worn: see artifactSlots()
 };
@@ -273,26 +289,47 @@ inline int artifactSlotCount(const QString& slot) {
 
 // Something that happens to everyone at the start of a week (events.json).
 struct WeekEventDef {
-    QString id;
+    WeekEventId id;
+    QString key;  // the id in the data files
     QString name;
     QString description;
     int weight = 10;                  // how often it is drawn, relative to the others
     ResourceAmounts resources;        // given to (or, negative, taken from) every player
     int growthPercent = 0;            // this week's dwelling growth, +/- percent
-    QMap<QString, int> unitGrowth;    // unit id -> extra units in every dwelling of it
+    QMap<UnitTypeId, int> unitGrowth;  // unit -> extra units in every dwelling of it
 };
 
 // A hero that can be hired in a tavern. The class decides the race.
 struct HeroTemplateDef {
-    QString id;
+    HeroTemplateId id;
+    QString key;  // the id in the data files
     QString name;
-    QString classId;
+    HeroClassId classId;
 };
 
+// What a unit can do besides fighting (bits of UnitDef::abilities; data: "flying", ...).
+enum class Ability : quint32 {
+    Flying = 1,             // moves over other stacks and rocks
+    NoRetaliation = 2,      // its targets do not strike back
+    DoubleAttack = 4,       // strikes / shoots twice
+    Undead = 8,             // ignores morale
+    SiegeEngine = 16        // the catapult: not a real unit
+};
+
+// The data names of ability bits ("flying", ...), for showing them.
+inline QStringList abilityNames(quint32 abilities) {
+    static const char* const kNames[] = {"flying", "no retaliation", "double attack", "undead", "siege engine"};
+    QStringList out;
+    for (int i = 0; i < 5; ++i)
+        if (abilities & (1u << i)) out << QString::fromLatin1(kNames[i]);
+    return out;
+}
+
 struct UnitDef {
-    QString id;
+    UnitTypeId id;
+    QString key;  // the id in the data files ("militia")
     QString name;
-    QString race;
+    RaceId race;
     int tier = 1;
     int attack = 0;
     int defense = 0;
@@ -306,13 +343,11 @@ struct UnitDef {
     int shots = 0;         // ammunition for ranged units
     int weeklyGrowth = 0;
     int spellPoints = 0;   // the unit's own spell point pool (0 = cannot cast)
-    QStringList spells;    // battle spells the unit can cast with it
+    QList<SpellId> spells;  // battle spells the unit can cast with it
     ResourceAmounts cost;
-    // flying (moves over other stacks and rocks), no_retaliation (its targets do not
-    // strike back), double_attack (strikes / shoots twice), undead (ignores morale)
-    QStringList abilities;
-    bool has(const QString& ability) const { return abilities.contains(ability); }
-    QString upgradesTo;     // unit id of the upgraded version, or empty
+    quint32 abilities = 0;  // Ability bits
+    bool has(Ability ability) const { return (abilities & static_cast<quint32>(ability)) != 0; }
+    UnitTypeId upgradesTo;  // the upgraded version (invalid: none)
     // Computed when loading: 0 regular, 1 advanced, 2 elite (steps of upgradesTo
     // that lead to this unit). Different ranks are different units and never merge.
     int rank = 0;

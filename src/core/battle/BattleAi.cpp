@@ -21,11 +21,11 @@ double strikeValue(const Battle& b, const BattleUnit& me, const BattleUnit& targ
     double mult = 1.0;
     if (diff > 0) mult += std::min(diff * bb.attackPercentPerPoint, bb.maxAttackPercent) / 100.0;
     if (diff < 0) mult -= std::min(-diff * bb.defensePercentPerPoint, bb.maxDefensePercent) / 100.0;
-    const double damage = me.stack.count() * (me.def->damageMin + me.def->damageMax) / 2.0 * mult * (me.def->has(QStringLiteral("double_attack")) ? 2 : 1);
+    const double damage = me.stack.count() * (me.def->damageMin + me.def->damageMax) / 2.0 * mult * (me.def->has(Ability::DoubleAttack) ? 2 : 1);
     const double kills = std::min<double>(target.stack.count(), damage / std::max(1, target.stack.maxHp()));
     const double perUnit = danger(target) / std::max(1, target.stack.count());
     double value = kills * perUnit * (target.def->range > 0 && target.shotsLeft > 0 ? 1.5 : 1.0);
-    if (!ranged && !target.retaliated && !me.def->has(QStringLiteral("no_retaliation"))) {
+    if (!ranged && !target.retaliated && !me.def->has(Ability::NoRetaliation)) {
         const double left = std::max(0.0, target.stack.count() - kills);
         value -= 0.35 * left * perUnit;  // the counter-blow
     }
@@ -89,7 +89,7 @@ double rangedDanger(const Battle& b, int side) {
 bool chooseGiveUp(const Battle& b, int side, int gold, BattleAction* action) {
     double strength[2] = {0, 0};
     for (const BattleUnit& u : b.units())
-        if (u.alive() && !u.def->has(QStringLiteral("siege_engine"))) strength[u.side] += danger(u) * u.def->maxHp;
+        if (u.alive() && !u.def->has(Ability::SiegeEngine)) strength[u.side] += danger(u) * u.def->maxHp;
     if (strength[1 - side] <= 3.0 * strength[side]) return false;
     if (b.whyNoSurrender(side).isEmpty() && gold >= b.surrenderCost(side)) {
         action->type = BattleAction::Type::Surrender;
@@ -106,7 +106,7 @@ BattleAction chooseBattleAction(const Battle& b) {
     BattleAction a;
     const BattleUnit* me = b.activeUnit();
     if (!me) return a;
-    if (me->def->has(QStringLiteral("siege_engine"))) {
+    if (me->def->has(Ability::SiegeEngine)) {
         // The catapult: the gate first, then the weakest segment near the middle.
         if (b.walls().isEmpty()) return a;  // nothing left to break: wait it out
         Pos best = b.walls().firstKey();
@@ -135,11 +135,11 @@ BattleAction chooseBattleAction(const Battle& b) {
     // The hero first: of every spell and target, the one worth most (area damage
     // counts every stack it hits; curses, blessings and heals count too).
     if (const Hero* hero = b.heroOf(me->side); hero && !b.heroHasCast(me->side)) {
-        const int power = hero->trait(QStringLiteral("spell_power"));
-        QString bestSpell;
+        const int power = hero->trait(b.content().known().spellPower);
+        SpellId bestSpell;
         int bestTarget = 0;
         double bestValue = 0;
-        for (const QString& id : hero->spells) {
+        for (const SpellId id : hero->spells) {
             const SpellDef* s = b.content().spell(id);
             if (!s || s->scope != SpellDef::Scope::Battle || !b.whyCannotCast(id, 0).isEmpty()) continue;
             for (const BattleUnit& t : b.units()) {
@@ -154,7 +154,7 @@ BattleAction chooseBattleAction(const Battle& b) {
                 }
             }
         }
-        if (!bestSpell.isEmpty()) {
+        if (bestSpell.isValid()) {
             a.type = BattleAction::Type::Cast;
             a.spell = bestSpell;
             a.target = bestTarget;
@@ -164,7 +164,7 @@ BattleAction chooseBattleAction(const Battle& b) {
 
     // The stack's own spells: a damage spell at the most dangerous enemy, a heal on a
     // badly hurt own stack, a curse at the strongest enemy while it has none.
-    for (const QString& id : me->def->spells) {
+    for (const SpellId id : me->def->spells) {
         const SpellDef* s = b.content().spell(id);
         if (!s || !b.whyUnitCannotCast(id, 0).isEmpty()) continue;
         int target = 0;

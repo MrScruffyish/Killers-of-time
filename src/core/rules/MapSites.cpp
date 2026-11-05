@@ -39,18 +39,18 @@ QString visitSite(GameState& state, const ContentRegistry& content, MapObject& s
     if (!siteGivesSomething(state, site, hero)) return QStringLiteral("nothing more for this hero here");
     QString what;
     if (site.site == QLatin1String("shrine")) {
-        QStringList can;
+        QList<SpellId> can;
         for (const SpellDef& s : content.spells())
             if (s.level <= 2 && !hero.spells.contains(s.id)) can << s.id;
         if (can.isEmpty()) {
             what = QStringLiteral("knows every spell the shrine teaches");
         } else {
-            const QString id = can[state.rng().nextInt(0, static_cast<int>(can.size()) - 1)];
+            const SpellId id = can[state.rng().nextInt(0, static_cast<int>(can.size()) - 1)];
             hero.spells << id;
             what = QStringLiteral("learned %1").arg(content.spell(id)->name);
         }
     } else if (site.site == QLatin1String("magic_well")) {
-        hero.spellPoints = std::max(hero.spellPoints, maxSpellPoints(hero));
+        hero.spellPoints = std::max(hero.spellPoints, maxSpellPoints(hero, content));
         what = QStringLiteral("spell points filled");
     } else if (site.site == QLatin1String("obelisk")) {
         constexpr int kRadius = 14;
@@ -63,9 +63,10 @@ QString visitSite(GameState& state, const ContentRegistry& content, MapObject& s
             }
         what = QStringLiteral("the land around is shown on your map");
     } else if (site.site == QLatin1String("arena")) {
-        const QString trait = state.rng().nextInt(0, 1) ? QStringLiteral("attack") : QStringLiteral("defense");
-        hero.traits[trait] += 1;
-        what = trait == QLatin1String("attack") ? QStringLiteral("+1 Attack") : QStringLiteral("+1 Defense");
+        const bool attack = state.rng().nextInt(0, 1);
+        const TraitId trait = attack ? content.known().attack : content.known().defense;
+        if (trait.isValid()) hero.traits[trait] += 1;
+        what = attack ? QStringLiteral("+1 Attack") : QStringLiteral("+1 Defense");
     } else if (site.site == QLatin1String("learning_stone")) {
         const int levels = addExperience(hero, content, 1000);
         what = levels > 0 ? QStringLiteral("+1000 experience, a new level") : QStringLiteral("+1000 experience");

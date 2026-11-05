@@ -39,6 +39,7 @@ private:
     QComboBox* m_mapSize;  // named sizes (data: the side length); "custom" for other sizes
     QLineEdit* m_seed;
     QComboBox* m_difficulty;
+    QComboBox* m_defeat;  // when a player is out
     QComboBox* m_mapType;
     QSpinBox* m_autosaves;
     QCheckBox* m_fog;

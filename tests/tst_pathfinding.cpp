@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/content/ContentRegistry.h"
 #include "core/rules/MapGenerator.h"
 #include "core/rules/Pathfinding.h"
@@ -11,7 +13,7 @@ using namespace kot::core;
 static GameMap mapFrom(const QStringList& rows) {
     const int h = static_cast<int>(rows.size());
     const int w = static_cast<int>(rows[0].size());
-    GameMap map(w, h, "grass");
+    GameMap map(w, h, T("grass"));
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
             const QChar c = rows[y][x];
@@ -21,7 +23,7 @@ static GameMap mapFrom(const QStringList& rows) {
             else if (c == '~') t = "sea";
             else if (c == '=') t = "river";
             else if (c == 'f') t = "forest";
-            map.setTerrain({x, y}, t);
+            map.setTerrain({x, y}, T(qPrintable(t)));
         }
     }
     return map;
@@ -40,6 +42,7 @@ private slots:
     void initTestCase() {
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        useContent(reg);
     }
 
     void stepCostRounding() {

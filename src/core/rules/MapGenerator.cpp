@@ -46,11 +46,17 @@ Field smoothNoise(int w, int h, Rng& rng, int passes) {
 
 bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap* out,
                  QString* error) {
-    static const char* const kNeeded[] = {"sea",  "sand",  "grass",     "dirt",  "forest",
-                                          "swamp", "hills", "snow", "mountains", "river"};
-    for (const char* id : kNeeded) {
-        if (!content.terrainType(QString::fromLatin1(id))) {
-            if (error) *error = QStringLiteral("terrain '%1' is missing from the content").arg(id);
+    // The terrains the generator places, looked up once.
+    struct {
+        TerrainId sea, sand, grass, dirt, forest, swamp, hills, snow, mountains, river;
+    } T;
+    const std::pair<TerrainId*, const char*> needed[] = {{&T.sea, "sea"},     {&T.sand, "sand"},   {&T.grass, "grass"}, {&T.dirt, "dirt"},
+                                                          {&T.forest, "forest"}, {&T.swamp, "swamp"}, {&T.hills, "hills"}, {&T.snow, "snow"},
+                                                          {&T.mountains, "mountains"}, {&T.river, "river"}};
+    for (const auto& [id, key] : needed) {
+        *id = content.terrainId(QString::fromLatin1(key));
+        if (!id->isValid()) {
+            if (error) *error = QStringLiteral("terrain '%1' is missing from the content").arg(key);
             return false;
         }
     }
@@ -85,30 +91,30 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
     const double mountainElev = quantile(1.0 - p.mountainFraction);
     const double hillElev = std::max(quantile(1.0 - p.mountainFraction - p.hillFraction), seaElev + 0.03);
 
-    QList<QString> tiles(w * h);
+    QVector<TerrainId> tiles(w * h);
     for (int i = 0; i < w * h; ++i) {
         const double e = elevation[i], m = moisture[i];
-        QString t;
-        if (e < seaElev) t = QStringLiteral("sea");
-        else if (e < seaElev + 0.02) t = QStringLiteral("sand");
-        else if (e >= mountainElev) t = QStringLiteral("mountains");
-        else if (e >= hillElev) t = (m < 0.3) ? QStringLiteral("snow") : QStringLiteral("hills");
-        else if (m > 0.75 && e < seaElev + 0.12) t = QStringLiteral("swamp");
-        else if (m > 0.55) t = QStringLiteral("forest");
-        else if (m < 0.22) t = QStringLiteral("sand");
-        else if (m < 0.32) t = QStringLiteral("dirt");
-        else t = QStringLiteral("grass");
+        TerrainId t;
+        if (e < seaElev) t = T.sea;
+        else if (e < seaElev + 0.02) t = T.sand;
+        else if (e >= mountainElev) t = T.mountains;
+        else if (e >= hillElev) t = (m < 0.3) ? T.snow : T.hills;
+        else if (m > 0.75 && e < seaElev + 0.12) t = T.swamp;
+        else if (m > 0.55) t = T.forest;
+        else if (m < 0.22) t = T.sand;
+        else if (m < 0.32) t = T.dirt;
+        else t = T.grass;
         tiles[i] = t;
     }
 
     // The outermost ring is always sea, so the map is surrounded by water.
     for (int x = 0; x < w; ++x) {
-        tiles[x] = QStringLiteral("sea");
-        tiles[(h - 1) * w + x] = QStringLiteral("sea");
+        tiles[x] = T.sea;
+        tiles[(h - 1) * w + x] = T.sea;
     }
     for (int y = 0; y < h; ++y) {
-        tiles[y * w] = QStringLiteral("sea");
-        tiles[y * w + w - 1] = QStringLiteral("sea");
+        tiles[y * w] = T.sea;
+        tiles[y * w + w - 1] = T.sea;
     }
 
     // Mountain ranges: ridges across the land with passes of hills every few tiles,
@@ -116,7 +122,7 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
     const int ridges = p.ridges >= 0 ? p.ridges : 1 + w * h / 1800;
     for (int r = 0; r < ridges; ++r) {
         int x = rng.nextInt(3, w - 4), y = rng.nextInt(3, h - 4);
-        if (tiles[y * w + x] == QLatin1String("sea")) continue;
+        if (tiles[y * w + x] == T.sea) continue;
         const int dirs[8][2] = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
         int d = rng.nextInt(0, 7);
         const int length = rng.nextInt(6, 14);
@@ -124,20 +130,20 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
         for (int step = 0; step < length; ++step) {
             if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2) break;
             const int i = y * w + x;
-            if (tiles[i] == QLatin1String("sea")) break;
+            if (tiles[i] == T.sea) break;
             if (++sincePass >= passAt) {  // a pass
-                tiles[i] = QStringLiteral("hills");
+                tiles[i] = T.hills;
                 sincePass = 0;
                 passAt = rng.nextInt(3, 5);
             } else {
-                tiles[i] = QStringLiteral("mountains");
+                tiles[i] = T.mountains;
                 // Foothills on the sides.
                 for (const int side : {-1, 1}) {
                     const int sx = x + dirs[(d + 2 * side + 8) % 8][0], sy = y + dirs[(d + 2 * side + 8) % 8][1];
                     const int si = sy * w + sx;
                     if (sx > 0 && sy > 0 && sx < w - 1 && sy < h - 1 && rng.nextInt(0, 1) == 0 &&
-                        (tiles[si] == QLatin1String("grass") || tiles[si] == QLatin1String("dirt")))
-                        tiles[si] = QStringLiteral("hills");
+                        (tiles[si] == T.grass || tiles[si] == T.dirt))
+                        tiles[si] = T.hills;
                 }
             }
             if (rng.nextInt(0, 3) == 0) d = (d + (rng.nextInt(0, 1) ? 1 : 7)) % 8;  // bend a little
@@ -148,7 +154,7 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
 
     QList<int> mountains;
     for (int i = 0; i < w * h; ++i) {
-        if (tiles[i] == QLatin1String("mountains")) mountains.append(i);
+        if (tiles[i] == T.mountains) mountains.append(i);
     }
 
     // Rivers: from a random mountain, always step to the lowest neighbour
@@ -172,8 +178,8 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
                 }
             }
             if (next < 0) break;
-            if (tiles[next] == QLatin1String("sea") || tiles[next] == QLatin1String("river")) break;
-            if (tiles[next] != QLatin1String("mountains")) tiles[next] = QStringLiteral("river");
+            if (tiles[next] == T.sea || tiles[next] == T.river) break;
+            if (tiles[next] != T.mountains) tiles[next] = T.river;
             cur = next;
         }
     }
@@ -187,30 +193,30 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
             for (int y = 0; y < h; ++y) {
                 const int cx = w * i / cols + int(2.0 * std::sin(y * 0.25 + phase + i));
                 for (int x = cx - 1; x <= cx + 1; ++x)
-                    if (x >= 0 && x < w) tiles[y * w + x] = QStringLiteral("sea");
+                    if (x >= 0 && x < w) tiles[y * w + x] = T.sea;
             }
         for (int j = 1; j < rows; ++j)
             for (int x = 0; x < w; ++x) {
                 const int cy = h * j / rows + int(2.0 * std::sin(x * 0.25 + phase + 2 * j));
                 for (int y = cy - 1; y <= cy + 1; ++y)
-                    if (y >= 0 && y < h) tiles[y * w + x] = QStringLiteral("sea");
+                    if (y >= 0 && y < h) tiles[y * w + x] = T.sea;
             }
         // Rivers that ran into a channel end at the sea; fix shores to sand next to the new sea.
         for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x) {
-                QString& t = tiles[y * w + x];
-                if (t == QLatin1String("sea") || t == QLatin1String("river") || t == QLatin1String("mountains")) continue;
+                TerrainId& t = tiles[y * w + x];
+                if (t == T.sea || t == T.river || t == T.mountains) continue;
                 bool shore = false;
                 for (int dy = -1; dy <= 1 && !shore; ++dy)
                     for (int dx = -1; dx <= 1; ++dx) {
                         const int nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && ny >= 0 && nx < w && ny < h && tiles[ny * w + nx] == QLatin1String("sea")) shore = true;
+                        if (nx >= 0 && ny >= 0 && nx < w && ny < h && tiles[ny * w + nx] == T.sea) shore = true;
                     }
-                if (shore && (t == QLatin1String("grass") || t == QLatin1String("dirt"))) t = QStringLiteral("sand");
+                if (shore && (t == T.grass || t == T.dirt)) t = T.sand;
             }
     }
 
-    *out = GameMap::fromTiles(w, h, std::move(tiles));
+    *out = GameMap::fromCells(w, h, std::move(tiles));
     return true;
 }
 

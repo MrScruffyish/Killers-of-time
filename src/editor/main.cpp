@@ -64,7 +64,7 @@ protected:
         const GameMap& map = m_state.map();
         for (int y = area.top() / tile; y <= std::min(map.height() - 1, area.bottom() / tile); ++y)
             for (int x = area.left() / tile; x <= std::min(map.width() - 1, area.right() / tile); ++x) {
-                const TerrainDef* t = m_content.terrainType(map.terrainAt({x, y}));
+                const TerrainDef* t = &m_content.terrain(map.terrainAt({x, y}));
                 p.fillRect(x * tile, y * tile, tile, tile, t ? QColor(t->color) : QColor(Qt::magenta));
             }
         p.setRenderHint(QPainter::Antialiasing);
@@ -181,24 +181,24 @@ public:
         side->addWidget(m_tool);
         auto* opts = new QFormLayout();
         m_terrain = new QComboBox(dock);
-        for (const TerrainDef& t : content.terrain()) m_terrain->addItem(t.name, t.id);
+        for (const TerrainDef& t : content.terrain()) m_terrain->addItem(t.name, t.id.index());
         m_brush = new QSpinBox(dock);
         m_brush->setRange(1, 9);
         m_brush->setSingleStep(2);
         m_owner = new QComboBox(dock);
         m_race = new QComboBox(dock);
-        for (const QString& r : content.raceIds()) m_race->addItem(content.race(r).name.isEmpty() ? r : content.race(r).name, r);
+        for (const RaceId r : content.playableRaces()) m_race->addItem(content.race(r).name, r.index());
         m_resource = new QComboBox(dock);
-        for (const ResourceDef& r : content.resources()) m_resource->addItem(r.name, r.id);
+        for (const ResourceDef& r : content.resources()) m_resource->addItem(r.name, r.id.index());
         m_amount = new QSpinBox(dock);
         m_amount->setRange(1, 100000);
         m_amount->setValue(10);
         m_unit = new QComboBox(dock);
-        for (const UnitDef& u : content.units()) m_unit->addItem(QStringLiteral("%1 (%2)").arg(u.name, u.race), u.id);
+        for (const UnitDef& u : content.units()) m_unit->addItem(QStringLiteral("%1 (%2)").arg(u.name, content.race(u.race).key), u.id.index());
         m_artifact = new QComboBox(dock);
-        for (const ArtifactDef& a : content.artifacts()) m_artifact->addItem(a.name, a.id);
+        for (const ArtifactDef& a : content.artifacts()) m_artifact->addItem(a.name, a.id.index());
         m_heroClass = new QComboBox(dock);
-        for (const HeroClassDef& c : content.heroClasses()) m_heroClass->addItem(QStringLiteral("%1 (%2)").arg(c.name, c.race), c.id);
+        for (const HeroClassDef& c : content.heroClasses()) m_heroClass->addItem(QStringLiteral("%1 (%2)").arg(c.name, content.race(c.race).key), c.id.index());
         opts->addRow(tr("Terrain"), m_terrain);
         opts->addRow(tr("Brush size"), m_brush);
         opts->addRow(tr("Owner"), m_owner);
@@ -224,7 +224,7 @@ public:
         prow->addWidget(addPlayer);
         prow->addWidget(removePlayer);
         side->addLayout(prow);
-        connect(addPlayer, &QPushButton::clicked, this, [this]() { addSlot(m_race->currentData().toString()); });
+        connect(addPlayer, &QPushButton::clicked, this, [this]() { addSlot(RaceId(m_race->currentData().toInt())); });
         connect(removePlayer, &QPushButton::clicked, this, [this]() { removeSlot(); });
         side->addStretch(1);
         auto* dockScroll = new QScrollArea(this);
@@ -237,7 +237,7 @@ public:
         d->setFeatures(QDockWidget::NoDockWidgetFeatures);
         addDockWidget(Qt::RightDockWidgetArea, d);
 
-        blank(48, 48, QStringLiteral("grass"));
+        blank(48, 48, m_content.terrainId(QStringLiteral("grass")));
     }
 
     void openFile(const QString& path) {
@@ -260,7 +260,7 @@ public:
     }
 
 private:
-    void blank(int w, int h, const QString& terrain) {
+    void blank(int w, int h, TerrainId terrain) {
         m_state = GameState(1);
         m_state.setMap(GameMap(w, h, terrain));
         m_path.clear();
@@ -276,11 +276,11 @@ private:
         int i = 1;
         for (const PlayerId p : m_state.turnOrder()) {
             const Player* pl = m_state.player(p);
-            m_owner->addItem(QStringLiteral("%1 (%2)").arg(i).arg(pl->race), int(p.value()));
+            m_owner->addItem(QStringLiteral("%1 (%2)").arg(i).arg(m_content.race(pl->race).name), int(p.value()));
             int towns = 0, heroes = 0;
             for (const Town& t : m_state.towns()) towns += t.owner == p;
             for (const Hero& h : m_state.heroes()) heroes += h.owner == p;
-            auto* item = new QListWidgetItem(tr("Player %1: %2 - %3 town(s), %4 hero(es)").arg(i).arg(pl->race).arg(towns).arg(heroes), m_players);
+            auto* item = new QListWidgetItem(tr("Player %1: %2 - %3 town(s), %4 hero(es)").arg(i).arg(m_content.race(pl->race).name).arg(towns).arg(heroes), m_players);
             item->setForeground(QColor(pl->color));
             item->setData(Qt::UserRole, int(p.value()));
             ++i;
@@ -296,7 +296,7 @@ private:
 
     PlayerId owner() const { return PlayerId(quint32(m_owner->currentData().toInt())); }
 
-    void addSlot(const QString& race) {
+    void addSlot(RaceId race) {
         const int n = static_cast<int>(m_state.turnOrder().size());
         m_state.addPlayer(tr("Player %1").arg(n + 1), m_state.newTeam(), Player::Controller::Human, race, kColours[n % kColours.size()]);
         m_state.player(m_state.turnOrder().last())->resources = m_content.balance().economy.startingResources;
@@ -363,32 +363,32 @@ private:
             for (int dy = -r; dy <= r; ++dy)
                 for (int dx = -r; dx <= r; ++dx)
                     if (m_state.map().inBounds({p.x + dx, p.y + dy}))
-                        m_state.map().setTerrain({p.x + dx, p.y + dy}, m_terrain->currentData().toString());
+                        m_state.map().setTerrain({p.x + dx, p.y + dy}, TerrainId(m_terrain->currentData().toInt()));
             m_map->update();
             return;
         }
         case 1: {  // town
             erase(p);
             const PlayerId o = owner();
-            const QString race = o.isValid() ? m_state.player(o)->race : m_race->currentData().toString();
+            const RaceId race = o.isValid() ? m_state.player(o)->race : RaceId(m_race->currentData().toInt());
             const Player* pl = m_state.player(o);
             m_state.addTown(pl ? pl->name + QStringLiteral("'s capital") : tr("Town %1").arg(m_state.towns().size() + 1), race, p, o);
             break;
         }
         case 2:
             erase(p);
-            m_state.addMine(m_resource->currentData().toString(), m_amount->value(), p, owner());
+            m_state.addMine(ResourceId(m_resource->currentData().toInt()), m_amount->value(), p, owner());
             break;
         case 3:
             erase(p);
-            m_state.addMapDwelling(m_unit->currentData().toString(), p, m_amount->value(), owner());
+            m_state.addMapDwelling(UnitTypeId(m_unit->currentData().toInt()), p, m_amount->value(), owner());
             break;
         case 4: {
             erase(p);
             MapObject o;
             o.kind = MapObject::Kind::Treasure;
             o.pos = p;
-            o.resources[m_resource->currentData().toString()] = m_amount->value();
+            o.resources[ResourceId(m_resource->currentData().toInt())] = m_amount->value();
             m_state.addMapObject(o);
             break;
         }
@@ -397,13 +397,13 @@ private:
             MapObject o;
             o.kind = MapObject::Kind::Artifact;
             o.pos = p;
-            o.artifact = m_artifact->currentData().toString();
+            o.artifact = ArtifactId(m_artifact->currentData().toInt());
             m_state.addMapObject(o);
             break;
         }
         case 6: {
             erase(p);
-            const UnitDef* u = m_content.unit(m_unit->currentData().toString());
+            const UnitDef* u = m_content.unit(UnitTypeId(m_unit->currentData().toInt()));
             if (u) m_state.army(m_state.addArmy(PlayerId(), p))->addUnits(u->id, m_amount->value(), u->maxHp);
             break;
         }
@@ -415,7 +415,7 @@ private:
             }
             erase(p);
             QString error;
-            const HeroId h = createHero(m_state, m_content, o, tr("Hero"), m_heroClass->currentData().toString(), p, &error);
+            const HeroId h = createHero(m_state, m_content, o, tr("Hero"), HeroClassId(m_heroClass->currentData().toInt()), p, &error);
             if (!h.isValid()) {
                 statusBar()->showMessage(error, 4000);
                 return;
@@ -434,7 +434,7 @@ private:
 
     void hover(Pos p) {
         if (!m_state.map().inBounds(p)) return;
-        const TerrainDef* t = m_content.terrainType(m_state.map().terrainAt(p));
+        const TerrainDef* t = &m_content.terrain(m_state.map().terrainAt(p));
         statusBar()->showMessage(QStringLiteral("(%1, %2) %3").arg(p.x).arg(p.y).arg(t ? t->name : QString()));
     }
 
@@ -448,7 +448,7 @@ private:
         w->setValue(48);
         h->setValue(48);
         auto* terrain = new QComboBox(&d);
-        for (const TerrainDef& t : m_content.terrain()) terrain->addItem(t.name, t.id);
+        for (const TerrainDef& t : m_content.terrain()) terrain->addItem(t.name, t.id.index());
         f->addRow(tr("Width"), w);
         f->addRow(tr("Height"), h);
         f->addRow(tr("Terrain"), terrain);
@@ -456,7 +456,7 @@ private:
         f->addRow(b);
         connect(b, &QDialogButtonBox::accepted, &d, &QDialog::accept);
         connect(b, &QDialogButtonBox::rejected, &d, &QDialog::reject);
-        if (d.exec() == QDialog::Accepted) blank(w->value(), h->value(), terrain->currentData().toString());
+        if (d.exec() == QDialog::Accepted) blank(w->value(), h->value(), TerrainId(terrain->currentData().toInt()));
     }
 
     void randomMap() {
@@ -470,7 +470,7 @@ private:
         h->setValue(48);
         auto* seed = new QSpinBox(&d);
         seed->setRange(1, 1000000);
-        auto* races = new QLineEdit(m_content.raceIds().join(','), &d);
+        auto* races = new QLineEdit(m_content.playableRaceKeys().join(','), &d);
         f->addRow(tr("Width"), w);
         f->addRow(tr("Height"), h);
         f->addRow(tr("Seed"), seed);
@@ -542,7 +542,7 @@ private:
         m_state.setVictory(v);
         QString error;
         if (!saveScenario(path, m_id->text(), m_name->text().isEmpty() ? m_id->text() : m_name->text(), m_description->text(),
-                          m_state, &error)) {
+                          m_state, m_content, &error)) {
             QMessageBox::warning(this, tr("Save"), error);
             return;
         }

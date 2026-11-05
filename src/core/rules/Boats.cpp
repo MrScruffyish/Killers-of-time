@@ -15,7 +15,7 @@ std::optional<Pos> freeWaterNext(const GameState& state, const ContentRegistry& 
             if (std::max(std::abs(dx), std::abs(dy)) != ring) continue;
             const Pos n{p.x + dx, p.y + dy};
             if ((!dx && !dy) || !state.map().inBounds(n)) continue;
-            const TerrainDef* t = content.terrainType(state.map().terrainAt(n));
+            const TerrainDef* t = &content.terrain(state.map().terrainAt(n));
             if (!t || !t->sailable) continue;
             bool free = true;
             for (const Army& a : state.armies()) free = free && a.pos != n;
@@ -24,8 +24,19 @@ std::optional<Pos> freeWaterNext(const GameState& state, const ContentRegistry& 
     return std::nullopt;
 }
 
+bool coastalAt(const GameState& state, const ContentRegistry& content, Pos p) {
+    for (int dy = -2; dy <= 2; ++dy)
+        for (int dx = -2; dx <= 2; ++dx) {
+            const Pos n{p.x + dx, p.y + dy};
+            if ((!dx && !dy) || !state.map().inBounds(n)) continue;
+            const TerrainDef* t = &content.terrain(state.map().terrainAt(n));
+            if (t && t->sailable) return true;
+        }
+    return false;
+}
+
 bool hasShipyard(const Town& town, const ContentRegistry& content) {
-    for (const QString& b : town.buildings)
+    for (const BuildingTypeId b : town.buildings)
         if (const BuildingDef* def = content.building(b))
             for (const BuildingEffect& e : def->effects)
                 if (e.type == BuildingEffect::Type::Shipyard) return true;
@@ -58,12 +69,12 @@ ActionResult buyBoat(GameState& state, const ContentRegistry& content, HeroId he
     }
     Player* p = state.player(hero->owner);
     const ResourceAmounts& cost = content.balance().economy.boatCost;
-    for (auto it = cost.begin(); it != cost.end(); ++it)
-        if (p->resources.value(it.key()) < it.value()) {
-            r.error = QStringLiteral("not enough %1").arg(it.key());
+    for (const auto [res, amount] : cost)
+        if (p->resources.value(res) < amount) {
+            r.error = QStringLiteral("not enough %1").arg(content.resource(res).key);
             return r;
         }
-    for (auto it = cost.begin(); it != cost.end(); ++it) p->resources[it.key()] -= it.value();
+    for (const auto [res, amount] : cost) p->resources[res] -= amount;
     army->pos = *water;
     hero->inBoat = true;
     updateExplored(state, content, state.teamOf(hero->owner));

@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include "TestContent.h"
+
 #include "core/model/Army.h"
 
 using namespace kot::core;
@@ -9,36 +11,36 @@ class TstArmy : public QObject {
 private slots:
     void addUnitsMergesSameType() {
         Army a;
-        QVERIFY(a.addUnits("militia", 5, 6));
-        QVERIFY(a.addUnits("militia", 3, 6));
+        QVERIFY(a.addUnits(UnitTypeId(103), 5, 6));
+        QVERIFY(a.addUnits(UnitTypeId(103), 3, 6));
         QCOMPARE(a.stacks.size(), 1);
         QCOMPARE(a.totalUnits(), 8);
     }
 
     void differentMaxHpMakesNewStack() {
         Army a;
-        a.addUnits("militia", 5, 6);
-        a.addUnits("militia", 5, 8);
+        a.addUnits(UnitTypeId(103), 5, 6);
+        a.addUnits(UnitTypeId(103), 5, 8);
         QCOMPARE(a.stacks.size(), 2);
     }
 
     void atMostSevenStacks() {
         Army a;
         for (int i = 0; i < kMaxArmyStacks; ++i)
-            QVERIFY(a.addUnits(QString("unit%1").arg(i), 1, 5));
-        QVERIFY(!a.addUnits("one_too_many", 1, 5));
-        QVERIFY(a.addUnits("unit0", 2, 5));  // merging still works when full
+            QVERIFY(a.addUnits(UnitTypeId(i), 1, 5));
+        QVERIFY(!a.addUnits(UnitTypeId(104), 1, 5));
+        QVERIFY(a.addUnits(UnitTypeId(0), 2, 5));  // merging still works when full
         QCOMPARE(a.stacks.size(), kMaxArmyStacks);
     }
 
     void removeEmptyStacks() {
         Army a;
-        a.addUnits("a", 2, 5);
-        a.addUnits("b", 2, 5);
+        a.addUnits(UnitTypeId(100), 2, 5);
+        a.addUnits(UnitTypeId(101), 2, 5);
         a.stacks[0].applyDamage(1000);
         a.removeEmptyStacks();
         QCOMPARE(a.stacks.size(), 1);
-        QCOMPARE(a.stacks[0].unitTypeId(), QString("b"));
+        QCOMPARE(a.stacks[0].unitTypeId(), UnitTypeId(101));
     }
 
     void heroPresence() {
@@ -49,7 +51,7 @@ private slots:
     }
 
     void stackFromTotalHp() {
-        const UnitStack s = UnitStack::fromTotalHp("eagle", 75, 10);
+        const UnitStack s = UnitStack::fromTotalHp(UnitTypeId(102), 75, 10);
         QCOMPARE(s.count(), 8);
         QCOMPARE(s.frontUnitHp(), 5);
         QCOMPARE(s.maxHp(), 10);
