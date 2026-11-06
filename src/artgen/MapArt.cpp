@@ -578,6 +578,24 @@ QImage drawShoreUnder(int mask, int variant, int size) {
         p.setPen(QPen(QColor("#d8c48a"), s * 0.05, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         p.setBrush(QColor("#d8c48a"));
         p.drawPath(land);
+        // 2.5D: land to the north (and its corners) drops to the water in a cliff: its
+        // face shows below the land's edge (the land piece is drawn over the top).
+        QPainterPath north;
+        for (const int d : {1, 4, 5})
+            if (mask & (1 << d)) north = north.united(shorePiece(d, variant, size));
+        if (!north.isEmpty()) {
+            const double drop = s * 0.13;
+            const QPainterPath face = north.translated(0, drop).subtracted(north);
+            QLinearGradient g(0, 0, 0, s * 0.45);
+            g.setColorAt(0, QColor("#8a6a44"));
+            g.setColorAt(1, QColor("#4a3420"));
+            p.setPen(Qt::NoPen);
+            p.setBrush(g);
+            p.drawPath(north.translated(0, drop));
+            p.setPen(QPen(QColor(40, 26, 12, 180), s * 0.012));  // rock strata
+            p.setBrush(Qt::NoBrush);
+            p.drawPath(face);
+        }
     }
     return pm;
 }

@@ -236,23 +236,26 @@ public:
         setCursor(it.value());
     }
 
+    // The field is seen at an angle (2.5D): its rows are squeezed by kTilt, the figures
+    // keep their height and stand up out of it; the back row has room above for them.
+    static constexpr double kTilt = 0.72, kHeadroom = 1.6;  // headroom in hex radii
     double radius() const {
         const int w = std::max(1, battle.width), h = std::max(1, battle.height);
         const double byWidth = (width() - 40) / (std::sqrt(3.0) * (w + 0.5));
-        const double byHeight = (height() - 40) / (1.5 * (h - 1) + 2.0);
+        const double byHeight = (height() - 40) / ((1.5 * (h - 1) + 2.0) * kTilt + kHeadroom);
         return std::max(4.0, std::min(byWidth, byHeight));
     }
     // The field is centred in the widget.
     QPointF origin() const {
         const double r = radius();
         const int w = std::max(1, battle.width), h = std::max(1, battle.height);
-        const double fw = std::sqrt(3.0) * r * (w + 0.5), fh = 1.5 * r * (h - 1) + 2 * r;
-        return {std::max(4.0, (width() - fw) / 2), std::max(4.0, (height() - fh) / 2)};
+        const double fw = std::sqrt(3.0) * r * (w + 0.5), fh = (1.5 * r * (h - 1) + 2 * r) * kTilt + kHeadroom * r;
+        return {std::max(4.0, (width() - fw) / 2), std::max(4.0, (height() - fh) / 2) + kHeadroom * r};
     }
     QPointF centre(core::Pos p) const {
         const double r = radius();
         const QPointF o = origin();
-        return {o.x() + std::sqrt(3.0) * r * (p.x + 0.5 + 0.5 * (p.y & 1)), o.y() + r + 1.5 * r * p.y};
+        return {o.x() + std::sqrt(3.0) * r * (p.x + 0.5 + 0.5 * (p.y & 1)), o.y() + (r + 1.5 * r * p.y) * kTilt};
     }
     core::Pos hexAt(QPointF pt) const {
         core::Pos best{-1, -1};
@@ -260,7 +263,7 @@ public:
         for (int y = 0; y < battle.height; ++y)
             for (int x = 0; x < battle.width; ++x) {
                 const QPointF d = centre({x, y}) - pt;
-                const double dist = d.x() * d.x() + d.y() * d.y();
+                const double dist = d.x() * d.x() + (d.y() / kTilt) * (d.y() / kTilt);  // on the tilted ground
                 if (dist < bestD) {
                     bestD = dist;
                     best = {x, y};
@@ -359,10 +362,13 @@ protected:
             p.fillRect(rect(), QColor("#1f1810"));
             const double r0 = radius();
             const QPointF o = origin();
-            const QRectF field(o.x() - r0 * 0.4, o.y() - r0 * 0.4, std::sqrt(3.0) * r0 * (battle.width + 0.5) + r0 * 0.8,
-                               1.5 * r0 * (battle.height - 1) + 2 * r0 + r0 * 0.8);
+            const QRectF field(o.x() - r0 * 0.4, o.y() - r0 * 0.4 * kTilt, std::sqrt(3.0) * r0 * (battle.width + 0.5) + r0 * 0.8,
+                               (1.5 * r0 * (battle.height - 1) + 2 * r0 + r0 * 0.8) * kTilt);
             p.setRenderHint(QPainter::Antialiasing, true);
-            drawSurroundings(p, field, r0);
+            {
+                const net::timing::Scope t("field surroundings");
+                drawSurroundings(p, field, r0);
+            }
             // A wooden frame around the field.
             p.setPen(QPen(QColor("#c9a24a"), 2));
             p.setBrush(QColor("#3a2a18"));
@@ -378,7 +384,7 @@ protected:
             const QPointF c = centre(h);
             for (int i = 0; i < 6; ++i) {
                 const double a = M_PI / 180.0 * (60 * i - 30);
-                const QPointF pt(c.x() + r * scale * std::cos(a), c.y() + r * scale * std::sin(a));
+                const QPointF pt(c.x() + r * scale * std::cos(a), c.y() + r * scale * kTilt * std::sin(a));
                 if (i == 0) path.moveTo(pt);
                 else path.lineTo(pt);
             }
@@ -402,7 +408,7 @@ protected:
             QPainterPath path;
             for (int i = 0; i < 6; ++i) {
                 const double a = M_PI / 180.0 * (60 * i - 30);
-                const QPointF pt(side / 2.0 + r * scale * std::cos(a), side / 2.0 + r * scale * std::sin(a));
+                const QPointF pt(side / 2.0 + r * scale * std::cos(a), side / 2.0 + r * scale * kTilt * std::sin(a));
                 if (i == 0) path.moveTo(pt);
                 else path.lineTo(pt);
             }
@@ -433,27 +439,79 @@ protected:
         const bool enemyRange = ranger && ranger->side != battle.yourSide;
         // One continuous ground under the whole field (no tile seams at the hexes),
         // shaped to the hexes; then soft hex lines, lit hexes, small decorations.
+        std::optional<net::timing::Scope> groundTime;
+        if (background) groundTime.emplace("field ground");
         if (background) {
             QPainterPath fieldShape;
             for (int y = 0; y < battle.height; ++y)
                 for (int x = 0; x < battle.width; ++x) fieldShape.addPath(hexPath({x, y}, 1.0));
-            fieldShape.setFillRule(Qt::WindingFill);
-            const QRectF area = fieldShape.boundingRect();
+            const QRectF area = fieldShape.boundingRect().adjusted(-2, -2, 2, 2);
             const int tile = std::max(16, int(r * 2.2));
-            p.save();
-            p.setClipPath(fieldShape);
-            for (double ty = area.top(); ty < area.bottom(); ty += tile)
-                for (double tx = area.left(); tx < area.right(); tx += tile) {
-                    const int ix = int((tx - area.left()) / tile), iy = int((ty - area.top()) / tile);
-                    p.drawPixmap(QPointF(tx, ty), art::terrainTile(groundId, tile, art::variantFor(ix + 31, iy + 17)));
+            // Painted into a picture, then cut to the hexes with stamped hexes (much
+            // faster than clipping to a path of every hex on a big field).
+            const qreal dpr = p.device() ? p.device()->devicePixelRatioF() : 1.0;
+            QImage ground((area.size() * dpr).toSize(), QImage::Format_ARGB32_Premultiplied);
+            ground.setDevicePixelRatio(dpr);
+            ground.fill(Qt::transparent);
+            {
+                QPainter g(&ground);
+                g.translate(-area.topLeft());
+                for (double ty = area.top(); ty < area.bottom(); ty += tile)
+                    for (double tx = area.left(); tx < area.right(); tx += tile) {
+                        const int ix = int((tx - area.left()) / tile), iy = int((ty - area.top()) / tile);
+                        g.drawPixmap(QPointF(tx, ty), art::terrainTile(groundId, tile, art::variantFor(ix + 31, iy + 17)));
+                    }
+                // A gentle vignette towards the edges of the field.
+                QRadialGradient vignette(area.center(), std::max(area.width(), area.height()) * 0.62);
+                vignette.setColorAt(0.6, QColor(0, 0, 0, 0));
+                vignette.setColorAt(1.0, QColor(0, 0, 0, 90));
+                g.fillRect(area, vignette);
+                // Keep only the hexes (slightly overlapping, so no seams between them).
+                QImage mask(ground.size(), QImage::Format_ARGB32_Premultiplied);
+                mask.setDevicePixelRatio(dpr);
+                mask.fill(Qt::transparent);
+                {
+                    QPainter m(&mask);
+                    m.translate(-area.topLeft());
+                    const QPixmap& solid = hexStamp(QColor(255, 255, 255), 1.03, false);
+                    const double half = solid.width() / solid.devicePixelRatio() / 2.0;
+                    for (int y = 0; y < battle.height; ++y)
+                        for (int x = 0; x < battle.width; ++x) m.drawPixmap(centre({x, y}) - QPointF(half, half), solid);
                 }
-            // A gentle vignette towards the edges of the field.
-            QRadialGradient vignette(area.center(), std::max(area.width(), area.height()) * 0.62);
-            vignette.setColorAt(0.6, QColor(0, 0, 0, 0));
-            vignette.setColorAt(1.0, QColor(0, 0, 0, 90));
-            p.fillRect(area, vignette);
-            p.restore();
+                g.resetTransform();
+                g.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                g.drawImage(0, 0, mask);
+            }
+            p.drawImage(area.topLeft(), ground);
         }
+        groundTime.reset();
+        if (background) groundTime.emplace("field hexes and obstacles");
+        // A hex's soft lines (a light outer one and a dark inner one), drawn once.
+        static QHash<QString, QPixmap> gridStamps;
+        const qreal gridDpr = p.device() ? p.device()->devicePixelRatioF() : 1.0;
+        const QString gridKey = QStringLiteral("%1|%2").arg(r).arg(gridDpr);
+        if (background && !gridStamps.contains(gridKey)) {
+            const int side = int(std::ceil(2 * r)) + 4;
+            QPixmap pm(QSize(side, side) * gridDpr);
+            pm.setDevicePixelRatio(gridDpr);
+            pm.fill(Qt::transparent);
+            QPainter gp(&pm);
+            gp.setRenderHint(QPainter::Antialiasing, true);
+            for (const auto& [scale, pen] : {std::pair{0.97, QPen(QColor(255, 250, 220, 45), 1.2)}, std::pair{0.95, QPen(QColor(20, 30, 10, 60), 1)}}) {
+                QPainterPath path;
+                for (int i = 0; i < 6; ++i) {
+                    const double a = M_PI / 180.0 * (60 * i - 30);
+                    const QPointF pt(side / 2.0 + r * scale * std::cos(a), side / 2.0 + r * scale * kTilt * std::sin(a));
+                    if (i == 0) path.moveTo(pt);
+                    else path.lineTo(pt);
+                }
+                path.closeSubpath();
+                gp.strokePath(path, pen);
+            }
+            gp.end();
+            gridStamps.insert(gridKey, pm);
+        }
+        const QPixmap gridHex = background ? gridStamps.value(gridKey) : QPixmap();
         std::optional<net::timing::Scope> part;
         if (!background) part.emplace("battle lit hexes");
         if (!background) {
@@ -476,11 +534,7 @@ protected:
                     const QPixmap& deco = variant >= 0 ? art::decoration(groundId, variant, int(r * 1.5)) : QPixmap();
                     if (!deco.isNull()) p.drawPixmap(centre(h) - QPointF(r * 0.75, r * 0.75), deco);
                 }
-                p.setBrush(Qt::NoBrush);
-                p.setPen(QPen(QColor(255, 250, 220, 45), 1.2));
-                p.drawPath(path);
-                p.setPen(QPen(QColor(20, 30, 10, 60), 1));
-                p.drawPath(hexPath(h, 0.95));
+                stamp(h, gridHex);  // the soft hex lines, pre-drawn
                 if (battle.obstacles.contains(h) && (where == "forest" || where == "swamp")) {
                     // A tree clump (forest) or a reedy pool (swamp) instead of a rock.
                     const QPointF c = centre(h);

@@ -18,6 +18,7 @@
 #include <QWheelEvent>
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <utility>
 
 #include "client/Art.h"
@@ -27,6 +28,11 @@
 #include "core/model/Entities.h"
 
 namespace kot::client {
+
+namespace {
+// How big things stand on the map, in tiles (2.5D: they reach above their tiles).
+constexpr double kObjectStand = 1.25, kHeroStand = 1.45, kTownStand = 1.5;
+}  // namespace
 
 MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
     : QAbstractScrollArea(parent), m_content(content) {
@@ -875,18 +881,31 @@ void MapView::paintObjects(QPainter& p) {
         p.drawEllipse(foot);
     };
     const auto tileFoot = [&](core::Pos t) { return QRectF(tileRect(t)).adjusted(m_tile * 0.04, m_tile * 0.6, -m_tile * 0.04, -m_tile * 0.01); };
-    // Sprites are drawn big once and scaled to the zoom step (art::sprite).
-    const auto put = [&](core::Pos t, const QPixmap& pm) { p.drawPixmap(tileRect(t).topLeft(), pm); };
+    // 2.5D: what stands on the map is drawn bigger than its tiles, standing on the
+    // bottom middle of them and reaching up; back rows first, so nearer things cover
+    // farther ones. Ground marks (rings, lit tiles, routes) are drawn first, labels last.
+    QList<std::pair<double, std::function<void()>>> standing;  // bottom y -> how to draw it
+    QList<std::function<void()>> labels;
+    // A sprite `scale` tiles big standing on tile t (`picture` gives it at a size).
+    const auto stand = [&](core::Pos t, double scale, std::function<const QPixmap&(int)> picture) {
+        const QRect r = tileRect(t);
+        const int size = int(std::lround(m_tile * scale));
+        const QPointF at(r.center().x() + 0.5 - size / 2.0, r.bottom() + 1 - size);
+        standing.append({r.bottom() + 1.0, [&p, at, size, picture]() { p.drawPixmap(at, picture(size)); }});
+    };
     for (const ViewMine& mine : m_view.mines)
         if (shown(mine.pos) && onScreen(mine.pos)) {
             ownerRing(tileFoot(mine.pos), mine.owner);
             const QString& key = m_content->resource(mine.resource).key;
-            put(mine.pos, art::mineSprite(key, ownerOrNeutral(mine.owner), m_tile));
+            const QColor c = ownerOrNeutral(mine.owner);
+            stand(mine.pos, kObjectStand, [key, c](int s) -> const QPixmap& { return art::mineSprite(key, c, s); });
         }
     for (const ViewDwelling& d : m_view.dwellings)
         if (shown(d.pos) && onScreen(d.pos)) {
             ownerRing(tileFoot(d.pos), d.owner);
-            put(d.pos, art::dwellingSprite(ownerOrNeutral(d.owner), d.unit, m_tile));
+            const QColor c = ownerOrNeutral(d.owner);
+            const core::UnitTypeId unit = d.unit;
+            stand(d.pos, kObjectStand, [c, unit](int s) -> const QPixmap& { return art::dwellingSprite(c, unit, s); });
         }
     QList<ViewObject> objects = m_view.objects;
     for (const Walk& w : m_walks) objects.append(w.pickups);  // not reached yet on screen
@@ -896,19 +915,28 @@ void MapView::paintObjects(QPainter& p) {
             // A quest hut glows until its wish is granted; the others while they have something for the hero.
             const bool glow = o.site == QLatin1String("quest_hut") ? !o.questDone
                               : m_selectedHero ? o.giftFor.contains(m_selectedHero) : !o.giftFor.isEmpty();
-            put(o.pos, art::siteSprite(o.site, glow, m_tile));
+            const QString site = o.site;
+            stand(o.pos, kObjectStand, [site, glow](int s) -> const QPixmap& { return art::siteSprite(site, glow, s); });
+        } else if (o.artifact) {
+            stand(o.pos, kObjectStand, [](int s) -> const QPixmap& { return art::artifactSprite(s); });
+        } else {
+            const QString res = o.resources.isEmpty() ? QString() : m_content->resource((*o.resources.begin()).first).key;
+            stand(o.pos, kObjectStand, [res](int s) -> const QPixmap& { return art::chestSprite(res, s); });
         }
-        else if (o.artifact) put(o.pos, art::artifactSprite(m_tile));
-        else put(o.pos, art::chestSprite(o.resources.isEmpty() ? QString() : m_content->resource((*o.resources.begin()).first).key, m_tile));
     }
     // Towns cover 2x2 tiles: the gate (their position) and the tiles right of it and above it.
     for (const ViewTown& t : m_view.towns) {
         if (!shown(t.pos) || !onScreen(t.pos)) continue;
         const QRect gate = tileRect(t.pos);
         ownerRing(QRectF(gate.left() - m_tile * 0.02, gate.top() + m_tile * 0.45, 2.04 * m_tile, m_tile * 0.6), t.owner);
-        p.drawPixmap(QPoint(gate.left(), gate.top() - m_tile),
-                     art::townSprite(art::TownLook{ownerOrNeutral(t.owner), art::raceKey(t.race), t.walls, t.size}, 2 * m_tile));
-        if (m_tile >= 32) {
+        {
+            // Standing on the middle of its two bottom tiles, bigger than its 2x2.
+            const art::TownLook look{ownerOrNeutral(t.owner), art::raceKey(t.race), t.walls, t.size};
+            const int size = int(std::lround(2 * m_tile * kTownStand));
+            const QPointF at(gate.left() + m_tile - size / 2.0, gate.bottom() + 1 - size);
+            standing.append({gate.bottom() + 1.0, [&p, at, size, look]() { p.drawPixmap(at, art::townSprite(look, size)); }});
+        }
+        if (m_tile >= 32) labels.append([&p, this, t, gate]() {
             QFont f = p.font();
             f.setPixelSize(std::max(10, m_tile / 4));
             f.setBold(true);
@@ -925,15 +953,16 @@ void MapView::paintObjects(QPainter& p) {
             p.drawRoundedRect(plate, 4, 4);
             p.setPen(QColor("#f6e7c1"));
             p.drawText(plate, Qt::AlignCenter, t.name);
-        }
+        });
     }
     // Hero-less armies outside towns: neutral monsters (or garrison-less groups),
     // with a word for how many there are.
     for (const ViewArmy& a : m_view.armies) {
         if (a.hero || !shown(a.pos) || !onScreen(a.pos) || m_view.townAt(a.pos)) continue;
-        if (!a.stacks.isEmpty()) {
+        if (!a.stacks.isEmpty()) standing.append({tileRect(a.pos).bottom() + 1.0, [&p, this, a]() {
             // A group: more figures for more monsters (1 few .. 5 a horde), back
-            // ones smaller and higher, so the size shows at a glance.
+            // ones smaller and higher, so the size shows at a glance; standing up
+            // out of the tile (kObjectStand).
             int total = 0;
             for (const ViewStack& s : a.stacks) total += s.count;
             const int figures = total < 5 ? 1 : total < 10 ? 2 : total < 20 ? 3 : total < 50 ? 4 : 5;
@@ -952,14 +981,13 @@ void MapView::paintObjects(QPainter& p) {
                 // The army's stacks in turn, the strongest in front.
                 const ViewStack& st = a.stacks[(figures - 1 - i) % a.stacks.size()];
                 const core::UnitDef* u = m_content ? m_content->unit(st.unit) : nullptr;
-                const int size = std::max(8, int(m_tile * spots[figures - 1][i][2]));
+                const int size = std::max(8, int(m_tile * spots[figures - 1][i][2] * kObjectStand));
                 const QPointF feet(r.left() + m_tile * spots[figures - 1][i][0], r.top() + m_tile * spots[figures - 1][i][1]);
                 p.drawPixmap(QPointF(feet.x() - size / 2.0, feet.y() - size), art::unitIcon(st.unit, u ? u->rank : 0, size));
             }
-        } else {
-            put(a.pos, art::monsterSprite(m_tile));
-        }
-        if (m_tile >= 32) {
+        }});
+        else stand(a.pos, kObjectStand, [](int s) -> const QPixmap& { return art::monsterSprite(s); });
+        if (m_tile >= 32) labels.append([&p, a, this]() {
             int count = 0;
             for (const ViewStack& s : a.stacks) count += s.count;
             const QString word = count < 5 ? tr("few") : count < 10 ? tr("several") : count < 20 ? tr("pack")
@@ -976,7 +1004,7 @@ void MapView::paintObjects(QPainter& p) {
             p.drawRoundedRect(plate, 3, 3);
             p.setPen(Qt::white);
             p.drawText(plate, Qt::AlignCenter, word);
-        }
+        });
     }
     // Where the selected hero can go today, and the planned path under the mouse.
     if (m_view.isMyTurn() && m_planner.ready()) {
@@ -1002,11 +1030,24 @@ void MapView::paintObjects(QPainter& p) {
             const int i = std::min(int(walk->progress), int(walk->steps.size()) - 2);
             const double f = walk->progress - i;
             const QPointF a = tileRect(walk->steps[i]).topLeft(), b = tileRect(walk->steps[i + 1]).topLeft();
-            p.drawPixmap(a + (b - a) * f, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile, h.classId));
+            const QPointF tile = a + (b - a) * f;  // where the tile under him is now
+            const int size = int(std::lround(m_tile * kHeroStand));
+            const QPointF at(tile.x() + m_tile / 2.0 - size / 2.0, tile.y() + m_tile - size);
+            const QColor c = ownerColor(h.owner);
+            const bool boat = h.inBoat;
+            const core::HeroClassId cls = h.classId;
+            standing.append({tile.y() + m_tile, [&p, at, size, c, boat, cls]() { p.drawPixmap(at, art::heroSprite(c, boat, size, cls)); }});
             continue;
         }
-        put(h.pos, art::heroSprite(ownerColor(h.owner), h.inBoat, m_tile, h.classId));
+        const QColor c = ownerColor(h.owner);
+        const bool boat = h.inBoat;
+        const core::HeroClassId cls = h.classId;
+        stand(h.pos, kHeroStand, [c, boat, cls](int s) -> const QPixmap& { return art::heroSprite(c, boat, s, cls); });
     }
+    // Now everything standing, back rows first, then the labels over it.
+    std::stable_sort(standing.begin(), standing.end(), [](const auto& x, const auto& y) { return x.first < y.first; });
+    for (const auto& [y, draw] : standing) draw();
+    for (const auto& draw : labels) draw();
     // The day banner: in, hold, fade out.
     if (!m_bannerTitle.isEmpty()) {
         const double t = m_bannerClock.elapsed() / 1000.0;
