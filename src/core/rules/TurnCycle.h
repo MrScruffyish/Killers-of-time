@@ -31,6 +31,10 @@ struct TurnInfo {
 // Ends the current player's turn and starts the next one. When the last player
 // has finished, a new day begins (turns are sequential, decision D1). Eliminated
 // players (core/rules/Victory.h) are skipped.
+// The scenario's story events of today (GameState::storyEvents): told in `news`,
+// gifts given, monsters placed. Called when a new day starts.
+void tellStory(GameState& state, const ContentRegistry& content);
+
 TurnInfo endTurn(GameState& state, const ContentRegistry& content);
 
 }  // namespace kot::core

@@ -69,6 +69,20 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
     Rng rng(p.seed);
     Field elevation = smoothNoise(w, h, rng, 6);
     const Field moisture = smoothNoise(w, h, rng, 5);
+    // Climate: cold on one side of the map, hot on the other (which side: by the seed),
+    // with large patches, so snow, deserts and swamps come as regions, not specks.
+    Field temperature = smoothNoise(w, h, rng, 8);
+    {
+        const int side = rng.nextInt(0, 3);  // where it is cold: top, right, bottom, left
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                const double fy = (y + 0.5) / h, fx = (x + 0.5) / w;
+                const double cold = side == 0 ? fy : side == 1 ? 1 - fx : side == 2 ? 1 - fy : fx;  // 0 cold .. 1 hot
+                double& t = temperature[y * w + x];
+                t = 0.45 * t + 0.55 * cold;
+            }
+    }
+    const TerrainId lava = content.terrainId(QStringLiteral("lava"));  // optional
 
     // Pull the edges down so the map is land in the middle and sea around it.
     for (int y = 0; y < h; ++y) {
@@ -93,16 +107,17 @@ bool generateMap(const ContentRegistry& content, const MapGenParams& p, GameMap*
 
     QVector<TerrainId> tiles(w * h);
     for (int i = 0; i < w * h; ++i) {
-        const double e = elevation[i], m = moisture[i];
+        const double e = elevation[i], m = moisture[i], heat = temperature[i];
         TerrainId t;
         if (e < seaElev) t = T.sea;
-        else if (e < seaElev + 0.02) t = T.sand;
-        else if (e >= mountainElev) t = T.mountains;
-        else if (e >= hillElev) t = (m < 0.3) ? T.snow : T.hills;
-        else if (m > 0.75 && e < seaElev + 0.12) t = T.swamp;
+        else if (e < seaElev + 0.02) t = heat < 0.25 ? T.snow : T.sand;  // beaches (frozen in the cold)
+        else if (e >= mountainElev) t = (lava.isValid() && heat > 0.78 && m < 0.35) ? lava : T.mountains;
+        else if (e >= hillElev) t = heat < 0.38 ? T.snow : T.hills;
+        else if (heat < 0.2) t = T.snow;                                     // tundra
+        else if (m > 0.68 && e < seaElev + 0.16 && heat > 0.35) t = T.swamp;  // wet lowland
+        else if (heat > 0.7 && m < 0.42) t = T.sand;                         // desert
         else if (m > 0.55) t = T.forest;
-        else if (m < 0.22) t = T.sand;
-        else if (m < 0.32) t = T.dirt;
+        else if (m < 0.3) t = T.dirt;
         else t = T.grass;
         tiles[i] = t;
     }

@@ -3,7 +3,7 @@
   "name": "Veterans' Hall",
   "race": "dwarves",
   "cost": {
-    "gold": 500,
+    "gold": 450,
     "stone": 5
   },
   "upgradeOf": "dwarf_hall",

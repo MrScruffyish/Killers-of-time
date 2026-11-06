@@ -300,11 +300,24 @@ struct WeekEventDef {
 };
 
 // A hero that can be hired in a tavern. The class decides the race.
+// A tavern hero's own strength (heroes.json "specialty", one of these):
+//   income: resources every day; unit: + attack/defense for stacks of that unit and its
+//   upgrades; trait: a trait point more from the start.
+struct HeroSpecialty {
+    ResourceAmounts income;
+    UnitTypeId unit;
+    int attack = 0, defense = 0;
+    TraitId trait;
+    int traitAmount = 0;
+    bool isEmpty() const { return income.isEmpty() && !unit.isValid() && !trait.isValid(); }
+};
+
 struct HeroTemplateDef {
     HeroTemplateId id;
     QString key;  // the id in the data files
     QString name;
     HeroClassId classId;
+    HeroSpecialty specialty;
 };
 
 // What a unit can do besides fighting (bits of UnitDef::abilities; data: "flying", ...).

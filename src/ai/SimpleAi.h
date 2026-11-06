@@ -64,6 +64,9 @@ private:
     bool m_hired = false;
     bool m_sentUnits = false;
     QSet<quint32> m_garrisonTaken;   // hero ids that took the garrison this turn
+    QSet<quint32> m_merged;          // heroes that handed their units to the main hero this turn
+    // The hero with the strongest army: the others bring him their units.
+    core::HeroId mainHero(const core::GameState& state, const core::ContentRegistry& content, core::PlayerId me) const;
     QHash<quint32, int> m_moves;     // hero id -> move commands this turn
     QSet<quint32> m_heroDone;        // heroes with nothing more to do this turn
     QSet<quint32> m_resting;  // heroes that stopped short of their destination today

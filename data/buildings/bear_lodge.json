@@ -3,7 +3,7 @@
   "name": "Bear Lodge",
   "race": "dwarves",
   "cost": {
-    "gold": 3200,
+    "gold": 2900,
     "wood": 10
   },
   "upgradeOf": "bear_den",

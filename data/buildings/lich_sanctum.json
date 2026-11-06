@@ -3,9 +3,9 @@
   "name": "Lich Sanctum",
   "race": "undead",
   "cost": {
-    "gold": 2000,
-    "stone": 10,
-    "mercury": 2
+    "gold": 1600,
+    "stone": 8,
+    "mercury": 1
   },
   "requires": [
     "haunted_tower",

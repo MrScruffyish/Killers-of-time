@@ -77,6 +77,62 @@ bool roomAround(const MoveCostGrid& grid, Pos p) {
     return true;
 }
 
+// Steps (8 directions over walkable land) from the nearest of `sources`, and which
+// source that is: -1 where none can be reached.
+struct Reach {
+    QVector<int> steps, owner;
+};
+Reach walkFrom(const MoveCostGrid& grid, int width, int height, const QList<Pos>& sources) {
+    Reach r{QVector<int>(width * height, -1), QVector<int>(width * height, -1)};
+    QList<Pos> queue;
+    for (int i = 0; i < sources.size(); ++i) {
+        const Pos s = sources[i];
+        r.steps[s.y * width + s.x] = 0;
+        r.owner[s.y * width + s.x] = i;
+        queue.append(s);
+    }
+    for (int head = 0; head < queue.size(); ++head) {
+        const Pos p = queue[head];
+        const int at = p.y * width + p.x;
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                const Pos n{p.x + dx, p.y + dy};
+                if ((!dx && !dy) || !grid.inBounds(n) || grid.cost(n) < 0) continue;
+                const int ni = n.y * width + n.x;
+                if (r.steps[ni] >= 0) continue;
+                r.steps[ni] = r.steps[at] + 1;
+                r.owner[ni] = r.owner[at];
+                queue.append(n);
+            }
+    }
+    return r;
+}
+
+// How fair a set of starts is: the shortest walk between two of them, times how
+// evenly the land falls to them (smallest share / largest share), times how evenly far
+// each one is from its rivals (nobody in the middle with everyone around).
+double startFairness(const MoveCostGrid& grid, int width, int height, const QList<Pos>& starts) {
+    int closest = 1000000;
+    QVector<double> rivals(starts.size(), 0);  // summed walks to the others
+    for (int i = 0; i < starts.size(); ++i) {
+        const Reach r = walkFrom(grid, width, height, {starts[i]});
+        for (int j = 0; j < starts.size(); ++j) {
+            if (j == i) continue;
+            int d = r.steps[starts[j].y * width + starts[j].x];
+            if (d < 0) d = 1000;
+            rivals[i] += d;
+            if (j > i) closest = std::min(closest, d);
+        }
+    }
+    const double nearestRivals = *std::min_element(rivals.cbegin(), rivals.cend()), farthestRivals = *std::max_element(rivals.cbegin(), rivals.cend());
+    const Reach all = walkFrom(grid, width, height, starts);
+    QVector<int> share(starts.size(), 0);
+    for (const int o : all.owner)
+        if (o >= 0) ++share[o];
+    const int least = *std::min_element(share.cbegin(), share.cend()), most = *std::max_element(share.cbegin(), share.cend());
+    return closest * (most > 0 ? double(least) / most : 0.0) * (farthestRivals > 0 ? nearestRivals / farthestRivals : 0.0);
+}
+
 }  // namespace
 
 bool createGame(const ContentRegistry& content, const GameSetupParams& params, GameState* out,
@@ -144,21 +200,61 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
             starts.append(own[gs.rng().nextInt(0, static_cast<int>(own.size()) - 1)]);
         }
     } else {
-        starts.append(candidates[gs.rng().nextInt(0, static_cast<int>(candidates.size()) - 1)]);
-    }
-    while (starts.size() < count) {  // (continent maps)
-        Pos best = candidates.first();
-        int bestDistance = -1;
-        for (int i = 0; i < 300; ++i) {
-            const Pos c = candidates[gs.rng().nextInt(0, static_cast<int>(candidates.size()) - 1)];
-            int nearest = 1000000;
-            for (const Pos& s : starts) nearest = std::min(nearest, distance(c, s));
-            if (nearest > bestDistance) {
-                bestDistance = nearest;
-                best = c;
+        // Continent: many tries of spreading the starts out; the fairest set wins (far
+        // apart by walking, the land shared evenly), so no seat is worse off.
+        double bestFairness = -1;
+        for (int attempt = 0; attempt < 24; ++attempt) {
+            QList<Pos> tryStarts{candidates[gs.rng().nextInt(0, static_cast<int>(candidates.size()) - 1)]};
+            while (tryStarts.size() < count) {
+                Pos best = candidates.first();
+                int bestDistance = -1;
+                for (int i = 0; i < 200; ++i) {
+                    const Pos c = candidates[gs.rng().nextInt(0, static_cast<int>(candidates.size()) - 1)];
+                    int nearest = 1000000;
+                    for (const Pos& s : tryStarts) nearest = std::min(nearest, distance(c, s));
+                    if (nearest > bestDistance) {
+                        bestDistance = nearest;
+                        best = c;
+                    }
+                }
+                tryStarts.append(best);
+            }
+            const double fairness = startFairness(grid, map.width(), map.height(), tryStarts);
+            if (fairness > bestFairness) {
+                bestFairness = fairness;
+                starts = tryStarts;
             }
         }
-        starts.append(best);
+        shuffle(starts, gs.rng());  // whatever is left over falls on no seat in particular
+    }
+
+    // Each capital in its race's home terrain (the walkable one its heroes cross the
+    // cheapest; grass for the others), fading out from the town: same walkability, so
+    // nothing above changes.
+    {
+        const Reach reach = walkFrom(grid, map.width(), map.height(), starts);
+        const TerrainId grass = content.terrainId(QStringLiteral("grass")), road = content.terrainId(QStringLiteral("road"));
+        for (int i = 0; i < count; ++i) {
+            const RaceDef& race = content.race(raceOf[i]);
+            TerrainId home = grass;
+            int cheapest = 100;
+            for (int t = 0; t < race.terrainCostPercent.size(); ++t) {
+                const TerrainId id(t);
+                if (race.terrainCostPercent[t] < cheapest && content.terrain(id).walkable && id != road && !content.terrain(id).sailable) {
+                    cheapest = race.terrainCostPercent[t];
+                    home = id;
+                }
+            }
+            if (!home.isValid()) continue;
+            for (int dy = -7; dy <= 7; ++dy)
+                for (int dx = -7; dx <= 7; ++dx) {
+                    const Pos p{starts[i].x + dx, starts[i].y + dy};
+                    const int d = std::max(std::abs(dx), std::abs(dy));
+                    if (d < 2 || !grid.inBounds(p) || grid.cost(p) < 0 || reach.owner[p.y * map.width() + p.x] != i) continue;
+                    if (gs.map().terrainAt(p) == road) continue;
+                    if (gs.rng().nextInt(0, 99) < 100 - d * 11) gs.map().setTerrain(p, home);
+                }
+        }
     }
 
     gs.setDifficulty(params.difficulty);
@@ -198,7 +294,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         const HeroId hero = createHero(gs, content, id, tmpl ? tmpl->name : ps.name, tmpl ? tmpl->classId : classId, starts[i], error);
         if (!hero.isValid()) return false;
         Hero* h = gs.hero(hero);
-        if (tmpl) h->templateId = tmpl->id;
+        if (tmpl) giveHeroTemplate(*h, content, tmpl->id);
         const HeroClassDef* cls = content.heroClass(h->classId);
         Army* army = gs.army(h->army);
         for (auto it = cls->startingArmy.begin(); it != cls->startingArmy.end(); ++it) {
@@ -283,6 +379,116 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     for (const Mine& m : QList<Mine>(gs.mines().values()))
         if (m.resource == currency || (mineIndex++ % 2 == 0)) guard(m.pos, m.resource == currency ? 2 : 1);
 
+    // The same start kit for every player, a fair walk from the capital on its own
+    // side of the map: wood, stone and a (lightly guarded) gold mine, two treasures and
+    // a dwelling of a weak unit. The rest of the map is scattered above and below.
+    {
+        const Reach reach = walkFrom(grid, map.width(), map.height(), starts);
+        UnitTypeId kitUnit;  // the same for everyone
+        {
+            QList<UnitTypeId> weak;
+            for (const UnitDef& u : content.units())
+                if (u.weeklyGrowth > 0 && u.tier == 1 && !u.has(Ability::SiegeEngine)) weak.append(u.id);
+            if (!weak.isEmpty()) kitUnit = weak[gs.rng().nextInt(0, static_cast<int>(weak.size()) - 1)];
+        }
+        const ResourceId wood = content.resourceId(QStringLiteral("wood")), stone = content.resourceId(QStringLiteral("stone"));
+        ArtifactId kitArtifact;  // the start quest's reward, the same for everyone
+        {
+            QList<ArtifactId> minor;
+            for (const ArtifactDef& a : content.artifacts())
+                if (a.value <= 1) minor << a.id;
+            if (!minor.isEmpty()) kitArtifact = minor[gs.rng().nextInt(0, static_cast<int>(minor.size()) - 1)];
+        }
+        for (int i = 0; i < count; ++i) {
+            QList<Pos> ring;  // own side, 5..12 steps away, room around
+            for (const Pos& p : land) {
+                const int at = p.y * map.width() + p.x;
+                if (reach.owner[at] == i && reach.steps[at] >= 5 && reach.steps[at] <= 12 && roomAround(grid, p)) ring.append(p);
+            }
+            shuffle(ring, gs.rng());
+            const auto take = [&](Pos* where) {
+                for (const Pos& p : ring) {
+                    bool free = true;
+                    for (const Pos& u : used) free = free && distance(p, u) >= 3;
+                    if (free) {
+                        *where = p;
+                        used.append(p);
+                        return true;
+                    }
+                }
+                return false;
+            };
+            Pos where;
+            if (wood.isValid() && take(&where)) gs.addMine(wood, 2, where);
+            if (stone.isValid() && take(&where)) gs.addMine(stone, 2, where);
+            if (take(&where)) {
+                gs.addMine(currency, 1000, where);
+                guard(where, 1);
+            }
+            for (int t = 0; t < 2; ++t)
+                if (take(&where)) {
+                    MapObject o;
+                    o.kind = MapObject::Kind::Treasure;
+                    o.pos = where;
+                    o.resources[t == 0 ? currency : (wood.isValid() ? wood : currency)] = t == 0 ? 1000 : 6;
+                    gs.addMapObject(o);
+                }
+            if (kitUnit.isValid() && take(&where)) gs.addMapDwelling(kitUnit, where, content.unit(kitUnit)->weeklyGrowth);
+            // A hermit with the same wish for everyone: come back at level 4.
+            if (take(&where)) {
+                MapObject o;
+                o.kind = MapObject::Kind::Site;
+                o.pos = where;
+                o.site = QStringLiteral("quest_hut");
+                o.quest.needLevel = 4;
+                o.quest.rewardResources[currency] = 2500;
+                o.quest.rewardArtifact = kitArtifact;
+                gs.addMapObject(o);
+            }
+        }
+    }
+
+    // Guarded borders: where the shortest walk from one capital to another leaves its
+    // owner's side of the map, a strong group of monsters stands (a safe start, and a
+    // real fight to get through).
+    {
+        const Reach reach = walkFrom(grid, map.width(), map.height(), starts);
+        QList<Pos> borders;
+        for (int i = 0; i < count; ++i) {
+            const Reach from = walkFrom(grid, map.width(), map.height(), {starts[i]});
+            for (int j = 0; j < count; ++j) {
+                if (j == i || from.steps[starts[j].y * map.width() + starts[j].x] < 0) continue;
+                // Back from the other capital along falling steps; the last tile not ours is the border.
+                Pos p = starts[j], border{-1, -1};
+                for (int guardSteps = 0; guardSteps < 10000; ++guardSteps) {
+                    const int here = from.steps[p.y * map.width() + p.x];
+                    if (here <= 0) break;
+                    if (reach.owner[p.y * map.width() + p.x] != i) border = p;
+                    Pos next = p;
+                    for (int dy = -1; dy <= 1 && next == p; ++dy)
+                        for (int dx = -1; dx <= 1 && next == p; ++dx) {
+                            const Pos n{p.x + dx, p.y + dy};
+                            if (grid.inBounds(n) && from.steps[n.y * map.width() + n.x] == here - 1) next = n;
+                        }
+                    if (next == p) break;
+                    p = next;
+                }
+                if (border.x < 0) continue;
+                bool near = false;
+                for (const Pos& b : borders) near = near || distance(b, border) < 6;
+                for (const Pos& u : used) near = near || u == border;
+                if (near) continue;
+                borders.append(border);
+                used.append(border);
+                addMonsters(border, 3);
+                // Three times a normal strong group.
+                for (Army& a : gs.armies())
+                    if (a.pos == border && !a.owner.isValid())
+                        for (UnitStack& st : a.stacks) st.addUnits(2 * st.count());
+            }
+        }
+    }
+
     // Neutral towns to conquer, each with a garrison and a few buildings.
     const QList<RaceId> raceList = content.playableRaces();
     const int neutralTowns = std::max(1, static_cast<int>(params.players.size()) / 2) + area / 2500;
@@ -339,6 +545,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
 
     // Places to visit: a few of each (MapSites.h), unguarded.
     for (const QString& site : siteIds()) {
+        if (site == QLatin1String("quest_hut")) continue;  // with their quests, below
         const int n = std::max(1, area / (site == QLatin1String("obelisk") ? 2500 : 1600));
         for (int i = 0; i < n; ++i) {
             Pos where;
@@ -347,6 +554,43 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
             o.kind = MapObject::Kind::Site;
             o.pos = where;
             o.site = site;
+            gs.addMapObject(o);
+        }
+    }
+
+    // Quest huts in neutral land: bring an artifact that lies somewhere on the map, some
+    // rare resources, or a strong hero; well paid.
+    {
+        QList<ArtifactId> onMap;
+        for (const MapObject& o : gs.mapObjects())
+            if (o.kind == MapObject::Kind::Artifact) onMap << o.artifact;
+        QList<ArtifactId> strong;
+        for (const ArtifactDef& a : content.artifacts())
+            if (a.value >= 2) strong << a.id;
+        QList<ResourceId> rare;
+        for (const ResourceDef& r : content.resources())
+            if (r.value >= 300) rare << r.id;
+        for (int i = 0, n = std::max(1, area / 2500); i < n; ++i) {
+            Pos where;
+            if (!place(&where)) break;
+            MapObject o;
+            o.kind = MapObject::Kind::Site;
+            o.pos = where;
+            o.site = QStringLiteral("quest_hut");
+            Quest& q = o.quest;
+            const int kind = gs.rng().nextInt(0, 2);
+            if (kind == 0 && !onMap.isEmpty()) {
+                q.needArtifact = onMap[gs.rng().nextInt(0, static_cast<int>(onMap.size()) - 1)];
+                q.rewardResources[currency] = 5000;
+                q.rewardExperience = 3000;
+            } else if (kind == 1 && !rare.isEmpty()) {
+                q.needResources[rare[gs.rng().nextInt(0, static_cast<int>(rare.size()) - 1)]] = 8;
+                q.rewardResources[currency] = 6000;
+            } else {
+                q.needLevel = 8;
+                if (!strong.isEmpty()) q.rewardArtifact = strong[gs.rng().nextInt(0, static_cast<int>(strong.size()) - 1)];
+                q.rewardExperience = 2000;
+            }
             gs.addMapObject(o);
         }
     }

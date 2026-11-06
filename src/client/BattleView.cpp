@@ -1,5 +1,8 @@
 #include "client/BattleView.h"
+#include "client/TextLine.h"
+#include "net/ActionTiming.h"
 
+#include <optional>
 #include <QCursor>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -51,7 +54,10 @@ public:
                 if (!m_fx.isEmpty()) m_fx.first().age = 0;
             }
             if (m_slide >= 1.0 && m_floaters.isEmpty() && m_ghosts.isEmpty() && m_fx.isEmpty()) m_anim.stop();
-            update();
+            // Only where something moves (and where it was last frame).
+            const QRect now = animatedRect();
+            update(m_lastAnimRect.isNull() ? now : now.united(m_lastAnimRect));
+            m_lastAnimRect = m_anim.isActive() ? now : QRect();
         });
     }
     // A new state of the battle: stacks that moved slide there, losses float up,
@@ -112,6 +118,36 @@ public:
             m_clock.restart();
             m_anim.start();
         }
+    }
+    // Around a hex, with room for a figure standing on it (about two hexes tall).
+    QRect hexBox(core::Pos h) const { return pointBox(centre(h)); }
+    QRect pointBox(QPointF c) const {
+        const double r = radius();
+        return QRectF(c.x() - r * 1.7, c.y() - r * 3.0, r * 3.4, r * 4.2).toAlignedRect();
+    }
+    // The stack at a hex if it can shoot (its range is shown), else 0.
+    int shooterAt(core::Pos h) const {
+        const ViewBattleUnit* u = h.x >= 0 ? battle.unitAt(h) : nullptr;
+        return u && u->range > 0 && u->shots > 0 ? u->id : 0;
+    }
+    // What the animation changes this frame: sliding stacks, strikes, shots, fading and
+    // floating things. Spells and siege work can cover much of the field: then all of it.
+    QRect animatedRect() const {
+        QRect box;
+        for (const Fx& f : m_fx) {
+            if (f.type == "cast" || f.type == "engine" || f.type == "wall_hit" || f.type == "tower") return rect();
+            if (f.unit) box |= pointBox(fxPos(f.unit));
+            if (f.target) box |= pointBox(fxPos(f.target));
+            if (f.hex.x > 0 || f.hex.y > 0) box |= hexBox(f.hex);
+        }
+        if (m_slide < 1.0)
+            for (auto it = m_slideFrom.cbegin(); it != m_slideFrom.cend(); ++it) {
+                box |= pointBox(it.value());
+                if (const ViewBattleUnit* u = battle.unit(it.key())) box |= hexBox(u->hex);
+            }
+        for (const Floater& f : m_floaters) box |= pointBox(f.at);
+        for (const Ghost& g : m_ghosts) box |= hexBox(g.unit.hex);
+        return box;
     }
     QPointF fxPos(int id) const {
         if (const ViewBattleUnit* u = battle.unit(id); u && !m_fxPos.contains(id)) return centre(u->hex);
@@ -287,6 +323,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent*) override {
+        net::timing::paintStarted();
         QPainter screen(this);
         if (!battle.present) {
             screen.fillRect(rect(), QColor("#1f1810"));
@@ -302,12 +339,18 @@ protected:
         if (key != m_backgroundKey) {
             m_background = QPixmap(size() * dpr);
             m_background.setDevicePixelRatio(dpr);
+            const qint64 t0 = net::timing::now();
             QPainter bp(&m_background);
             paintField(bp, true);
+            bp.end();
+            net::timing::add("field", net::timing::now() - t0);
             m_backgroundKey = key;
         }
         screen.drawPixmap(0, 0, m_background);
+        const qint64 t1 = net::timing::now();
         paintField(screen, false);
+        net::timing::add("units", net::timing::now() - t1);
+        net::timing::painted();
     }
 
     // The field: `background` = only the parts that do not change, else only the others.
@@ -341,6 +384,37 @@ protected:
             }
             path.closeSubpath();
             return path;
+        };
+        // A hex as a ready picture (fill, or a dashed outline), stamped where it is
+        // needed: much faster than filling or stroking shapes on a big field every frame.
+        const auto hexStamp = [&](const QColor& colour, double scale, bool outline) -> const QPixmap& {
+            static QHash<QString, QPixmap> stamps;
+            const qreal dpr = p.device() ? p.device()->devicePixelRatioF() : 1.0;
+            const QString key = QStringLiteral("%1|%2|%3|%4|%5").arg(colour.rgba()).arg(r).arg(scale).arg(outline).arg(dpr);
+            auto it = stamps.find(key);
+            if (it != stamps.end()) return it.value();
+            const int side = int(std::ceil(2 * r)) + 4;
+            QPixmap pm(QSize(side, side) * dpr);
+            pm.setDevicePixelRatio(dpr);
+            pm.fill(Qt::transparent);
+            QPainter sp(&pm);
+            sp.setRenderHint(QPainter::Antialiasing, true);
+            QPainterPath path;
+            for (int i = 0; i < 6; ++i) {
+                const double a = M_PI / 180.0 * (60 * i - 30);
+                const QPointF pt(side / 2.0 + r * scale * std::cos(a), side / 2.0 + r * scale * std::sin(a));
+                if (i == 0) path.moveTo(pt);
+                else path.lineTo(pt);
+            }
+            path.closeSubpath();
+            if (outline) sp.strokePath(path, QPen(colour, 2, Qt::DashLine));
+            else sp.fillPath(path, colour);
+            sp.end();
+            return stamps.insert(key, pm).value();
+        };
+        const auto stamp = [&](core::Pos h, const QPixmap& pm) {
+            const double half = pm.width() / pm.devicePixelRatio() / 2.0;
+            p.drawPixmap(centre(h) - QPointF(half, half), pm);
         };
         const bool mine = battle.myMove();
         // The ground of the map tile the battle is fought on (forests and hills give
@@ -380,16 +454,23 @@ protected:
             p.fillRect(area, vignette);
             p.restore();
         }
-        for (int y = 0; y < battle.height; ++y)
+        std::optional<net::timing::Scope> part;
+        if (!background) part.emplace("battle lit hexes");
+        if (!background) {
+            // Where the active stack can go, and the shooter's range (stamped hexes).
+            const QPixmap& reachHex = hexStamp(QColor(255, 240, 160, 70), 0.97, false);
+            const QPixmap& rangeHex = hexStamp(enemyRange ? QColor(255, 40, 40, 45) : QColor(80, 150, 255, 40), 0.97, false);
+            for (int y = 0; y < battle.height; ++y)
+                for (int x = 0; x < battle.width; ++x) {
+                    const core::Pos h{x, y};
+                    if (mine && battle.reachable.contains(h)) stamp(h, reachHex);
+                    if (ranger && core::hex::distance(ranger->hex, h) <= ranger->range) stamp(h, rangeHex);
+                }
+        }
+        for (int y = 0; y < battle.height && background; ++y)
             for (int x = 0; x < battle.width; ++x) {
                 const core::Pos h{x, y};
                 const QPainterPath path = hexPath(h, 0.97);
-                if (!background) {
-                    if (mine && battle.reachable.contains(h)) p.fillPath(path, QColor(255, 240, 160, 70));
-                    if (ranger && core::hex::distance(ranger->hex, h) <= ranger->range)
-                        p.fillPath(path, enemyRange ? QColor(255, 40, 40, 45) : QColor(80, 150, 255, 40));
-                    continue;
-                }
                 if (!battle.obstacles.contains(h) && r >= 14) {
                     const int variant = art::decorationAt(x * 3 + 7, y * 5 + 3);
                     const QPixmap& deco = variant >= 0 ? art::decoration(groundId, variant, int(r * 1.5)) : QPixmap();
@@ -538,9 +619,10 @@ protected:
         if (ranger) {  // the edge of the range
             p.setPen(QPen(enemyRange ? QColor(255, 80, 80, 200) : QColor(120, 180, 255, 200), 2, Qt::DashLine));
             p.setBrush(Qt::NoBrush);
+            const QPixmap& edgeHex = hexStamp(enemyRange ? QColor(255, 80, 80, 200) : QColor(120, 180, 255, 200), 0.9, true);
             for (int y = 0; y < battle.height; ++y)
                 for (int x = 0; x < battle.width; ++x)
-                    if (core::hex::distance(ranger->hex, {x, y}) == ranger->range) p.drawPath(hexPath({x, y}, 0.9));
+                    if (core::hex::distance(ranger->hex, {x, y}) == ranger->range) stamp({x, y}, edgeHex);
         }
         if (intent == Intent::MoveAttack && strikeFrom.x >= 0 && hover.x >= 0) {
             // Where the stack will stand to strike, and the blow.
@@ -551,6 +633,8 @@ protected:
             p.setPen(QPen(QColor("#ffd84a"), 3, Qt::SolidLine, Qt::RoundCap));
             p.drawLine(a, a + (b - a) * 0.55);
         }
+        part.reset();
+        part.emplace("battle figures");
         // Back rows first: the figures stand up out of their hexes.
         QList<const ViewBattleUnit*> order;
         for (const ViewBattleUnit& u : battle.units) order << &u;
@@ -590,6 +674,8 @@ protected:
                 p.drawText(QRectF(b.x() - br * 0.2, b.y() - br, br * 1.1, br * 2), Qt::AlignCenter, QString::number(u.range));
             }
         }
+        part.reset();
+        part.emplace("battle effects");
         // The action being shown.
         if (!m_fx.isEmpty()) {
             const Fx& f = m_fx.first();
@@ -702,23 +788,44 @@ protected:
         ff.setBold(true);
         p.setFont(ff);
         for (const Floater& f : m_floaters) {
+            // The outlined number drawn once into a picture; each frame only moves and fades it.
+            static QHash<QString, QPixmap> pictures;
+            const qreal dpr = p.device() ? p.device()->devicePixelRatioF() : 1.0;
+            const QString key = QStringLiteral("%1|%2|%3|%4").arg(f.text).arg(f.colour.rgba()).arg(ff.pixelSize()).arg(dpr);
+            auto pic = pictures.constFind(key);
+            if (pic == pictures.cend()) {
+                if (pictures.size() > 300) pictures.clear();
+                const QFontMetrics fm(ff);
+                const QSize box(fm.horizontalAdvance(f.text) + 8, fm.height() + 8);
+                QPixmap pm(box * dpr);
+                pm.setDevicePixelRatio(dpr);
+                pm.fill(Qt::transparent);
+                {
+                    QPainter tp(&pm);
+                    tp.setRenderHint(QPainter::Antialiasing, true);
+                    QPainterPath text;
+                    text.addText(QPointF(4, 4 + fm.ascent()), ff, f.text);
+                    tp.setPen(QPen(QColor(0, 0, 0), 3));
+                    tp.drawPath(text);
+                    tp.setPen(Qt::NoPen);
+                    tp.setBrush(f.colour);
+                    tp.drawPath(text);
+                }
+                pic = pictures.insert(key, pm);
+            }
             const QPointF at = f.at - QPointF(0, r * (0.6 + f.age * 1.2));
-            QColor c = f.colour;
-            c.setAlphaF(std::max(0.0, 1.0 - f.age / 1.2));
-            QPainterPath text;
-            text.addText(at - QPointF(QFontMetrics(ff).horizontalAdvance(f.text) / 2.0, 0), ff, f.text);
-            p.setPen(QPen(QColor(0, 0, 0, c.alpha()), 3));
-            p.setBrush(Qt::NoBrush);
-            p.drawPath(text);
-            p.setPen(Qt::NoPen);
-            p.setBrush(c);
-            p.drawPath(text);
+            const QSizeF size = pic->size() / dpr;
+            const double ascent = QFontMetrics(ff).ascent();
+            p.setOpacity(std::max(0.0, 1.0 - f.age / 1.2) * f.colour.alphaF());
+            p.drawPixmap(at - QPointF(size.width() / 2.0, 4 + ascent), pic.value());
         }
+        p.setOpacity(1.0);
     }
     void mouseMoveEvent(QMouseEvent* e) override {
         const core::Pos h = hexAt(e->position());
-        const core::Pos oldFrom = strikeFrom;
+        const core::Pos oldFrom = strikeFrom, oldHover = hover;
         const Intent oldIntent = intent;
+        const int oldRanger = shooterAt(hover);
         updateIntent(e->position());
         updatePointer();
         if (h == hover && oldFrom == strikeFrom && oldIntent == intent) return;
@@ -726,7 +833,16 @@ protected:
             hover = h;
             if (hovered) hovered(h);
         }
-        update();
+        // A shooter under the mouse shows its whole range: then everything; else only
+        // the hexes under the mouse and where the stack would strike from.
+        if (shooterAt(hover) != oldRanger) {
+            update();
+            return;
+        }
+        QRect dirty;
+        for (const core::Pos p : {oldHover, hover, oldFrom, strikeFrom})
+            if (p.x >= 0) dirty |= hexBox(p);
+        update(dirty);
     }
     void leaveEvent(QEvent*) override {
         hover = {-1, -1};
@@ -773,12 +889,13 @@ private:
     double m_slide = 1.0;
     QList<Floater> m_floaters;
     QList<Ghost> m_ghosts;
+    QRect m_lastAnimRect;  // repainted last animation frame
 };
 
 BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     : QWidget(parent), m_content(content) {
     auto* layout = new QVBoxLayout(this);
-    m_info = new QLabel(this);
+    m_info = new TextLine(this);
     m_info->setObjectName("battleInfo");
     layout->addWidget(m_info);
     m_field = new HexField(content, this);
@@ -795,9 +912,10 @@ BattleView::BattleView(const core::ContentRegistry* content, QWidget* parent)
     m_stats->setTextFormat(Qt::RichText);
     m_stats->setWordWrap(true);
     m_stats->setAlignment(Qt::AlignTop | Qt::AlignLeft);
-    m_stats->setFixedWidth(230);
     m_stats->setStyleSheet("QLabel#battleStats { background: rgba(0,0,0,70); border: 1px solid #7a6235; border-radius: 6px; padding: 8px; }");
-    middle->addWidget(m_stats);
+    auto* statsHolder = new LayoutStop(m_stats, this);  // its text changes all the time
+    statsHolder->setFixedWidth(230);
+    middle->addWidget(statsHolder);
     layout->addLayout(middle, 1);
     auto* buttons = new QHBoxLayout();
     m_defend = new QPushButton(tr("Defend (D)"), this);
@@ -912,6 +1030,7 @@ void BattleView::setBattle(const ViewBattle& battle, const QColor& attacker, con
 void BattleView::battleEnded() {
     // Auto-play never carries over into the next battle.
     m_autoPlay->setChecked(false);
+    m_surrender->setVisible(false);
     m_battle = ViewBattle();
     m_field->setBattleAnimated(ViewBattle());
 }
@@ -990,8 +1109,14 @@ void BattleView::updateInfo() {
     m_wait->setEnabled(mine && battle.canWait);
     m_retreat->setVisible(battle.canRetreat || battle.yourSide == 0);
     m_retreat->setEnabled(mine && battle.canRetreat);
-    m_surrender->setVisible(mine && battle.surrenderCost >= 0);
-    m_surrender->setText(tr("Surrender (%1 gold)").arg(battle.surrenderCost));
+    // Shown all battle and greyed out on the enemy's turn (a button coming and going
+    // makes the window lay itself out again).
+    // (The server tells the price only on your turn: the button keeps the last one.)
+    if (battle.surrenderCost >= 0) {
+        m_surrender->setVisible(true);
+        m_surrender->setText(tr("Surrender (%1 gold)").arg(battle.surrenderCost));
+    }
+    m_surrender->setEnabled(mine && battle.surrenderCost >= 0);
     m_auto->setEnabled(mine);
     {
         QStringList cost;

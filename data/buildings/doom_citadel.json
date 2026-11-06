@@ -3,9 +3,9 @@
   "name": "Doom Citadel",
   "race": "undead",
   "cost": {
-    "gold": 4550,
-    "stone": 9,
-    "mercury": 3
+    "gold": 3650,
+    "stone": 7,
+    "mercury": 1
   },
   "upgradeOf": "dread_keep",
   "requires": [

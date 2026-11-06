@@ -3,8 +3,8 @@
   "name": "Ghoul Pit",
   "race": "undead",
   "cost": {
-    "gold": 900,
-    "stone": 5
+    "gold": 700,
+    "stone": 4
   },
   "upgradeOf": "crypt",
   "effects": [

@@ -78,6 +78,7 @@ QString SimpleAi::profileName() const {
 void SimpleAi::beginTurn(const GameState&, const ContentRegistry&, PlayerId) {
     m_built = m_hired = m_sentUnits = false;
     m_garrisonTaken.clear();
+    m_merged.clear();
     m_moves.clear();
     m_heroDone.clear();
     m_spellCast.clear();
@@ -130,7 +131,9 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
     //    before the gold goes on buildings and units; without any hero the gold is saved.
     int heroes = 0;
     for (const Hero& h : state.heroes()) heroes += (h.owner == me);
-    const int wanted = (state.day() < 14 ? 2 : state.day() < 28 ? 3 : 4) + m_p.extraHeroes;
+    // Gold piling up buys more heroes (each takes a town's garrison along).
+    const int rich = std::min(3, player->resources.value(content.currency()) / 20000);
+    const int wanted = (state.day() < 14 ? 2 : state.day() < 28 ? 3 : 4) + m_p.extraHeroes + rich;
     const int heroCost = content.balance().economy.heroCost;
     const int reserve = heroes < 2 ? 0 : 1000;
     bool canHireSomewhere = false;
@@ -209,6 +212,18 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
         }
     }
 
+    // 5b. Gather the army: a hero side by side with the main hero gives him everything.
+    if (const Hero* main = state.hero(mainHero(state, content, me))) {
+        const Army* mainArmy = state.army(main->army);
+        for (const Hero& h : state.heroes()) {
+            if (h.owner != me || h.id == main->id || m_merged.contains(h.id.value()) || !mainArmy) continue;
+            const Army* a = state.army(h.army);
+            if (!a || a->totalUnits() == 0 || !armiesMeet(*a, *mainArmy)) continue;
+            m_merged.insert(h.id.value());
+            return command(net::msg::moveUnits, {{"from", toInt(a->id.value())}, {"to", toInt(mainArmy->id.value())}, {"all", true}});
+        }
+    }
+
     // 6. Movement spells, then moves.
     for (const Hero& h : state.heroes()) {
         if (h.owner != me || m_spellCast.contains(h.id.value())) continue;
@@ -237,6 +252,21 @@ net::Message SimpleAi::nextCommand(const GameState& state, const ContentRegistry
 
     // 7. Done.
     return command(net::msg::endTurn);
+}
+
+HeroId SimpleAi::mainHero(const GameState& state, const ContentRegistry& content, PlayerId me) const {
+    HeroId best;
+    double strongest = -1;
+    for (const Hero& h : state.heroes()) {
+        if (h.owner != me || h.inBoat) continue;
+        const Army* a = state.army(h.army);
+        const double s = a ? armyStrength(state, content, *a) : 0;
+        if (s > strongest) {
+            strongest = s;
+            best = h.id;
+        }
+    }
+    return best;
 }
 
 // The land a hero can walk to from `from` (8 directions, walkable tiles).
@@ -484,11 +514,16 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
     }
     if (army->totalUnits() > 0 && !hunted) {
         // An enemy town's garrison is secret; what anyone sees is its size and walls.
-        // Guess it from our own: a rival about as far along keeps about as much at home.
-        double ownTotal = 0;
-        int ownLargest = 1;
-        for (const Army& a : state.armies())
-            if (a.owner == me) ownTotal += armyStrength(state, content, a);
+        // Guess it from our own towns: a rival about as far along keeps about as much
+        // at home as we do in a town (not all our armies: most of them are elsewhere).
+        double ownGarrisons = 0;
+        int ownTowns = 0, ownLargest = 1;
+        for (const Town& t : state.towns())
+            if (t.owner == me) {
+                ++ownTowns;
+                if (const Army* g = state.army(t.garrison)) ownGarrisons += armyStrength(state, content, *g);
+            }
+        const double ownTotal = ownTowns ? 1.5 * ownGarrisons / ownTowns : 0;  // a capital keeps more than the average
         for (const Town& t : state.towns())
             if (t.owner == me) ownLargest = std::max(ownLargest, static_cast<int>(t.buildings.size()));
         const auto walls = [&](const Town& t) {
@@ -498,12 +533,15 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
                     for (const BuildingEffect& e : def->effects) n += e.type == BuildingEffect::Type::Defense;
             return n;
         };
+        // Later on, bolder: armies keep growing at home, waiting does not help.
+        const double boldness = state.day() > 90 ? 1.6 : state.day() > 50 ? 1.3 : 1.0;
         for (const Town& t : state.towns()) {
-            if (!view.visible(t.pos) || !state.isHostile(t.owner, me) || risky(t.pos) || lostThere(t.pos)) continue;
+            // Towns once seen are remembered (they do not move).
+            if (!view.explored(t.pos) || !state.isHostile(t.owner, me) || risky(t.pos) || lostThere(t.pos)) continue;
             if (t.owner.isValid()) {
                 const double size = std::min(1.5, double(t.buildings.size()) / ownLargest);
                 const double guess = std::max(2500.0 + 100 * state.day(), 0.6 * ownTotal * size) * (1.0 + 0.25 * walls(t));
-                if (myStrength > guess / m_p.townValue) {
+                if (myStrength * boldness > guess / m_p.townValue) {
                     add(t.pos, 120 * m_p.townValue);
                     hostile.insert(t.pos);
                 }
@@ -524,6 +562,23 @@ net::Message SimpleAi::heroMove(const GameState& state, const ContentRegistry& c
                 continue;
             }
             add(o.pos, (o.kind == MapObject::Kind::Artifact ? 65 : 30) * m_p.treasureValue);
+        }
+    }
+    // Not the main hero, with an army worth adding: take it to him (side by side).
+    if (const Hero* main = state.hero(mainHero(state, content, me)); main && main->id != hero.id && army->totalUnits() > 0 && state.day() > 10) {
+        const Army* mainArmy = state.army(main->army);
+        if (mainArmy && myStrength >= 0.2 * armyStrength(state, content, *mainArmy) && !armiesMeet(*army, *mainArmy)) {
+            static const int dx[] = {1, -1, 0, 0, 1, -1, 1, -1}, dy[] = {0, 0, 1, -1, 1, 1, -1, -1};
+            for (int d = 0; d < 8; ++d) {
+                const Pos p{mainArmy->pos.x + dx[d], mainArmy->pos.y + dy[d]};
+                if (!state.map().inBounds(p) || !content.terrain(state.map().terrainAt(p)).walkable) continue;
+                bool free = true;
+                for (const Army& a : state.armies()) free = free && a.pos != p;
+                if (free) {
+                    add(p, 110);
+                    break;
+                }
+            }
         }
     }
     // Explore: the nearest edges of the known world.

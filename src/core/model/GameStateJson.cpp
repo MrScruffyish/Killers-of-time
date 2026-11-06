@@ -235,6 +235,23 @@ QJsonObject GameState::toJson(const ContentRegistry& content, IdStyle style) con
     if (m_defeatRule != QLatin1String("week")) root.insert("defeat", m_defeatRule);
 
     if (!m_hiddenMap) root.insert("hiddenMap", false);
+    if (!intro.isEmpty()) root.insert("intro", intro);
+    if (!storyEvents.isEmpty()) {
+        QJsonArray events;
+        for (const StoryEvent& e : storyEvents) {
+            QJsonObject o{{"day", e.day}, {"text", e.text}};
+            if (!e.gift.isEmpty()) o.insert("gift", ids.amounts(e.gift));
+            if (e.monster.isValid() && e.monsterCount > 0) {
+                o.insert("monster", ids.unit(e.monster));
+                o.insert("count", e.monsterCount);
+                o.insert("x", e.where.x);
+                o.insert("y", e.where.y);
+            }
+            events.append(o);
+        }
+        root.insert("events", events);
+    }
+    if (!news.isEmpty()) root.insert("news", QJsonArray::fromStringList(news));
     if (m_weekEvent.isValid()) root.insert("weekEvent", ids.text ? QJsonValue(content.weekEvent(m_weekEvent)->key) : QJsonValue(m_weekEvent.index()));
     if (!m_history.isEmpty()) root.insert("history", m_history);
     if (m_victory.type != VictoryCondition::Type::Conquest) {
@@ -400,6 +417,18 @@ QJsonObject GameState::toJson(const ContentRegistry& content, IdStyle style) con
         if (!m.resources.isEmpty()) o.insert("resources", ids.amounts(m.resources));
         if (m.artifact.isValid()) o.insert("artifact", ids.artifact(m.artifact));
         if (!m.site.isEmpty()) o.insert("site", m.site);
+        if (m.site == QLatin1String("quest_hut")) {
+            const Quest& q = m.quest;
+            QJsonObject qo;
+            if (q.needArtifact.isValid()) qo.insert("needArtifact", ids.artifact(q.needArtifact));
+            if (!q.needResources.isEmpty()) qo.insert("needResources", ids.amounts(q.needResources));
+            if (q.needLevel > 0) qo.insert("needLevel", q.needLevel);
+            if (!q.rewardResources.isEmpty()) qo.insert("rewardResources", ids.amounts(q.rewardResources));
+            if (q.rewardArtifact.isValid()) qo.insert("rewardArtifact", ids.artifact(q.rewardArtifact));
+            if (q.rewardExperience > 0) qo.insert("rewardExperience", q.rewardExperience);
+            if (q.done) qo.insert("done", true);
+            o.insert("quest", qo);
+        }
         if (!m.visited.isEmpty()) {
             QJsonObject v;
             for (auto it = m.visited.begin(); it != m.visited.end(); ++it) v.insert(QString::number(it.key()), it.value());
@@ -487,6 +516,25 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         top.addError(QStringLiteral("field 'defeat' must be week, town or all"));
 
     gs.m_hiddenMap = top.optionalBool("hiddenMap", true);
+    gs.intro = top.optionalString("intro");
+    gs.news = top.optionalStringList("news");
+    if (top.has("events")) {
+        const QJsonArray events = top.requireArray("events");
+        for (qsizetype i = 0; i < events.size(); ++i) {
+            JsonReader e(events[i].toObject(), QStringLiteral("events[%1]").arg(i), &errs);
+            StoryEvent ev;
+            ev.day = e.requireInt("day", 1, 100000);
+            ev.text = e.requireString("text");
+            ev.gift = ids.readAmounts(e, "gift", -100000, 100000000);
+            if (e.has("monster")) {
+                ev.monster = ids.readUnit(e, "monster");
+                ev.monsterCount = e.requireInt("count", 1, 100000);
+                ev.where = {e.requireInt("x", 0, 100000), e.requireInt("y", 0, 100000)};
+            }
+            e.finish();
+            gs.storyEvents.append(ev);
+        }
+    }
     if (top.has("weekEvent")) {
         gs.m_weekEvent = ids.text ? content.weekEventId(top.requireId("weekEvent")) : WeekEventId(top.requireInt("weekEvent", 0, 32767));
         if (!content.weekEvent(gs.m_weekEvent)) errs << QStringLiteral("save: unknown week event");
@@ -734,6 +782,17 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         m.resources = ids.readAmounts(r, "resources", 0, 100000000);
         if (r.has("artifact")) m.artifact = ids.readArtifactField(r, "artifact");
         m.site = r.optionalString("site");
+        if (r.has("quest")) {
+            JsonReader q(r.requireObject("quest"), ctx + QStringLiteral(" quest"), &errs);
+            if (q.has("needArtifact")) m.quest.needArtifact = ids.readArtifactField(q, "needArtifact");
+            m.quest.needResources = ids.readAmounts(q, "needResources", 0, 100000000);
+            m.quest.needLevel = q.optionalInt("needLevel", 0, 0, 100);
+            m.quest.rewardResources = ids.readAmounts(q, "rewardResources", 0, 100000000);
+            if (q.has("rewardArtifact")) m.quest.rewardArtifact = ids.readArtifactField(q, "rewardArtifact");
+            m.quest.rewardExperience = q.optionalInt("rewardExperience", 0, 0, 10000000);
+            m.quest.done = q.optionalBool("done", false);
+            q.finish();
+        }
         const QMap<QString, int> visited = r.optionalIntMap("visited", 0, 10000000);
         for (auto it = visited.begin(); it != visited.end(); ++it) m.visited.insert(it.key().toInt(), it.value());
         r.finish();

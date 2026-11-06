@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include <QDialog>
 #include <QJsonObject>
 
@@ -47,6 +49,11 @@ private:
     GameView m_view;
     int m_townId = 0;
     QTabWidget* m_tabs;
+    // The tabs are filled when first shown (or a moment after the window), not all at once.
+    QList<std::function<void(QWidget*)>> m_tabFill;
+    int m_tabGeneration = 0;
+    void addLazyTab(const QIcon& icon, const QString& title, std::function<void(QWidget*)> fill);
+    void buildTab(int index);
     QLabel* m_scene;
     QComboBox* m_townChoice;
     bool m_onlyBuildable = false;  // remembered in QSettings

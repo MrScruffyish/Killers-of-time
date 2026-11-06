@@ -42,13 +42,19 @@ private slots:
         town = gs.addTown("Home", RC("humans"), {3, 3}, p1);
     }
 
+    // A week of militia in a human town (the race's growth is balance data).
+    int weekOf(const char* unit, int extraPercent = 0) const {
+        return (reg.unit(U(unit))->weeklyGrowth * (100 + reg.race(RC("humans")).growthPercent + extraPercent) + 50) / 100;
+    }
+    int weekOfMilitia() const { return weekOf("militia"); }
+
     // ---- building
     void buildingPaysAndStocksTheDwelling() {
         QVERIFY2(build("barracks").ok, "barracks");
         QCOMPARE(me().resources.value(R("gold")), 9700);
         QCOMPARE(me().resources.value(R("wood")), 45);
         QVERIFY(t().buildings.contains(B("barracks")));
-        QCOMPARE(t().recruitPool.value(B("barracks")), 12);  // militia weekly growth
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia());  // militia weekly growth (with the race's)
         QCOMPARE(t().lastBuildDay, 1);
     }
 
@@ -136,7 +142,7 @@ private slots:
         QCOMPARE(d.size(), 1);
         QCOMPARE(d[0].unitId, U("pikeman"));
         QCOMPARE(d[0].poolKey, B("barracks"));
-        QCOMPARE(t().recruitPool.value(B("barracks")), 12);  // stock kept, not reset
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia());  // stock kept, not reset
     }
 
     // ---- recruiting
@@ -147,18 +153,18 @@ private slots:
         QCOMPARE(gs.army(t().garrison)->totalUnits(), 5);
         QCOMPARE(gs.army(t().garrison)->stacks[0].maxHp(), 6);
         QCOMPARE(me().resources.value(R("gold")), 9700 - 100);
-        QCOMPARE(t().recruitPool.value(B("barracks")), 7);
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia() - 5);
     }
 
     void recruitLimits() {
         QVERIFY(build("barracks").ok);
-        QVERIFY(recruit(gs, reg, town, p1, U("militia"), 13).error.contains("only 12 Militia available"));
+        QVERIFY(recruit(gs, reg, town, p1, U("militia"), weekOfMilitia() + 1).error.contains(QStringLiteral("only %1 Militia available").arg(weekOfMilitia())));
         QVERIFY(recruit(gs, reg, town, p1, U("militia"), 0).error.contains("invalid count"));
         QVERIFY(recruit(gs, reg, town, p1, U("archer"), 1).error.contains("cannot be recruited"));
         QVERIFY(recruit(gs, reg, town, p1, U("nonsense"), 1).error.contains("unknown unit"));
         me().resources[R("gold")] = 30;
         QVERIFY(recruit(gs, reg, town, p1, U("militia"), 2).error.contains("not enough gold"));
-        QCOMPARE(t().recruitPool.value(B("barracks")), 12);
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia());
         QVERIFY(recruit(gs, reg, town, p2, U("militia"), 1).error.contains("not your town"));
     }
 
@@ -185,7 +191,7 @@ private slots:
         QVERIFY(!r.ok);
         QVERIFY(r.error.contains("no free slot"));
         QCOMPARE(me().resources.value(R("gold")), gold);
-        QCOMPARE(t().recruitPool.value(B("barracks")), 12);
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia());
     }
 
     void afterUpgradeOnlyTheUpgradedUnitIsRecruitable() {
@@ -194,7 +200,7 @@ private slots:
         QVERIFY(recruit(gs, reg, town, p1, U("militia"), 1).error.contains("cannot be recruited"));
         QVERIFY(recruit(gs, reg, town, p1, U("pikeman"), 3).ok);
         QCOMPARE(gs.army(t().garrison)->stacks[0].unitTypeId(), U("pikeman"));
-        QCOMPARE(t().recruitPool.value(B("barracks")), 9);
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia() - 3);
     }
 
     // ---- weekly growth and income
@@ -213,10 +219,10 @@ private slots:
         beginGame(gs, reg);
         for (int i = 0; i < 6; ++i) endTurn(gs, reg);  // two players: three days later
         QCOMPARE(gs.day(), 4);
-        QCOMPARE(t().recruitPool.value(B("barracks")), 12);
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia());
         for (int i = 0; i < 8; ++i) endTurn(gs, reg);  // day 8
         QCOMPARE(gs.day(), 8);
-        QCOMPARE(t().recruitPool.value(B("barracks")), 24);
+        QCOMPARE(t().recruitPool.value(B("barracks")), 2 * weekOfMilitia());
     }
 
     void neutralTownsGrowTheirGarrisonSlowly() {
@@ -239,16 +245,16 @@ private slots:
         beginGame(gs, reg);
         endTurn(gs, reg);
         endTurn(gs, reg);  // day 8
-        QCOMPARE(t().recruitPool.value(B("barracks")), 12 + 12);  // pikeman growth is 12
+        QCOMPARE(t().recruitPool.value(B("barracks")), weekOfMilitia() + weekOf("pikeman"));  // then pikemen grow
     }
 
     void granaryMakesDwellingsGrowMore() {
         const UnitDef& militia = *reg.unit(U("militia"));
-        QCOMPARE(townGrowth(gs, t(), militia, reg), 12);
+        QCOMPARE(townGrowth(gs, t(), militia, reg), weekOfMilitia());
         me().resources[R("grain")] = 10;
         buildOnNewDay("village_hall");
         buildOnNewDay("granary");
-        QCOMPARE(townGrowth(gs, t(), militia, reg), 14);  // +20%, rounded
+        QCOMPARE(townGrowth(gs, t(), militia, reg), weekOf("militia", 20));  // +20%, rounded
     }
 
     void buildingsAddIncome() {

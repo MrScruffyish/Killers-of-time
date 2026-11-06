@@ -1,4 +1,5 @@
 #include "client/HeroDialog.h"
+#include "core/rules/HeroRules.h"
 
 #include <QGridLayout>
 #include <QScreen>
@@ -9,6 +10,8 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include "client/Art.h"
@@ -84,7 +87,12 @@ void HeroDialog::rebuild() {
         const ViewPlayer* owner = m_view.player(h->owner);
         face->setPixmap(art::portrait(h->classId, owner ? QColor(owner->color) : QColor("#999999"), h->id, 96));
         head->addWidget(face);
-        head->addWidget(new QLabel(tr("<h2>%1</h2>Level %2 %3").arg(h->name).arg(h->level).arg(cls ? cls->name : QString()), m_body), 1);
+        const core::HeroTemplateDef* tmpl = m_content->heroTemplate(h->templateId);
+        const QString special = tmpl && !tmpl->specialty.isEmpty() ? core::describeSpecialty(tmpl->specialty, *m_content) : QString();
+        head->addWidget(new QLabel(tr("<h2>%1</h2>Level %2 %3%4").arg(h->name).arg(h->level).arg(cls ? cls->name : QString())
+                                       .arg(special.isEmpty() ? QString() : tr("<br><span style='color:#e8c872'>Specialty: %1</span>").arg(special.toHtmlEscaped())),
+                                   m_body),
+                        1);
         v->addLayout(head);
     }
     if (next > 0) {
@@ -197,10 +205,18 @@ void HeroDialog::rebuild() {
     right->addWidget(artBox);
     right->addStretch(1);
     v->addStretch(1);
-    // Wide enough for everything (a remembered smaller size would need sideways scrolling).
-    const int need = m_body->sizeHint().width() + 60;
-    const QRect screen = this->screen() ? this->screen()->availableGeometry() : QRect(0, 0, 1280, 800);
-    if (width() < need) resize(std::min(need, screen.width() - 40), height());
+    // Wide enough for everything: once laid out, as much wider as the sideways scroll
+    // bar would scroll (a remembered smaller size is too narrow), within the screen.
+    QTimer::singleShot(0, this, [this]() {
+        auto* scroll = findChild<QScrollArea*>();
+        if (!scroll) return;
+        const int missing = scroll->horizontalScrollBar()->maximum();
+        if (missing <= 0) return;
+        const QRect screen = this->screen() ? this->screen()->availableGeometry() : QRect(0, 0, 1280, 800);
+        const int w = std::min(width() + missing + scroll->verticalScrollBar()->sizeHint().width() + 4, screen.width() - 20);
+        resize(w, height());
+        if (x() + w > screen.right()) move(std::max(screen.left(), screen.right() - w), y());
+    });
 }
 
 }  // namespace kot::client

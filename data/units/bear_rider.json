@@ -8,10 +8,10 @@
   "damageMin": 14,
   "damageMax": 22,
   "maxHp": 95,
-  "battleSpeed": 6,
+  "battleSpeed": 7,
   "weeklyGrowth": 3,
   "cost": {
-    "gold": 2020
+    "gold": 1820
   },
   "initiative": 8,
   "upgradesTo": "bear_lord"

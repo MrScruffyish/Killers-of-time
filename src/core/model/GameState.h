@@ -59,6 +59,11 @@ public:
     QJsonArray& history() { return m_history; }
     const QJsonArray& history() const { return m_history; }
     void setWeekEvent(WeekEventId id) { m_weekEvent = id; }
+    // The scenario's story (brief): told at the start, and events on given days.
+    // `news` is what happened today (the events' texts; cleared each new day).
+    QString intro;
+    QList<StoryEvent> storyEvents;
+    QStringList news;
     void setVictory(const VictoryCondition& v) { m_victory = v; }
     void setDifficulty(const QString& d) { m_difficulty = d; }
     // Fog of war on: explored tiles out of sight are shaded and their armies hidden.

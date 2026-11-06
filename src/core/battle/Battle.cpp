@@ -1,4 +1,5 @@
 #include "core/battle/Battle.h"
+#include "core/rules/HeroRules.h"
 
 #include <QJsonArray>
 #include <QQueue>
@@ -68,6 +69,11 @@ Battle::Battle(const GameState& state, const ContentRegistry& content, ArmyId at
             u.stack = UnitStack::fromTotalHp(s.unitTypeId(), s.totalHp() * maxHp / std::max(1, s.maxHp()), maxHp);
             u.stack.setExperience(s.experience());
             u.stars = veteranStars(s.experience(), content);
+            if (const HeroSpecialty* sp = m_heroCopy[side].id.isValid() ? heroSpecialty(m_heroCopy[side], content) : nullptr;
+                sp && specialtyFits(*sp, s.unitTypeId(), content)) {
+                u.specialtyAttack = sp->attack;
+                u.specialtyDefense = sp->defense;
+            }
             for (const char* stat : {"attack", "defense", "initiative", "battleSpeed", "morale"})
                 if (const int b = veteranBonus(u.stars, QString::fromLatin1(stat), content)) u.veteran.insert(QString::fromLatin1(stat), b);
             u.pos = Pos{side == 0 ? 0 : hex::kWidth - 1, rows[placed++ % 11]};
@@ -308,8 +314,8 @@ bool Battle::attackHex(const BattleUnit& attacker, const BattleUnit& target, Pos
 
 void Battle::strike(BattleUnit& from, BattleUnit& to, BattleEvent::Type type, QList<BattleEvent>* events) {
     const BattleBalance& bb = m_content.balance().battle;
-    const int diff = (from.def->attack + m_attackBonus[from.side] + from.modifier(QStringLiteral("attack")))
-                   - (to.def->defense + m_defenseBonus[to.side] + to.modifier(QStringLiteral("defense")));
+    const int diff = (from.def->attack + m_attackBonus[from.side] + from.specialtyAttack + from.modifier(QStringLiteral("attack")))
+                   - (to.def->defense + m_defenseBonus[to.side] + to.specialtyDefense + to.modifier(QStringLiteral("defense")));
     double mult = 1.0;
     if (diff > 0) mult += std::min(diff * bb.attackPercentPerPoint, bb.maxAttackPercent) / 100.0;
     if (diff < 0) mult -= std::min(-diff * bb.defensePercentPerPoint, bb.maxDefensePercent) / 100.0;

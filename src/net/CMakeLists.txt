@@ -8,6 +8,8 @@ add_library(kot_net STATIC
     MessageFramer.cpp
     Connection.h
     Connection.cpp
+    ActionTiming.h
+    ActionTiming.cpp
     LobbyTypes.h
     LobbyTypes.cpp
     LobbyClient.h

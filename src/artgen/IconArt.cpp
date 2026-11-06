@@ -1368,7 +1368,32 @@ void drawSite(QPainter& p, const QRectF& r, const QString& site, bool glowing) {
         p.drawEllipse(c, rad, rad);
     };
     p.setPen(inkPen(pw));
-    if (site == "shrine") {  // a stone altar under a little roof, a glowing book on it
+    if (site == "quest_hut") {  // a small round hut of wood and thatch, a scroll on a post: the hermit's wish
+        halo(P(0.72, 0.36), w * 0.24, QColor("#ffe08a"));
+        const QRectF wall(P(0.16, 0.5), P(0.62, 0.88));
+        p.setBrush(shine(wall, QColor("#8a6a44")));
+        p.drawRect(wall);
+        p.setPen(inkPen(pw * 0.6, QColor(60, 40, 20)));
+        for (double y = 0.58; y < 0.88; y += 0.08) p.drawLine(P(0.16, y), P(0.62, y));
+        p.setPen(inkPen(pw));
+        const QPolygonF thatch{P(0.08, 0.54), P(0.39, 0.22), P(0.7, 0.54)};
+        p.setBrush(shine(thatch.boundingRect(), QColor("#c8a050")));
+        p.drawPolygon(thatch);
+        p.setBrush(QColor("#2a1a0c"));
+        p.drawRoundedRect(QRectF(P(0.32, 0.66), P(0.46, 0.88)), w * 0.02, w * 0.02);  // the door
+        p.setBrush(QColor("#6a4a2a"));
+        p.drawRect(QRectF(P(0.71, 0.4), P(0.75, 0.88)));  // the post
+        const QRectF scroll(P(0.62, 0.22), P(0.86, 0.46));
+        p.setBrush(shine(scroll, QColor("#f4e6c0")));
+        p.drawRoundedRect(scroll, w * 0.02, w * 0.02);
+        p.setPen(inkPen(pw * 0.5, QColor(90, 60, 30)));
+        for (int i = 0; i < 3; ++i) p.drawLine(P(0.66, 0.28 + 0.05 * i), P(0.82, 0.28 + 0.05 * i));
+        p.setPen(inkPen(pw));
+        if (!glowing) {  // done: the scroll is crossed out
+            p.setPen(inkPen(pw * 1.2, QColor("#a02020")));
+            p.drawLine(P(0.63, 0.24), P(0.85, 0.44));
+        }
+    } else if (site == "shrine") {  // a stone altar under a little roof, a glowing book on it
         halo(P(0.5, 0.5), w * 0.42, QColor("#a0c8ff"));
         p.setBrush(shine(QRectF(P(0.2, 0.74), P(0.8, 0.9)), stone));
         p.drawRect(QRectF(P(0.16, 0.8), P(0.84, 0.9)));

@@ -98,7 +98,10 @@ terrain tiles, edges, decorations, trees/hills/peaks, fog, coasts, and the town 
 backdrop per race, one figure per building kind, walls, boat). Paths are in
 `src/client/ArtPaths.h` (e.g. `unit/militia/0.png`, `terrain/grass/tile2.png`). Masters are
 512x512 (trees/hills/peaks 1024, the town screen 2700x510 and building figures 600x728,
-pointers 128); the client scales them smoothly to the size shown. About 1750 files, 72 MB,
+pointers 128); the client scales them smoothly to the size shown. Every picture is also saved at
+half and a quarter of its size (`<path>@2.png`, `<path>@4.png`, tints `<path>@2.tint.png`): the
+client loads the smallest copy at least as big as it shows the picture (a quarter decodes ~16x
+faster than the master), so a replaced picture needs its copies too (run the export, or scale it). About 1750 files, 72 MB,
 90 s. Pictures with the owner's colour are two files:
 `<path>.png` (drawn with black as the owner colour) and `<path>.tint.png` (how much of the
 owner colour each pixel takes); the client puts them together as base + tint * colour, so

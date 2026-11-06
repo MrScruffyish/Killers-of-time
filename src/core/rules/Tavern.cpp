@@ -101,7 +101,7 @@ HireResult hireHero(GameState& state, const ContentRegistry& content, TownId tow
 
     applyTradeSteps(player->resources, plan);
     player->resources[currency] -= cost.value(currency);
-    state.hero(id)->templateId = templateId;
+    giveHeroTemplate(*state.hero(id), content, templateId);
     town = state.town(townId);  // createHero may have moved the towns in memory
     if (town) town->lastHireWeek = week;
     for (Town& t : state.towns()) t.tavernOffers.removeAll(templateId);

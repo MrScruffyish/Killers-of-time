@@ -11,6 +11,7 @@ QString siteName(const QString& site) {
     if (site == "obelisk") return QStringLiteral("Seer's Obelisk");
     if (site == "arena") return QStringLiteral("Arena");
     if (site == "learning_stone") return QStringLiteral("Learning Stone");
+    if (site == "quest_hut") return QStringLiteral("Hermit's Hut");
     return site;
 }
 
@@ -20,6 +21,7 @@ QString siteDescription(const QString& site) {
     if (site == "obelisk") return QStringLiteral("Shows your team the land far around it.");
     if (site == "arena") return QStringLiteral("Each hero trains here once: +1 Attack or +1 Defense.");
     if (site == "learning_stone") return QStringLiteral("Each hero learns here once: +1000 experience.");
+    if (site == "quest_hut") return QStringLiteral("A hermit asks for something and pays well, once.");
     return {};
 }
 
@@ -29,13 +31,59 @@ int visitKey(const GameState& state, const MapObject& site, const Hero& hero) {
 }
 }  // namespace
 
+QString describeQuest(const Quest& q, const ContentRegistry& content) {
+    QString need;
+    if (const ArtifactDef* a = content.artifact(q.needArtifact)) need = QStringLiteral("Bring the %1").arg(a->name);
+    else if (!q.needResources.isEmpty()) {
+        QStringList parts;
+        for (const auto [r, amount] : q.needResources) parts << QStringLiteral("%1 %2").arg(amount).arg(content.resource(r).name.toLower());
+        need = QStringLiteral("Bring %1").arg(parts.join(QStringLiteral(", ")));
+    } else if (q.needLevel > 0) need = QStringLiteral("Come back as a level %1 hero").arg(q.needLevel);
+    QStringList reward;
+    for (const auto [r, amount] : q.rewardResources) reward << QStringLiteral("%1 %2").arg(amount).arg(content.resource(r).name.toLower());
+    if (const ArtifactDef* a = content.artifact(q.rewardArtifact)) reward << QStringLiteral("the %1").arg(a->name);
+    if (q.rewardExperience > 0) reward << QStringLiteral("%1 experience").arg(q.rewardExperience);
+    if (q.done) return QStringLiteral("The hermit's wish was granted.");
+    return QStringLiteral("%1: %2.").arg(need, reward.join(QStringLiteral(", ")));
+}
+
+bool canFulfil(const GameState& state, const Quest& q, const Hero& hero) {
+    if (q.done) return false;
+    if (q.needArtifact.isValid()) return hero.artifacts.contains(q.needArtifact) || hero.backpack.contains(q.needArtifact);
+    if (!q.needResources.isEmpty()) {
+        const Player* p = state.player(hero.owner);
+        if (!p) return false;
+        for (const auto [r, amount] : q.needResources)
+            if (p->resources.value(r) < amount) return false;
+        return true;
+    }
+    return hero.level >= q.needLevel;
+}
+
 bool siteGivesSomething(const GameState& state, const MapObject& site, const Hero& hero) {
+    if (site.site == QLatin1String("quest_hut")) return canFulfil(state, site.quest, hero);
     const auto it = site.visited.constFind(visitKey(state, site, hero));
     if (it == site.visited.cend()) return true;
     return site.site == QLatin1String("magic_well") && it.value() != state.day();
 }
 
 QString visitSite(GameState& state, const ContentRegistry& content, MapObject& site, Hero& hero) {
+    if (site.site == QLatin1String("quest_hut")) {
+        Quest& q = site.quest;
+        if (q.done) return QStringLiteral("the hermit has nothing more to ask");
+        if (!canFulfil(state, q, hero)) return QStringLiteral("the hermit says: \"%1\"").arg(describeQuest(q, content));
+        if (q.needArtifact.isValid() && !hero.backpack.removeOne(q.needArtifact)) {
+            unequipArtifact(hero, content, q.needArtifact);  // worn: off first (its bonus goes), then given
+            hero.backpack.removeOne(q.needArtifact);
+        }
+        Player* p = state.player(hero.owner);
+        for (const auto [r, amount] : q.needResources) p->resources[r] -= amount;
+        for (const auto [r, amount] : q.rewardResources) p->resources[r] += amount;
+        if (q.rewardArtifact.isValid()) takeArtifact(hero, content, q.rewardArtifact);
+        if (q.rewardExperience > 0) addExperience(hero, content, q.rewardExperience);
+        q.done = true;
+        return QStringLiteral("the hermit's wish is granted: %1").arg(describeQuest(Quest{{}, {}, 0, q.rewardResources, q.rewardArtifact, q.rewardExperience, false}, content).section(QLatin1String(": "), 1));
+    }
     if (!siteGivesSomething(state, site, hero)) return QStringLiteral("nothing more for this hero here");
     QString what;
     if (site.site == QLatin1String("shrine")) {

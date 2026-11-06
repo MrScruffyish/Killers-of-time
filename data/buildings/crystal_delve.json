@@ -3,7 +3,7 @@
   "name": "Crystal Delve",
   "race": "dwarves",
   "cost": {
-    "gold": 1200,
+    "gold": 1100,
     "stone": 10
   },
   "requires": [

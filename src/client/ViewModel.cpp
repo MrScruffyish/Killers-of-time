@@ -104,6 +104,8 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
     v.victory = json.value("victory").toString();
     v.defeat = json.value("defeat").toString();
     v.weekEventName = json.value("weekEvent").toObject().value("name").toString();
+    v.intro = json.value("intro").toString();
+    for (const QJsonValue& n : json.value("news").toArray()) v.news << n.toString();
     v.weekEventText = json.value("weekEvent").toObject().value("description").toString();
     v.campaign = json.value("campaign").toObject();
     v.winnerTeam = json.value("winnerTeam").toInt();
@@ -154,6 +156,7 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         h.id = o.value("id").toInt();
         h.name = o.value("name").toString();
         h.classId = core::HeroClassId(o.value("class").toInt(-1));
+        h.templateId = core::HeroTemplateId(o.value("template").toInt(-1));
         h.owner = o.value("owner").toInt();
         h.level = o.value("level").toInt(1);
         h.pos = posOf(o);
@@ -241,6 +244,8 @@ bool parseGameView(const QJsonObject& json, GameView* out, QString* error) {
         m.artifactId = core::ArtifactId(o.value("artifact").toInt(-1));
         m.site = o.value("site").toString();
         for (const QJsonValue& h : o.value("giftFor").toArray()) m.giftFor << h.toInt();
+        m.quest = o.value("quest").toString();
+        m.questDone = o.value("questDone").toBool();
         m.resources = amounts(o.value("resources"));
         m.pos = posOf(o);
         v.objects.append(m);

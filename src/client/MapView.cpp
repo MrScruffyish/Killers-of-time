@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "client/Art.h"
+#include "net/ActionTiming.h"
 #include "core/rules/MapSites.h"
 #include "core/content/ContentRegistry.h"
 #include "core/model/Entities.h"
@@ -59,6 +60,8 @@ MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
     m_walkTimer->setInterval(16);
     connect(m_walkTimer, &QTimer::timeout, this, [this]() {
         const double dt = m_walkClock.restart() / 1000.0;
+        QList<core::Pos> dirty;  // the ways of the walking heroes (and what they pick up)
+        for (const Walk& w : std::as_const(m_walks)) dirty << w.steps;
         for (auto it = m_walks.begin(); it != m_walks.end();) {
             Walk& w = it.value();
             const double perStep = std::min(0.09, 1.2 / std::max<qsizetype>(1, w.steps.size() - 1)) * w.slowness;
@@ -67,7 +70,7 @@ MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
             else ++it;
         }
         if (m_walks.isEmpty()) m_walkTimer->stop();
-        viewport()->update();
+        updateTiles(dirty);
     });
     m_edgeTimer = new QTimer(this);
     m_edgeTimer->setInterval(30);
@@ -78,6 +81,7 @@ MapView::MapView(const core::ContentRegistry* content, QWidget* parent)
 }
 
 void MapView::setView(const GameView& view) {
+    const int groundBefore = m_groundVersion;
     // Heroes that moved walk there: along the route that was shown for them, else
     // in a straight line (other players' heroes).
     if (m_view.width == view.width && m_view.height == view.height) {
@@ -111,6 +115,7 @@ void MapView::setView(const GameView& view) {
     if (view.width != m_view.width || view.height != m_view.height) {
         m_chunks.clear();
         m_chunkUse.clear();
+        m_shadeChunks.clear();
         ++m_groundVersion;
     } else {
         const auto taken = [](const GameView& v) {
@@ -120,22 +125,42 @@ void MapView::setView(const GameView& view) {
             for (const ViewMine& m2 : v.mines) s.insert(m2.pos);
             for (const ViewDwelling& d : v.dwellings) s.insert(d.pos);
             for (const ViewObject& o : v.objects) s.insert(o.pos);
-            for (const ViewArmy& a : v.armies) s.insert(a.pos);
-            return s;
+            return s;  // (heroes and monsters move all the time: they just stand on the decorations)
         };
         const QSet<core::Pos> before = taken(m_view), after = taken(view);
         QSet<core::Pos> changed = (before - after) + (after - before);
         for (int y = 0; y < view.height; ++y)
             for (int x = 0; x < view.width; ++x) {
                 const int i = y * view.width + x;
-                if (view.tiles.value(i) != m_view.tiles.value(i) || view.visible.mid(i, 1) != m_view.visible.mid(i, 1)) changed.insert({x, y});
+                if (view.tiles.value(i) != m_view.tiles.value(i)) changed.insert({x, y});
             }
         dropChunksAround(changed);
+        dropChunksAround(changed, &m_shadeChunks);  // newly known tiles are shaded too
+        // What is in sight: only the shade chunks around the tiles that changed.
+        QSet<core::Pos> sight;
+        if (view.visible != m_view.visible)
+            for (int i = 0; i < view.width * view.height; ++i)
+                if (view.visible.mid(i, 1) != m_view.visible.mid(i, 1)) sight.insert({i % view.width, i / view.width});
+        dropChunksAround(sight, &m_shadeChunks);
     }
+    // What to repaint: everything when the ground changed (the screen picture is put
+    // together again anyway) or the turn changed hands; else only around the things
+    // that changed and the selected hero's lit tiles and paths, old and new.
+    const bool full = m_groundVersion != groundBefore || view.width != m_view.width || view.height != m_view.height ||
+                      view.isMyTurn() != m_view.isMyTurn() || view.you != m_view.you;
+    QList<core::Pos> dirty = changedThings(m_view, view);
+    const auto overlay = [this, &dirty]() {
+        for (const core::Pos t : m_planner.reachableToday()) dirty << t;
+        for (const core::Pos t : m_planner.dangerTiles()) dirty << t;
+        dirty << m_plan.steps << m_routePlan.steps;
+    };
+    overlay();
     m_view = view;
     replan();
+    overlay();
     updateScrollBars();
-    viewport()->update();
+    if (full) viewport()->update();
+    else updateTiles(dirty);
 }
 
 MapView::WalkSpeed MapView::walkSpeed(bool own) {
@@ -148,15 +173,16 @@ void MapView::setWalkSpeed(bool own, WalkSpeed speed) {
 }
 
 void MapView::setSelectedHero(int heroId) {
+    if (heroId == m_selectedHero) return;  // (setView has planned for him already)
     m_selectedHero = heroId;
     replan();
+    viewport()->update();
 }
 
 void MapView::replan() {
     if (m_content) m_planner.prepare(m_view, *m_content, m_selectedHero);
     m_plan = m_planner.plan(m_hover);
     m_routePlan = m_route ? m_planner.plan(*m_route) : MovePlan();
-    viewport()->update();
 }
 
 void MapView::showBanner(const QString& title, const QString& subtitle) {
@@ -180,9 +206,11 @@ void MapView::showBanner(const QString& title, const QString& subtitle) {
 
 void MapView::setRoute(std::optional<core::Pos> target) {
     if (target == m_route) return;
+    QList<core::Pos> dirty = m_routePlan.steps;
     m_route = target;
     m_routePlan = m_route ? m_planner.plan(*m_route) : MovePlan();
-    viewport()->update();
+    dirty << m_routePlan.steps;
+    updateTiles(dirty);
 }
 
 void MapView::mouseMoveEvent(QMouseEvent* event) {
@@ -211,12 +239,15 @@ void MapView::mouseMoveEvent(QMouseEvent* event) {
     }
     const core::Pos t = tileAt(event->pos());
     if (t == m_hover) return;
+    QList<core::Pos> dirty = m_plan.steps;
+    dirty << m_hover << t;
     m_hover = t;
     m_plan = m_planner.plan(t);
+    dirty << m_plan.steps;
     updatePointer();
     QString info = describeTile(t);
     emit hoverInfo(info.replace('\n', QStringLiteral("  \u00B7  ")));
-    viewport()->update();
+    updateTiles(dirty);
 }
 
 void MapView::updatePointer() {
@@ -256,9 +287,11 @@ void MapView::updatePointer() {
 
 void MapView::leaveEvent(QEvent* event) {
     m_edgeTimer->stop();
+    QList<core::Pos> dirty = m_plan.steps;
+    dirty << m_hover;
     m_hover = {-1, -1};
     m_plan = MovePlan();
-    viewport()->update();
+    updateTiles(dirty);
     QAbstractScrollArea::leaveEvent(event);
 }
 
@@ -308,7 +341,8 @@ QString MapView::describeTile(core::Pos t) const {
         if (o.pos != t) continue;
         if (!o.site.isEmpty()) {
             const bool gift = m_selectedHero ? o.giftFor.contains(m_selectedHero) : !o.giftFor.isEmpty();
-            lines << tr("%1: %2 %3").arg(core::siteName(o.site), core::siteDescription(o.site),
+            if (!o.quest.isEmpty()) lines << tr("%1: %2").arg(core::siteName(o.site), o.quest);
+            else lines << tr("%1: %2 %3").arg(core::siteName(o.site), core::siteDescription(o.site),
                                          gift ? tr("(something for this hero)") : tr("(nothing more for this hero)"));
             continue;
         }
@@ -437,8 +471,59 @@ QRect MapView::tileRect(core::Pos t) const {
     return QRect(t.x * m_tile - o.x(), t.y * m_tile - o.y(), m_tile, m_tile);
 }
 
-void MapView::dropChunksAround(const QSet<core::Pos>& tiles) {
-    if (tiles.isEmpty() || m_chunks.isEmpty()) return;
+QRegion MapView::tilesRegion(const QList<core::Pos>& tiles) const {
+    QRegion region;
+    for (const core::Pos t : tiles) {
+        if (t.x < 0 || t.y < 0) continue;
+        region += tileRect(t).adjusted(-2 * m_tile, -2 * m_tile, 2 * m_tile, m_tile);  // (labels can be wide)
+    }
+    return region;
+}
+
+void MapView::updateTiles(const QList<core::Pos>& tiles) {
+    const QRegion region = tilesRegion(tiles) & viewport()->rect();
+    if (region.isEmpty()) return;
+    // A region of many pieces clips slowly: then its bounding box.
+    if (region.rectCount() > 24) viewport()->update(region.boundingRect());
+    else viewport()->update(region);
+}
+
+QList<core::Pos> MapView::changedThings(const GameView& a, const GameView& b) {
+    // Each thing drawn on the map, keyed by what it is, with what its drawing depends on.
+    const auto things = [](const GameView& v) {
+        QHash<QString, std::pair<core::Pos, QByteArray>> out;
+        const auto put = [&](const QString& key, core::Pos pos, const QByteArray& look) { out.insert(key, {pos, look}); };
+        for (const ViewHero& h : v.heroes)
+            put(QStringLiteral("h%1").arg(h.id), h.pos, QByteArray::number(h.owner) + ',' + QByteArray::number(h.inBoat) + ',' + QByteArray::number(h.classId.index()));
+        for (const ViewArmy& a : v.armies) {
+            QByteArray look = QByteArray::number(a.owner) + ',' + QByteArray::number(a.hero);
+            for (const ViewStack& s : a.stacks) look += ';' + QByteArray::number(s.unit.index()) + ':' + QByteArray::number(s.count);
+            put(QStringLiteral("a%1").arg(a.id), a.pos, look);
+        }
+        for (const ViewTown& t : v.towns)
+            put(QStringLiteral("t%1").arg(t.id), t.pos, QByteArray::number(t.owner) + ',' + QByteArray::number(t.walls) + ',' + QByteArray::number(t.size) + ',' + t.name.toUtf8());
+        for (const ViewMine& m : v.mines) put(QStringLiteral("m%1").arg(m.id), m.pos, QByteArray::number(m.owner));
+        for (const ViewDwelling& d : v.dwellings) put(QStringLiteral("d%1").arg(d.id), d.pos, QByteArray::number(d.owner));
+        for (const ViewObject& o : v.objects)
+            put(QStringLiteral("o%1").arg(o.id), o.pos, o.site.toUtf8() + ',' + QByteArray::number(o.artifact) + QByteArray::number(o.artifactId.index()) + ',' + QByteArray::number(o.giftFor.size()) + ',' + QByteArray::number(o.questDone));
+        return out;
+    };
+    const auto before = things(a), after = things(b);
+    QList<core::Pos> tiles;
+    for (auto it = before.cbegin(); it != before.cend(); ++it) {
+        const auto n = after.constFind(it.key());
+        if (n == after.cend() || n->first != it->first || n->second != it->second) {
+            tiles << it->first;
+            if (n != after.cend()) tiles << n->first;
+        }
+    }
+    for (auto it = after.cbegin(); it != after.cend(); ++it)
+        if (!before.contains(it.key())) tiles << it->first;
+    return tiles;
+}
+
+void MapView::dropChunksAround(const QSet<core::Pos>& tiles, QHash<quint32, QPixmap>* shade) {
+    if (tiles.isEmpty() || (shade ? shade->isEmpty() : m_chunks.isEmpty())) return;
     // A tile's look reaches into its neighbours (edges, coasts, trees, the soft shade).
     QSet<quint32> drop;
     for (const core::Pos t : tiles) {
@@ -447,10 +532,38 @@ void MapView::dropChunksAround(const QSet<core::Pos>& tiles) {
             for (int cx = std::max(0, r.left()) / kChunk; cx <= r.right() / kChunk; ++cx) drop.insert(quint32(cy) << 16 | quint32(cx));
     }
     for (const quint32 k : drop) {
+        if (shade) {
+            shade->remove(k);
+            continue;
+        }
         m_chunks.remove(k);
         m_chunkUse.removeOne(k);
     }
     ++m_groundVersion;
+}
+
+const QPixmap& MapView::shadeChunk(int cx, int cy, qreal dpr) {
+    const quint32 key = quint32(cy) << 16 | quint32(cx);
+    auto it = m_shadeChunks.find(key);
+    if (it != m_shadeChunks.end()) return it.value();
+    if (m_shadeChunks.size() > 2000) m_shadeChunks.clear();  // a big map seen at a small zoom: start over
+    // Nothing out of sight in it (the usual case near the heroes): kept as an empty picture.
+    const int tx0 = std::max(0, cx * kChunk / m_tile - 1), ty0 = std::max(0, cy * kChunk / m_tile - 1);
+    const int tx1 = std::min(m_view.width - 1, ((cx + 1) * kChunk) / m_tile + 1), ty1 = std::min(m_view.height - 1, ((cy + 1) * kChunk) / m_tile + 1);
+    bool any = false;
+    for (int y = ty0; y <= ty1 && !any; ++y)
+        for (int x = tx0; x <= tx1 && !any; ++x) any = m_view.tiles[y * m_view.width + x] >= 0 && !m_view.inSight({x, y});
+    if (!any) return m_shadeChunks.insert(key, QPixmap()).value();
+    QPixmap pm(QSize(kChunk, kChunk) * dpr);
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+    {
+        QPainter p(&pm);
+        m_groundArea = QRect(cx * kChunk, cy * kChunk, kChunk, kChunk);
+        paintShade(p);
+        m_groundArea.reset();
+    }
+    return m_shadeChunks.insert(key, pm).value();
 }
 
 void MapView::prefetchChunk() {
@@ -483,10 +596,13 @@ const QPixmap& MapView::chunk(int cx, int cy, qreal dpr) {
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
     {
+        const qint64 t0 = net::timing::now();
         QPainter p(&pm);
         m_groundArea = QRect(cx * kChunk, cy * kChunk, kChunk, kChunk);
         paintGround(p);
         m_groundArea.reset();
+        p.end();
+        net::timing::add("chunk", net::timing::now() - t0);
     }
     m_chunkUse.append(key);
     return m_chunks.insert(key, pm).value();
@@ -498,6 +614,7 @@ QColor MapView::ownerColor(int owner) const {
 }
 
 void MapView::paintEvent(QPaintEvent*) {
+    net::timing::paintStarted();
     QPainter screen(viewport());
     if (m_view.width == 0) {
         paintFog(screen);
@@ -510,6 +627,7 @@ void MapView::paintEvent(QPaintEvent*) {
     if (key != m_chunkKey) {
         m_chunks.clear();
         m_chunkUse.clear();
+        m_shadeChunks.clear();
         m_chunkKey = key;
         ++m_groundVersion;
     }
@@ -519,16 +637,27 @@ void MapView::paintEvent(QPaintEvent*) {
         m_screenGround = QPixmap(viewport()->size() * dpr);
         m_screenGround.setDevicePixelRatio(dpr);
         QPainter gp(&m_screenGround);
-        paintFog(gp);
+        {
+            const net::timing::Scope t("map fog");
+            paintFog(gp);
+        }
+        const net::timing::Scope t("map blocks");
         const int mapW = m_view.width * m_tile, mapH = m_view.height * m_tile;
         for (int cy = vy / kChunk; cy * kChunk < std::min(mapH, vy + viewport()->height()); ++cy)
             for (int cx = hx / kChunk; cx * kChunk < std::min(mapW, hx + viewport()->width()); ++cx)
                 gp.drawPixmap(cx * kChunk - hx, cy * kChunk - vy, chunk(cx, cy, dpr));
+        const net::timing::Scope ts("map shade");
+        for (int cy = vy / kChunk; cy * kChunk < std::min(mapH, vy + viewport()->height()); ++cy)
+            for (int cx = hx / kChunk; cx * kChunk < std::min(mapW, hx + viewport()->width()); ++cx)
+                if (const QPixmap& shade = shadeChunk(cx, cy, dpr); !shade.isNull()) gp.drawPixmap(cx * kChunk - hx, cy * kChunk - vy, shade);
         m_screenKey = screenKey;
         m_prefetch->start();
     }
     screen.drawPixmap(0, 0, m_screenGround);
+    const qint64 t0 = net::timing::now();
     paintObjects(screen);
+    net::timing::add("objects", net::timing::now() - t0);
+    net::timing::painted();
 }
 
 void MapView::paintFog(QPainter& p) {
@@ -536,6 +665,37 @@ void MapView::paintFog(QPainter& p) {
     QBrush fog(art::fogTexture());
     fog.setTransform(QTransform::fromTranslate(-horizontalScrollBar()->value() * 0.6, -verticalScrollBar()->value() * 0.6));
     p.fillRect(viewport()->rect(), fog);
+}
+
+void MapView::paintShade(QPainter& p) {
+    // Over the ground chunks, in its own chunks (shadeChunk): what is in sight changes
+    // with every step, the ground does not.
+    if (m_view.width == 0) return;
+    const auto terrainAt = [&](int x, int y) { return m_view.inBounds({x, y}) ? m_view.tiles[y * m_view.width + x] : -1; };
+    const QPoint origin0 = mapOrigin();
+    const int hx = origin0.x(), vy = origin0.y();
+    const int x0 = hx / m_tile, y0 = vy / m_tile;
+    const int x1 = std::min(m_view.width - 1, (hx + paintSize().width()) / m_tile);
+    const int y1 = std::min(m_view.height - 1, (vy + paintSize().height()) / m_tile);
+    // Out of sight: dimmed, with soft edges (one pixel per tile, scaled up smoothly;
+    // pixel centres sit on tile centres).
+    {
+        const int gx0 = x0 - 1, gy0 = y0 - 1, gw = x1 - x0 + 3, gh = y1 - y0 + 3;
+        QImage dim(gw, gh, QImage::Format_ARGB32_Premultiplied);
+        for (int gy = 0; gy < gh; ++gy)
+            for (int gx = 0; gx < gw; ++gx) {
+                const core::Pos t{gx0 + gx, gy0 + gy};
+                const core::Pos c{std::clamp(t.x, 0, m_view.width - 1), std::clamp(t.y, 0, m_view.height - 1)};
+                const bool dark = terrainAt(c.x, c.y) >= 0 && !m_view.inSight(c);
+                dim.setPixel(gx, gy, dark ? qPremultiply(qRgba(10, 8, 20, 140)) : 0);
+            }
+        p.save();
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        const QRect origin = tileRect({gx0, gy0});
+        p.drawImage(QRectF(origin.left() + m_tile / 2.0, origin.top() + m_tile / 2.0, (gw - 1) * double(m_tile), (gh - 1) * double(m_tile)),
+                    dim, QRectF(0.5, 0.5, gw - 1, gh - 1));
+        p.restore();
+    }
 }
 
 void MapView::paintGround(QPainter& p) {
@@ -566,7 +726,6 @@ void MapView::paintGround(QPainter& p) {
         for (const ViewMine& m2 : m_view.mines) taken.insert(m2.pos);
         for (const ViewDwelling& d : m_view.dwellings) taken.insert(d.pos);
         for (const ViewObject& o : m_view.objects) taken.insert(o.pos);
-        for (const ViewArmy& a : m_view.armies) taken.insert(a.pos);
         for (int y = y0; y <= y1; ++y)
             for (int x = x0; x <= x1; ++x) {
                 const int index = m_view.tiles[y * m_view.width + x];
@@ -651,25 +810,6 @@ void MapView::paintGround(QPainter& p) {
             p.drawPixmap(r.left() - m_tile / 2, r.top() - m_tile, pm);
         }
     p.restore();
-    // Out of sight: dimmed, with soft edges (one pixel per tile, scaled up smoothly;
-    // pixel centres sit on tile centres).
-    {
-        const int gx0 = x0 - 1, gy0 = y0 - 1, gw = x1 - x0 + 3, gh = y1 - y0 + 3;
-        QImage dim(gw, gh, QImage::Format_ARGB32_Premultiplied);
-        for (int gy = 0; gy < gh; ++gy)
-            for (int gx = 0; gx < gw; ++gx) {
-                const core::Pos t{gx0 + gx, gy0 + gy};
-                const core::Pos c{std::clamp(t.x, 0, m_view.width - 1), std::clamp(t.y, 0, m_view.height - 1)};
-                const bool dark = terrainAt(c.x, c.y) >= 0 && !m_view.inSight(c);
-                dim.setPixel(gx, gy, dark ? qPremultiply(qRgba(10, 8, 20, 140)) : 0);
-            }
-        p.save();
-        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-        const QRect origin = tileRect({gx0, gy0});
-        p.drawImage(QRectF(origin.left() + m_tile / 2.0, origin.top() + m_tile / 2.0, (gw - 1) * double(m_tile), (gh - 1) * double(m_tile)),
-                    dim, QRectF(0.5, 0.5, gw - 1, gh - 1));
-        p.restore();
-    }
     // The unknown's soft edges reach into the neighbours: one tile around too.
     for (int y = std::max(0, y0 - 1); y <= std::min(m_view.height - 1, y1 + 1); ++y)
         for (int x = std::max(0, x0 - 1); x <= std::min(m_view.width - 1, x1 + 1); ++x) {
@@ -752,7 +892,12 @@ void MapView::paintObjects(QPainter& p) {
     for (const Walk& w : m_walks) objects.append(w.pickups);  // not reached yet on screen
     for (const ViewObject& o : objects) {
         if (!shown(o.pos) || !onScreen(o.pos)) continue;
-        if (!o.site.isEmpty()) put(o.pos, art::siteSprite(o.site, m_selectedHero ? o.giftFor.contains(m_selectedHero) : !o.giftFor.isEmpty(), m_tile));
+        if (!o.site.isEmpty()) {
+            // A quest hut glows until its wish is granted; the others while they have something for the hero.
+            const bool glow = o.site == QLatin1String("quest_hut") ? !o.questDone
+                              : m_selectedHero ? o.giftFor.contains(m_selectedHero) : !o.giftFor.isEmpty();
+            put(o.pos, art::siteSprite(o.site, glow, m_tile));
+        }
         else if (o.artifact) put(o.pos, art::artifactSprite(m_tile));
         else put(o.pos, art::chestSprite(o.resources.isEmpty() ? QString() : m_content->resource((*o.resources.begin()).first).key, m_tile));
     }

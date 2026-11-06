@@ -131,8 +131,16 @@ A town can build one building per day.
 ## heroes.json
 Heroes that can be hired in a tavern. The class decides the race a hero belongs to.
 ```json
-{ "heroes": [ { "id": "arthur", "name": "Arthur", "class": "knight" } ] }
+{ "heroes": [ { "id": "arthur", "name": "Arthur", "class": "knight",
+                "specialty": { "unit": "militia", "attack": 2, "defense": 1 } } ] }
 ```
+`specialty` (optional): the hero's own strength, one or more of
+- `"unit": id, "attack": n, "defense": n`: stacks of that unit and its upgrades fight with +n
+  attack/defense in his army;
+- `"income": { resource: n }`: his owner gets that every day;
+- `"trait": id, "amount": n`: n points of the trait more when he is hired (or starts the game).
+
+The tavern and the hero window show it in words.
 `balance.json` economy: `heroCost` (gold, default 2500), `tavernOffers` (heroes offered at a time,
 default 2), `maxHeroesPerPlayer` (default 8).
 The building effect `{"type": "tavern"}` lets a town hire heroes.

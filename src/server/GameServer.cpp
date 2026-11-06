@@ -1,4 +1,5 @@
 #include "server/GameServer.h"
+#include "net/ActionTiming.h"
 
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -261,6 +262,7 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
             result = m_lobby.start(id);
         startRequested = result.ok;
     } else if (m_session && m_session->active()) {
+        const qint64 started = net::timing::now();
         const CommandResult command = m_session->handle(id, message);
         if (!command.ok) {
             sendError(client, command.code, command.message, message.seq);
@@ -270,9 +272,16 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
         reply.type = net::msg::commandResult;
         reply.body.insert("replyTo", message.seq);
         reply.body.insert("info", command.info);
-        client.connection->send(reply);
+        {
+            const net::timing::Scope t("send");
+            client.connection->send(reply);
+        }
         sendGameStates();
-        autosave();
+        {
+            const net::timing::Scope t("autosave");
+            autosave();
+        }
+        net::timing::serverDone(message.type, net::timing::now() - started);
         return;
     } else {
         result = LobbyResult::failure("unknown_message", "unknown message type '" + message.type + "'");
@@ -455,7 +464,11 @@ void GameServer::sendGameStates() {
         if (!c.greeted || !p.isValid()) continue;
         Message state;
         state.type = net::msg::gameState;
-        state.body = m_session->viewFor(p);
+        {
+            const net::timing::Scope t("view");
+            state.body = m_session->viewFor(p);
+        }
+        const net::timing::Scope t("send");
         c.connection->send(state);
     }
 }

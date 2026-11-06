@@ -3,7 +3,9 @@
 #include "TestContent.h"
 
 #include "core/content/ContentRegistry.h"
+#include "core/battle/Battle.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/TurnCycle.h"
 
 using namespace kot::core;
 
@@ -30,6 +32,54 @@ private slots:
     void init() {
         gs = GameState(1);
         owner = gs.addPlayer("P", gs.newTeam(), Player::Controller::Human, RC("humans"), "#ffffff");
+    }
+
+    // Tavern heroes' specialties (heroes.json): trait points when he becomes that hero,
+    // income every day, a bonus for one unit (and its upgrades) in battle.
+    void specialties() {
+        const HeroTemplateDef* traitHero = nullptr;
+        const HeroTemplateDef* incomeHero = nullptr;
+        const HeroTemplateDef* unitHero = nullptr;
+        for (const HeroTemplateDef& t : reg.heroTemplates()) {
+            if (t.specialty.trait.isValid() && !traitHero) traitHero = &t;
+            if (!t.specialty.income.isEmpty() && !incomeHero) incomeHero = &t;
+            if (t.specialty.unit.isValid() && reg.unit(t.specialty.unit)->upgradesTo.isValid() && !unitHero) unitHero = &t;
+        }
+        QVERIFY(traitHero && incomeHero && unitHero);
+        QVERIFY(!describeSpecialty(unitHero->specialty, reg).isEmpty());
+
+        const HeroId a = createHero(gs, reg, owner, "A", traitHero->classId, {2, 3});
+        const int before = gs.hero(a)->trait(traitHero->specialty.trait);
+        giveHeroTemplate(*gs.hero(a), reg, traitHero->id);
+        QCOMPARE(gs.hero(a)->trait(traitHero->specialty.trait), before + traitHero->specialty.traitAmount);
+
+        const ResourceAmounts plain = dailyIncome(gs, reg, owner);
+        const HeroId b = createHero(gs, reg, owner, "B", incomeHero->classId, {4, 3});
+        giveHeroTemplate(*gs.hero(b), reg, incomeHero->id);
+        const ResourceAmounts more = dailyIncome(gs, reg, owner);
+        for (const auto [r, amount] : incomeHero->specialty.income) QCOMPARE(more.value(r), plain.value(r) + amount);
+
+        // In battle: the specialty unit and its upgrade get the bonus, others not.
+        gs.setMap(GameMap(16, 8, T("grass")));
+        const HeroId c = createHero(gs, reg, owner, "C", unitHero->classId, {6, 3});
+        giveHeroTemplate(*gs.hero(c), reg, unitHero->id);
+        Army& army = *gs.army(gs.hero(c)->army);
+        army.stacks.clear();
+        const UnitTypeId special = unitHero->specialty.unit, upgraded = reg.unit(special)->upgradesTo;
+        army.addUnits(special, 5, reg.unit(special)->maxHp);
+        army.addUnits(upgraded, 5, reg.unit(upgraded)->maxHp);
+        army.addUnits(U("monk") == special ? U("militia") : U("monk"), 5, reg.unit(U("monk"))->maxHp);
+        const ArmyId enemy = gs.addArmy(PlayerId(), {7, 3});
+        gs.army(enemy)->addUnits(U("militia"), 5, reg.unit(U("militia"))->maxHp);
+        const Battle battle(gs, reg, army.id, enemy, 1);
+        int withBonus = 0;
+        for (const BattleUnit& u : battle.units()) {
+            if (u.side != 0) continue;
+            const bool fits = u.stack.unitTypeId() == special || u.stack.unitTypeId() == upgraded;
+            QCOMPARE(u.specialtyAttack, fits ? unitHero->specialty.attack : 0);
+            withBonus += fits;
+        }
+        QCOMPARE(withBonus, 2);
     }
 
     void createHeroSetsUpTraitsArmyAndSpellPoints() {

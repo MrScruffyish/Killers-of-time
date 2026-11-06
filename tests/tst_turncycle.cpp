@@ -31,6 +31,40 @@ private slots:
         p2 = gs.addPlayer("B", gs.newTeam(), Player::Controller::Ai, RC("humans"), "#0000ff");
     }
 
+    // A scenario's story: on its day an event is told, its gift given, its monsters placed.
+    void storyEventsHappenOnTheirDay() {
+        StoryEvent gift;
+        gift.day = 2;
+        gift.text = "A good harvest.";
+        gift.gift = amounts({{"gold", 700}});
+        StoryEvent dragon;
+        dragon.day = 3;
+        dragon.text = "A dragon wakes.";
+        dragon.monster = U("green_dragon");
+        dragon.monsterCount = 2;
+        dragon.where = {10, 10};
+        gs.storyEvents = {gift, dragon};
+        gs.intro = "Once upon a time.";
+        gs.setDay(2);
+        const int gold = gs.player(p1)->resources.value(R("gold"));
+        tellStory(gs, reg);
+        QCOMPARE(gs.news, QStringList{"A good harvest."});
+        QCOMPARE(gs.player(p1)->resources.value(R("gold")), gold + 700);
+        gs.setDay(3);
+        tellStory(gs, reg);
+        QCOMPARE(gs.news, QStringList{"A dragon wakes."});
+        bool found = false;
+        for (const Army& a : gs.armies()) found = found || (a.pos == Pos{10, 10} && !a.owner.isValid() && a.totalUnits() == 2);
+        QVERIFY(found);
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.intro, gs.intro);
+        QCOMPARE(loaded.storyEvents.size(), 2);
+        QCOMPARE(loaded.storyEvents[1].monster, U("green_dragon"));
+        QCOMPARE(loaded.news, gs.news);
+    }
+
     void weekEventsApply() {
         QVERIFY(!reg.weekEvents().isEmpty());
         gs.player(p1)->resources = amounts({{"gold", 100}});
@@ -52,7 +86,7 @@ private slots:
             gs.setWeekEvent(ev.id);
             const Town& t = gs.towns().first();
             QCOMPARE(townGrowth(gs, t, *reg.unit(U("militia")), reg),
-                     std::max(1, (reg.unit(U("militia"))->weeklyGrowth * (100 + ev.growthPercent) + 50) / 100));
+                     std::max(1, (reg.unit(U("militia"))->weeklyGrowth * (100 + reg.race(t.race).growthPercent + ev.growthPercent) + 50) / 100));
             break;
         }
         GameState loaded;

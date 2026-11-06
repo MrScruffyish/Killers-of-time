@@ -4,172 +4,332 @@
     {
       "id": "arthur",
       "name": "Arthur",
-      "class": "knight"
+      "class": "knight",
+      "specialty": {
+        "unit": "militia",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "gawain",
       "name": "Gawain",
-      "class": "knight"
+      "class": "knight",
+      "specialty": {
+        "unit": "archer",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "lancelot",
       "name": "Lancelot",
-      "class": "knight"
+      "class": "knight",
+      "specialty": {
+        "income": {
+          "gold": 350
+        }
+      }
     },
     {
       "id": "merlin",
       "name": "Merlin",
-      "class": "wizard"
+      "class": "wizard",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
     },
     {
       "id": "morgana",
       "name": "Morgana",
-      "class": "wizard"
+      "class": "wizard",
+      "specialty": {
+        "income": {
+          "gems": 1
+        }
+      }
     },
     {
       "id": "elaine",
       "name": "Elaine",
-      "class": "wizard"
+      "class": "wizard",
+      "specialty": {
+        "trait": "spell_recovery",
+        "amount": 1
+      }
     },
     {
       "id": "mordred",
       "name": "Mordred",
-      "class": "death_knight"
+      "class": "death_knight",
+      "specialty": {
+        "unit": "skeleton",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "valka",
       "name": "Valka",
-      "class": "death_knight"
+      "class": "death_knight",
+      "specialty": {
+        "unit": "zombie",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "ossian",
       "name": "Ossian",
-      "class": "death_knight"
+      "class": "death_knight",
+      "specialty": {
+        "income": {
+          "gold": 350
+        }
+      }
     },
     {
       "id": "lich_varn",
       "name": "Varn",
-      "class": "necromancer"
+      "class": "necromancer",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
     },
     {
       "id": "sabine",
       "name": "Sabine",
-      "class": "necromancer"
+      "class": "necromancer",
+      "specialty": {
+        "income": {
+          "mercury": 1
+        }
+      }
     },
     {
       "id": "morwen",
       "name": "Morwen",
-      "class": "necromancer"
+      "class": "necromancer",
+      "specialty": {
+        "trait": "spell_recovery",
+        "amount": 1
+      }
     },
     {
       "id": "aelin",
       "name": "Aelin",
-      "class": "ranger"
+      "class": "ranger",
+      "specialty": {
+        "unit": "dryad",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "thalion",
       "name": "Thalion",
-      "class": "ranger"
+      "class": "ranger",
+      "specialty": {
+        "unit": "elf_archer",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "ivy",
       "name": "Ivy",
-      "class": "ranger"
+      "class": "ranger",
+      "specialty": {
+        "income": {
+          "gold": 350
+        }
+      }
     },
     {
       "id": "elowen",
       "name": "Elowen",
-      "class": "druid"
+      "class": "druid",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
     },
     {
       "id": "oakheart",
       "name": "Oakheart",
-      "class": "druid"
+      "class": "druid",
+      "specialty": {
+        "income": {
+          "gems": 1
+        }
+      }
     },
     {
       "id": "faelan",
       "name": "Faelan",
-      "class": "druid"
+      "class": "druid",
+      "specialty": {
+        "trait": "spell_recovery",
+        "amount": 1
+      }
     },
     {
       "id": "borin",
       "name": "Borin",
-      "class": "thane"
+      "class": "thane",
+      "specialty": {
+        "unit": "dwarf_warrior",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "dagna",
       "name": "Dagna",
-      "class": "thane"
+      "class": "thane",
+      "specialty": {
+        "unit": "axe_thrower",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "thorek",
       "name": "Thorek",
-      "class": "runesmith"
+      "class": "runesmith",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
     },
     {
       "id": "helga",
       "name": "Helga",
-      "class": "runesmith"
+      "class": "runesmith",
+      "specialty": {
+        "income": {
+          "gems": 1
+        }
+      }
     },
     {
       "id": "grosh",
       "name": "Grosh",
-      "class": "warlord"
+      "class": "warlord",
+      "specialty": {
+        "unit": "goblin",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "urka",
       "name": "Urka",
-      "class": "warlord"
+      "class": "warlord",
+      "specialty": {
+        "unit": "wolf_rider",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "zugra",
       "name": "Zugra",
-      "class": "shaman_chief"
+      "class": "shaman_chief",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
     },
     {
       "id": "morgul",
       "name": "Morgul",
-      "class": "shaman_chief"
+      "class": "shaman_chief",
+      "specialty": {
+        "income": {
+          "mercury": 1
+        }
+      }
     },
     {
       "id": "vexa",
       "name": "Vexa",
-      "class": "hellknight"
+      "class": "hellknight",
+      "specialty": {
+        "unit": "imp",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "korrath",
       "name": "Korrath",
-      "class": "hellknight"
+      "class": "hellknight",
+      "specialty": {
+        "unit": "hellhound",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "ignis",
       "name": "Ignis",
-      "class": "pyromancer"
+      "class": "pyromancer",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
     },
     {
       "id": "sythra",
       "name": "Sythra",
-      "class": "pyromancer"
+      "class": "pyromancer",
+      "specialty": {
+        "income": {
+          "sulphur": 1
+        }
+      }
     },
     {
       "id": "marro",
       "name": "Marro",
-      "class": "captain"
+      "class": "captain",
+      "specialty": {
+        "unit": "deckhand",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "brine",
       "name": "Brine",
-      "class": "captain"
+      "class": "captain",
+      "specialty": {
+        "unit": "harpooner",
+        "attack": 2,
+        "defense": 1
+      }
     },
     {
       "id": "nerissa",
       "name": "Nerissa",
-      "class": "tidecaller"
+      "class": "tidecaller",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
     },
     {
       "id": "coralie",
       "name": "Coralie",
-      "class": "tidecaller"
+      "class": "tidecaller",
+      "specialty": {
+        "income": {
+          "gems": 1
+        }
+      }
     }
   ]
 }

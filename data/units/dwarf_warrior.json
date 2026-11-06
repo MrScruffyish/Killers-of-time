@@ -8,10 +8,10 @@
   "damageMin": 2,
   "damageMax": 4,
   "maxHp": 14,
-  "battleSpeed": 3,
+  "battleSpeed": 4,
   "weeklyGrowth": 10,
   "cost": {
-    "gold": 60
+    "gold": 55
   },
   "initiative": 5,
   "upgradesTo": "dwarf_veteran"

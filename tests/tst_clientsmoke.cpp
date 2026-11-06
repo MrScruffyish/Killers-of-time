@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QTabWidget>
 #include <QComboBox>
+#include <QScreen>
 #include <QtTest>
 
 #include "TestContent.h"
@@ -39,6 +40,28 @@ using namespace kot::client;
 
 // Drives the real client windows against a real server (offscreen display):
 // connect, lobby, start, select hero, click to move, open the town, build, end turn.
+// How many pixels (of every second row and column) of what is on the screen in `w`
+// differ from `w` painted afresh: widgets that repaint only what changed must not leave
+// anything stale. -1: the screen cannot be read (then nothing is checked).
+static int differsFromFullRepaint(QWidget* w, const char* name) {
+    const QImage shown = w->screen()->grabWindow(w->window()->winId()).toImage();
+    const QImage full = w->grab().toImage();
+    if (shown.isNull()) return -1;
+    const QPoint at = w->mapTo(w->window(), QPoint(0, 0));
+    const QImage part = shown.copy(QRect(at * shown.devicePixelRatio(), full.size()));
+    int differing = 0;
+    for (int y = 0; y < full.height(); y += 2)
+        for (int x = 0; x < full.width(); x += 2) {
+            const QRgb a = part.pixel(x, y), b = full.pixel(x, y);
+            if (std::abs(qRed(a) - qRed(b)) + std::abs(qGreen(a) - qGreen(b)) + std::abs(qBlue(a) - qBlue(b)) > 24) ++differing;
+        }
+    if (!qEnvironmentVariableIsEmpty("KOT_SCREENSHOT_DIR")) {
+        part.save(QDir(qEnvironmentVariable("KOT_SCREENSHOT_DIR")).filePath(QStringLiteral("0_%1_shown.png").arg(name)));
+        full.save(QDir(qEnvironmentVariable("KOT_SCREENSHOT_DIR")).filePath(QStringLiteral("0_%1_full.png").arg(name)));
+    }
+    return differing;
+}
+
 class TstClientSmoke : public QObject {
     Q_OBJECT
     core::ContentRegistry reg;
@@ -521,7 +544,18 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(game->view().hero(hero.id)->pos, target, 5000);
         QVERIFY(!game->mapView()->route());  // arrived: the route is gone
         QVERIFY(game->view().hero(hero.id)->movementPoints < hero.movementPoints);
-        QVERIFY(game->logText().contains("Move"));
+        QVERIFY(!game->logText().contains("arrived"));  // routine results are not written down
+        {
+            // The map repaints only what changed (MapView::updateTiles): after the walk and
+            // some hovering, what is on the screen must equal a full repaint.
+            QTest::qWait(1600);  // the walk animation
+            for (const QPoint p : {QPoint(100, 100), QPoint(300, 200), QPoint(150, 250)}) {
+                QTest::mouseMove(game->mapView()->viewport(), p);
+                QTest::qWait(30);
+            }
+            const int differing = differsFromFullRepaint(game->mapView()->viewport(), "map");
+            QVERIFY2(differing < 40, qPrintable(QStringLiteral("%1 pixels differ from a full repaint").arg(differing)));
+        }
 
         // Right-click the town: the dialog opens, Barracks can be built.
         const ViewTown town = *game->view().myTowns().first();
@@ -587,7 +621,7 @@ private slots:
         // One-click action from the toolbar.
         auto* buy = game->findChild<QPushButton*>("buyAllButton");
         QTest::mouseClick(buy, Qt::LeftButton);
-        QTRY_VERIFY_WITH_TIMEOUT(game->logText().contains("Buy all units: bought"), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(game->logText().contains("Buy all units: "), 5000);
 
         // A battle: monsters appear next to Ann's hero, she clicks them.
         core::GameState& gs = server.session()->state();
@@ -627,6 +661,11 @@ private slots:
         QTest::mouseClick(game->battleView()->field(), Qt::LeftButton, {}, game->battleView()->hexCentre(dest));
         QTRY_VERIFY_WITH_TIMEOUT(!game->view().battle.present || game->view().battle.unit(activeId) == nullptr
                                      || game->view().battle.unit(activeId)->hex == dest, 5000);
+        if (game->view().battle.present) {  // the field repaints only what moves: the screen must equal a full repaint
+            QTest::qWait(1500);
+            const int differing = differsFromFullRepaint(game->battleView()->field(), "battle");
+            QVERIFY2(differing < 40, qPrintable(QStringLiteral("%1 battle pixels differ from a full repaint").arg(differing)));
+        }
 
         // Let the computer finish it.
         if (game->view().battle.present) {

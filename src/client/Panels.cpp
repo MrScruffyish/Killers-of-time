@@ -16,39 +16,45 @@ namespace kot::client {
 
 ResourceBar::ResourceBar(const core::ContentRegistry* content, QWidget* parent) : QWidget(parent), m_content(content) {
     setObjectName("resourceBar");
-    setMinimumHeight(30);
+    setFixedHeight(40);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 }
 
 void ResourceBar::setView(const GameView& view) {
-    m_items.clear();
+    QList<Item> items;
     for (const core::ResourceDef& r : m_content->resources()) {
         const int amount = view.resources.value(r.id), income = view.income.value(r.id);
         if (amount == 0 && income == 0 && !r.isCurrency) continue;
-        m_items.append({r.key, r.name, amount, income, {}});
+        items.append({r.key, r.name, amount, income, {}});
     }
+    bool same = items.size() == m_items.size();
+    for (int i = 0; same && i < items.size(); ++i)
+        same = items[i].id == m_items[i].id && items[i].amount == m_items[i].amount && items[i].income == m_items[i].income;
+    if (same) return;  // (nothing to repaint)
+    m_items = items;
     update();
 }
 
 QSize ResourceBar::sizeHint() const {
-    return {120 * int(std::max<qsizetype>(1, m_items.size())), 30};
+    return {170 * int(std::max<qsizetype>(1, m_items.size())), 40};
 }
 
 void ResourceBar::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
     QFont big = font();
-    big.setPixelSize(15);
+    big.setPixelSize(17);
     big.setBold(true);
-    QFont small = font();
-    small.setPixelSize(11);
+    QFont small = font();  // the income: what comes in every day
+    small.setPixelSize(14);
+    small.setBold(true);
     int x = 4;
     const int h = height();
     for (Item& it : m_items) {
         const QPixmap& icon = art::resourceIcon(it.id, h - 6);
         const QString amount = QString::number(it.amount);
-        const QString income = it.income > 0 ? QStringLiteral("+%1").arg(it.income) : QString();
-        const int w = icon.width() + 6 + QFontMetrics(big).horizontalAdvance(amount) + 4 + QFontMetrics(small).horizontalAdvance(income) + 16;
+        const QString income = it.income > 0 ? tr("+%1/day").arg(it.income) : QString();
+        const int w = icon.width() + 6 + QFontMetrics(big).horizontalAdvance(amount) + 6 + QFontMetrics(small).horizontalAdvance(income) + 18;
         it.rect = QRect(x, 0, w, h);
         p.setPen(Qt::NoPen);
         p.setBrush(QColor(0, 0, 0, 60));
@@ -58,11 +64,11 @@ void ResourceBar::paintEvent(QPaintEvent*) {
         p.setFont(big);
         p.setPen(QColor("#f6e7c1"));
         p.drawText(QRect(tx, 0, 200, h), Qt::AlignVCenter | Qt::AlignLeft, amount);
-        tx += QFontMetrics(big).horizontalAdvance(amount) + 4;
+        tx += QFontMetrics(big).horizontalAdvance(amount) + 6;
         if (!income.isEmpty()) {
             p.setFont(small);
-            p.setPen(QColor("#9fd27a"));
-            p.drawText(QRect(tx, 2, 100, h), Qt::AlignVCenter | Qt::AlignLeft, income);
+            p.setPen(QColor("#a8e07e"));
+            p.drawText(QRect(tx, 1, 140, h), Qt::AlignVCenter | Qt::AlignLeft, income);
         }
         x += w;
     }

@@ -1,12 +1,13 @@
 {
   "id": "humans",
   "name": "Humans",
-  "description": "Balanced knights and archers. Their mage guilds teach air, water and earth magic.",
+  "description": "Balanced knights and archers, many of them (+30% growth). Their mage guilds teach air, water and earth magic.",
   "spellSchools": [
     "air",
     "water",
     "earth"
   ],
   "tradeBonus": 10,
-  "ability": "Good traders: 10% more at the market."
+  "ability": "Good traders: 10% more at the market.",
+  "growthPercent": 30
 }

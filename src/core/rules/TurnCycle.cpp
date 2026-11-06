@@ -27,6 +27,10 @@ ResourceAmounts dailyIncome(const GameState& state, const ContentRegistry& conte
     for (const Mine& m : state.mines()) {
         if (m.owner == player) income[m.resource] += m.dailyAmount;
     }
+    for (const Hero& h : state.heroes())  // heroes with an income specialty
+        if (h.owner == player)
+            if (const HeroSpecialty* sp = heroSpecialty(h, content))
+                for (const auto [r, amount] : sp->income) income[r] += amount;
     // Difficulty bonus or malus (AI players).
     const Player* p = state.player(player);
     if (p && p->incomePercent != 0)
@@ -53,6 +57,7 @@ void startTurn(GameState& state, const ContentRegistry& content, PlayerId player
 
 void beginGame(GameState& state, const ContentRegistry& content) {
     state.setCurrentIndex(0);
+    tellStory(state, content);  // day 1's events
     startTurn(state, content, state.currentPlayer());
     recordWeekStats(state, content);  // week 1 as it starts
 }
@@ -73,6 +78,22 @@ void startWeekEvent(GameState& state, const ContentRegistry& content) {
     }
 }
 
+void tellStory(GameState& state, const ContentRegistry& content) {
+    state.news.clear();
+    for (const StoryEvent& e : state.storyEvents) {
+        if (e.day != state.day()) continue;
+        state.news << e.text;
+        for (Player& p : state.players())
+            for (const auto [r, amount] : e.gift) p.resources[r] = std::max(0, p.resources.value(r) + amount);
+        const UnitDef* unit = content.unit(e.monster);
+        if (!unit || e.monsterCount <= 0 || !state.map().inBounds(e.where)) continue;
+        bool free = content.terrain(state.map().terrainAt(e.where)).walkable;
+        for (const Army& a : state.armies()) free = free && a.pos != e.where;
+        for (const Town& t : state.towns()) free = free && t.pos != e.where;
+        if (free) state.army(state.addArmy(PlayerId(), e.where))->addUnits(unit->id, e.monsterCount, unit->maxHp);
+    }
+}
+
 TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
     TurnInfo info;
     const int count = static_cast<int>(state.turnOrder().size());
@@ -85,6 +106,7 @@ TurnInfo endTurn(GameState& state, const ContentRegistry& content) {
         if (next == 0) {
             info.newDay = true;
             state.setDay(state.day() + 1);
+            tellStory(state, content);
             if (isNewWeek(state.day())) {
                 startWeekEvent(state, content);
                 applyWeeklyGrowth(state, content);

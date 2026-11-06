@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QHash>
 #include <QImage>
+#include <QImageReader>
 #include <QPainter>
 #include <QSet>
 #include <algorithm>
@@ -72,6 +73,28 @@ QImage masterOrPlaceholder(const QString& path) {
     return it.value();
 }
 
+// The size of a picture's master from its file's header (no decoding); invalid when
+// there is no file.
+QSize fileSize(const QString& path) {
+    static QHash<QString, QSize> sizes;
+    const QString file = fileOf(path);
+    auto it = sizes.constFind(file);
+    if (it == sizes.cend()) it = sizes.insert(file, QImageReader(file).size());
+    return it.value();
+}
+
+// The smallest saved copy (a half, a quarter: see kSmallerCopies) that is still at least
+// w x h, else the master: smaller files decode much faster.
+QString bestCopy(const QString& path, int w, int h) {
+    const QSize full = fileSize(path);
+    if (!full.isValid()) return path;
+    for (const int d : {4, 2}) {
+        const QSize small = full / d;
+        if (w <= small.width() && h <= small.height() && fileSize(copyPath(path, d)).isValid()) return copyPath(path, d);
+    }
+    return path;
+}
+
 QPixmap scaledTo(const QImage& img, int w, int h) {
     return QPixmap::fromImage(img.size() == QSize(w, h) ? img : img.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
 }
@@ -96,7 +119,7 @@ QString heroClassKey(core::HeroClassId heroClass) {
 }
 QString raceKey(core::RaceId race) { return g_content && race.isValid() ? g_content->race(race).key : QString(); }
 
-bool hasPicture(const QString& path) { return !master(path).isNull(); }
+bool hasPicture(const QString& path) { return fileSize(path).isValid(); }
 
 const QPixmap& sprite(const QString& path, int size) { return sprite(path, size, size); }
 
@@ -104,7 +127,7 @@ const QPixmap& sprite(const QString& path, int width, int height) {
     static QHash<QString, QPixmap> cache;
     const QString key = sized(path, width, height);
     auto it = cache.constFind(key);
-    if (it == cache.cend()) it = cache.insert(key, scaledTo(masterOrPlaceholder(path), width, height));
+    if (it == cache.cend()) it = cache.insert(key, scaledTo(masterOrPlaceholder(bestCopy(path, width, height)), width, height));
     return it.value();
 }
 
@@ -115,8 +138,9 @@ const QPixmap& ownerSprite(const QString& path, const QColor& owner, int width, 
     const QString key = sized(path, width, height) + owner.name();
     auto it = cache.constFind(key);
     if (it != cache.cend()) return it.value();
-    const QImage base = masterOrPlaceholder(path);
-    const QImage tint = master(path + QStringLiteral(".tint"));
+    const QString best = bestCopy(path, width, height);
+    const QImage base = masterOrPlaceholder(best);
+    const QImage tint = master(best + QStringLiteral(".tint"));
     if (tint.isNull() || tint.size() != base.size()) return cache.insert(key, scaledTo(base, width, height)).value();
     // picture = base + tint * owner (per channel, premultiplied).
     QImage picture = base;
@@ -156,7 +180,7 @@ const QPixmap& decoration(const QString& terrain, int variant, int size) {
 }
 
 const QPixmap& fogTexture() {
-    static const QPixmap tex = QPixmap::fromImage(masterOrPlaceholder(path::fog()).scaled(256, 256, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+    static const QPixmap tex = QPixmap::fromImage(masterOrPlaceholder(bestCopy(path::fog(), 256, 256)).scaled(256, 256, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
     return tex;
 }
 
@@ -344,8 +368,40 @@ void drawUnitToken(QPainter& p, const QPointF& c, double rad, const QColor& side
     p.restore();
 }
 
+namespace {
+void drawBattleFigureNow(QPainter& p, const QPointF& c, double r, const QColor& side, const QString& unitId, int rank,
+                         int count, int stars, bool active, bool target, bool faceLeft);
+}  // namespace
+
 void drawBattleFigure(QPainter& p, const QPointF& c, double r, const QColor& side, const QString& unitId, int rank,
                       int count, int stars, bool active, bool target, bool faceLeft) {
+    // Drawn once into a picture and kept (a battle repaints its figures every frame).
+    // The figure reaches 1.4 r to the sides, 2.2 r above the hex centre, 1.1 r below.
+    static QHash<QString, QPixmap> cache;
+    const qreal dpr = p.device() ? p.device()->devicePixelRatioF() : 1.0;
+    const QString key = QStringLiteral("%1|%2|%3|%4|%5|%6|%7%8%9|%10|%11")
+                            .arg(unitId).arg(rank).arg(count).arg(stars).arg(side.rgba()).arg(int(r * 8))
+                            .arg(active).arg(target).arg(faceLeft).arg(dpr).arg(p.font().key());
+    auto it = cache.constFind(key);
+    if (it == cache.cend()) {
+        if (cache.size() > 600) cache.clear();  // counts change all battle: start over now and then
+        const QSizeF size(2.8 * r, 3.3 * r);
+        QPixmap pm((size * dpr).toSize() + QSize(2, 2));
+        pm.setDevicePixelRatio(dpr);
+        pm.fill(Qt::transparent);
+        {
+            QPainter fp(&pm);
+            fp.setFont(p.font());
+            drawBattleFigureNow(fp, QPointF(1.4 * r, 2.2 * r), r, side, unitId, rank, count, stars, active, target, faceLeft);
+        }
+        it = cache.insert(key, pm);
+    }
+    p.drawPixmap(c - QPointF(1.4 * r, 2.2 * r), it.value());
+}
+
+namespace {
+void drawBattleFigureNow(QPainter& p, const QPointF& c, double r, const QColor& side, const QString& unitId, int rank,
+                         int count, int stars, bool active, bool target, bool faceLeft) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setRenderHint(QPainter::SmoothPixmapTransform, true);
@@ -416,6 +472,8 @@ void drawBattleFigure(QPainter& p, const QPointF& c, double r, const QColor& sid
     }
     p.restore();
 }
+
+}  // namespace
 
 namespace {
 // The style sheet's arrow images (files: it cannot draw them itself).

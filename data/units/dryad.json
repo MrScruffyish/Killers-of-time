@@ -11,7 +11,7 @@
   "battleSpeed": 6,
   "weeklyGrowth": 10,
   "cost": {
-    "gold": 40
+    "gold": 50
   },
   "initiative": 10,
   "abilities": [

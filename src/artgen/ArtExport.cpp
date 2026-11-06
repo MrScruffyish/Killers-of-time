@@ -42,6 +42,18 @@ public:
 
     void save(const QString& name, const QImage& image) {
         if (m_dir.isEmpty() || !ok()) return;
+        saveOne(name, image);
+        for (const int d : client::art::kSmallerCopies) {
+            const QSize small = image.size() / d;
+            if (std::min(small.width(), small.height()) < client::art::kMinCopySide) break;
+            // The tint keeps its suffix last: "<path>@2.tint" would not be found, so "<path>.tint" -> "<path>@2.tint".
+            const qsizetype dot = name.endsWith(QLatin1String(".tint")) ? name.size() - 5 : name.size();
+            const QString copy = client::art::copyPath(name.left(dot), d) + name.mid(dot);
+            saveOne(copy, image.scaled(small, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+        }
+    }
+    void saveOne(const QString& name, const QImage& image) {
+        if (!ok()) return;
         const QString file = QDir(m_dir).filePath(name + QStringLiteral(".png"));
         QDir().mkpath(QFileInfo(file).absolutePath());
         if (!image.save(file, "PNG")) {

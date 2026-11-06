@@ -3,8 +3,8 @@
   "name": "Cursed Graveyard",
   "race": "undead",
   "cost": {
-    "gold": 300,
-    "stone": 5
+    "gold": 250,
+    "stone": 4
   },
   "effects": [
     {

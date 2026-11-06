@@ -18,6 +18,17 @@ HeroId createHero(GameState& state, const ContentRegistry& content, PlayerId own
 
 int maxSpellPoints(const Hero& hero, const ContentRegistry& content);
 
+// Makes the hero the tavern hero `templateId` (name kept): remembers it and gives
+// the specialty's trait points (its income and unit bonus count where they apply:
+// heroSpecialty).
+void giveHeroTemplate(Hero& hero, const ContentRegistry& content, HeroTemplateId templateId);
+// The hero's specialty (empty when he is no tavern hero or it has none).
+const HeroSpecialty* heroSpecialty(const Hero& hero, const ContentRegistry& content);
+// Whether a specialty's unit bonus counts for `unit`: the unit, or one it upgrades from.
+bool specialtyFits(const HeroSpecialty& specialty, UnitTypeId unit, const ContentRegistry& content);
+// The specialty in a few words: "Archers: +2 attack, +1 defense", "+350 gold a day".
+QString describeSpecialty(const HeroSpecialty& specialty, const ContentRegistry& content);
+
 // Adds experience. For every level gained (up to the max level): the class's
 // auto-growth traits increase (e.g. max spell points) and one trait pick
 // becomes pending. Returns the number of levels gained.

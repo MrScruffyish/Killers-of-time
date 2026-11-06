@@ -3,8 +3,8 @@
   "name": "Crypt",
   "race": "undead",
   "cost": {
-    "gold": 600,
-    "stone": 5
+    "gold": 500,
+    "stone": 4
   },
   "requires": [
     "cursed_graveyard"

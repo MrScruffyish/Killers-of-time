@@ -3,7 +3,7 @@
   "name": "Axe School",
   "race": "dwarves",
   "cost": {
-    "gold": 900,
+    "gold": 800,
     "wood": 5
   },
   "upgradeOf": "axe_range",

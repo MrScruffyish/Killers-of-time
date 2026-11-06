@@ -3,7 +3,7 @@
   "name": "Iron Forge",
   "race": "dwarves",
   "cost": {
-    "gold": 2000,
+    "gold": 1800,
     "stone": 10,
     "mercury": 2
   },

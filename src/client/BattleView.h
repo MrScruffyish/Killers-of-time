@@ -48,7 +48,7 @@ private:
     const core::ContentRegistry* m_content;
     ViewBattle m_battle;
     HexField* m_field;
-    QLabel* m_info;
+    class TextLine* m_info;
     QLabel* m_stats;
     int m_hoverUnit = 0;
     QPushButton* m_defend;

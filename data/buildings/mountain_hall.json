@@ -3,9 +3,9 @@
   "name": "Mountain Hall",
   "race": "dwarves",
   "cost": {
-    "gold": 4900,
+    "gold": 4400,
     "stone": 12,
-    "gems": 3
+    "gems": 2
   },
   "upgradeOf": "titan_hall",
   "requires": [

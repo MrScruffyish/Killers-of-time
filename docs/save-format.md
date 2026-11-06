@@ -54,8 +54,13 @@ Heroes may have `artifacts` (worn artifact ids; their bonuses are already in `tr
 `backpack` (carried, not worn, no bonus).
 `history` (optional): one entry per week, `week` and `players` (player id -> `armyValue`, `towns`, `mines`, `heroes`, `gold`), for the end screen.
 `mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`/`site`), `x`, `y`, `resources` or `artifact`;
-sites have `site` (shrine, magic_well, obelisk, arena, learning_stone) and `visited` (hero id, or
-1000000 + team id for the obelisk -> day of the visit).
+sites have `site` (shrine, magic_well, obelisk, arena, learning_stone, quest_hut) and `visited` (hero id, or
+1000000 + team id for the obelisk -> day of the visit). A quest_hut has `quest`: what it asks, one of
+`needArtifact`, `needResources`, `needLevel`; what it gives, `rewardResources`, `rewardArtifact`,
+`rewardExperience`; and `done` once someone brought it.
+Story (scenarios, optional): `intro` (told at the start), `events` (each `day`, `text`, optional
+`gift` (resources for every player), optional `monster`, `count`, `x`, `y` (monsters that appear
+there if the tile is free)) and `news` (the texts of today's events).
 The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses) and `townlessSince` (the day the player lost his last town; 7 days later he is out).
 Army stacks may have `experience` (average per unit, veterancy).
 `victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie). Last team standing always wins too.

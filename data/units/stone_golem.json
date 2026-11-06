@@ -8,10 +8,10 @@
   "damageMin": 6,
   "damageMax": 10,
   "maxHp": 50,
-  "battleSpeed": 3,
+  "battleSpeed": 4,
   "weeklyGrowth": 5,
   "cost": {
-    "gold": 635,
+    "gold": 570,
     "stone": 1
   },
   "initiative": 3,

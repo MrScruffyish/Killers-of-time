@@ -117,11 +117,21 @@ private:
     void prefetchChunk();
     QString m_chunkKey;                 // zoom, grid, pixel ratio of the chunks
     std::optional<QRect> m_groundArea;  // while a chunk is painted: its part of the map (map pixels)
-    void dropChunksAround(const QSet<core::Pos>& tiles);
+    void dropChunksAround(const QSet<core::Pos>& tiles, QHash<quint32, QPixmap>* shade = nullptr);
+    QHash<quint32, QPixmap> m_shadeChunks;  // the out-of-sight shade, same chunks (null: nothing shaded there)
+    const QPixmap& shadeChunk(int cx, int cy, qreal dpr);
     const QPixmap& chunk(int cx, int cy, qreal dpr);
     QPoint mapOrigin() const;  // the map pixel at the paint area's top left
     QSize paintSize() const;
     void paintFog(QPainter& p);
+    // Repaints only around these tiles (what stands on a tile reaches up to two tiles
+    // up and one to the sides; labels below): most changes touch a few tiles, and a
+    // full repaint of a big window costs tens of ms.
+    void updateTiles(const QList<core::Pos>& tiles);
+    QRegion tilesRegion(const QList<core::Pos>& tiles) const;
+    // Every tile on which the drawing of the things on the map may change between two views.
+    static QList<core::Pos> changedThings(const GameView& before, const GameView& after);
+    void paintShade(QPainter& p);  // out of sight: dimmed (screen coordinates)
     QPoint m_pressPos;
     MovePlanner m_planner;
     MovePlan m_plan;       // under the mouse

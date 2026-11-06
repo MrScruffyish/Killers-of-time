@@ -114,6 +114,13 @@ int main(int argc, char** argv) {
     QVector<QVector<Seat>> table(weeks, QVector<Seat>(players));  // sums over games
     QVector<int> wins(players, 0), out(players, 0), heroless(players, 0);
     int undecided = 0;
+    struct RaceResult {
+        int games = 0, wins = 0, out = 0;
+        qint64 strength = 0;  // army strength at the end, summed
+        int towns = 0;
+    };
+    QMap<QString, RaceResult> byRace;  // balance: how each race does
+    QList<int> endDays;                // the day each decided game ended
     QHash<QString, int> causes;  // how heroes were lost
     const bool measureViews = parser.isSet(viewsOption);
     qint64 aiNs = 0, viewNs = 0, jsonNs = 0, viewBytes = 0, zippedBytes = 0, views = 0, biggestView = 0;
@@ -224,10 +231,21 @@ int main(int argc, char** argv) {
         }
         const core::GameOutcome end = core::gameOutcome(st, content);
         for (int i = 0; i < players; ++i) {
-            if (core::isEliminated(st, ids[i])) ++out[i];
-            if (end.over && end.winner.isValid() && st.teamOf(ids[i]) == end.winner) ++wins[i];
+            const bool isOut = core::isEliminated(st, ids[i]);
+            const bool won = end.over && end.winner.isValid() && st.teamOf(ids[i]) == end.winner;
+            if (isOut) ++out[i];
+            if (won) ++wins[i];
+            const core::Player* pl = st.player(ids[i]);
+            RaceResult& rr = byRace[pl ? content.race(pl->race).key : QStringLiteral("?")];
+            ++rr.games;
+            rr.wins += won;
+            rr.out += isOut;
+            for (const core::Army& a : st.armies())
+                if (a.owner == ids[i]) rr.strength += qint64(core::armyStrength(st, content, a));
+            for (const core::Town& t : st.towns()) rr.towns += t.owner == ids[i];
         }
         if (!end.over) ++undecided;
+        else endDays << st.day();
         std::fprintf(stderr, "game %d/%d done (day %d)\n", g + 1, games, st.day());
     }
 
@@ -251,7 +269,15 @@ int main(int argc, char** argv) {
     std::printf("heroes lost (or fled) in battle:");
     for (auto it = causes.begin(); it != causes.end(); ++it) std::printf(" %s %d;", qPrintable(it.key()), it.value());
     std::printf("\n");
-    std::printf("undecided after %d days: %d of %d\n", days, undecided, games);
+    std::printf("undecided after %d days: %d of %d", days, undecided, games);
+    if (!endDays.isEmpty()) {
+        std::sort(endDays.begin(), endDays.end());
+        std::printf("; decided games ended on day %d (median, %d..%d)", endDays[endDays.size() / 2], endDays.first(), endDays.last());
+    }
+    std::printf("\nby race (games, won, out, towns at the end, army strength at the end in thousands, per game):\n");
+    for (auto it = byRace.cbegin(); it != byRace.cend(); ++it)
+        std::printf("  %-10s %3d games  won %3d  out %3d  towns %5.1f  army %7.1f\n", qPrintable(it.key()), it->games, it->wins, it->out,
+                    double(it->towns) / it->games, it->strength / 1000.0 / it->games);
     std::printf("time in the AI and rules (playAutoTurns): %.2f s\n", aiNs / 1e9);
     if (measureViews && views > 0)
         std::printf("views: %lld built, %.2f ms each to build + %.2f ms to JSON; %.0f KB on average (biggest %.0f KB), %.0f KB compressed\n",

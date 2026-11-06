@@ -94,8 +94,8 @@ private:
     bool m_centered = false;
     QHash<int, Pending> m_pending;
 
-    QLabel* m_status;
-    QLabel* m_hoverInfo;
+    class TextLine* m_status;
+    class TextLine* m_hoverInfo;
     class ResourceBar* m_resources;
     class HeroPanel* m_heroPanel;
     class MarketDialog* m_market = nullptr;
@@ -119,6 +119,7 @@ private:
     class QAction* m_save;
     BattleView* m_battleView;
     int m_seenBattleId = 0;
+    int m_newsDay = 0;  // the day whose story news were shown
     int m_announcedWeek = 0;
     int m_selectedTown = 0;
     QHash<int, int> m_knownPicks;  // hero -> level-up picks seen so far

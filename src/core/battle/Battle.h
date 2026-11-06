@@ -39,6 +39,7 @@ struct BattleUnit {
     QList<StatModifier> modifiers;
     int stars = 0;                 // veterancy (core/rules/Veterancy.h)
     QMap<QString, int> veteran;    // the stars' bonuses
+    int specialtyAttack = 0, specialtyDefense = 0;  // the hero's specialty for this unit
 
     bool alive() const { return !stack.isEliminated(); }
     int modifier(const QString& stat) const;  // spells and veterancy together

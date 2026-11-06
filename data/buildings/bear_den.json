@@ -3,7 +3,7 @@
   "name": "Bear Den",
   "race": "dwarves",
   "cost": {
-    "gold": 2800,
+    "gold": 2500,
     "wood": 10
   },
   "requires": [

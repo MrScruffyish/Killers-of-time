@@ -186,4 +186,39 @@ bool giveArtifact(GameState& state, const ContentRegistry& content, HeroId fromI
     return true;
 }
 
+void giveHeroTemplate(Hero& hero, const ContentRegistry& content, HeroTemplateId templateId) {
+    hero.templateId = templateId;
+    if (const HeroSpecialty* sp = heroSpecialty(hero, content); sp && sp->trait.isValid()) hero.traits[sp->trait] += sp->traitAmount;
+}
+
+const HeroSpecialty* heroSpecialty(const Hero& hero, const ContentRegistry& content) {
+    const HeroTemplateDef* t = content.heroTemplate(hero.templateId);
+    return t && !t->specialty.isEmpty() ? &t->specialty : nullptr;
+}
+
+bool specialtyFits(const HeroSpecialty& specialty, UnitTypeId unit, const ContentRegistry& content) {
+    if (!specialty.unit.isValid()) return false;
+    // The specialty's unit and its upgrades: follow upgradesTo from it.
+    UnitTypeId u = specialty.unit;
+    for (int guard = 0; guard < 8 && u.isValid(); ++guard) {
+        if (u == unit) return true;
+        const UnitDef* def = content.unit(u);
+        u = def ? def->upgradesTo : UnitTypeId();
+    }
+    return false;
+}
+
+QString describeSpecialty(const HeroSpecialty& sp, const ContentRegistry& content) {
+    QStringList parts;
+    if (const UnitDef* u = content.unit(sp.unit)) {
+        QStringList bonus;
+        if (sp.attack) bonus << QStringLiteral("+%1 attack").arg(sp.attack);
+        if (sp.defense) bonus << QStringLiteral("+%1 defense").arg(sp.defense);
+        parts << QStringLiteral("%1 (and their upgrades): %2").arg(u->name, bonus.join(QStringLiteral(", ")));
+    }
+    for (const auto [r, amount] : sp.income) parts << QStringLiteral("+%1 %2 a day").arg(amount).arg(content.resource(r).name.toLower());
+    if (const TraitDef* t = content.trait(sp.trait)) parts << QStringLiteral("+%1 %2").arg(sp.traitAmount).arg(t->name.toLower());
+    return parts.join(QStringLiteral("; "));
+}
+
 }  // namespace kot::core

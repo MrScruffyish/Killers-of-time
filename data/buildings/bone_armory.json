@@ -3,8 +3,8 @@
   "name": "Bone Armory",
   "race": "undead",
   "cost": {
-    "gold": 400,
-    "stone": 5
+    "gold": 300,
+    "stone": 4
   },
   "upgradeOf": "cursed_graveyard",
   "effects": [

@@ -3,7 +3,7 @@
   "name": "Golem Forge",
   "race": "dwarves",
   "cost": {
-    "gold": 1500,
+    "gold": 1350,
     "stone": 15
   },
   "requires": [

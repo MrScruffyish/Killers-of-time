@@ -14,6 +14,13 @@ namespace kot::client::art {
 inline constexpr int kMasterSize = 512;       // square pictures (units, icons, tiles, ...)
 inline constexpr int kFeatureMasterSize = 1024;  // trees, hills, peaks: 2x2 tiles
 
+// Every picture is also saved at half and a quarter of its size ("<path>@2.png",
+// "<path>@4.png", the same for its tint): the client loads the smallest one that is big
+// enough (a quarter decodes ~16 times faster than the master).
+inline const int kSmallerCopies[] = {2, 4};
+inline constexpr int kMinCopySide = 48;  // no copies of pictures smaller than this
+inline QString copyPath(const QString& path, int divisor) { return QStringLiteral("%1@%2").arg(path).arg(divisor); }
+
 namespace path {
 inline QString unit(const QString& key, int rank) { return QStringLiteral("unit/%1/%2").arg(key).arg(rank); }
 inline QString dwelling() { return QStringLiteral("dwelling"); }
@@ -74,7 +81,7 @@ inline const QStringList& buttonNames() {
 }
 // Places to visit on the map.
 inline const QStringList& siteNames() {
-    static const QStringList names = {"shrine", "magic_well", "obelisk", "arena", "learning_stone"};
+    static const QStringList names = {"shrine", "magic_well", "obelisk", "arena", "learning_stone", "quest_hut"};
     return names;
 }
 

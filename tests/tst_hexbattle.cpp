@@ -464,7 +464,7 @@ private slots:
                 for (const UnitStack& st : gs.army(mine())->stacks) has = has || st.unitTypeId() == U("skeleton");
                 QVERIFY(has);
             } else if (QLatin1String(race) == QLatin1String("orcs")) {
-                QCOMPARE(r.lootGold, killedHp * 30 / 100);
+                QCOMPARE(r.lootGold, killedHp * 25 / 100);
                 QCOMPARE(gs.player(p1)->resources.value(R("gold")), gold + r.lootGold);
             } else {
                 QCOMPARE(r.raisedCount, 0);
@@ -484,7 +484,7 @@ private slots:
         Hero knight;
         knight.classId = C("knight");
         if (reg.heroClass(C("ranger")) && reg.heroClass(C("ranger"))->race == RC("sylvan"))
-            QCOMPARE(heroVisionRadius(elf, reg), heroVisionRadius(knight, reg) + 2);
+            QCOMPARE(heroVisionRadius(elf, reg), heroVisionRadius(knight, reg) + reg.race(RC("sylvan")).visionBonus);
         const TownId t = gs.addTown("Hold", RC("dwarves"), {2, 2}, p1);
         gs.town(t)->buildings << B("village_hall") << B("fort");
         gs.army(gs.town(t)->garrison)->addUnits(U("pikeman"), 5, 10);

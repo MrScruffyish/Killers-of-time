@@ -3,9 +3,9 @@
   "name": "Dread Keep",
   "race": "undead",
   "cost": {
-    "gold": 6500,
-    "stone": 15,
-    "mercury": 5
+    "gold": 5200,
+    "stone": 11,
+    "mercury": 2
   },
   "requires": [
     "vampire_manor",

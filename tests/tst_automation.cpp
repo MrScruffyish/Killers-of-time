@@ -203,8 +203,9 @@ private slots:
     void buildThenBuyUsesTheNewDwelling() {
         const BuildAndBuyReport r = buildThenBuyUnits(gs, reg, p1, t1);
         QVERIFY(builtIn(r.build, t1, "barracks"));
-        QCOMPARE(r.buy.unitsBought, 12);  // the new barracks starts with a week of militia
-        QCOMPARE(garrisonUnits(t1, "militia"), 12);
+        const int week = (reg.unit(U("militia"))->weeklyGrowth * (100 + reg.race(RC("humans")).growthPercent) + 50) / 100;
+        QCOMPARE(r.buy.unitsBought, week);  // the new barracks starts with a week of militia
+        QCOMPARE(garrisonUnits(t1, "militia"), week);
     }
 };
 

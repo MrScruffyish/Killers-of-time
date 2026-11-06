@@ -1,4 +1,7 @@
 #include "client/GamePage.h"
+#include "client/TextLine.h"
+#include "net/ActionTiming.h"
+#include "core/content/IdJson.h"
 
 #include <QMessageBox>
 
@@ -17,6 +20,8 @@
 #include <QActionGroup>
 #include <QCheckBox>
 #include <QSettings>
+#include <QApplication>
+#include <QMetaEnum>
 #include <QToolTip>
 #include <QCursor>
 #include <QAction>
@@ -53,6 +58,52 @@
 
 namespace kot::client {
 
+namespace {
+// KOT_TIMING: how long every widget's paint takes (by class and object name), added to
+// the action's timing line. The map and battle report their own parts.
+class PaintSpy : public QObject {
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override {
+        if (m_busy.contains(event)) return false;  // the event being handed on below
+        switch (event->type()) {
+        case QEvent::Timer: case QEvent::MetaCall: case QEvent::LayoutRequest: case QEvent::Resize: case QEvent::Move:
+        case QEvent::Polish: case QEvent::PolishRequest: case QEvent::UpdateRequest: case QEvent::Show: case QEvent::StyleChange: {
+            // Other work in the event loop: by event and receiver class (only what takes time).
+            // (Named first: the receiver may delete itself while handling it.)
+            const QString name = QStringLiteral("event %1 %2").arg(QString::fromLatin1(QMetaEnum::fromType<QEvent::Type>().valueToKey(event->type())),
+                                                                  QString::fromLatin1(obj->metaObject()->className()));
+            m_busy.insert(event);
+            const qint64 t0 = net::timing::now();
+            QCoreApplication::sendEvent(obj, event);
+            const qint64 ns = net::timing::now() - t0;
+            m_busy.remove(event);
+            if (ns > 200000) net::timing::add(name, ns);
+            return true;
+        }
+        default: break;
+        }
+        if (event->type() != QEvent::Paint || !obj->isWidgetType()) return false;
+        auto* w = static_cast<QWidget*>(obj);
+        QString name = QString::fromLatin1(w->metaObject()->className());
+        if (!w->objectName().isEmpty()) name += QLatin1Char('#') + w->objectName();
+        if (name.startsWith(QLatin1String("QWidget")) && w->parentWidget())  // a viewport: name its owner
+            name = QString::fromLatin1(w->parentWidget()->metaObject()->className()) + QStringLiteral(" viewport");
+        m_busy.insert(event);
+        const qint64 t0 = net::timing::now();
+        QCoreApplication::sendEvent(obj, event);
+        net::timing::add(QStringLiteral("paint ") + name, net::timing::now() - t0);
+        m_busy.remove(event);
+        return true;
+    }
+
+private:
+    QSet<QEvent*> m_busy;  // events being handed on (nested ones are timed too)
+};
+}  // namespace
+
 GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* content, QWidget* parent)
     : QWidget(parent), m_client(client), m_content(content) {
     auto* outer = new QVBoxLayout(this);
@@ -65,7 +116,9 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     menu->setObjectName("gameMenu");
     menuButton->setMenu(menu);
     top->addWidget(menuButton);
-    m_status = new QLabel(this);
+    m_status = new TextLine(this);
+    m_status->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    m_status->setMinimumWidth(560);
     m_status->setObjectName("statusLabel");
     top->addWidget(m_status);
     m_resources = new ResourceBar(content, this);
@@ -227,11 +280,10 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     m_log->setReadOnly(true);
     m_log->setMaximumBlockCount(300);
     m_log->setMaximumHeight(110);
-    m_hoverInfo = new QLabel(this);
+    m_hoverInfo = new TextLine(this);
     m_hoverInfo->setObjectName("hoverInfo");
-    m_hoverInfo->setMinimumHeight(22);
     outer->addWidget(m_hoverInfo);
-    connect(m_map, &MapView::hoverInfo, m_hoverInfo, &QLabel::setText);
+    connect(m_map, &MapView::hoverInfo, m_hoverInfo, [this](const QString& text) { m_hoverInfo->setText(text); });
     outer->addWidget(m_log);
     // The map's zoom step is remembered.
     m_map->setTileSize(QSettings().value(QStringLiteral("map/tileSize"), art::kDefaultTile).toInt());
@@ -447,7 +499,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
             if (cast) sound::play(Effect::Spell);
             else if (strike) sound::play(Effect::Clash);
         }
-        log(QStringLiteral("%1: %2").arg(p.what.isEmpty() ? tr("Done") : p.what, text));
+        if (!text.isEmpty()) log(QStringLiteral("%1: %2").arg(p.what.isEmpty() ? tr("Done") : p.what, text));
     });
     connect(m_client, &net::LobbyClient::errorReceived, this, [this](const QString&, const QString& text, int replyTo) {
         const Pending p = m_pending.take(replyTo);
@@ -530,15 +582,28 @@ void GamePage::send(const QString& type, const QJsonObject& body, const QString&
         return;
     }
     m_pending.insert(seq, {type, what});
+    net::timing::sent(seq, type);
 }
 
 void GamePage::onViewChanged() {
+    net::timing::viewStart();
+    if (net::timing::enabled()) {
+        static bool noted = false;
+        if (!noted) {
+            noted = true;
+            qApp->installEventFilter(new PaintSpy(qApp));
+            net::timing::note(QStringLiteral("screen: pixel ratio %1, window %2x%3, map %4x%5")
+                                  .arg(devicePixelRatioF()).arg(window()->width()).arg(window()->height())
+                                  .arg(m_map->viewport()->width()).arg(m_map->viewport()->height()));
+        }
+    }
     GameView view;
     QString error;
     if (!parseGameView(m_client->view(), &view, &error)) {
         if (!m_client->view().isEmpty()) log(tr("Bad view from the server: %1").arg(error));
         return;
     }
+    net::timing::phase("parse");
     const bool wasMyTurn = m_view.isMyTurn() && m_view.you == view.you;
     const bool first = (m_view.you == 0);
     // Hot-seat: the game moved on to another player at this computer.
@@ -554,6 +619,15 @@ void GamePage::onViewChanged() {
         showHandover(next ? next->name : tr("the next player"), next ? QColor(next->color) : QColor("#999999"));
     }
     rememberObjects(&view);
+    // In a battle: a stack gone from the field is written down (the rest is seen there).
+    if (m_view.battle.present && view.battle.present && !handover) {
+        for (const ViewBattleUnit& old : m_view.battle.units) {
+            if (view.battle.unit(old.id)) continue;
+            const bool mine = old.side == m_view.battle.yourSide;
+            log(mine ? tr("Your %1 (%2) were wiped out.").arg(unitName(old.unit)).arg(old.count)
+                     : tr("The enemy %1 (%2) were wiped out.").arg(unitName(old.unit)).arg(old.count));
+        }
+    }
     m_view = view;
     if (!m_view.myHeroes().isEmpty()) {
         bool stillThere = false;
@@ -562,11 +636,18 @@ void GamePage::onViewChanged() {
     } else {
         m_selectedHero = 0;
     }
-    m_map->setView(m_view);
-    m_map->setSelectedHero(m_selectedHero);
-    syncRoutes();
-    m_miniMap->setView(m_view);
-    m_miniMap->setVisibleTiles(m_map->visibleTiles());
+    net::timing::phase("objects");
+    // The adventure map and minimap are hidden during a battle: brought up to date
+    // when it is over (each costs a few ms per battle step).
+    if (!m_view.battle.present || first || handover) {
+        m_map->setView(m_view);
+        m_map->setSelectedHero(m_selectedHero);
+        syncRoutes();
+        net::timing::phase("map");
+        m_miniMap->setView(m_view);
+        m_miniMap->setVisibleTiles(m_map->visibleTiles());
+        net::timing::phase("minimap");
+    }
     {
         // Who is who: a shield in each player's colour; you, your allies, whose turn;
         // towns and heroes, and the days left for a player who lost his last town.
@@ -601,10 +682,12 @@ void GamePage::onViewChanged() {
     announceLevelUps(first);
     updateStatus();
     updateHeroPanel();
+    net::timing::phase("panels");
     m_townDialog->refresh(m_view);
     if (m_market && m_market->isVisible()) m_market->setView(m_view);
     m_heroDialog->refresh(m_view);
     m_meetDialog->refresh(m_view);
+    net::timing::phase("dialogs");
     if (m_view.isMyTurn() && !wasMyTurn && m_view.day > 1) {
         log(tr("Day %1: your turn.").arg(m_view.day));
         const int weekDay = (m_view.day - 1) % 7 + 1;
@@ -612,6 +695,21 @@ void GamePage::onViewChanged() {
                           weekDay == 1 && !m_view.weekEventName.isEmpty() ? m_view.weekEventName : tr("day %1 of the week").arg(weekDay));
     }
     if (first && !m_view.victory.isEmpty()) log(tr("Goal: %1. %2.").arg(m_view.victory, m_view.defeat));
+    // The scenario's story: the intro once at the start, each day's news as it comes.
+    if (first && !m_view.intro.isEmpty()) {
+        auto* box = new QMessageBox(QMessageBox::NoIcon, tr("The story"), m_view.intro, QMessageBox::Ok, this);
+        box->setObjectName("storyBox");
+        box->setAttribute(Qt::WA_DeleteOnClose);
+        box->setModal(false);
+        box->show();
+    }
+    if (!m_view.news.isEmpty() && m_view.day != m_newsDay) {
+        m_newsDay = m_view.day;
+        for (const QString& n : m_view.news) {
+            log(tr("Day %1: %2").arg(m_view.day).arg(n));
+            Toast::show(this, art::buttonIcon(QStringLiteral("end")).pixmap(64), QStringLiteral("<b style='color:#ffd84a'>%1</b>").arg(n.toHtmlEscaped()));
+        }
+    }
     // A new week brings its event.
     const int week = (m_view.day - 1) / 7 + 1;
     if (week != m_announcedWeek) {
@@ -631,6 +729,7 @@ void GamePage::onViewChanged() {
     }
     showBattle(first);
     announceEnd();
+    net::timing::viewEnd();
 }
 
 void GamePage::showBattle(bool firstView) {
@@ -1204,22 +1303,24 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
     if (type == net::msg::moveHero && info["landed"].toBool()) return tr("landed (that ends the day's movement)");
     if (type == net::msg::buyBoat) return tr("the hero boards the boat; click the water to sail, the shore to land");
     if (type == net::msg::moveHero) {
-        QString text = info["arrived"].toBool() ? tr("arrived")
+        // Only what the map does not show by itself is written down.
+        QString text = info["arrived"].toBool() ? QString()
                        : info["ambushed"].toBool() ? tr("ambushed after %1 steps (zone of control)").arg(info["stepsTaken"].toInt())
                        : info["spotted"].toBool() ? tr("stopped after %1 steps: an enemy came into sight. Look before you go on (Enter continues)").arg(info["stepsTaken"].toInt())
-                       : tr("moved %1 steps, out of movement; the route is kept for the next day").arg(info["stepsTaken"].toInt());
-        if (info.contains("capturedMine")) text += tr(", captured a mine");
-        if (info.contains("capturedTown")) text += tr(", captured a town");
-        if (info.contains("capturedDwelling")) text += tr(", captured a dwelling");
+                       : tr("out of movement; the route is kept for tomorrow");
+        const auto add = [&text](const QString& more) { text += (text.isEmpty() ? QString() : QStringLiteral(", ")) + more; };
+        if (info.contains("capturedMine")) add(tr("captured a mine"));
+        if (info.contains("capturedTown")) add(tr("captured a town"));
+        if (info.contains("capturedDwelling")) add(tr("captured a dwelling"));
         if (info.contains("foundResources")) {
             QStringList parts;
-            const QJsonObject res = info["foundResources"].toObject();
-            for (auto it = res.begin(); it != res.end(); ++it) parts << QStringLiteral("%1 %2").arg(it.value().toInt()).arg(it.key());
-            text += tr(", found %1").arg(parts.join(", "));
+            for (const auto [r, amount] : core::amountsFromJson(info["foundResources"].toArray(), core::ResourceAmounts::kMax))
+                parts << QStringLiteral("%1 %2").arg(amount).arg(m_content->resource(r).name.toLower());
+            add(tr("found %1").arg(parts.join(", ")));
         }
         for (const QJsonValue& v : info["foundArtifacts"].toArray()) {
             const core::ArtifactDef* a = m_content->artifact(core::ArtifactId(v.toInt(-1)));
-            text += tr(", found the %1 (%2)!").arg(a ? a->name : v.toString(), a ? a->description : QString());
+            add(tr("found the %1!").arg(a ? a->name : QStringLiteral("?")));
         }
         if (info.contains("learnedSpells")) {
             QStringList names;
@@ -1227,20 +1328,18 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
                 const core::SpellDef* s = m_content->spell(core::SpellId(v.toInt(-1)));
                 names << (s ? s->name : QString());
             }
-            text += tr(", learned %1").arg(names.join(", "));
+            add(tr("learned %1").arg(names.join(", ")));
         }
-        for (const QJsonValue& v : info["battles"].toArray()) text += QStringLiteral("; ") + describeBattle(v.toObject());
+        for (const QJsonValue& v : info["battles"].toArray()) add(describeBattle(v.toObject()));
         return text;
     }
-    if (type == net::msg::endTurn) return tr("day %1").arg(info["day"].toInt());
-    if (type == net::msg::battleAction) {
-        QString text = describeBattleEvents(info["events"].toArray());
-        if (info["battleOver"].toBool()) text += (text.isEmpty() ? "" : "; ") + tr("the battle is over");
-        return text.isEmpty() ? tr("ok") : text;
-    }
+    if (type == net::msg::endTurn) return QString();  // "Day n: your turn." says it
+    // Battle steps are seen on the field; the result comes in its own window.
+    if (type == net::msg::battleAction) return QString();
     if (type == net::msg::saveGame) return tr("saved as \"%1\" on the server").arg(info["name"].toString());
     if (type == net::msg::buyAllUnits) {
-        return tr("bought %1 units").arg(info["unitsBought"].toInt());
+        const int n = info["unitsBought"].toInt();
+        return n ? tr("bought %1 units").arg(n) : tr("nothing to buy");
     }
     if (type == net::msg::autoBuild || type == net::msg::buildThenBuy) {
         const QJsonObject build = type == net::msg::buildThenBuy ? info["build"].toObject() : info;
@@ -1257,7 +1356,7 @@ QString GamePage::describeResult(const QString& type, const QJsonObject& info) c
         return parts.join("; ");
     }
     if (type == net::msg::sendDwellingUnits) return tr("%1 units sent").arg(info["unitsSent"].toInt());
-    return tr("ok");
+    return QString();  // done as asked: nothing to tell
 }
 
 }  // namespace kot::client

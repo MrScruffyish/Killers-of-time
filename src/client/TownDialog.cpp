@@ -1,4 +1,8 @@
 #include "client/TownDialog.h"
+#include "core/rules/HeroRules.h"
+
+#include <QTimer>
+#include "net/ActionTiming.h"
 
 #include <QSignalBlocker>
 #include <QComboBox>
@@ -36,6 +40,7 @@ TownDialog::TownDialog(const core::ContentRegistry* content, QWidget* parent)
     m_scene->setAlignment(Qt::AlignCenter);
     layout->addWidget(m_scene);
     m_tabs = new QTabWidget(this);
+    connect(m_tabs, &QTabWidget::currentChanged, this, &TownDialog::buildTab);  // a tab not built yet
     layout->addWidget(m_tabs, 1);
     auto* bottom = new QHBoxLayout();
     // Going to my other towns without closing: arrows, a list, T / PgUp / PgDn.
@@ -243,8 +248,13 @@ void TownDialog::rebuild() {
     }
     const bool myTurn = m_view.isMyTurn();
     setWindowTitle(tr("%1 (%2)").arg(town->name, m_content->race(town->race).name));
+    const qint64 sceneStart = net::timing::now();
     drawScene(*town);
+    net::timing::add("town scene", net::timing::now() - sceneStart);
+    const qint64 tabsStart = net::timing::now();
     const int keep = m_tabs->currentIndex();
+    ++m_tabGeneration;
+    m_tabFill.clear();
     while (m_tabs->count() > 0) {
         QWidget* old = m_tabs->widget(0);
         m_tabs->removeTab(0);
@@ -257,8 +267,9 @@ void TownDialog::rebuild() {
 
     // ---- Buildings: what can be built now first, then what only needs a trade,
     // then what is blocked, then what stands already.
-    {
-        auto* page = new QWidget();
+    addLazyTab(art::buttonIcon("build"), tr("Buildings"), [=, this](QWidget* page) {
+        const ViewTown* town = m_view.town(m_townId);
+        if (!town) return;
         auto* layout = new QVBoxLayout(page);
         auto* only = new QCheckBox(tr("Only show what I can build"), page);
         only->setObjectName("onlyBuildable");
@@ -416,25 +427,35 @@ void TownDialog::rebuild() {
         bool any = false;
         for (const Row& r : rows) any = any || r.rank <= 1;
         if (!any && !builtToday) layout->addWidget(new QLabel(tr("Nothing can be built here right now."), page));
-        m_tabs->addTab(page, art::buttonIcon("build"), tr("Buildings"));
+    });
 
-    }
-
-    // ---- Recruit (only when there is something to recruit)
-    // (Or a hero is here and the garrison has units: then its Give all button is wanted.)
+    // ---- Recruit (whenever the town has a dwelling, also with nothing waiting: then
+    // when new units come; or a hero is here and the garrison has units: Give all)
     int recruitable = 0;
     for (const RecruitChoice& rc : town->recruitOptions) recruitable += rc.available;
     bool heroCanTake = false;
     if (const ViewArmy* g = m_view.army(town->garrison); g && !g->stacks.isEmpty())
         for (const ViewHero* h : m_view.myHeroes()) heroCanTake = heroCanTake || h->pos == town->pos;
-    if (recruitable > 0 || heroCanTake) {
-        auto* page = new QWidget();
+    if (!town->recruitOptions.isEmpty() || heroCanTake) {
+        addLazyTab(art::buttonIcon("army"), tr("Recruit"), [=, this](QWidget* page) {
+        const ViewTown* town = m_view.town(m_townId);
+        if (!town) return;
         auto* layout = new QVBoxLayout(page);
         const ViewArmy* garrison = m_view.army(town->garrison);
         QStringList stacks;
         if (garrison)
             for (const ViewStack& s : garrison->stacks) stacks << QStringLiteral("%1 x %2").arg(s.count).arg(unitName(s.unit));
         layout->addWidget(new QLabel(tr("Garrison: %1").arg(stacks.isEmpty() ? tr("empty") : stacks.join(", ")), page));
+        int waiting = 0;
+        for (const RecruitChoice& rc : town->recruitOptions) waiting += rc.available;
+        if (waiting == 0 && !town->recruitOptions.isEmpty()) {
+            const int daysLeft = 7 - (m_view.day - 1) % 7;
+            auto* note = new QLabel(tr("<i>No units waiting. Dwellings get new units at the start of each week (in %1 day(s)). "
+                                       "An upgraded dwelling keeps the units of the one it upgrades: if they were all recruited, "
+                                       "the upgrade has none until then.</i>").arg(daysLeft), page);
+            note->setWordWrap(true);
+            layout->addWidget(note);
+        }
 
         auto* table = new QTableWidget(page);
         table->setShowGrid(false);
@@ -500,12 +521,13 @@ void TownDialog::rebuild() {
             });
             layout->addWidget(give);
         }
-        m_tabs->addTab(page, art::buttonIcon("army"), tr("Recruit"));
+        });
     }
 
     // ---- Tavern
-    {
-        auto* page = new QWidget();
+    addLazyTab(art::buttonIcon("tavern"), tr("Tavern"), [=, this](QWidget* page) {
+        const ViewTown* town = m_view.town(m_townId);
+        if (!town) return;
         auto* layout = new QVBoxLayout(page);
         bool hasTavern = false;
         for (const core::BuildingTypeId id : town->buildings) {
@@ -534,7 +556,12 @@ void TownDialog::rebuild() {
             if (t) face->setPixmap(art::portrait(t->classId, me ? QColor(me->color) : QColor("#999999"), offer.index() % 6, 56));
             row->addWidget(face);
             const core::HeroClassDef* cls = t ? m_content->heroClass(t->classId) : nullptr;
-            row->addWidget(new QLabel(t ? tr("<b>%1</b><br>%2").arg(t->name, cls ? cls->name : QString()) : QString(), page), 1);
+            const QString special = t && !t->specialty.isEmpty() ? core::describeSpecialty(t->specialty, *m_content) : QString();
+            auto* who = new QLabel(t ? tr("<b>%1</b><br>%2%3").arg(t->name, cls ? cls->name : QString(),
+                                                                  special.isEmpty() ? QString() : tr("<br><span style='color:#e8c872'>Specialty: %1</span>").arg(special.toHtmlEscaped()))
+                                     : QString(), page);
+            who->setWordWrap(true);
+            row->addWidget(who, 1);
             auto* hire = new QPushButton(gold >= cost ? tr("Hire for %1").arg(cost) : tr("Hire for %1 (trade first)").arg(cost), page);
             hire->setObjectName(QStringLiteral("hire_%1").arg(t ? t->key : QString()));
             hire->setEnabled(myTurn && !town->hiredThisWeek);
@@ -547,12 +574,12 @@ void TownDialog::rebuild() {
             layout->addLayout(row);
         }
         layout->addStretch(1);
-        m_tabs->addTab(page, art::buttonIcon("tavern"), tr("Tavern"));
-    }
+    });
 
     // ---- Armies: the garrison and a hero visiting the town
-    {
-        auto* page = new QWidget();
+    addLazyTab(art::buttonIcon("defend"), tr("Armies"), [=, this](QWidget* page) {
+        const ViewTown* town = m_view.town(m_townId);
+        if (!town) return;
         page->setObjectName("armiesPage");
         auto* layout = new QVBoxLayout(page);
         const ViewArmy* garrison = m_view.army(town->garrison);
@@ -623,10 +650,32 @@ void TownDialog::rebuild() {
             section(tr("%1's army").arg(visitor->name), heroArmy, garrison, tr("the garrison"));
         }
         layout->addStretch(1);
-        m_tabs->addTab(page, art::buttonIcon("defend"), tr("Armies"));
-    }
+    });
 
+    // The tab shown is built now, the others a moment later (after this is on the
+    // screen), or at once when one is opened.
     m_tabs->setCurrentIndex(std::min(keep, m_tabs->count() - 1));
+    buildTab(m_tabs->currentIndex());
+    net::timing::add("town tabs", net::timing::now() - tabsStart);
+    QTimer::singleShot(30, this, [this, generation = m_tabGeneration]() {
+        if (generation != m_tabGeneration) return;
+        for (int i = 0; i < m_tabs->count(); ++i) buildTab(i);
+    });
+}
+
+void TownDialog::addLazyTab(const QIcon& icon, const QString& title, std::function<void(QWidget*)> fill) {
+    auto* page = new QWidget();
+    m_tabs->addTab(page, icon, title);
+    m_tabFill.append(std::move(fill));
+}
+
+void TownDialog::buildTab(int index) {
+    if (index < 0 || index >= m_tabFill.size() || !m_tabFill[index]) return;
+    const auto fill = std::move(m_tabFill[index]);
+    m_tabFill[index] = nullptr;
+    QWidget* page = m_tabs->widget(index);
+    const QSignalBlocker block(m_tabs);
+    fill(page);
 }
 
 }  // namespace kot::client

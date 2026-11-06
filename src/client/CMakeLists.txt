@@ -6,6 +6,7 @@ add_library(kot_client_lib STATIC
     MapView.cpp
     Art.h
     ArtPaths.h
+    TextLine.h
     Art.cpp
     Toast.cpp
     GameOverDialog.cpp

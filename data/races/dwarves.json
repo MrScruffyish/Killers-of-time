@@ -1,9 +1,7 @@
 {
   "id": "dwarves",
   "name": "Dwarves",
-  "description": "Mountain folk: slow, tough and well armoured, but few (-10% growth). Quick in the hills and snow. Earth and water magic.",
-  "growthPercent": -14,
-  "incomePercent": 0,
+  "description": "Mountain folk: tough and well armoured, and many (+25% growth). Quick in the hills and snow. Earth and water magic.",
   "terrainCostPercent": {
     "hills": 60,
     "snow": 70
@@ -13,5 +11,6 @@
     "water"
   ],
   "wallDefenseBonus": 4,
-  "ability": "Stout walls: +4 defense for the defenders of their walled towns."
+  "ability": "Stout walls: +4 defense for the defenders of their walled towns.",
+  "growthPercent": 25
 }

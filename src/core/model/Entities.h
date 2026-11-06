@@ -96,6 +96,29 @@ struct MapDwelling {
 
 // Something lying on the map that a hero picks up by walking onto it (then it is gone):
 // a pile of resources, or an artifact.
+// What a quest hut's hermit asks (one of artifact, resources, level) and gives.
+// Done once: the first hero who brings it gets the reward.
+struct Quest {
+    ArtifactId needArtifact;         // given up
+    ResourceAmounts needResources;   // paid by the owner
+    int needLevel = 0;               // the hero's level at least
+    ResourceAmounts rewardResources;
+    ArtifactId rewardArtifact;
+    int rewardExperience = 0;
+    bool done = false;
+};
+
+// A scenario's story: on `day` its text is told to everyone; optionally every player
+// gets `gift`, and monsters appear at `where` (if the tile is free).
+struct StoryEvent {
+    int day = 1;
+    QString text;
+    ResourceAmounts gift;
+    UnitTypeId monster;
+    int monsterCount = 0;
+    Pos where;
+};
+
 struct MapObject {
     enum class Kind { Treasure, Artifact, Site };
     MapObjectId id;
@@ -108,6 +131,7 @@ struct MapObject {
     // (+1 attack or defense), learning_stone (experience). See MapSites.h.
     QString site;
     QMap<int, int> visited;     // hero id (or kTeamVisit + team id) -> the day of the visit
+    Quest quest;                // site "quest_hut"
 };
 
 struct Mine {

@@ -184,6 +184,67 @@ private slots:
         QVERIFY(!siteGivesSomething(loaded, loaded.mapObjects()[arena], *loaded.hero(h)));
     }
 
+    // Quest huts: the hermit asks once (a level, resources or an artifact) and pays the first who brings it.
+    void questHutsPayOnce() {
+        const HeroId h = createHero(gs, reg, p1, "H", C("knight"), {0, 0});
+        gs.hero(h)->movementPoints = 5000;
+        const auto hut = [&](Pos pos, Quest q) {
+            MapObject o;
+            o.kind = MapObject::Kind::Site;
+            o.pos = pos;
+            o.site = QStringLiteral("quest_hut");
+            o.quest = std::move(q);
+            return gs.addMapObject(o);
+        };
+        Quest levelQuest;
+        levelQuest.needLevel = 3;
+        levelQuest.rewardResources = amounts({{"gold", 2500}});
+        levelQuest.rewardArtifact = A("iron_sword");
+        const MapObjectId a = hut({3, 0}, levelQuest);
+        QVERIFY(!siteGivesSomething(gs, gs.mapObjects()[a], *gs.hero(h)));
+        MoveResult r = moveHero(gs, reg, h, {3, 0});
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY2(r.siteResult.contains("level 3"), qPrintable(r.siteResult));  // he hears the wish
+        const int gold = gs.player(p1)->resources.value(R("gold"));
+        gs.hero(h)->level = 3;
+        gs.hero(h)->movementPoints = 5000;
+        QVERIFY(moveHero(gs, reg, h, {4, 0}).ok);
+        r = moveHero(gs, reg, h, {3, 0});
+        QVERIFY2(r.siteResult.contains("granted"), qPrintable(r.siteResult));
+        QCOMPARE(gs.player(p1)->resources.value(R("gold")), gold + 2500);
+        QVERIFY(gs.hero(h)->artifacts.contains(A("iron_sword")) || gs.hero(h)->backpack.contains(A("iron_sword")));
+        QVERIFY(gs.mapObjects()[a].quest.done);
+        QVERIFY(!siteGivesSomething(gs, gs.mapObjects()[a], *gs.hero(h)));
+
+        // An artifact asked for is given up; resources are paid.
+        Quest bring;
+        bring.needArtifact = A("iron_sword");
+        bring.rewardExperience = 1000;
+        const MapObjectId b = hut({6, 0}, bring);
+        QVERIFY(siteGivesSomething(gs, gs.mapObjects()[b], *gs.hero(h)));
+        const int xp = gs.hero(h)->experience;
+        gs.hero(h)->movementPoints = 5000;
+        QVERIFY(moveHero(gs, reg, h, {6, 0}).ok);
+        QVERIFY(!gs.hero(h)->artifacts.contains(A("iron_sword")) && !gs.hero(h)->backpack.contains(A("iron_sword")));
+        QCOMPARE(gs.hero(h)->experience, xp + 1000);
+        Quest pay;
+        pay.needResources = amounts({{"wood", 5}});
+        pay.rewardResources = amounts({{"gold", 1000}});
+        const MapObjectId c = hut({9, 0}, pay);
+        gs.player(p1)->resources[R("wood")] = 7;
+        gs.hero(h)->movementPoints = 5000;
+        QVERIFY(moveHero(gs, reg, h, {9, 0}).ok);
+        QCOMPARE(gs.player(p1)->resources.value(R("wood")), 2);
+
+        // Saved, and the view tells the wish.
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QVERIFY(loaded.mapObjects()[a].quest.done);
+        QCOMPARE(loaded.mapObjects()[c].quest.needResources, pay.needResources);
+        QVERIFY(!describeQuest(pay, reg).isEmpty());
+    }
+
     void objectsBlockTheWay() {
         for (int y = 0; y < 20; ++y)
             if (y != 5) gs.map().setTerrain({5, y}, T("sea"));

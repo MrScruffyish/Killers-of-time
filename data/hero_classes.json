@@ -132,7 +132,7 @@
         "magic": 1,
         "spell_points_max": 10,
         "spell_recovery": 1,
-        "movement_points": 2,
+        "movement_points": 1,
         "scouting_radius": 6,
         "scouting": 1
       },
@@ -253,7 +253,7 @@
         "magic": 1,
         "spell_points_max": 8,
         "spell_recovery": 1,
-        "movement_points": 2,
+        "movement_points": 1,
         "scouting_radius": 5
       },
       "pickIncrement": {
@@ -282,7 +282,7 @@
         "magic": 3,
         "spell_points_max": 26,
         "spell_recovery": 2,
-        "movement_points": 2,
+        "movement_points": 1,
         "scouting_radius": 5
       },
       "pickIncrement": {

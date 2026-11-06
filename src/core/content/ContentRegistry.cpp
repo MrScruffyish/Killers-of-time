@@ -724,6 +724,25 @@ void ContentRegistry::loadHeroTemplates(const QString& dir, QStringList& errors)
                      const QString cls = r.requireId(QStringLiteral("class"));
                      d.classId = heroClassId(cls);
                      if (!cls.isEmpty() && !d.classId.isValid()) r.addError(QStringLiteral("unknown class '%1'").arg(cls));
+                     if (r.has(QStringLiteral("specialty"))) {
+                         const QString what = ctx + QStringLiteral(" specialty");
+                         JsonReader s(r.requireObject(QStringLiteral("specialty")), what, &errors);
+                         HeroSpecialty& sp = d.specialty;
+                         sp.income = toResources(s.optionalIntMap(QStringLiteral("income"), 1, 100000), what + QStringLiteral(" income"), errors);
+                         if (const QString unit = s.optionalString(QStringLiteral("unit")); !unit.isEmpty()) {
+                             sp.unit = unitId(unit);
+                             if (!sp.unit.isValid()) s.addError(QStringLiteral("unknown unit '%1'").arg(unit));
+                             sp.attack = s.optionalInt(QStringLiteral("attack"), 0, 0, 20);
+                             sp.defense = s.optionalInt(QStringLiteral("defense"), 0, 0, 20);
+                         }
+                         if (const QString trait = s.optionalString(QStringLiteral("trait")); !trait.isEmpty()) {
+                             sp.trait = traitId(trait);
+                             if (!sp.trait.isValid()) s.addError(QStringLiteral("unknown trait '%1'").arg(trait));
+                             sp.traitAmount = s.optionalInt(QStringLiteral("amount"), 1, 1, 20);
+                         }
+                         s.finish();
+                         if (sp.isEmpty() && s.ok()) errors << what + QStringLiteral(": needs income, unit or trait");
+                     }
                      r.finish();
                      if (!r.ok()) return;
                      if (byKey.contains(d.key)) {

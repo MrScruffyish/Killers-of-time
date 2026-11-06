@@ -15,7 +15,15 @@ MiniMap::MiniMap(const core::ContentRegistry* content, QWidget* parent) : QWidge
 }
 
 void MiniMap::setView(const GameView& view) {
+    // The picture only shows the ground and what is in sight (things are drawn on top
+    // in paintEvent): rebuilt only when those change.
+    const bool sameGround = !m_colors.isEmpty() && view.width == m_view.width && view.height == m_view.height &&
+                            view.tiles == m_view.tiles && view.visible == m_view.visible;
     m_view = view;
+    if (sameGround) {
+        update();
+        return;
+    }
     m_colors.clear();
     m_kinds.clear();
     m_water.clear();

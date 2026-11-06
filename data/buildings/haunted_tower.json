@@ -3,8 +3,8 @@
   "name": "Haunted Tower",
   "race": "undead",
   "cost": {
-    "gold": 1200,
-    "stone": 5,
+    "gold": 950,
+    "stone": 4,
     "wood": 5
   },
   "requires": [

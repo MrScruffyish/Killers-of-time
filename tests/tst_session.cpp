@@ -388,7 +388,7 @@ private slots:
 
         const CommandResult bought = doIt(1, net::msg::buyAllUnits, {{"strategy", "most"}});
         QVERIFY(bought.ok);
-        QCOMPARE(bought.info["unitsBought"].toInt(), 12);
+        QVERIFY(bought.info["unitsBought"].toInt() >= 12);  // a week of militia, more with the race's growth
 
         session->state().player(pA)->resources[kot::core::R("gold")] = 10000;
         session->state().towns()[town->id].lastBuildDay = 0;
@@ -413,9 +413,9 @@ private slots:
         const core::Hero* h = heroOf(pA);
         const core::Town* town = townOf(pA);  // the hero starts in his town
         const CommandResult r = doIt(1, net::msg::moveUnits,
-            {{"from", id(h->army)}, {"to", id(town->garrison)}, {"stack", 0}, {"count", 4}});
+            {{"from", id(h->army)}, {"to", id(town->garrison)}, {"stack", 0}, {"count", 2}});
         QVERIFY2(r.ok, qPrintable(r.message));
-        QCOMPARE(session->state().army(town->garrison)->totalUnits(), 4);
+        QCOMPARE(session->state().army(town->garrison)->totalUnits(), 2);
         const core::Army* enemy = session->state().army(townOf(pB)->garrison);
         QVERIFY(doIt(1, net::msg::moveUnits, {{"from", id(enemy->id)}, {"to", id(h->army)}, {"stack", 0}, {"count", 1}})
                     .message.contains("not your army"));

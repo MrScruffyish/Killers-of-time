@@ -3,8 +3,8 @@
   "name": "Vampire Manor",
   "race": "undead",
   "cost": {
-    "gold": 3000,
-    "stone": 10,
+    "gold": 2400,
+    "stone": 8,
     "wood": 5
   },
   "requires": [

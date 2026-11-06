@@ -1,4 +1,5 @@
 #include "server/GameSession.h"
+#include "net/ActionTiming.h"
 #include "core/content/IdJson.h"
 
 #include "core/rules/ArmyRules.h"
@@ -184,8 +185,12 @@ void GameSession::playAutoTurns() {
     for (int i = 0; i < m_state.turnOrder().size() && isAuto(m_state.currentPlayer()); ++i) {
         if (gameOutcome(m_state, m_content).over || m_battle) return;
         const PlayerId p = m_state.currentPlayer();
-        playAiTurn(p, *m_autoPlayers.value(p));
+        {
+            const net::timing::Scope t("ai turn");
+            playAiTurn(p, *m_autoPlayers.value(p));
+        }
         if (m_battle) return;  // the AI attacked a human: his turn goes on after the battle
+        const net::timing::Scope t("end turn");
         endTurn(m_state, m_content);
     }
 }
@@ -411,13 +416,18 @@ void GameSession::runBattles() {
             QList<BattleEvent> ev;
             // A computer player gives up a lost battle to save its hero (not the
             // monsters, not a human's "auto").
-            BattleAction action = chooseBattleAction(b);
-            const int side = b.activeUnit()->side;
-            const Player* owner = m_state.player(b.owner(side));
-            if (owner && owner->controller == Player::Controller::Ai) {
-                BattleAction giveUp;
-                if (chooseGiveUp(b, side, owner->resources.value(m_content.currency()), &giveUp)) action = giveUp;
+            BattleAction action;
+            {
+                const net::timing::Scope t("battle ai");
+                action = chooseBattleAction(b);
+                const int side = b.activeUnit()->side;
+                const Player* owner = m_state.player(b.owner(side));
+                if (owner && owner->controller == Player::Controller::Ai) {
+                    BattleAction giveUp;
+                    if (chooseGiveUp(b, side, owner->resources.value(m_content.currency()), &giveUp)) action = giveUp;
+                }
             }
+            const net::timing::Scope t("battle rules");
             b.act(action, &ev);
             for (const BattleEvent& e : ev)
                 if (m_aiEvents.size() < 60) m_aiEvents.append(battleEventToJson(e));

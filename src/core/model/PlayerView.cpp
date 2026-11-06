@@ -45,6 +45,8 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     QJsonObject view;
     view.insert("day", state.day());
     view.insert("difficulty", state.difficulty());
+    if (!state.intro.isEmpty()) view.insert("intro", state.intro);
+    if (!state.news.isEmpty()) view.insert("news", QJsonArray::fromStringList(state.news));
     if (const WeekEventDef* e = content.weekEvent(state.weekEvent()))
         view.insert("weekEvent", QJsonObject{{"id", e->id.index()}, {"name", e->name}, {"description", e->description}});
     view.insert("currentPlayer", id(state.currentPlayer().value()));
@@ -302,6 +304,10 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
             for (const Hero& h : state.heroes())
                 if (h.owner == viewer && siteGivesSomething(state, m, h)) fresh.append(static_cast<int>(h.id.value()));
             o.insert("giftFor", fresh);
+            if (m.site == QLatin1String("quest_hut")) {
+                o.insert("quest", describeQuest(m.quest, content));
+                if (m.quest.done) o.insert("questDone", true);
+            }
         }
         if (!m.resources.isEmpty()) o.insert("resources", amountsToJson(m.resources));
         objects.append(o);

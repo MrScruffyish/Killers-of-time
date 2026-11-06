@@ -3,7 +3,7 @@
   "name": "Dwarf Hall",
   "race": "dwarves",
   "cost": {
-    "gold": 350,
+    "gold": 300,
     "stone": 5
   },
   "effects": [

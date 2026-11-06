@@ -3,9 +3,9 @@
   "name": "Vampire Castle",
   "race": "undead",
   "cost": {
-    "gold": 3500,
-    "stone": 10,
-    "mercury": 2
+    "gold": 2800,
+    "stone": 8,
+    "mercury": 1
   },
   "upgradeOf": "vampire_manor",
   "effects": [

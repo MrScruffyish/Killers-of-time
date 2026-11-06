@@ -3,9 +3,9 @@
   "name": "Dragon Grave",
   "race": "undead",
   "cost": {
-    "gold": 3000,
-    "stone": 10,
-    "mercury": 3
+    "gold": 2400,
+    "stone": 8,
+    "mercury": 1
   },
   "requires": [
     "haunted_tower"

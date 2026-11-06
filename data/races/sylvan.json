@@ -1,16 +1,16 @@
 {
   "id": "sylvan",
   "name": "Sylvan",
-  "description": "Forest folk with deadly archers. Fast in forests, and they grow fast (+25%). Nature, water and air magic.",
-  "growthPercent": 23,
+  "description": "Forest folk with deadly archers. Faster in forests, but few (-10% growth). Nature, water and air magic.",
   "terrainCostPercent": {
-    "forest": 50
+    "forest": 75
   },
   "spellSchools": [
     "nature",
     "water",
     "air"
   ],
-  "visionBonus": 2,
-  "ability": "Keen eyes: their heroes see 2 tiles farther."
+  "visionBonus": 1,
+  "ability": "Keen eyes: their heroes see 1 tile farther.",
+  "growthPercent": -10
 }

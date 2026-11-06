@@ -3,9 +3,9 @@
   "name": "Rune Temple",
   "race": "dwarves",
   "cost": {
-    "gold": 1800,
+    "gold": 1600,
     "stone": 10,
-    "gems": 2
+    "gems": 1
   },
   "requires": [
     "mage_guild"

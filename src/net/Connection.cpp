@@ -1,4 +1,5 @@
 #include "net/Connection.h"
+#include "net/ActionTiming.h"
 
 #include <QPointer>
 
@@ -38,11 +39,14 @@ QString Connection::peerDescription() const {
 
 void Connection::onReadyRead() {
     QPointer<Connection> self(this);  // a receiver may delete this connection
+    const qint64 arrived = timing::now();
     m_framer.append(m_socket->readAll());
     for (;;) {
         Message message;
         QString error;
+        const qint64 decodeStart = timing::now();
         const auto status = m_framer.next(&message, &error);
+        if (status == MessageFramer::Status::Message) timing::received(message.type, arrived, timing::now() - decodeStart);
         if (status == MessageFramer::Status::NeedMore) return;
         if (status == MessageFramer::Status::Error) {
             emit protocolError(error);

@@ -55,6 +55,7 @@ struct ViewHero {
     int id = 0;
     QString name;
     core::HeroClassId classId;
+    core::HeroTemplateId templateId;  // the tavern hero he is (his specialty), if any
     int owner = 0;
     int level = 1;
     core::Pos pos;
@@ -124,6 +125,8 @@ struct ViewObject {
     core::ArtifactId artifactId;
     QString site;               // a place to visit (MapSites.h), else empty
     QList<int> giftFor;         // your heroes who would still get something there
+    QString quest;              // a quest hut: its wish and reward in words
+    bool questDone = false;
     core::ResourceAmounts resources;
     core::Pos pos;
 };
@@ -197,6 +200,8 @@ struct GameView {
     QString victory;  // what wins this game
     QString defeat;   // when a player is out
     QString weekEventName, weekEventText;
+    QString intro;      // the scenario's story at the start
+    QStringList news;   // what happened today (the story's events)
     QJsonObject campaign;  // {name, chapter, chapters, result?} when playing a campaign
     int winnerTeam = 0;  // 0 = nobody
     QJsonArray history;  // at game over: every player's numbers week by week (GameStats.h)

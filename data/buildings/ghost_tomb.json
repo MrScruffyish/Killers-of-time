@@ -3,9 +3,9 @@
   "name": "Ghost Dragon Tomb",
   "race": "undead",
   "cost": {
-    "gold": 2100,
-    "stone": 6,
-    "mercury": 2
+    "gold": 1700,
+    "stone": 4,
+    "mercury": 1
   },
   "upgradeOf": "dragon_grave",
   "effects": [

@@ -11,7 +11,7 @@
   "battleSpeed": 5,
   "weeklyGrowth": 12,
   "cost": {
-    "gold": 25
+    "gold": 30
   },
   "upgradesTo": "forest_warden"
 }

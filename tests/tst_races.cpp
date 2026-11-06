@@ -40,7 +40,7 @@ private slots:
     void racesLoad() {
         QCOMPARE(reg.playableRaceKeys(), QStringList({"ashborn", "dwarves", "humans", "orcs", "sylvan", "tidefolk", "undead"}));
         QVERIFY(reg.race(RC("undead")).growthPercent > 0);  // the undead grow fast (the number is balance)
-        QCOMPARE(reg.race(RC("sylvan")).terrainCostPercent.value(T("forest").index()), 50);
+        QCOMPARE(reg.race(RC("sylvan")).terrainCostPercent.value(T("forest").index()), 75);
         QCOMPARE(reg.race(RaceId()).growthPercent, 0);  // defaults
         QVERIFY(reg.raceId("neutral").isValid() && !reg.playableRaces().contains(reg.raceId("neutral")));
         for (const QString& race : reg.playableRaceKeys()) {
@@ -67,12 +67,13 @@ private slots:
         QCOMPARE(townGrowth(gs, *gs.town(u), *reg.unit(U("skeleton")), reg), grown);
         const TownId s = gs.addTown("S", RC("sylvan"), {9, 9}, p1);
         QVERIFY(buildBuilding(gs, reg, s, B("woodcutters_lodge"), p1).ok);
-        QCOMPARE(gs.town(s)->recruitPool.value(B("woodcutters_lodge")), (12 * 125 + 50) / 100);  // 15
+        QCOMPARE(gs.town(s)->recruitPool.value(B("woodcutters_lodge")),
+                 (reg.unit(U("woodsman"))->weeklyGrowth * (100 + reg.race(RC("sylvan")).growthPercent) + 50) / 100);
     }
 
-    void undeadTownsYieldLessGold() {
-        town(RC("undead"));
-        QCOMPARE(dailyIncome(gs, reg, p1).value(R("gold")), reg.balance().economy.townDailyGold * 90 / 100);
+    void raceIncomeChangesTownGold() {  // orcs: poorer towns (balance data)
+        town(RC("orcs"));
+        QCOMPARE(dailyIncome(gs, reg, p1).value(R("gold")), reg.balance().economy.townDailyGold * (100 + reg.race(RC("orcs")).incomePercent) / 100);
     }
 
     void sylvanHeroesAreFastInForests() {

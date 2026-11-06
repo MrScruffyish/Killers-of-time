@@ -3,7 +3,7 @@
   "name": "Axe Range",
   "race": "dwarves",
   "cost": {
-    "gold": 650,
+    "gold": 600,
     "wood": 5
   },
   "requires": [
