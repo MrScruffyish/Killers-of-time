@@ -154,6 +154,10 @@ SpellBook::SpellBook(const core::ContentRegistry* content, const QList<Entry>& s
         auto* card = new QPushButton();
         card->setObjectName(QStringLiteral("spell_%1").arg(s->key));
         card->setProperty("spellCard", true);
+        // A button sizes itself from its own (empty) text, not from the layout inside
+        // it. Without a minimum height the card collapses to about 13 px and only a
+        // thin strip of its 112 px illustration is painted.
+        card->setMinimumHeight(132);
         card->setEnabled(e.castable);
         if (!e.castable && !e.why.isEmpty()) card->setToolTip(e.why);
 

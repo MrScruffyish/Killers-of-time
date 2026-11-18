@@ -1147,6 +1147,16 @@ private slots:
         QVERIFY(!pic.isNull());
         QCOMPARE(pic.size(), QSize(112, 112));
         QVERIFY(book.findChild<QPushButton*>("spellBookClose"));
+
+        // Once the book is on screen the whole illustration must be visible: a button
+        // with a layout used to collapse to its empty-text height, clipping the card
+        // to a thin strip.
+        book.show();
+        QTest::qWait(20);
+        QVERIFY2(card->height() >= illustration->height() + 8, qPrintable(QString("spell card is only %1 px tall").arg(card->height())));
+        const QRect shown = illustration->visibleRegion().boundingRect();
+        QVERIFY2(shown.width() >= 100 && shown.height() >= 100,
+                 qPrintable(QString("only %1x%2 of the illustration is visible").arg(shown.width()).arg(shown.height())));
     }
 
     // Spells are laid out across the two pages, in data order.

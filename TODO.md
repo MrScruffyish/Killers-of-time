@@ -31,6 +31,8 @@ line waiting for it, and the agent then removes them.
 6.2 Send them back in the view after a reconnect.
 42. On first opening the spell book in a fresh battle, only the top few percent of the first spell's illustration is visible (the book window itself is normal sized).
 
+42.1 **MANUAL**: build and run the tests; a spell card keeps its full height and the whole spell illustration is visible when the book opens.
+
 ## TBD
 
 1. If the 512 px art masters stutter on first show: smaller copies or load them in the
