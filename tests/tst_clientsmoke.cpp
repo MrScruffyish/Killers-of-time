@@ -1787,7 +1787,13 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!game->view().battle.present || game->view().battle.unit(activeId) == nullptr
                                      || game->view().battle.unit(activeId)->hex == dest, 5000);
         if (game->view().battle.present) {  // the field repaints only what moves: the screen must equal a full repaint
-            QTest::qWait(1500);
+            // A fixed sleep can land in the middle of a slide or a floating loss
+            // number: the screen grab and the forced full paint then show two
+            // different animation frames. Wait for the field to settle instead.
+            QTRY_VERIFY_WITH_TIMEOUT(!game->battleView()->isAnimating(), 5000);
+            // Toasts float over the window, so a screen grab includes them while a
+            // grab of the field alone does not. Compare only once they are gone.
+            QTRY_VERIFY_WITH_TIMEOUT(game->findChildren<Toast*>().isEmpty(), 5000);
             const int differing = differsFromFullRepaint(game->battleView()->field(), "battle");
             QVERIFY2(differing < 40, qPrintable(QStringLiteral("%1 battle pixels differ from a full repaint").arg(differing)));
         }
