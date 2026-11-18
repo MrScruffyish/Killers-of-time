@@ -134,11 +134,28 @@ private slots:
         planner.prepare(v, reg, h->id);
         QVERIFY(planner.ready());
         QVERIFY(!planner.reachableToday().isEmpty());
+        // The planner can only reason about what is in the view: hostile field armies
+        // hidden by fog of war are absent from it and cannot be planned around. Give
+        // the server the same information by dropping those armies from the copy
+        // (keeping the moving hero's own army and town garrisons, which the rules need).
+        QList<quint32> visibleArmies;
+        for (const ViewArmy& a : v.armies) visibleArmies.append(quint32(a.id));
+        QList<core::ArmyId> garrisons;
+        for (const core::Town& t : gs.towns())
+            if (t.garrison.isValid()) garrisons.append(t.garrison);
+        const core::ArmyId movingArmy = gs.hero(core::HeroId(quint32(h->id)))->army;
         // Every tile reachable today is walked to in full by the server too, or the
         // server stops at the zone of control the planner showed.
         int checked = 0, ambushes = 0;
         for (const core::Pos t : planner.reachableToday()) {
             core::GameState copy = gs;
+            for (auto it = copy.armies().begin(); it != copy.armies().end();) {
+                const core::Army& a = it.value();
+                if (a.id == movingArmy || garrisons.contains(a.id) || visibleArmies.contains(a.id.value()))
+                    ++it;
+                else
+                    it = copy.armies().erase(it);
+            }
             const MovePlan plan = planner.plan(t);
             QVERIFY(plan.found);
             QCOMPARE(plan.affordable, plan.steps.size());
