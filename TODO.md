@@ -29,9 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-42. On first opening the spell book in a fresh battle, only the top few percent of the first spell's illustration is visible (the book window itself is normal sized).
-
-42.1 **MANUAL**: build and run the tests; a spell card keeps its full height and the whole spell illustration is visible when the book opens.
 
 ## TBD
 
@@ -52,3 +49,4 @@ file or link later).
 39. After a battle the hero Level-up dialog appears before the battle result (losses), and the battle map is still active behind them. Show the result first, on the map, then the level-up.
 40. In battle map, the hero spells should be short-cut S, the unit spells: X
 41. The spells should be displayd on something that looks like a book, and there should be an illustration of the spell (saved as png in some art data directory so it can be replaced).
+42. On first opening the spell book in a fresh battle, only the top few percent of the first spell's illustration is visible (the book window itself is normal sized).
