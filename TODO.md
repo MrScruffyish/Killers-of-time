@@ -29,6 +29,11 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
+43. Add a playable necromancer race (`necroman`): race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
+44. Add a playable giants race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
+45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
+46. Add more buildings and upgrade chains, including the metals idea from TBD 5.
+47. Make the graphics more advanced: richer generated art for the new content and improved detail/effects where practical.
 
 ## TBD
 
