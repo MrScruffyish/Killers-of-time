@@ -1,0 +1,20 @@
+{
+  "id": "bone_acolyte",
+  "name": "Bone Acolyte",
+  "race": "necroman",
+  "tier": 1,
+  "attack": 4,
+  "defense": 3,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 7,
+  "battleSpeed": 4,
+  "weeklyGrowth": 14,
+  "cost": {
+    "gold": 25
+  },
+  "abilities": [
+    "undead"
+  ],
+  "upgradesTo": "bone_zealot"
+}

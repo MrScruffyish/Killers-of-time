@@ -1,0 +1,17 @@
+{
+  "id": "archive_of_souls",
+  "name": "Archive of Souls",
+  "race": "necroman",
+  "cost": {
+    "gold": 2000,
+    "stone": 8,
+    "mercury": 2
+  },
+  "upgradeOf": "scriptorium",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "soul_archivist"
+    }
+  ]
+}

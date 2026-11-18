@@ -1,0 +1,20 @@
+{
+  "id": "crypt_stalker",
+  "name": "Crypt Stalker",
+  "race": "necroman",
+  "tier": 2,
+  "attack": 9,
+  "defense": 7,
+  "damageMin": 4,
+  "damageMax": 7,
+  "maxHp": 24,
+  "battleSpeed": 7,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 230
+  },
+  "abilities": [
+    "undead",
+    "no_retaliation"
+  ]
+}

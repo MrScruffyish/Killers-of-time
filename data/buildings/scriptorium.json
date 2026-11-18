@@ -1,0 +1,20 @@
+{
+  "id": "scriptorium",
+  "name": "Scriptorium",
+  "race": "necroman",
+  "cost": {
+    "gold": 1500,
+    "stone": 6,
+    "mercury": 1
+  },
+  "requires": [
+    "grave_vault",
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "soul_scribe"
+    }
+  ]
+}

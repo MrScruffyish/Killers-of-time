@@ -1,0 +1,28 @@
+{
+  "id": "soul_archivist",
+  "name": "Soul Archivist",
+  "race": "necroman",
+  "tier": 3,
+  "attack": 12,
+  "defense": 10,
+  "damageMin": 8,
+  "damageMax": 13,
+  "maxHp": 38,
+  "battleSpeed": 6,
+  "initiative": 7,
+  "range": 7,
+  "shots": 14,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 650,
+    "mercury": 2
+  },
+  "abilities": [
+    "undead"
+  ],
+  "spells": [
+    "death_touch",
+    "drain_life"
+  ],
+  "spellPoints": 20
+}

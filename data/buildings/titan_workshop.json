@@ -1,0 +1,19 @@
+{
+  "id": "titan_workshop",
+  "name": "Titan Workshop",
+  "race": "necroman",
+  "cost": {
+    "gold": 3400,
+    "stone": 12,
+    "mercury": 2
+  },
+  "requires": [
+    "sepulchre"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bone_colossus"
+    }
+  ]
+}

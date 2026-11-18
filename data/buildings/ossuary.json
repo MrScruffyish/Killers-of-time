@@ -1,0 +1,16 @@
+{
+  "id": "ossuary",
+  "name": "Ossuary",
+  "race": "necroman",
+  "cost": {
+    "gold": 400,
+    "stone": 4
+  },
+  "upgradeOf": "bone_gallery",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bone_zealot"
+    }
+  ]
+}

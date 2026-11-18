@@ -330,6 +330,84 @@
           "gems": 1
         }
       }
+    },
+    {
+      "id": "mortis",
+      "name": "Mortis",
+      "class": "boneweaver",
+      "specialty": {
+        "unit": "bone_acolyte",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "ossiana",
+      "name": "Ossiana",
+      "class": "boneweaver",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
+    },
+    {
+      "id": "thanatos",
+      "name": "Thanatos",
+      "class": "boneweaver",
+      "specialty": {
+        "income": {
+          "mercury": 1
+        }
+      }
+    },
+    {
+      "id": "nyx",
+      "name": "Nyx",
+      "class": "boneweaver",
+      "specialty": {
+        "unit": "soul_scribe",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "barrow",
+      "name": "Barrow",
+      "class": "grave_knight",
+      "specialty": {
+        "unit": "sepulchral_guard",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "marrow",
+      "name": "Marrow",
+      "class": "grave_knight",
+      "specialty": {
+        "trait": "attack",
+        "amount": 1
+      }
+    },
+    {
+      "id": "cairn",
+      "name": "Cairn",
+      "class": "grave_knight",
+      "specialty": {
+        "income": {
+          "gold": 350
+        }
+      }
+    },
+    {
+      "id": "revenant",
+      "name": "Revenant",
+      "class": "grave_knight",
+      "specialty": {
+        "unit": "crypt_creeper",
+        "attack": 2,
+        "defense": 1
+      }
     }
   ]
 }

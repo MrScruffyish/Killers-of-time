@@ -1,0 +1,19 @@
+{
+  "id": "bone_zealot",
+  "name": "Bone Zealot",
+  "race": "necroman",
+  "tier": 1,
+  "attack": 6,
+  "defense": 5,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 9,
+  "battleSpeed": 5,
+  "weeklyGrowth": 14,
+  "cost": {
+    "gold": 40
+  },
+  "abilities": [
+    "undead"
+  ]
+}

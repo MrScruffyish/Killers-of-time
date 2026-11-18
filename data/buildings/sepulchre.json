@@ -1,0 +1,19 @@
+{
+  "id": "sepulchre",
+  "name": "Sepulchre",
+  "race": "necroman",
+  "cost": {
+    "gold": 2300,
+    "stone": 10,
+    "wood": 5
+  },
+  "requires": [
+    "scriptorium"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "sepulchral_guard"
+    }
+  ]
+}

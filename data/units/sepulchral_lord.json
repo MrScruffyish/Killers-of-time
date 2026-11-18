@@ -1,0 +1,21 @@
+{
+  "id": "sepulchral_lord",
+  "name": "Sepulchral Lord",
+  "race": "necroman",
+  "tier": 4,
+  "attack": 18,
+  "defense": 17,
+  "damageMin": 16,
+  "damageMax": 25,
+  "maxHp": 100,
+  "battleSpeed": 9,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1850,
+    "stone": 1
+  },
+  "abilities": [
+    "undead",
+    "double_attack"
+  ]
+}

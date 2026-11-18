@@ -1,0 +1,17 @@
+{
+  "id": "sepulchre_court",
+  "name": "Sepulchre Court",
+  "race": "necroman",
+  "cost": {
+    "gold": 3000,
+    "stone": 12,
+    "wood": 6
+  },
+  "upgradeOf": "sepulchre",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "sepulchral_lord"
+    }
+  ]
+}

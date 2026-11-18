@@ -1,0 +1,18 @@
+{
+  "id": "grave_vault",
+  "name": "Grave Vault",
+  "race": "necroman",
+  "cost": {
+    "gold": 500,
+    "stone": 4
+  },
+  "requires": [
+    "bone_gallery"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "crypt_creeper"
+    }
+  ]
+}

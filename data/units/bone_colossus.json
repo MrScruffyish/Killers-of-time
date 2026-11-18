@@ -1,0 +1,21 @@
+{
+  "id": "bone_colossus",
+  "name": "Bone Colossus",
+  "race": "necroman",
+  "tier": 5,
+  "attack": 23,
+  "defense": 22,
+  "damageMin": 38,
+  "damageMax": 54,
+  "maxHp": 200,
+  "battleSpeed": 7,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3400,
+    "mercury": 2
+  },
+  "abilities": [
+    "undead"
+  ],
+  "upgradesTo": "bone_titan"
+}

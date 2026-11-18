@@ -1,0 +1,15 @@
+{
+  "id": "bone_gallery",
+  "name": "Bone Gallery",
+  "race": "necroman",
+  "cost": {
+    "gold": 300,
+    "stone": 3
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bone_acolyte"
+    }
+  ]
+}

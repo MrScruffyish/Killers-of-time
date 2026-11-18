@@ -1,0 +1,20 @@
+{
+  "id": "crypt_creeper",
+  "name": "Crypt Creeper",
+  "race": "necroman",
+  "tier": 2,
+  "attack": 7,
+  "defense": 5,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 20,
+  "battleSpeed": 6,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 165
+  },
+  "abilities": [
+    "undead"
+  ],
+  "upgradesTo": "crypt_stalker"
+}

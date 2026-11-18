@@ -1,0 +1,22 @@
+{
+  "id": "necroman",
+  "name": "Necromancers",
+  "description": "Masters of death magic with tireless bone armies. At home in swamps. Dark and earth magic.",
+  "growthPercent": 30,
+  "incomePercent": 10,
+  "terrainCostPercent": {
+    "swamp": 60,
+    "dirt": 85
+  },
+  "spellSchools": [
+    "dark",
+    "earth"
+  ],
+  "spellSchoolPercent": {
+    "dark": 125,
+    "earth": 110
+  },
+  "raiseDeadUnit": "bone_acolyte",
+  "raiseDeadPercent": 10,
+  "ability": "Grave mastery: dark spells do 25% more damage and fallen foes rise as bone acolytes (10% of the HP killed)."
+}

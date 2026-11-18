@@ -1,0 +1,17 @@
+{
+  "id": "colossus_forge",
+  "name": "Colossus Forge",
+  "race": "necroman",
+  "cost": {
+    "gold": 4800,
+    "stone": 15,
+    "mercury": 3
+  },
+  "upgradeOf": "titan_workshop",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bone_titan"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "stalker_den",
+  "name": "Stalker Den",
+  "race": "necroman",
+  "cost": {
+    "gold": 700,
+    "stone": 5
+  },
+  "upgradeOf": "grave_vault",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "crypt_stalker"
+    }
+  ]
+}

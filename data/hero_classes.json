@@ -420,6 +420,67 @@
         "ice_bolt",
         "barkskin"
       ]
+    },
+    {
+      "id": "boneweaver",
+      "name": "Boneweaver",
+      "race": "necroman",
+      "baseTraits": {
+        "attack": 1,
+        "defense": 1,
+        "morale": 0,
+        "spell_power": 3,
+        "magic": 3,
+        "spell_points_max": 30,
+        "spell_recovery": 2,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2,
+        "magic": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "bone_acolyte": 10,
+        "crypt_creeper": 3
+      },
+      "startingSpells": [
+        "curse",
+        "death_touch"
+      ]
+    },
+    {
+      "id": "grave_knight",
+      "name": "Grave Knight",
+      "race": "necroman",
+      "baseTraits": {
+        "attack": 4,
+        "defense": 2,
+        "morale": 1,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 10,
+        "spell_recovery": 1,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "attack": 2,
+        "defense": 2
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "bone_acolyte": 14,
+        "crypt_creeper": 3
+      },
+      "startingSpells": [
+        "curse"
+      ]
     }
   ]
 }

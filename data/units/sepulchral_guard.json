@@ -1,0 +1,22 @@
+{
+  "id": "sepulchral_guard",
+  "name": "Sepulchral Guard",
+  "race": "necroman",
+  "tier": 4,
+  "attack": 16,
+  "defense": 15,
+  "damageMin": 14,
+  "damageMax": 22,
+  "maxHp": 85,
+  "battleSpeed": 8,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1400,
+    "stone": 1
+  },
+  "abilities": [
+    "undead",
+    "double_attack"
+  ],
+  "upgradesTo": "sepulchral_lord"
+}
