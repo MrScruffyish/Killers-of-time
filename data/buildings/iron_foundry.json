@@ -1,0 +1,19 @@
+{
+  "id": "iron_foundry",
+  "name": "Iron Foundry",
+  "cost": {
+    "gold": 800,
+    "wood": 5,
+    "stone": 10
+  },
+  "requires": [
+    "stone_quarry"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "iron",
+      "amount": 3
+    }
+  ]
+}

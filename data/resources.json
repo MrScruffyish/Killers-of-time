@@ -45,6 +45,16 @@
       "id": "papyrus",
       "name": "Papyrus",
       "value": 200
+    },
+    {
+      "id": "iron",
+      "name": "Iron",
+      "value": 160
+    },
+    {
+      "id": "bronze",
+      "name": "Bronze",
+      "value": 240
     }
   ]
 }

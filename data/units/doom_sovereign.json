@@ -1,0 +1,22 @@
+{
+  "id": "doom_sovereign",
+  "name": "Doom Sovereign",
+  "race": "undead",
+  "tier": 5,
+  "attack": 27,
+  "defense": 27,
+  "damageMin": 45,
+  "damageMax": 64,
+  "maxHp": 230,
+  "battleSpeed": 10,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 4800,
+    "mercury": 4,
+    "bronze": 3
+  },
+  "abilities": [
+    "undead",
+    "double_attack"
+  ]
+}

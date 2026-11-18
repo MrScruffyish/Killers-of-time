@@ -1,0 +1,17 @@
+{
+  "id": "titan_cathedral",
+  "name": "Titan Cathedral",
+  "race": "necroman",
+  "cost": {
+    "gold": 6200,
+    "mercury": 4,
+    "iron": 4
+  },
+  "upgradeOf": "colossus_forge",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bone_overlord"
+    }
+  ]
+}

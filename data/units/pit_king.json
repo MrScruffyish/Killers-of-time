@@ -17,5 +17,6 @@
   "initiative": 9,
   "abilities": [
     "no_retaliation"
-  ]
+  ],
+  "upgradesTo": "infernal_sovereign"
 }

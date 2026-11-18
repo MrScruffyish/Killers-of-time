@@ -1,0 +1,21 @@
+{
+  "id": "storm_king",
+  "name": "Storm King",
+  "race": "giants",
+  "tier": 5,
+  "attack": 30,
+  "defense": 29,
+  "damageMin": 55,
+  "damageMax": 76,
+  "maxHp": 310,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 7200,
+    "gems": 5,
+    "bronze": 4
+  },
+  "abilities": [
+    "double_attack"
+  ]
+}

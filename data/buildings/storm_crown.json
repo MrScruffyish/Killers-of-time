@@ -1,0 +1,17 @@
+{
+  "id": "storm_crown",
+  "name": "Storm Crown",
+  "race": "giants",
+  "cost": {
+    "gold": 7200,
+    "gems": 5,
+    "bronze": 4
+  },
+  "upgradeOf": "storm_spire",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "storm_king"
+    }
+  ]
+}

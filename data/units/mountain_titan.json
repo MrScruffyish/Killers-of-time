@@ -18,5 +18,6 @@
   "spellPoints": 26,
   "spells": [
     "rock_fall"
-  ]
+  ],
+  "upgradesTo": "mountain_king"
 }

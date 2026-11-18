@@ -17,5 +17,6 @@
   "initiative": 8,
   "abilities": [
     "double_attack"
-  ]
+  ],
+  "upgradesTo": "elder_leviathan"
 }

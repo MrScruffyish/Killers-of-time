@@ -1,0 +1,21 @@
+{
+  "id": "bronze_smeltery",
+  "name": "Bronze Smeltery",
+  "cost": {
+    "gold": 1200,
+    "wood": 8,
+    "stone": 10,
+    "iron": 4
+  },
+  "requires": [
+    "iron_foundry",
+    "marketplace"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "bronze",
+      "amount": 2
+    }
+  ]
+}

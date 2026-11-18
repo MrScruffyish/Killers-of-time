@@ -1,0 +1,18 @@
+{
+  "id": "mountain_king",
+  "name": "Mountain King",
+  "race": "dwarves",
+  "tier": 5,
+  "attack": 27,
+  "defense": 29,
+  "damageMin": 50,
+  "damageMax": 68,
+  "maxHp": 280,
+  "battleSpeed": 7,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 6200,
+    "stone": 8,
+    "iron": 5
+  }
+}

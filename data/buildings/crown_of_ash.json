@@ -1,0 +1,17 @@
+{
+  "id": "crown_of_ash",
+  "name": "Crown of Ash",
+  "race": "ashborn",
+  "cost": {
+    "gold": 6500,
+    "sulphur": 3,
+    "iron": 4
+  },
+  "upgradeOf": "throne_of_ash",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "infernal_sovereign"
+    }
+  ]
+}

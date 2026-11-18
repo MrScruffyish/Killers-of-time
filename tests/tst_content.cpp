@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <utility>
 
 #include "TestContent.h"
 
@@ -69,7 +70,7 @@ private slots:
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
         useContent(reg);
 
-        QCOMPARE(reg.resources().size(), 9);
+        QCOMPARE(reg.resources().size(), 11);
         QVERIFY(reg.currency().isValid());
         QCOMPARE(reg.resource(reg.currency()).key, QString("gold"));
 
@@ -372,6 +373,44 @@ private slots:
         QCOMPARE(reg.building(B("pike_barracks"))->upgradeOf, B("barracks"));
         QVERIFY(reg.building(B("eagle_roost"))->excludes.contains(B("snail_pen")));
         QVERIFY(reg.building(B("snail_pen"))->excludes.contains(B("eagle_roost")));
+    }
+
+    void realMetalsAndEliteUpgradesLoad() {
+        ContentRegistry reg;
+        QStringList errors;
+        QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
+        QVERIFY(reg.resourceId("iron").isValid());
+        QVERIFY(reg.resourceId("bronze").isValid());
+        for (const char* key : {"iron_foundry", "bronze_smeltery", "master_workshop"})
+            QVERIFY2(reg.buildingByKey(QString::fromLatin1(key)), key);
+
+        // Every top-tier unit now has one more, metal-traded rank with its own
+        // dwelling upgrading the building that trains the previous rank.
+        const QList<std::pair<const char*, const char*>> ranks = {
+            {"pit_king", "infernal_sovereign"}, {"mountain_titan", "mountain_king"},
+            {"storm_giant", "storm_king"}, {"clan_hero", "clan_legend"},
+            {"archangel", "seraph"}, {"bone_titan", "bone_overlord"},
+            {"ancient_behemoth", "ancient_colossus"}, {"emerald_dragon", "emerald_archdragon"},
+            {"elder_kraken", "elder_leviathan"}, {"doom_lord", "doom_sovereign"}};
+        for (const auto& [before, after] : ranks) {
+            const UnitDef* base = reg.unitByKey(QString::fromLatin1(before));
+            const UnitDef* elite = reg.unitByKey(QString::fromLatin1(after));
+            QVERIFY2(base && elite, before);
+            QCOMPARE(base->upgradesTo, elite->id);
+            bool dwelling = false;
+            for (const BuildingDef& b : reg.buildings()) {
+                if (!b.upgradeOf.isValid()) continue;
+                const BuildingDef* old = reg.building(b.upgradeOf);
+                if (!old) continue;
+                UnitTypeId oldUnit, newUnit;
+                for (const BuildingEffect& e : old->effects)
+                    if (e.type == BuildingEffect::Type::Dwelling) oldUnit = e.unit;
+                for (const BuildingEffect& e : b.effects)
+                    if (e.type == BuildingEffect::Type::Dwelling) newUnit = e.unit;
+                if (oldUnit == base->id && newUnit == elite->id) dwelling = true;
+            }
+            QVERIFY2(dwelling, qPrintable(QStringLiteral("no dwelling upgrades to %1").arg(after)));
+        }
     }
 
     void reportsAllErrorsAtOnce() {

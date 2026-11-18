@@ -748,7 +748,7 @@ private slots:
         }
         // Icons (0_icons.png): every resource at three sizes, the special mines, every button icon.
         {
-            const QStringList res = {"gold", "wood", "stone", "grain", "gems", "sulphur", "coal", "mercury", "papyrus"};
+            const QStringList res = {"gold", "wood", "stone", "grain", "gems", "sulphur", "coal", "mercury", "papyrus", "iron", "bronze"};
             const QStringList buttons = {"build", "buy", "wagon", "end", "spell", "defend", "auto", "retreat",
                                          "catapult", "town", "army", "tavern"};
             QImage icons(int(res.size()) * 136 + 20, 128 + 40 + 24 + 140 + 80 + 180 + 160, QImage::Format_ARGB32);

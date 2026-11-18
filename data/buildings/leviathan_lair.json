@@ -1,0 +1,17 @@
+{
+  "id": "leviathan_lair",
+  "name": "Leviathan Lair",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 6800,
+    "gems": 4,
+    "iron": 4
+  },
+  "upgradeOf": "abyssal_deep",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "elder_leviathan"
+    }
+  ]
+}

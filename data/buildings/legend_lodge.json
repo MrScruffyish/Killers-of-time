@@ -1,0 +1,17 @@
+{
+  "id": "legend_lodge",
+  "name": "Legend Lodge",
+  "race": "halflings",
+  "cost": {
+    "gold": 6400,
+    "grain": 8,
+    "bronze": 3
+  },
+  "upgradeOf": "hero_lodge",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "clan_legend"
+    }
+  ]
+}

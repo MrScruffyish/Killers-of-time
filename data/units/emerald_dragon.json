@@ -17,5 +17,6 @@
   "initiative": 13,
   "abilities": [
     "flying"
-  ]
+  ],
+  "upgradesTo": "emerald_archdragon"
 }

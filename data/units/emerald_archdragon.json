@@ -1,0 +1,21 @@
+{
+  "id": "emerald_archdragon",
+  "name": "Emerald Archdragon",
+  "race": "sylvan",
+  "tier": 5,
+  "attack": 27,
+  "defense": 25,
+  "damageMin": 60,
+  "damageMax": 74,
+  "maxHp": 280,
+  "battleSpeed": 11,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 5600,
+    "gems": 4,
+    "bronze": 4
+  },
+  "abilities": [
+    "flying"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "deep_kingdom",
+  "name": "Deep Kingdom",
+  "race": "dwarves",
+  "cost": {
+    "gold": 6200,
+    "stone": 8,
+    "iron": 5
+  },
+  "upgradeOf": "mountain_hall",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "mountain_king"
+    }
+  ]
+}

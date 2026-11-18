@@ -1,0 +1,17 @@
+{
+  "id": "heart_of_world",
+  "name": "Heart of the World",
+  "race": "sylvan",
+  "cost": {
+    "gold": 5600,
+    "gems": 4,
+    "bronze": 4
+  },
+  "upgradeOf": "emerald_cliff",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "emerald_archdragon"
+    }
+  ]
+}

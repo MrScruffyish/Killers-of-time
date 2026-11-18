@@ -17,5 +17,6 @@
   "abilities": [
     "undead",
     "no_retaliation"
-  ]
+  ],
+  "upgradesTo": "bone_overlord"
 }

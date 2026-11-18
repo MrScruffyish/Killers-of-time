@@ -1,0 +1,21 @@
+{
+  "id": "infernal_sovereign",
+  "name": "Infernal Sovereign",
+  "race": "ashborn",
+  "tier": 5,
+  "attack": 29,
+  "defense": 25,
+  "damageMin": 45,
+  "damageMax": 64,
+  "maxHp": 260,
+  "battleSpeed": 8,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 6500,
+    "sulphur": 3,
+    "iron": 4
+  },
+  "abilities": [
+    "no_retaliation"
+  ]
+}

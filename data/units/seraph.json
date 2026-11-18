@@ -1,0 +1,28 @@
+{
+  "id": "seraph",
+  "name": "Seraph",
+  "race": "humans",
+  "tier": 5,
+  "attack": 25,
+  "defense": 25,
+  "damageMin": 62,
+  "damageMax": 62,
+  "maxHp": 260,
+  "battleSpeed": 12,
+  "initiative": 16,
+  "range": 0,
+  "shots": 0,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 4600,
+    "gems": 3,
+    "iron": 3
+  },
+  "abilities": [
+    "flying"
+  ],
+  "spellPoints": 32,
+  "spells": [
+    "cure"
+  ]
+}

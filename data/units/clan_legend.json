@@ -1,0 +1,21 @@
+{
+  "id": "clan_legend",
+  "name": "Clan Legend",
+  "race": "halflings",
+  "tier": 5,
+  "attack": 29,
+  "defense": 28,
+  "damageMin": 47,
+  "damageMax": 66,
+  "maxHp": 255,
+  "battleSpeed": 10,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 6400,
+    "grain": 8,
+    "bronze": 3
+  },
+  "abilities": [
+    "double_attack"
+  ]
+}

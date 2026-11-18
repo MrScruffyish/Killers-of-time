@@ -1,0 +1,17 @@
+{
+  "id": "dread_sanctum",
+  "name": "Dread Sanctum",
+  "race": "undead",
+  "cost": {
+    "gold": 4800,
+    "mercury": 4,
+    "bronze": 3
+  },
+  "upgradeOf": "doom_citadel",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "doom_sovereign"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "elder_leviathan",
+  "name": "Elder Leviathan",
+  "race": "tidefolk",
+  "tier": 5,
+  "attack": 28,
+  "defense": 27,
+  "damageMin": 42,
+  "damageMax": 58,
+  "maxHp": 290,
+  "battleSpeed": 7,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 6800,
+    "gems": 4,
+    "iron": 4
+  },
+  "abilities": [
+    "double_attack"
+  ]
+}

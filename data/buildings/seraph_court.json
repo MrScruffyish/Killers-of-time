@@ -1,0 +1,17 @@
+{
+  "id": "seraph_court",
+  "name": "Seraph Court",
+  "race": "humans",
+  "cost": {
+    "gold": 4600,
+    "gems": 3,
+    "iron": 3
+  },
+  "upgradeOf": "archangel_gate",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "seraph"
+    }
+  ]
+}

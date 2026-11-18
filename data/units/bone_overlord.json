@@ -1,0 +1,22 @@
+{
+  "id": "bone_overlord",
+  "name": "Bone Overlord",
+  "race": "necroman",
+  "tier": 5,
+  "attack": 28,
+  "defense": 27,
+  "damageMin": 47,
+  "damageMax": 66,
+  "maxHp": 265,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 6200,
+    "mercury": 4,
+    "iron": 4
+  },
+  "abilities": [
+    "undead",
+    "no_retaliation"
+  ]
+}

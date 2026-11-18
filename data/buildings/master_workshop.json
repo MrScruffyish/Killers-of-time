@@ -1,0 +1,20 @@
+{
+  "id": "master_workshop",
+  "name": "Master Workshop",
+  "cost": {
+    "gold": 2500,
+    "wood": 12,
+    "stone": 12,
+    "bronze": 4
+  },
+  "requires": [
+    "bronze_smeltery",
+    "town_hall"
+  ],
+  "effects": [
+    {
+      "type": "growth",
+      "amount": 15
+    }
+  ]
+}

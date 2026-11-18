@@ -1,0 +1,17 @@
+{
+  "id": "behemoth_throne",
+  "name": "Behemoth Throne",
+  "race": "orcs",
+  "cost": {
+    "gold": 7000,
+    "iron": 5,
+    "bronze": 3
+  },
+  "upgradeOf": "ancient_crag",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "ancient_colossus"
+    }
+  ]
+}

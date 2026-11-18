@@ -16,5 +16,6 @@
   },
   "abilities": [
     "double_attack"
-  ]
+  ],
+  "upgradesTo": "clan_legend"
 }

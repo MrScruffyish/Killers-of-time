@@ -18,5 +18,6 @@
   "abilities": [
     "undead",
     "double_attack"
-  ]
+  ],
+  "upgradesTo": "doom_sovereign"
 }
