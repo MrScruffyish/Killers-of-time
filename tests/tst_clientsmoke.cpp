@@ -1142,9 +1142,10 @@ private slots:
         QVERIFY(card && card->isEnabled());
         auto* illustration = book.findChild<QLabel*>(QStringLiteral("spellIllustration_%1").arg(spell->key));
         QVERIFY(illustration);
-        const QPixmap* pic = illustration->pixmap();
-        QVERIFY(pic && !pic->isNull());
-        QCOMPARE(pic->size(), QSize(112, 112));
+        // Qt 6 returns the pixmap by value (Qt 5 returned a pointer).
+        const QPixmap pic = illustration->pixmap();
+        QVERIFY(!pic.isNull());
+        QCOMPARE(pic.size(), QSize(112, 112));
         QVERIFY(book.findChild<QPushButton*>("spellBookClose"));
     }
 
