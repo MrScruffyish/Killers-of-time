@@ -30,6 +30,21 @@ std::pair<double, int> difference(const QImage& a, const QImage& b) {
         }
     return {double(sum) / (x.width() * x.height() * 4), worst};
 }
+
+// How many clearly visible (non-transparent) pixels a picture has: catches a blank
+// picture from a drawing branch that never ran.
+int inkPixels(const QImage& img) {
+    const QImage x = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int n = 0;
+    for (int row = 0; row < x.height(); ++row)
+        for (int col = 0; col < x.width(); ++col)
+            if (qAlpha(x.pixel(col, row)) > 24) ++n;
+    return n;
+}
+
+QImage renderArt(const std::function<void(QPainter&, const QRectF&)>& draw) {
+    return artgen::renderMaster(draw, 128);
+}
 }  // namespace
 
 class TstArt : public QObject {
@@ -107,6 +122,95 @@ private slots:
         inData.sort();
         QCOMPARE(inData, inExport);
         QCOMPARE(QImage(out.filePath(art::path::unit("militia", 0) + ".png")).size(), QSize(art::kMasterSize, art::kMasterSize));
+    }
+
+    // Iron and bronze have their own map colours and ingot icons.
+    void metalResourcesHaveTheirOwnArt() {
+        const QColor iron = artgen::resourceColor("iron");
+        const QColor bronze = artgen::resourceColor("bronze");
+        QVERIFY2(iron.isValid() && bronze.isValid(), "iron and bronze need map colours");
+        QVERIFY2(iron != bronze, "iron and bronze must have different colours");
+        QVERIFY2(iron != artgen::resourceColor("gold"), "iron must not reuse gold's colour");
+        QVERIFY2(bronze != artgen::resourceColor("gold"), "bronze must not reuse gold's colour");
+        const auto icon = [](const QString& id) {
+            return renderArt([&](QPainter& p, const QRectF& r) {
+                artgen::drawResourceIcon(p, r, id, artgen::resourceColor(id));
+            });
+        };
+        const QImage i = icon("iron"), b = icon("bronze");
+        QVERIFY2(inkPixels(i) > 300, "iron ingot icon must not be blank");
+        QVERIFY2(inkPixels(b) > 300, "bronze ingot icon must not be blank");
+        const auto [mean, worst] = difference(i, b);
+        QVERIFY2(mean > 0.5, qPrintable(QStringLiteral("iron/bronze ingots too alike: mean %1 worst %2").arg(mean).arg(worst)));
+    }
+
+    // Every unit of the three new races has its own picture, not the generic fallback.
+    void newRaceUnitsHaveTheirOwnArt() {
+        const QStringList ids = {
+            "bone_acolyte", "bone_zealot", "crypt_creeper", "crypt_stalker", "soul_scribe", "soul_archivist",
+            "sepulchral_guard", "sepulchral_lord", "bone_colossus", "bone_titan", "bone_overlord",
+            "young_giant", "giant_warrior", "cave_troll", "cave_ogre", "boulder_thrower", "bombardier_giant",
+            "ice_giant", "glacier_giant", "sky_giant", "storm_giant", "storm_king",
+            "halfling_sling", "halfling_marksman", "pony_rider", "pony_lancer", "burrow_guard", "burrow_captain",
+            "stronghold_guard", "stronghold_champion", "clan_champion", "clan_hero", "clan_legend"};
+        const auto unit = [](const QString& id) {
+            return renderArt([&](QPainter& p, const QRectF& r) { artgen::drawUnitIcon(p, r, id, 0); });
+        };
+        for (const QString& id : ids)
+            QVERIFY2(inkPixels(unit(id)) > 300, qPrintable(id + QStringLiteral(": unit art is blank")));
+        // One very different figure per race must not collapse to the same picture.
+        const QImage necro = unit("bone_acolyte"), giant = unit("young_giant"), small = unit("halfling_sling");
+        QVERIFY2(difference(necro, giant).first > 1.0, "necromancer and giant unit art must differ");
+        QVERIFY2(difference(giant, small).first > 1.0, "giant and halfling unit art must differ");
+        QVERIFY2(difference(necro, small).first > 1.0, "necromancer and halfling unit art must differ");
+        // The elite ranks add a crown to their predecessor's shape.
+        for (const auto& [base, elite] : {std::pair{QString("storm_giant"), QString("storm_king")},
+                                          std::pair{QString("clan_hero"), QString("clan_legend")},
+                                          std::pair{QString("bone_titan"), QString("bone_overlord")}})
+            QVERIFY2(difference(unit(base), unit(elite)).first > 0.2,
+                     qPrintable(QStringLiteral("%1 and its elite %2 must differ").arg(base, elite)));
+    }
+
+    // The six new hero classes have distinct portraits and rider pictures.
+    void newClassesHaveTheirOwnPortraits() {
+        const QStringList classes = {"boneweaver", "grave_knight", "stone_caller", "sky_shaman", "sheriff", "burrow_seer"};
+        const auto portrait = [](const QString& cls) {
+            return renderArt([&](QPainter& p, const QRectF& r) {
+                artgen::drawPortrait(p, r, cls, QColor("#405060"), 1);
+            });
+        };
+        for (const QString& cls : classes)
+            QVERIFY2(inkPixels(portrait(cls)) > 300, qPrintable(cls + QStringLiteral(": portrait is blank")));
+        const QImage bone = portrait("boneweaver"), stone = portrait("stone_caller"), sheriff = portrait("sheriff");
+        QVERIFY2(difference(bone, stone).first > 0.5, "boneweaver and stone_caller portraits must differ");
+        QVERIFY2(difference(stone, sheriff).first > 0.5, "stone_caller and sheriff portraits must differ");
+        // Riders of the new classes also get their own look.
+        const auto rider = [](const QString& cls) {
+            return renderArt([&](QPainter& p, const QRectF& r) { artgen::drawHeroRider(p, r, QColor("#405060"), cls); });
+        };
+        QVERIFY2(inkPixels(rider("sky_shaman")) > 300, "sky_shaman rider art is blank");
+        QVERIFY2(difference(rider("boneweaver"), rider("sheriff")).first > 0.3, "new class riders must differ");
+    }
+
+    // The three new races have their own town and scene art.
+    void newRacesHaveTheirOwnTownArt() {
+        const auto town = [](const QString& race) {
+            return renderArt([&](QPainter& p, const QRectF& r) {
+                artgen::drawTownIcon(p, r, art::TownLook{QColor("#c04040"), race, 2, 6});
+            });
+        };
+        const QImage necro = town("necroman"), giant = town("giants"), small = town("halflings");
+        QVERIFY2(inkPixels(necro) > 300 && inkPixels(giant) > 300 && inkPixels(small) > 300,
+                 "new race town art is blank");
+        QVERIFY2(difference(necro, giant).first > 1.0, "necroman and giants towns must differ");
+        QVERIFY2(difference(giant, small).first > 1.0, "giants and halflings towns must differ");
+        QVERIFY2(difference(necro, small).first > 1.0, "necroman and halflings towns must differ");
+        const auto scene = [](const QString& race) {
+            return renderArt([&](QPainter& p, const QRectF& r) { artgen::drawSceneBackdrop(p, r, race, false); });
+        };
+        const QImage sn = scene("necroman"), sg = scene("giants"), sh = scene("halflings");
+        QVERIFY2(difference(sn, sg).first > 1.0, "necroman and giants scenes must differ");
+        QVERIFY2(difference(sg, sh).first > 1.0, "giants and halflings scenes must differ");
     }
 };
 

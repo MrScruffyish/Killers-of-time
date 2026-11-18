@@ -1360,6 +1360,68 @@ void flames(Canvas& c, double x, double y, double size) {
     }
 }
 
+// A gold crown with three points and jewels, for the elite rank of each race.
+void crown(Canvas& c, double cx, double cy, double w) {
+    c.pen(kInk, 0.018);
+    c.p.setBrush(QColor("#ffd84a"));
+    c.poly({{cx - w * 0.5, cy}, {cx - w * 0.5, cy - w * 0.34}, {cx - w * 0.28, cy - w * 0.16},
+            {cx, cy - w * 0.46}, {cx + w * 0.28, cy - w * 0.16}, {cx + w * 0.5, cy - w * 0.34},
+            {cx + w * 0.5, cy}});
+    c.p.setPen(Qt::NoPen);
+    c.p.setBrush(QColor("#c0303a"));
+    c.p.drawEllipse(c.box(cx - w * 0.045, cy - w * 0.18, w * 0.09, w * 0.09));
+    c.p.setBrush(QColor("#40a0ff"));
+    c.p.drawEllipse(c.box(cx - w * 0.39, cy - w * 0.22, w * 0.07, w * 0.07));
+    c.p.drawEllipse(c.box(cx + w * 0.32, cy - w * 0.22, w * 0.07, w * 0.07));
+}
+
+// A hefty rock held overhead (the giants' boulder throwers).
+void boulder(Canvas& c, double x, double y, double size, const QColor& stone) {
+    c.pen(kInk, 0.02);
+    c.p.setBrush(lit(c, x - size / 2, y - size / 2, size, size, stone, 135, 135));
+    c.p.drawEllipse(c.at(x, y), c.s(size * 0.5), c.s(size * 0.45));
+    c.pen(stone.darker(150), 0.01);
+    c.p.drawLine(c.at(x - size * 0.2, y - size * 0.1), c.at(x + size * 0.1, y + size * 0.12));
+    c.p.drawLine(c.at(x + size * 0.04, y - size * 0.2), c.at(x + size * 0.2, y));
+}
+
+// A short, sturdy fellow with an oversized head: halflings and their kin.
+void halfling(Canvas& c, const QColor& coat, bool helmet, const QColor& skin = kSkinTone) {
+    c.pen(kInk, 0.022);
+    for (const double lx : {0.4, 0.55}) {  // short legs in big boots
+        c.p.setBrush(lit(c, lx, 0.76, 0.11, 0.17, coat.darker(150)));
+        c.p.drawRoundedRect(c.box(lx, 0.76, 0.11, 0.17), c.s(0.03), c.s(0.03));
+        c.p.setBrush(lit(c, lx - 0.02, 0.88, 0.15, 0.08, QColor("#4a3020"), 140));
+        c.p.drawRoundedRect(c.box(lx - 0.02, 0.88, 0.15, 0.08), c.s(0.03), c.s(0.03));
+    }
+    c.p.setBrush(lit(c, 0.3, 0.46, 0.4, 0.34, coat, 135, 130));  // a round waistcoat
+    c.p.drawRoundedRect(c.box(0.3, 0.46, 0.4, 0.34), c.s(0.14), c.s(0.14));
+    c.pen(kInk, 0.015);
+    c.p.setBrush(QColor("#4a3020"));
+    c.p.drawRect(c.box(0.3, 0.62, 0.4, 0.05));
+    for (const double ax : {0.22, 0.68}) {  // arms
+        c.p.setBrush(lit(c, ax, 0.48, 0.09, 0.2, coat.darker(110)));
+        c.p.drawRoundedRect(c.box(ax, 0.48, 0.09, 0.2), c.s(0.04), c.s(0.04));
+        c.p.setBrush(skin);
+        c.p.drawEllipse(c.box(ax, 0.64, 0.09, 0.08));
+    }
+    c.p.setBrush(lit(c, 0.32, 0.12, 0.36, 0.36, skin, 115, 120));  // an oversized head
+    c.p.drawEllipse(c.box(0.32, 0.12, 0.36, 0.36));
+    faceDetails(c, 0.5, 0.28, 0.3);
+    c.p.setBrush(skin.darker(118));  // a round nose
+    c.p.drawEllipse(c.box(0.49, 0.3, 0.07, 0.06));
+    if (helmet) {
+        c.pen(kInk, 0.02);
+        c.p.setBrush(lit(c, 0.3, 0.06, 0.4, 0.18, kSteel, 130, 130));
+        c.p.drawChord(c.box(0.3, 0.06, 0.4, 0.3), 0, 180 * 16);
+    } else {
+        c.pen(kInk, 0.018);
+        c.p.setBrush(QColor("#5a3a1e"));
+        for (const auto& [hx, hy] : {std::pair{0.38, 0.12}, std::pair{0.5, 0.08}, std::pair{0.62, 0.12}})
+            c.p.drawEllipse(c.box(hx - 0.08, hy - 0.04, 0.16, 0.14));
+    }
+}
+
 void imp(Canvas& c, bool fiend) {
     const QColor skin(fiend ? "#a82a2a" : "#d04a3a");
     wings(c, QColor(fiend ? "#4a1a1a" : "#6a2a2a"));
@@ -1638,6 +1700,12 @@ RiderLook riderLook(const QString& cls) {
     else if (cls == "pyromancer") l = {M::Horse, QColor("#4a2a1a"), QColor("#a8301a"), true, H::Hood, C::Staff, QColor("#ffa030"), QColor("#d89070")};
     else if (cls == "captain") l = {M::Horse, QColor("#8a8a90"), QColor("#2a3a6a"), false, H::Tricorn, C::Banner};
     else if (cls == "tidecaller") l = {M::Horse, QColor("#e0e8ec"), QColor("#2a7a8a"), true, H::Crown, C::Staff, QColor("#80f0ff"), QColor("#b8d8d0")};
+    else if (cls == "boneweaver") l = {M::Horse, QColor("#3a3430"), QColor("#4a3050"), true, H::Hood, C::Staff, QColor("#b070ff"), QColor("#c8c8b8")};
+    else if (cls == "grave_knight") l = {M::Horse, QColor("#2a2428"), QColor("#43404e"), false, H::HornedHelm, C::Banner, {}, QColor("#d0ccb8")};
+    else if (cls == "stone_caller") l = {M::Bear, QColor("#7a6a54"), QColor("#8a7a62"), false, H::Helm, C::Axe, {}, kSkin, true};
+    else if (cls == "sky_shaman") l = {M::Horse, QColor("#d8d8d0"), QColor("#5a7a9a"), true, H::Antlers, C::Staff, QColor("#a8e0ff")};
+    else if (cls == "sheriff") l = {M::Horse, QColor("#8a6a48"), QColor("#4a7a3a"), false, H::Tricorn, C::Banner};
+    else if (cls == "burrow_seer") l = {M::Horse, QColor("#7a6448"), QColor("#7a8a4a"), true, H::Hood, C::Staff, QColor("#ffe080")};
     return l;
 }
 }  // namespace
@@ -1835,6 +1903,55 @@ void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     else if (id == "pit_king") { pitLord(c); c.pen(kInk, 0.02); c.p.setBrush(QColor("#ffd84a")); c.poly({{0.4, 0.06}, {0.44, -0.02}, {0.5, 0.04}, {0.56, -0.02}, {0.6, 0.06}}); }
     else if (id == "tide_oracle") robedCaster(c, QColor("#1a4a7a"), false, QColor("#e0ffff"));
     else if (id == "elder_kraken") kraken(c);
+
+    // --- Necromancers: bone and soul magic.
+    else if (id == "bone_acolyte") robedCaster(c, QColor("#39304a"), true, QColor("#9a7aff"));
+    else if (id == "bone_zealot") { skeleton(c, true); c.pen(QColor("#8a5ad0"), 0.045); c.line(0.32, 0.42, 0.5, 0.5); c.line(0.68, 0.42, 0.5, 0.5); }
+    else if (id == "crypt_creeper") { quadruped(c, QColor("#b8ad92"), false, 1, QColor("#9a30ff")); skull(c, 0.78, 0.36, 0.2); flames(c, 0.08, 0.6, 0.13); }
+    else if (id == "crypt_stalker") { quadruped(c, QColor("#5a4a5e"), false, 1, QColor("#ff40a0")); skull(c, 0.78, 0.34, 0.22); }
+    else if (id == "soul_scribe") robedCaster(c, QColor("#31264a"), true, QColor("#b060ff"));
+    else if (id == "soul_archivist") { robedCaster(c, QColor("#3a1a52"), true, QColor("#e090ff")); crown(c, 0.5, 0.1, 0.26); }
+    else if (id == "sepulchral_guard") { skeleton(c, true); c.pen(kInk, 0.022); c.p.setBrush(lit(c, 0.3, 0.3, 0.4, 0.4, QColor("#4a4a58"), 130, 130)); c.poly({{0.32, 0.42}, {0.4, 0.3}, {0.6, 0.3}, {0.68, 0.42}, {0.5, 0.56}}); }
+    else if (id == "sepulchral_lord") { skeleton(c, true); crown(c, 0.5, 0.12, 0.3); c.p.setBrush(QColor("#9a30ff")); c.p.drawEllipse(c.box(0.46, 0.22, 0.04, 0.04)); c.p.drawEllipse(c.box(0.54, 0.22, 0.04, 0.04)); }
+    else if (id == "bone_colossus") golem(c, QColor("#d8cfae"));
+    else if (id == "bone_titan") { golem(c, QColor("#e0d6b4")); horns(c, 0.5, 0.06, 0.2, QColor("#b8ad92")); }
+    else if (id == "bone_overlord") { golem(c, QColor("#e8dcc0")); crown(c, 0.5, 0.06, 0.3); }
+
+    // --- Giants: stone and storm.
+    else if (id == "young_giant") brute(c, QColor("#a08260"), false);
+    else if (id == "giant_warrior") { brute(c, QColor("#8a7050"), false); axe(c, 0.72); }
+    else if (id == "cave_troll") brute(c, QColor("#6a8a5a"), true);
+    else if (id == "cave_ogre") brute(c, QColor("#907050"), true);
+    else if (id == "boulder_thrower") { brute(c, QColor("#8a7050"), false); boulder(c, 0.86, 0.22, 0.26, QColor("#8a8478")); }
+    else if (id == "bombardier_giant") { brute(c, QColor("#7a6248"), false); boulder(c, 0.86, 0.2, 0.32, QColor("#6a6a72")); flames(c, 0.9, 0.04, 0.12); }
+    else if (id == "ice_giant") { brute(c, QColor("#a8c8e0"), false); c.pen(kInk, 0.02); c.p.setBrush(QColor("#f4f8ff")); c.p.drawChord(c.box(0.34, 0.04, 0.32, 0.2), 0, 180 * 16); }
+    else if (id == "glacier_giant") { brute(c, QColor("#b8dcf0"), false); c.pen(kInk, 0.02); c.p.setBrush(QColor("#f4f8ff")); c.p.drawChord(c.box(0.3, 0.02, 0.4, 0.24), 0, 180 * 16); c.poly({{0.4, 0.12}, {0.36, -0.04}, {0.5, 0.08}, {0.64, -0.04}, {0.6, 0.12}}); }
+    else if (id == "sky_giant") { brute(c, QColor("#9ab0c8"), false); wings(c, QColor(216, 232, 245, 170)); }
+    else if (id == "storm_giant") { brute(c, QColor("#7a8aa8"), false); wings(c, QColor(168, 188, 216, 190)); c.pen(QColor("#ffe060"), 0.03); c.line(0.86, 0.2, 0.8, 0.34); c.line(0.8, 0.34, 0.9, 0.36); c.line(0.9, 0.36, 0.84, 0.5); }
+    else if (id == "storm_king") { brute(c, QColor("#6a7a9a"), false); wings(c, QColor(184, 204, 232, 200)); crown(c, 0.5, 0.06, 0.3); c.pen(QColor("#ffe060"), 0.035); c.line(0.88, 0.18, 0.82, 0.34); c.line(0.82, 0.34, 0.92, 0.36); }
+
+    // --- Halflings: small and lucky.
+    else if (id == "halfling_sling") { halfling(c, QColor("#6a8a3a"), false); c.pen(kWood, 0.02); c.p.setBrush(Qt::NoBrush); c.p.drawArc(c.box(0.6, 0.42, 0.2, 0.2), -70 * 16, 140 * 16); c.pen(QColor("#e8e0d0"), 0.01); c.line(0.7, 0.42, 0.72, 0.36); }
+    else if (id == "halfling_marksman") archer(c, QColor("#4a7a3a"), 1, false);
+    else if (id == "pony_rider") beastRider(c, QColor("#8a6a48"), kSkin, QColor("#6a8a3a"));
+    else if (id == "pony_lancer") beastRider(c, QColor("#7a5a3a"), kSkin, QColor("#4a6a8a"));
+    else if (id == "burrow_guard") { halfling(c, QColor("#6a7a4a"), false); c.pen(kWood.darker(120), 0.03); c.line(0.8, 0.9, 0.86, 0.12); c.pen(kInk, 0.015); c.p.setBrush(kSteel); c.poly({{0.86, 0.1}, {0.92, 0.2}, {0.8, 0.2}}); }
+    else if (id == "burrow_captain") { halfling(c, QColor("#5a6a8a"), true); c.pen(kWood.darker(120), 0.03); c.line(0.8, 0.9, 0.86, 0.12); c.pen(kInk, 0.015); c.p.setBrush(kSteel); c.poly({{0.86, 0.1}, {0.92, 0.2}, {0.8, 0.2}}); }
+    else if (id == "stronghold_guard") { halfling(c, QColor("#7a7a86"), true); c.pen(kInk, 0.02); c.p.setBrush(kSteel); c.poly({{0.82, 0.64}, {0.88, 0.28}, {0.92, 0.64}}); c.p.setBrush(QColor("#6a4a28")); c.p.drawEllipse(c.box(0.1, 0.44, 0.24, 0.3)); }
+    else if (id == "stronghold_champion") { halfling(c, QColor("#9a9aa6"), true); c.pen(kInk, 0.02); c.p.setBrush(kSteel); c.poly({{0.82, 0.64}, {0.88, 0.22}, {0.94, 0.64}}); c.p.setBrush(QColor("#c9a24a")); c.p.drawEllipse(c.box(0.08, 0.42, 0.28, 0.34)); }
+    else if (id == "clan_champion") { halfling(c, QColor("#8a6a3a"), false, QColor("#e0b890")); axe(c, 0.72); }
+    else if (id == "clan_hero") { halfling(c, QColor("#8a4a2a"), true, QColor("#e0b890")); axe(c, 0.72); axe(c, 0.06); }
+    else if (id == "clan_legend") { halfling(c, QColor("#a87a2a"), true, QColor("#e0b890")); axe(c, 0.72); axe(c, 0.06); crown(c, 0.5, 0.04, 0.3); }
+
+    // --- Elite ranks of the older races: their familiar shape with a crown.
+    else if (id == "infernal_sovereign") { pitLord(c); crown(c, 0.5, 0.04, 0.3); flames(c, 0.12, 0.5, 0.16); flames(c, 0.88, 0.5, 0.16); }
+    else if (id == "mountain_king") { golem(c, QColor("#8a8a96")); crown(c, 0.5, 0.04, 0.34); }
+    else if (id == "seraph") { angel(c); c.pen(QColor("#ffd84a"), 0.025); c.p.setBrush(Qt::NoBrush); c.p.drawEllipse(c.at(0.5, 0.06), c.s(0.16), c.s(0.05)); c.p.setBrush(QColor("#ffe890")); c.poly({{0.36, 0.08}, {0.4, 0.0}, {0.46, 0.06}, {0.5, -0.02}, {0.54, 0.06}, {0.6, 0.0}, {0.64, 0.08}}); }
+    else if (id == "ancient_colossus") { brute(c, QColor("#7a6a4a"), false); crown(c, 0.5, 0.05, 0.3); boulder(c, 0.88, 0.24, 0.24, QColor("#6a6258")); }
+    else if (id == "emerald_archdragon") { dragon(c, QColor("#2ad88a")); crown(c, 0.8, 0.08, 0.22); }
+    else if (id == "elder_leviathan") { kraken(c); crown(c, 0.5, 0.04, 0.3); }
+    else if (id == "doom_sovereign") { swordsman(c, QColor("#4a1418")); crown(c, 0.5, 0.08, 0.3); c.p.setBrush(QColor("#ff3030")); c.p.drawEllipse(c.box(0.44, 0.2, 0.04, 0.04)); c.p.drawEllipse(c.box(0.52, 0.2, 0.04, 0.04)); }
+
     else if (id.contains("dragon")) dragon(c);
     else if (id.contains("eagle")) eagle(c);
     else if (id.contains("snail")) snail(c);

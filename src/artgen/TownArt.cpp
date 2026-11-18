@@ -28,6 +28,9 @@ Palette paletteFor(const QString& race) {
     if (race == "ashborn") return {QColor("#5a4a48"), QColor("#2a1a1a"), QColor("#4a2a20"), QColor("#ff6a20")};
     if (race == "tidefolk") return {QColor("#d8d0b8"), QColor("#2a6a8a"), QColor("#8a7a5a"), QColor("#a0f0ff")};
     if (race == "orcs") return {QColor("#b09a7a"), QColor("#8a2a1a"), QColor("#8a6a3a"), QColor("#ffb040")};
+    if (race == "necroman") return {QColor("#8a8290"), QColor("#2a2038"), QColor("#3a2a30"), QColor("#b070ff")};
+    if (race == "giants") return {QColor("#b0a898"), QColor("#5a7a9a"), QColor("#7a6a54"), QColor("#ffe080")};
+    if (race == "halflings") return {QColor("#c8b894"), QColor("#4a8a3a"), QColor("#8a6a3a"), QColor("#ffe27a")};
     return {QColor("#cfc6b2"), QColor("#a03a2a"), QColor("#8a5a2b"), QColor("#ffd27a")};
 }
 
@@ -155,6 +158,60 @@ QPointF raceRoof(QPainter& p, const QString& race, double left, double right, do
         p.drawEllipse(pearl, wd * 0.08, wd * 0.08);
         return {cx, pearl.y() - wd * 0.08};
     }
+    if (race == "necroman") {  // a crooked bone spire with a violet will-o'-wisp
+        const QPolygonF spire{QPointF(left + wd * 0.1, y), QPointF(cx - wd * 0.04, y - hgt * 1.5),
+                              QPointF(cx + wd * 0.14, y - hgt * 1.7), QPointF(right - wd * 0.08, y)};
+        p.setBrush(lit(spire.boundingRect(), c, 125, 150));
+        p.drawPolygon(spire);
+        p.setPen(QPen(kInk, pw));
+        p.setBrush(QColor("#ece4cc"));
+        for (const double side : {-1.0, 1.0})  // ribs on the eaves
+            p.drawPolygon(QPolygonF{QPointF(cx + side * wd * 0.3, y), QPointF(cx + side * wd * 0.24, y - hgt * 0.6), QPointF(cx + side * wd * 0.14, y)});
+        const QPointF wisp(cx + wd * 0.08, y - hgt * 1.75);
+        QRadialGradient glow(wisp, wd * 0.3);
+        glow.setColorAt(0, QColor(200, 130, 255, 240));
+        glow.setColorAt(1, QColor(120, 40, 200, 0));
+        p.setPen(Qt::NoPen);
+        p.setBrush(glow);
+        p.drawEllipse(wisp, wd * 0.3, wd * 0.3);
+        p.setBrush(QColor("#d0a0ff"));
+        p.drawEllipse(wisp, wd * 0.06, wd * 0.06);
+        return wisp;
+    }
+    if (race == "giants") {  // a broad slab roof of stacked stone with two horns
+        const QPolygonF slab{QPointF(left - wd * 0.06, y), QPointF(left + wd * 0.16, y - hgt * 0.9),
+                             QPointF(right - wd * 0.16, y - hgt * 0.9), QPointF(right + wd * 0.06, y)};
+        p.setBrush(lit(slab.boundingRect(), c, 130, 150));
+        p.drawPolygon(slab);
+        p.setPen(QPen(c.darker(160), pw * 0.6));
+        p.drawLine(QPointF(left + wd * 0.16, y - hgt * 0.45), QPointF(right - wd * 0.16, y - hgt * 0.45));
+        p.setPen(QPen(kInk, pw * 1.2));
+        p.setBrush(QColor("#ece4cc"));
+        for (const double side : {-1.0, 1.0})  // carved horns at the ridge
+            p.drawPolygon(QPolygonF{QPointF(cx + side * wd * 0.3, y - hgt * 0.85),
+                                    QPointF(cx + side * wd * 0.42, y - hgt * 1.35),
+                                    QPointF(cx + side * wd * 0.22, y - hgt * 0.95)});
+        return {cx, y - hgt * 0.9};
+    }
+    if (race == "halflings") {  // a round turf mound with a chimney and flowers
+        QPainterPath mound;
+        mound.moveTo(left - wd * 0.08, y);
+        mound.quadTo(cx, y - hgt * 1.5, right + wd * 0.08, y);
+        mound.closeSubpath();
+        p.setBrush(lit(mound.boundingRect(), c, 125, 150));
+        p.drawPath(mound);
+        const QRectF chim(cx + wd * 0.18, y - hgt * 1.1, wd * 0.18, hgt * 0.55);
+        p.setBrush(lit(chim, QColor("#8a6a3a")));
+        p.drawRect(chim);
+        p.setPen(Qt::NoPen);
+        for (const auto& [fx, fy, col] : {std::tuple{0.3, 0.62, QColor("#f0a040")},
+                                           std::tuple{0.62, 0.78, QColor("#f0d050")},
+                                           std::tuple{0.44, 1.02, QColor("#e07090")}}) {
+            p.setBrush(col);
+            p.drawEllipse(QPointF(left + wd * fx, y - hgt * fy), wd * 0.05, hgt * 0.05);
+        }
+        return {cx, y - hgt * 1.5};
+    }
     // Humans (and anyone else): a cone with rows of tiles.
     const QPolygonF cone{QPointF(left - wd * 0.14, y), QPointF(cx, y - hgt), QPointF(right + wd * 0.14, y)};
     p.setBrush(cylinder(cone.boundingRect(), c));
@@ -226,6 +283,52 @@ void raceBackdrop(QPainter& p, const QRectF& r, const QString& race) {
         p.drawPolygon(QPolygonF{P(0.92, 0.1), P(0.98, 0.02), P(0.91, 0.08)});
         p.setBrush(QColor("#c03020"));
         p.drawRect(QRectF(P(0.86, 0.26), P(0.92, 0.3)));
+    } else if (race == "necroman") {
+        // A crooked mausoleum and leaning gravestones under a violet glow.
+        const QRectF tomb(P(0.06, 0.3), P(0.24, 0.62));
+        p.setBrush(lit(tomb, QColor("#6a6472"), 125, 150));
+        p.drawRect(tomb);
+        p.setBrush(QColor("#2a2038"));
+        p.drawPolygon(QPolygonF{P(0.04, 0.3), P(0.15, 0.14), P(0.26, 0.3)});
+        p.setBrush(QColor("#b070ff"));
+        p.drawRect(QRectF(P(0.13, 0.42), P(0.17, 0.52)));
+        p.setPen(QPen(QColor("#8a8290"), pw * 1.4));
+        for (const double x : {0.78, 0.88, 0.96}) {
+            p.drawRect(QRectF(P(x, 0.44), P(x + 0.06, 0.6)));
+            p.drawLine(P(x + 0.03, 0.44), P(x + 0.03, 0.38));
+        }
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(160, 90, 255, 40));
+        p.drawEllipse(QRectF(P(0.0, 0.4), P(1.0, 0.68)));
+    } else if (race == "giants") {
+        // Towering jagged peaks behind the town.
+        const QPolygonF peaks{P(0.0, 0.62), P(0.16, 0.18), P(0.3, 0.34), P(0.48, -0.04),
+                              P(0.66, 0.3), P(0.8, 0.14), P(1.0, 0.62)};
+        p.setBrush(lit(peaks.boundingRect(), QColor("#8a887e"), 130, 155));
+        p.drawPolygon(peaks);
+        p.setBrush(QColor("#dce8f0"));
+        p.drawPolygon(QPolygonF{P(0.42, 0.1), P(0.48, -0.04), P(0.55, 0.1), P(0.5, 0.07)});
+        p.setPen(QPen(QColor("#5a5248"), pw));
+        p.drawLine(P(0.16, 0.18), P(0.24, 0.36));
+        p.drawLine(P(0.8, 0.14), P(0.73, 0.34));
+    } else if (race == "halflings") {
+        // Rolling green hills with a windmill and a burrow mouth.
+        p.setBrush(lit(QRectF(P(0.0, 0.3), P(1.0, 0.62)), QColor("#5a8a3a"), 130, 150));
+        QPainterPath hills;
+        hills.moveTo(P(0.0, 0.62));
+        hills.quadTo(P(0.2, 0.3), P(0.4, 0.56));
+        hills.quadTo(P(0.7, 0.28), P(1.0, 0.58));
+        hills.lineTo(P(1.0, 0.62));
+        hills.closeSubpath();
+        p.drawPath(hills);
+        const QRectF mill(P(0.78, 0.16), P(0.88, 0.56));
+        p.setBrush(lit(mill, QColor("#c8b894")));
+        p.drawRect(mill);
+        p.setBrush(QColor("#8a6a3a"));
+        p.drawPolygon(QPolygonF{P(0.76, 0.16), P(0.83, 0.06), P(0.9, 0.16)});
+        p.setPen(QPen(kInk, pw));
+        p.drawLine(P(0.83, 0.2), P(0.83, 0.42));
+        p.drawLine(P(0.68, 0.2), P(0.98, 0.2));
     }
 }
 
@@ -409,6 +512,9 @@ void drawSceneBackdrop(QPainter& p, const QRectF& r, const QString& race, bool w
     else if (race == "orcs") land = {QColor("#c88a4a"), QColor("#f0d8a0"), QColor(160, 110, 70, 150), QColor("#a8804a"), QColor("#9a7444"), QColor("#6a4a24")};
     else if (race == "sylvan") land = {QColor("#78b0d0"), QColor("#e0f0e0"), QColor(80, 130, 90, 160), QColor("#4a8a3a"), QColor("#3e7a30"), QColor("#2a5a1e")};
     else if (race == "tidefolk") land = {QColor("#5aa8e0"), QColor("#e8f4f8"), QColor(60, 130, 180, 200), QColor("#d8c890"), QColor("#d8c080"), QColor("#a89050")};
+    else if (race == "necroman") land = {QColor("#2a1e3a"), QColor("#6a4a7a"), QColor(90, 60, 110, 170), QColor("#4a4048"), QColor("#4a4040"), QColor("#2e2832"), false, false};
+    else if (race == "giants") land = {QColor("#8aa8c8"), QColor("#e0e8ee"), QColor(140, 145, 155, 190), QColor("#9a9688"), QColor("#8a8878"), QColor("#5a5448")};
+    else if (race == "halflings") land = {QColor("#88c0e0"), QColor("#f0f4d8"), QColor(120, 170, 110, 150), QColor("#6aaa48"), QColor("#5d9a38"), QColor("#3e7a26")};
     QLinearGradient sky(r.topLeft(), r.bottomLeft());
     sky.setColorAt(0, land.skyTop);
     sky.setColorAt(0.7, land.skyLow);
@@ -432,13 +538,14 @@ void drawSceneBackdrop(QPainter& p, const QRectF& r, const QString& race, bool w
     if (race == "tidefolk") {
         range.addRect(QRectF(X(0), Y(0.5), w, h * 0.2));
     } else {
-        const double peak = race == "dwarves" ? 0.12 : 0.34, rise = race == "dwarves" ? 0.3 : 0.1;
+        const bool alpine = race == "dwarves" || race == "giants";
+        const double peak = alpine ? 0.12 : 0.34, rise = alpine ? 0.3 : 0.1;
         for (int i = 0; i <= 12; ++i) range.lineTo(X(i / 12.0), Y(peak + rise * (((i * 5) % 4) / 3.0)));
         range.lineTo(X(1), Y(0.7));
         range.lineTo(X(0), Y(0.7));
     }
     p.drawPath(range);
-    if (race == "dwarves") {  // snow on the peaks
+    if (race == "dwarves" || race == "giants") {  // snow on the peaks
         p.setBrush(QColor(250, 252, 255, 220));
         for (int i = 0; i <= 12; ++i)
             if (((i * 5) % 4) == 0) p.drawPolygon(QPolygonF{QPointF(X(i / 12.0 - 0.025), Y(0.18)), QPointF(X(i / 12.0), Y(0.12)), QPointF(X(i / 12.0 + 0.025), Y(0.18))});
@@ -475,6 +582,39 @@ void drawSceneBackdrop(QPainter& p, const QRectF& r, const QString& race, bool w
             for (const auto& [dx, dyy, rr] : {std::tuple{-0.04, 0.2, 0.05}, std::tuple{0.04, 0.2, 0.05}, std::tuple{0.0, 0.13, 0.06}})
                 crown.addEllipse(QPointF(X(x + dx * 0.6), Y(dyy)), h * rr * 3.4, h * rr * 3.4);
             p.drawPath(crown.simplified());
+        }
+    }
+    if (race == "necroman") {  // a crooked mausoleum and a glowing violet rift
+        p.setBrush(lit(QRectF(X(0.06), Y(0.32), w * 0.16, h * 0.34), QColor("#6a6472"), 125, 150));
+        p.drawRect(QRectF(X(0.06), Y(0.32), w * 0.16, h * 0.34));
+        p.setBrush(QColor("#2a2038"));
+        p.drawPolygon(QPolygonF{QPointF(X(0.04), Y(0.32)), QPointF(X(0.14), Y(0.16)), QPointF(X(0.24), Y(0.32))});
+        p.setBrush(QColor("#b070ff"));
+        p.drawRect(QRectF(X(0.13), Y(0.44), w * 0.02, h * 0.1));
+        QRadialGradient rift(QPointF(X(0.86), Y(0.34)), w * 0.1);
+        rift.setColorAt(0, QColor(200, 130, 255, 230));
+        rift.setColorAt(1, QColor(120, 40, 200, 0));
+        p.setBrush(rift);
+        p.drawEllipse(QPointF(X(0.86), Y(0.34)), w * 0.1, h * 0.2);
+        p.setBrush(QColor("#e0b0ff"));
+        p.drawEllipse(QPointF(X(0.86), Y(0.34)), w * 0.015, h * 0.04);
+    }
+    if (race == "halflings") {  // a windmill on the ridge and soft rolling hills
+        p.setBrush(lit(QRectF(X(0.8), Y(0.3), w * 0.08, h * 0.36), QColor("#c8b894"), 130, 150));
+        p.drawRect(QRectF(X(0.8), Y(0.3), w * 0.08, h * 0.36));
+        p.setBrush(QColor("#8a6a3a"));
+        p.drawPolygon(QPolygonF{QPointF(X(0.78), Y(0.3)), QPointF(X(0.84), Y(0.2)), QPointF(X(0.9), Y(0.3))});
+        p.setPen(QPen(kInk, std::max(1.0, w / 600)));
+        p.drawLine(QPointF(X(0.84), Y(0.34)), QPointF(X(0.84), Y(0.62)));
+        p.drawLine(QPointF(X(0.7), Y(0.34)), QPointF(X(0.98), Y(0.34)));
+        p.drawLine(QPointF(X(0.74), Y(0.24)), QPointF(X(0.94), Y(0.44)));
+        p.drawLine(QPointF(X(0.94), Y(0.24)), QPointF(X(0.74), Y(0.44)));
+        p.setPen(Qt::NoPen);
+        // A few flowers scattered on the green.
+        for (const auto& [fx, fy, col] : {std::tuple{0.1, 0.74, QColor("#f0a040")}, std::tuple{0.3, 0.8, QColor("#f0d050")},
+                                           std::tuple{0.55, 0.72, QColor("#e07090")}, std::tuple{0.68, 0.82, QColor("#f0f0f0")}}) {
+            p.setBrush(col);
+            p.drawEllipse(QPointF(X(fx), Y(fy)), w * 0.008, h * 0.016);
         }
     }
     p.setBrush(land.hills);

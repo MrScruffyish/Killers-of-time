@@ -33,11 +33,15 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
         p.drawLine(QPointF(X(0.5), Y(0.42)), QPointF(X(0.5) + std::cos(a) * w * 0.7, Y(0.42) + std::sin(a) * h * 0.7));
     }
     p.setPen(Qt::NoPen);
-    const bool undead = classId == "death_knight" || classId == "necromancer";
+    const bool undead = classId == "death_knight" || classId == "necromancer" || classId == "boneweaver" || classId == "grave_knight";
     const bool orc = classId == "warlord" || classId == "shaman_chief";
     const bool ash = classId == "hellknight" || classId == "pyromancer";
     const bool tide = classId == "captain" || classId == "tidecaller";
-    const QColor skin = ash ? QColor("#c8483a") : tide && seed % 2 ? QColor("#8ac8c0") : orc ? QColor("#7aa04a") : undead ? QColor("#c8d0c0") : (seed % 3 == 0 ? QColor("#e8b890") : seed % 3 == 1 ? QColor("#f0c8a0") : QColor("#b07850"));
+    const bool stone = classId == "stone_caller" || classId == "sky_shaman";
+    const bool small = classId == "sheriff" || classId == "burrow_seer";
+    const QColor skin = ash ? QColor("#c8483a") : tide && seed % 2 ? QColor("#8ac8c0") : orc ? QColor("#7aa04a")
+        : undead ? QColor("#c8d0c0") : stone ? QColor("#b0a080") : small ? QColor("#f0c8a0")
+        : (seed % 3 == 0 ? QColor("#e8b890") : seed % 3 == 1 ? QColor("#f0c8a0") : QColor("#b07850"));
     // Shoulders in the class's clothes.
     QColor coat = owner.darker(120);
     if (classId == "wizard") coat = QColor("#3a4aa0");
@@ -48,6 +52,12 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     if (classId == "hellknight") coat = QColor("#2a1a1a");
     if (classId == "captain") coat = QColor("#1a2a4a");
     if (classId == "tidecaller") coat = QColor("#2a6a8a");
+    if (classId == "boneweaver") coat = QColor("#3a2a4a");
+    if (classId == "grave_knight") coat = QColor("#41404e");
+    if (classId == "stone_caller") coat = QColor("#7a6a54");
+    if (classId == "sky_shaman") coat = QColor("#5a7a9a");
+    if (classId == "sheriff") coat = QColor("#4a7a3a");
+    if (classId == "burrow_seer") coat = QColor("#7a8a4a");
     p.setPen(pen);
     QLinearGradient coatShade(QPointF(X(0.1), Y(0.7)), QPointF(X(0.9), Y(1.0)));
     coatShade.setColorAt(0, coat.lighter(135));
@@ -59,7 +69,7 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     shoulders.quadTo(X(0.88), Y(0.7), X(0.92), Y(1.0));
     shoulders.closeSubpath();
     p.drawPath(shoulders);
-    if (classId == "knight" || classId == "death_knight") {  // pauldrons
+    if (classId == "knight" || classId == "death_knight" || classId == "grave_knight") {  // pauldrons
         p.setBrush(classId == "knight" ? QColor("#c8ccd8") : QColor("#4a4650"));
         p.drawEllipse(QRectF(X(0.06), Y(0.7), w * 0.3, h * 0.2));
         p.drawEllipse(QRectF(X(0.64), Y(0.7), w * 0.3, h * 0.2));
@@ -104,7 +114,7 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
     p.setBrush(Qt::NoBrush);
     p.drawArc(QRectF(X(0.44), Y(0.5), w * 0.12, h * 0.06), 200 * 16, 140 * 16);
     // A beard for some.
-    if (classId == "thane" || classId == "runesmith") {  // a great dwarf beard
+    if (classId == "thane" || classId == "runesmith" || classId == "stone_caller") {  // a great beard
         p.setPen(pen);
         p.setBrush(QColor("#c86a2a"));
         QPainterPath beard;
@@ -144,11 +154,41 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
             p.setBrush(QColor("#3a2a2a"));
             p.drawRect(QRectF(X(0.27), Y(0.33), w * 0.46, h * 0.05));
         }
-    } else if (classId == "captain") {  // a tricorn
+    } else if (classId == "captain" || classId == "sheriff") {  // a tricorn
         p.setBrush(QColor("#1a1a24"));
         p.drawPolygon(QPolygonF{QPointF(X(0.14), Y(0.34)), QPointF(X(0.5), Y(0.06)), QPointF(X(0.86), Y(0.34)), QPointF(X(0.5), Y(0.26))});
         p.setBrush(QColor("#ffd84a"));
         p.drawEllipse(QPointF(X(0.5), Y(0.18)), w * 0.04, w * 0.04);
+    } else if (classId == "stone_caller") {  // a jagged crown of mountain stone
+        p.setBrush(QColor("#6a6a72"));
+        p.drawPolygon(QPolygonF{QPointF(X(0.24), Y(0.3)), QPointF(X(0.3), Y(0.1)), QPointF(X(0.4), Y(0.22)),
+                                QPointF(X(0.5), Y(0.02)), QPointF(X(0.6), Y(0.22)), QPointF(X(0.7), Y(0.1)),
+                                QPointF(X(0.76), Y(0.3))});
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#ffb040"));  // a glowing rune in the centre stone
+        p.drawEllipse(QPointF(X(0.5), Y(0.19)), w * 0.035, w * 0.035);
+    } else if (classId == "sky_shaman") {  // a circlet with rising storm plumes
+        p.setBrush(QColor("#c9a24a"));
+        p.drawEllipse(QRectF(X(0.28), Y(0.26), w * 0.44, h * 0.07));
+        p.setBrush(QColor("#d8ecff"));
+        for (int i = 0; i < 5; ++i) {
+            const double a = M_PI * (0.15 + 0.7 * i / 4.0);
+            p.drawEllipse(QPointF(X(0.5) - std::cos(a) * w * 0.2, Y(0.26) - std::sin(a) * h * 0.16), w * 0.035, h * 0.09);
+        }
+        p.setBrush(QColor("#80d0ff"));
+        p.drawEllipse(QPointF(X(0.5), Y(0.23)), w * 0.045, w * 0.045);
+    } else if (classId == "burrow_seer") {  // a leafy hood with a glowing acorn
+        p.setBrush(QColor("#5a7a3a"));
+        QPainterPath hood;
+        hood.moveTo(X(0.24), Y(0.52));
+        hood.quadTo(X(0.2), Y(0.1), X(0.5), Y(0.1));
+        hood.quadTo(X(0.8), Y(0.1), X(0.76), Y(0.52));
+        hood.quadTo(X(0.68), Y(0.28), X(0.5), Y(0.27));
+        hood.quadTo(X(0.32), Y(0.28), X(0.24), Y(0.52));
+        p.drawPath(hood);
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor("#ffe27a"));
+        p.drawEllipse(QPointF(X(0.5), Y(0.16)), w * 0.035, w * 0.045);
     } else if (classId == "tidecaller") {  // a crown of shells and coral
         for (int i = 0; i < 5; ++i) {
             p.setBrush(i % 2 ? QColor("#f0a0a0") : QColor("#f4ecd8"));
@@ -171,6 +211,18 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
         hood.quadTo(X(0.7), Y(0.3), X(0.5), Y(0.3));
         hood.quadTo(X(0.3), Y(0.3), X(0.22), Y(0.62));
         p.drawPath(hood);
+    } else if (classId == "boneweaver") {  // a dark hood with three bone spikes
+        p.setBrush(QColor("#31223e"));
+        QPainterPath hood;
+        hood.moveTo(X(0.22), Y(0.62));
+        hood.quadTo(X(0.18), Y(0.08), X(0.5), Y(0.08));
+        hood.quadTo(X(0.82), Y(0.08), X(0.78), Y(0.62));
+        hood.quadTo(X(0.7), Y(0.3), X(0.5), Y(0.3));
+        hood.quadTo(X(0.3), Y(0.3), X(0.22), Y(0.62));
+        p.drawPath(hood);
+        p.setBrush(QColor("#ece4cc"));
+        for (const double sx : {0.34, 0.5, 0.66})
+            p.drawPolygon(QPolygonF{QPointF(X(sx - 0.045), Y(0.16)), QPointF(X(sx), Y(0.0)), QPointF(X(sx + 0.045), Y(0.16))});
     } else if (classId == "ranger") {
         p.setBrush(QColor("#3e6a30"));
         QPainterPath hood;
@@ -200,7 +252,7 @@ void drawPortrait(QPainter& p, const QRectF& r, const QString& classId, const QC
         }
     } else {
         // Helmets: steel for knights, black with a skull look for death knights.
-        const bool dark = classId == "death_knight" || classId == "warlord";
+        const bool dark = classId == "death_knight" || classId == "warlord" || classId == "grave_knight";
         p.setBrush(dark ? QColor("#3a3640") : QColor("#c8ccd8"));
         p.drawChord(QRectF(X(0.27), Y(0.16), w * 0.46, h * 0.36), 0, 180 * 16);
         p.drawRect(QRectF(X(0.27), Y(0.33), w * 0.46, h * 0.05));

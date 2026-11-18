@@ -260,6 +260,39 @@ void drawStone(QPainter& p, const QRectF& r) {
     block(0.22, 0.27, 0.44, 0.3, 1);
 }
 
+// A stack of metal ingots, shared by iron and bronze (drawn in the metal's colour).
+void drawIngots(QPainter& p, const QRectF& r, const QColor& metal) {
+    const double w = r.width(), h = r.height();
+    const double pw = w / 55;
+    const auto P = [&](double x, double y) { return QPointF(r.left() + w * x, r.top() + h * y); };
+    // One ingot: a bevelled trapezium with a lit top face and a bright edge.
+    const auto ingot = [&](double x, double y, double iw, double ih, int shade) {
+        const QColor base = metal.darker(shade);
+        const QPointF a = P(x + iw * 0.1, y), b = P(x + iw * 0.9, y),
+                      c = P(x + iw, y + ih), d = P(x, y + ih);
+        p.setPen(inkPen(pw, base.darker(170)));
+        p.setBrush(shine(QRectF(a, d), base, 125, 135));
+        p.drawPolygon(QPolygonF{a, b, c, d});
+        // The top face, catching the light.
+        const QPointF lift(w * 0.045, -h * 0.045);
+        p.setBrush(base.lighter(135));
+        p.drawPolygon(QPolygonF{a, b, b + lift, a + lift});
+        // A specular streak along the front edge.
+        p.setPen(QPen(base.lighter(180), pw * 0.7, Qt::SolidLine, Qt::RoundCap));
+        p.drawLine(a + QPointF(pw, pw), b - QPointF(pw, pw));
+        p.setPen(inkPen(pw));
+    };
+    ingot(0.08, 0.62, 0.46, 0.26, 105);
+    ingot(0.47, 0.64, 0.44, 0.24, 118);
+    ingot(0.27, 0.32, 0.47, 0.27, 100);
+    // A few bright hammer marks on the top ingot.
+    p.setPen(QPen(metal.lighter(190), pw * 0.6, Qt::SolidLine, Qt::RoundCap));
+    for (const double fx : {0.38, 0.5, 0.62}) {
+        const QPointF s = P(fx, 0.42);
+        p.drawLine(s, s + QPointF(pw, pw));
+    }
+}
+
 void drawGrain(QPainter& p, const QRectF& r) {
     const double w = r.width(), h = r.height();
     const double pw = w / 60;
@@ -512,6 +545,8 @@ void drawResourceIcon(QPainter& p, const QRectF& r, const QString& id, const QCo
     else if (id == "coal") drawCoal(p, r);
     else if (id == "mercury") drawMercury(p, r, c);
     else if (id == "papyrus") drawPapyrus(p, r);
+    else if (id == "iron") drawIngots(p, r, QColor("#9aa6b4"));
+    else if (id == "bronze") drawIngots(p, r, QColor("#c98a45"));
     else {
         const QPointF centre = r.center();
         const double rad = r.width() * 0.38;
