@@ -1237,7 +1237,12 @@ private slots:
                     }
             });
             watcher.start();
+            // A modal book takes the active window with it. Wait for the battle
+            // view to get it back before pressing the next shortcut.
             view.activateWindow();
+            QTRY_VERIFY_WITH_TIMEOUT(view.isActiveWindow(), 5000);
+            view.setFocus();
+            QTRY_VERIFY_WITH_TIMEOUT(view.hasFocus(), 5000);
             QTest::keyClick(&view, key);
             QTRY_VERIFY_WITH_TIMEOUT(shown, 5000);
             QVERIFY2(seenTitle.contains(expectedTitle), qPrintable(seenTitle));
@@ -1514,8 +1519,10 @@ private slots:
     }
 
     void playThroughTheClient() {
+        QTemporaryDir saves;  // Ctrl+S below needs somewhere to write the save
         server::GameServer server({"humans"}, {"passive"});
         server.setContent(&reg);
+        server.setSaveDir(saves.path());
         QVERIFY(server.start(0));
 
         MainWindow w;
