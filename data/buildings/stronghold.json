@@ -1,0 +1,19 @@
+{
+  "id": "stronghold",
+  "name": "Stronghold",
+  "race": "halflings",
+  "cost": {
+    "gold": 2300,
+    "stone": 10,
+    "wood": 6
+  },
+  "requires": [
+    "burrow"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "stronghold_guard"
+    }
+  ]
+}

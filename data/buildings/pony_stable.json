@@ -1,0 +1,18 @@
+{
+  "id": "pony_stable",
+  "name": "Pony Stable",
+  "race": "halflings",
+  "cost": {
+    "gold": 500,
+    "wood": 6
+  },
+  "requires": [
+    "sling_post"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "pony_rider"
+    }
+  ]
+}

@@ -871,7 +871,7 @@ private slots:
         towns.fill(QColor("#5d8a3a"));
         QPainter tp(&towns);
         int row = 0;
-        for (const QString race : {"humans", "undead", "sylvan", "orcs", "dwarves", "ashborn", "tidefolk", "necroman", "giants"}) {
+        for (const QString race : {"humans", "undead", "sylvan", "orcs", "dwarves", "ashborn", "tidefolk", "necroman", "giants", "halflings"}) {
             for (int walls = 0; walls <= 2; ++walls)
                 for (int stage = 0; stage < 4; ++stage)
                     tp.drawPixmap((walls * 4 + stage) * 110, row * 120,
@@ -886,7 +886,7 @@ private slots:
         tp.end();
         if (!dir.isEmpty()) towns.save(QDir(dir).filePath("0_towns.png"));
         {  // the town screen of every race (0_scenes.png)
-            const QStringList races = {"humans", "undead", "sylvan", "orcs", "dwarves", "ashborn", "tidefolk", "necroman", "giants"};
+            const QStringList races = {"humans", "undead", "sylvan", "orcs", "dwarves", "ashborn", "tidefolk", "necroman", "giants", "halflings"};
             QImage scenes(900, int(races.size()) * 150, QImage::Format_ARGB32);
             QPainter sp(&scenes);
             for (int i = 0; i < races.size(); ++i)

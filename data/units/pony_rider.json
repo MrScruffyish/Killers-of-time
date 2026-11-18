@@ -1,0 +1,17 @@
+{
+  "id": "pony_rider",
+  "name": "Pony Rider",
+  "race": "halflings",
+  "tier": 2,
+  "attack": 7,
+  "defense": 5,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 20,
+  "battleSpeed": 7,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 200
+  },
+  "upgradesTo": "pony_lancer"
+}

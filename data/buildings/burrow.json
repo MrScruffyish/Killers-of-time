@@ -1,0 +1,18 @@
+{
+  "id": "burrow",
+  "name": "Burrow",
+  "race": "halflings",
+  "cost": {
+    "gold": 1200,
+    "stone": 5
+  },
+  "requires": [
+    "pony_stable"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "burrow_guard"
+    }
+  ]
+}

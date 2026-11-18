@@ -1,0 +1,19 @@
+{
+  "id": "halfling_marksman",
+  "name": "Halfling Marksman",
+  "race": "halflings",
+  "tier": 1,
+  "attack": 5,
+  "defense": 3,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 9,
+  "battleSpeed": 6,
+  "initiative": 7,
+  "range": 6,
+  "shots": 14,
+  "weeklyGrowth": 14,
+  "cost": {
+    "gold": 45
+  }
+}

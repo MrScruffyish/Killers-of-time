@@ -1,0 +1,16 @@
+{
+  "id": "burrow_fort",
+  "name": "Burrow Fort",
+  "race": "halflings",
+  "cost": {
+    "gold": 1600,
+    "stone": 7
+  },
+  "upgradeOf": "burrow",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "burrow_captain"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "stronghold_guard",
+  "name": "Stronghold Guard",
+  "race": "halflings",
+  "tier": 4,
+  "attack": 16,
+  "defense": 17,
+  "damageMin": 15,
+  "damageMax": 24,
+  "maxHp": 95,
+  "battleSpeed": 7,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 1600
+  },
+  "upgradesTo": "stronghold_champion"
+}

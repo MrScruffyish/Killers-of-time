@@ -38,7 +38,7 @@ private slots:
     }
 
     void racesLoad() {
-        QCOMPARE(reg.playableRaceKeys(), QStringList({"ashborn", "dwarves", "giants", "humans", "necroman", "orcs", "sylvan", "tidefolk", "undead"}));
+        QCOMPARE(reg.playableRaceKeys(), QStringList({"ashborn", "dwarves", "giants", "halflings", "humans", "necroman", "orcs", "sylvan", "tidefolk", "undead"}));
         QVERIFY(reg.race(RC("undead")).growthPercent > 0);  // the undead grow fast (the number is balance)
         QCOMPARE(reg.race(RC("sylvan")).terrainCostPercent.value(T("forest").index()), 75);
         QCOMPARE(reg.race(RaceId()).growthPercent, 0);  // defaults

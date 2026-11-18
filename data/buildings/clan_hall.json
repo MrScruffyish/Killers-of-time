@@ -1,0 +1,19 @@
+{
+  "id": "clan_hall",
+  "name": "Clan Hall",
+  "race": "halflings",
+  "cost": {
+    "gold": 3600,
+    "stone": 12,
+    "grain": 5
+  },
+  "requires": [
+    "stronghold"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "clan_champion"
+    }
+  ]
+}

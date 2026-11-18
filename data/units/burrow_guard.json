@@ -1,0 +1,17 @@
+{
+  "id": "burrow_guard",
+  "name": "Burrow Guard",
+  "race": "halflings",
+  "tier": 3,
+  "attack": 10,
+  "defense": 11,
+  "damageMin": 7,
+  "damageMax": 11,
+  "maxHp": 45,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 500
+  },
+  "upgradesTo": "burrow_captain"
+}

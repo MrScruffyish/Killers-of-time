@@ -1,0 +1,15 @@
+{
+  "id": "sling_post",
+  "name": "Sling Post",
+  "race": "halflings",
+  "cost": {
+    "gold": 250,
+    "wood": 4
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "halfling_sling"
+    }
+  ]
+}

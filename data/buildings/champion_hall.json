@@ -1,0 +1,17 @@
+{
+  "id": "champion_hall",
+  "name": "Champion Hall",
+  "race": "halflings",
+  "cost": {
+    "gold": 3000,
+    "stone": 12,
+    "wood": 7
+  },
+  "upgradeOf": "stronghold",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "stronghold_champion"
+    }
+  ]
+}

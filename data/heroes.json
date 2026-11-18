@@ -485,6 +485,83 @@
         "trait": "spell_recovery",
         "amount": 1
       }
+    },
+    {
+      "id": "bramble",
+      "name": "Bramble",
+      "class": "sheriff",
+      "specialty": {
+        "unit": "halfling_sling",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "thistle",
+      "name": "Thistle",
+      "class": "sheriff",
+      "specialty": {
+        "income": {
+          "gold": 350
+        }
+      }
+    },
+    {
+      "id": "acorn",
+      "name": "Acorn",
+      "class": "sheriff",
+      "specialty": {
+        "trait": "morale",
+        "amount": 1
+      }
+    },
+    {
+      "id": "hazel",
+      "name": "Hazel",
+      "class": "sheriff",
+      "specialty": {
+        "unit": "pony_rider",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "willow",
+      "name": "Willow",
+      "class": "burrow_seer",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
+    },
+    {
+      "id": "moss",
+      "name": "Moss",
+      "class": "burrow_seer",
+      "specialty": {
+        "income": {
+          "grain": 4
+        }
+      }
+    },
+    {
+      "id": "fernie",
+      "name": "Fernie",
+      "class": "burrow_seer",
+      "specialty": {
+        "unit": "burrow_guard",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "clover",
+      "name": "Clover",
+      "class": "burrow_seer",
+      "specialty": {
+        "trait": "spell_recovery",
+        "amount": 1
+      }
     }
   ]
 }

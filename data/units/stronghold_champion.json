@@ -1,0 +1,19 @@
+{
+  "id": "stronghold_champion",
+  "name": "Stronghold Champion",
+  "race": "halflings",
+  "tier": 4,
+  "attack": 18,
+  "defense": 19,
+  "damageMin": 17,
+  "damageMax": 27,
+  "maxHp": 110,
+  "battleSpeed": 8,
+  "weeklyGrowth": 3,
+  "cost": {
+    "gold": 2100
+  },
+  "abilities": [
+    "no_retaliation"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "hero_lodge",
+  "name": "Hero Lodge",
+  "race": "halflings",
+  "cost": {
+    "gold": 5000,
+    "stone": 15,
+    "grain": 6
+  },
+  "upgradeOf": "clan_hall",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "clan_hero"
+    }
+  ]
+}

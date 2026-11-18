@@ -1,0 +1,17 @@
+{
+  "id": "halflings",
+  "name": "Halflings",
+  "description": "Cheerful burrow folk, numerous and lucky. Good traders at home on grass and in forest. Nature and air magic.",
+  "growthPercent": 35,
+  "incomePercent": 5,
+  "tradeBonus": 12,
+  "terrainCostPercent": {
+    "grass": 80,
+    "forest": 85
+  },
+  "spellSchools": [
+    "nature",
+    "air"
+  ],
+  "ability": "Small and lucky: 12% better market prices and 35% more weekly growth."
+}

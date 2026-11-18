@@ -1,0 +1,20 @@
+{
+  "id": "clan_hero",
+  "name": "Clan Hero",
+  "race": "halflings",
+  "tier": 5,
+  "attack": 26,
+  "defense": 25,
+  "damageMin": 42,
+  "damageMax": 60,
+  "maxHp": 225,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 5000,
+    "grain": 6
+  },
+  "abilities": [
+    "double_attack"
+  ]
+}

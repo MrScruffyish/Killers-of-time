@@ -1,0 +1,16 @@
+{
+  "id": "marksman_lodge",
+  "name": "Marksman Lodge",
+  "race": "halflings",
+  "cost": {
+    "gold": 350,
+    "wood": 5
+  },
+  "upgradeOf": "sling_post",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "halfling_marksman"
+    }
+  ]
+}

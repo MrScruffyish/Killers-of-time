@@ -1,0 +1,18 @@
+{
+  "id": "clan_champion",
+  "name": "Clan Champion",
+  "race": "halflings",
+  "tier": 5,
+  "attack": 23,
+  "defense": 22,
+  "damageMin": 38,
+  "damageMax": 55,
+  "maxHp": 200,
+  "battleSpeed": 8,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3600,
+    "grain": 5
+  },
+  "upgradesTo": "clan_hero"
+}

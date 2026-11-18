@@ -1,0 +1,16 @@
+{
+  "id": "lancer_barracks",
+  "name": "Lancer Barracks",
+  "race": "halflings",
+  "cost": {
+    "gold": 700,
+    "wood": 7
+  },
+  "upgradeOf": "pony_stable",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "pony_lancer"
+    }
+  ]
+}

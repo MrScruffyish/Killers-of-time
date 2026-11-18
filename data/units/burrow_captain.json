@@ -1,0 +1,16 @@
+{
+  "id": "burrow_captain",
+  "name": "Burrow Captain",
+  "race": "halflings",
+  "tier": 3,
+  "attack": 12,
+  "defense": 13,
+  "damageMin": 8,
+  "damageMax": 13,
+  "maxHp": 52,
+  "battleSpeed": 6,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 680
+  }
+}
