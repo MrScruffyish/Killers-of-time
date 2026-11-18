@@ -29,24 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-36. The "All town" is not needed when you only have one town, or the current city is the only one not having that building.
-
-36.1 **MANUAL**: build and run the tests; the All towns shortcut is hidden with one town or when only the current town can build, and still builds in every other eligible town.
-37. No upper limit on level on heros.
-37.1 **MANUAL**: build and run the tests; heroes keep gaining levels and trait picks past the old XP table, and the hero screens still show experience to the next level.
-38. CTRL+s for save, +l for load.
-
-38.1 **MANUAL**: build and run the tests; Ctrl+S opens the save dialog during a game, and Ctrl+L opens the saved-game list from the start screen and the lobby.
-39. After a battle the hero Level-up dialog appears before the battle result (losses), and the battle map is still active behind them. Show the result first, on the map, then the level-up.
-
-39.1 **MANUAL**: build and run the tests; after a battle the result shows on the map with the battle field gone, and the level-up dialog appears only once the result is dismissed.
-40. In battle map, the hero spells should be short-cut S, the unit spells: X
-
-40.1 **MANUAL**: build and run the tests; S opens the hero's spell book and X the acting stack's from the battle map.
-41. The spells should be displayd on something that looks like a book, and there should be an illustration of the spell (saved as png in some art data directory so it can be replaced).
-
-41.1 **MANUAL**: build and run the tests; the spell chooser looks like an open book and shows a replaceable PNG illustration for each spell.
-
 
 ## TBD
 
@@ -60,3 +42,10 @@ file or link later).
 6. In battles it is hard to se which side is which. Units should face towards the enemy side (so they attack backwards). i guess that needs a lot of redrawing units and then mirrror them?
 
 ## DONE
+
+36. The "All town" is not needed when you only have one town, or the current city is the only one not having that building.
+37. No upper limit on level on heros.
+38. CTRL+s for save, +l for load.
+39. After a battle the hero Level-up dialog appears before the battle result (losses), and the battle map is still active behind them. Show the result first, on the map, then the level-up.
+40. In battle map, the hero spells should be short-cut S, the unit spells: X
+41. The spells should be displayd on something that looks like a book, and there should be an illustration of the spell (saved as png in some art data directory so it can be replaced).
