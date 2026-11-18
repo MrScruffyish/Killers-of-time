@@ -1,0 +1,16 @@
+{
+  "id": "giant_warrior",
+  "name": "Giant Warrior",
+  "race": "giants",
+  "tier": 1,
+  "attack": 7,
+  "defense": 7,
+  "damageMin": 3,
+  "damageMax": 5,
+  "maxHp": 15,
+  "battleSpeed": 5,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 65
+  }
+}

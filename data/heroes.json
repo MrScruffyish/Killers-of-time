@@ -408,6 +408,83 @@
         "attack": 2,
         "defense": 1
       }
+    },
+    {
+      "id": "gog",
+      "name": "Gog",
+      "class": "stone_caller",
+      "specialty": {
+        "unit": "young_giant",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "magog",
+      "name": "Magog",
+      "class": "stone_caller",
+      "specialty": {
+        "income": {
+          "stone": 2
+        }
+      }
+    },
+    {
+      "id": "bedrock",
+      "name": "Bedrock",
+      "class": "stone_caller",
+      "specialty": {
+        "trait": "defense",
+        "amount": 1
+      }
+    },
+    {
+      "id": "granite",
+      "name": "Granite",
+      "class": "stone_caller",
+      "specialty": {
+        "unit": "boulder_thrower",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "zephyr",
+      "name": "Zephyr",
+      "class": "sky_shaman",
+      "specialty": {
+        "trait": "spell_power",
+        "amount": 1
+      }
+    },
+    {
+      "id": "cirrus",
+      "name": "Cirrus",
+      "class": "sky_shaman",
+      "specialty": {
+        "unit": "boulder_thrower",
+        "attack": 2,
+        "defense": 1
+      }
+    },
+    {
+      "id": "nimbus",
+      "name": "Nimbus",
+      "class": "sky_shaman",
+      "specialty": {
+        "income": {
+          "gems": 1
+        }
+      }
+    },
+    {
+      "id": "stratus",
+      "name": "Stratus",
+      "class": "sky_shaman",
+      "specialty": {
+        "trait": "spell_recovery",
+        "amount": 1
+      }
     }
   ]
 }

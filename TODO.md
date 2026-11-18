@@ -32,6 +32,7 @@ line waiting for it, and the agent then removes them.
 43. Add a playable necromancer race (`necroman`): race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 43.1 **MANUAL**: build, run `build/bin/kot_artexport` for the new content, then `make test`; necroman is playable with its roster and dwellings.
 44. Add a playable giants race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
+44.1 **MANUAL**: after the art export and `make test`, the giants race is playable with its full roster and dwellings.
 45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 46. Add more buildings and upgrade chains, including the metals idea from TBD 5.
 47. Make the graphics more advanced: richer generated art for the new content and improved detail/effects where practical.

@@ -1,0 +1,16 @@
+{
+  "id": "cave_ogre",
+  "name": "Cave Ogre",
+  "race": "giants",
+  "tier": 2,
+  "attack": 10,
+  "defense": 9,
+  "damageMin": 6,
+  "damageMax": 10,
+  "maxHp": 36,
+  "battleSpeed": 6,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 320
+  }
+}

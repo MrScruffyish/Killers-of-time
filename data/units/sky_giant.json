@@ -1,0 +1,18 @@
+{
+  "id": "sky_giant",
+  "name": "Sky Giant",
+  "race": "giants",
+  "tier": 5,
+  "attack": 24,
+  "defense": 23,
+  "damageMin": 45,
+  "damageMax": 62,
+  "maxHp": 240,
+  "battleSpeed": 8,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 4200,
+    "gems": 3
+  },
+  "upgradesTo": "storm_giant"
+}

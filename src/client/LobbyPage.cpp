@@ -487,7 +487,7 @@ void LobbyPage::rebuild() {
             // A face for the race: one of its typical units.
             static const QMap<QString, QString> face = {{"humans", "cavalier"}, {"sylvan", "elf_archer"}, {"undead", "skeleton"},
                                                          {"dwarves", "dwarf_warrior"}, {"orcs", "orc_warrior"},
-                                                         {"ashborn", "imp"}, {"tidefolk", "triton"}, {"necroman", "bone_acolyte"}};
+                                                         {"ashborn", "imp"}, {"tidefolk", "triton"}, {"necroman", "bone_acolyte"}, {"giants", "young_giant"}};
             race->addItem(QIcon(art::unitIcon(face.value(id, id), 0, 32)), def ? def->name : id, id);
             if (def)
                 race->setItemData(race->count() - 1,

@@ -1,0 +1,15 @@
+{
+  "id": "giant_cradle",
+  "name": "Giant Cradle",
+  "race": "giants",
+  "cost": {
+    "gold": 300,
+    "stone": 3
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "young_giant"
+    }
+  ]
+}

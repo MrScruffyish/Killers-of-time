@@ -481,6 +481,66 @@
       "startingSpells": [
         "curse"
       ]
+    },
+    {
+      "id": "stone_caller",
+      "name": "Stone Caller",
+      "race": "giants",
+      "baseTraits": {
+        "attack": 4,
+        "defense": 3,
+        "morale": 1,
+        "spell_power": 1,
+        "magic": 1,
+        "spell_points_max": 10,
+        "spell_recovery": 1,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "attack": 2,
+        "defense": 2
+      },
+      "autoGrowth": {
+        "spell_points_max": 4
+      },
+      "startingArmy": {
+        "young_giant": 6,
+        "cave_troll": 2
+      },
+      "startingSpells": [
+        "stone_skin"
+      ]
+    },
+    {
+      "id": "sky_shaman",
+      "name": "Sky Shaman",
+      "race": "giants",
+      "baseTraits": {
+        "attack": 2,
+        "defense": 2,
+        "spell_power": 3,
+        "magic": 3,
+        "spell_points_max": 28,
+        "spell_recovery": 2,
+        "movement_points": 1,
+        "scouting_radius": 5
+      },
+      "pickIncrement": {
+        "spell_power": 2,
+        "magic": 1
+      },
+      "autoGrowth": {
+        "spell_points_max": 8
+      },
+      "startingArmy": {
+        "young_giant": 5,
+        "boulder_thrower": 2
+      },
+      "startingSpells": [
+        "stone_skin",
+        "gust"
+      ]
     }
   ]
 }

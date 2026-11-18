@@ -1,0 +1,20 @@
+{
+  "id": "storm_giant",
+  "name": "Storm Giant",
+  "race": "giants",
+  "tier": 5,
+  "attack": 27,
+  "defense": 26,
+  "damageMin": 50,
+  "damageMax": 70,
+  "maxHp": 275,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 5900,
+    "gems": 4
+  },
+  "abilities": [
+    "double_attack"
+  ]
+}

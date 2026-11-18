@@ -1,0 +1,21 @@
+{
+  "id": "boulder_thrower",
+  "name": "Boulder Thrower",
+  "race": "giants",
+  "tier": 3,
+  "attack": 11,
+  "defense": 8,
+  "damageMin": 8,
+  "damageMax": 13,
+  "maxHp": 42,
+  "battleSpeed": 5,
+  "initiative": 5,
+  "range": 8,
+  "shots": 10,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 550,
+    "stone": 1
+  },
+  "upgradesTo": "bombardier_giant"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "bombardier_giant",
+  "name": "Bombardier Giant",
+  "race": "giants",
+  "tier": 3,
+  "attack": 13,
+  "defense": 10,
+  "damageMin": 10,
+  "damageMax": 16,
+  "maxHp": 50,
+  "battleSpeed": 6,
+  "initiative": 6,
+  "range": 9,
+  "shots": 12,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 750,
+    "stone": 2
+  }
+}

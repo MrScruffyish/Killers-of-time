@@ -1,0 +1,16 @@
+{
+  "id": "ogre_lair",
+  "name": "Ogre Lair",
+  "race": "giants",
+  "cost": {
+    "gold": 750,
+    "stone": 6
+  },
+  "upgradeOf": "troll_cave",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "cave_ogre"
+    }
+  ]
+}

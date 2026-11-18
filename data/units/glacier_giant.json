@@ -1,0 +1,20 @@
+{
+  "id": "glacier_giant",
+  "name": "Glacier Giant",
+  "race": "giants",
+  "tier": 4,
+  "attack": 19,
+  "defense": 18,
+  "damageMin": 20,
+  "damageMax": 31,
+  "maxHp": 130,
+  "battleSpeed": 8,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 2300,
+    "stone": 3
+  },
+  "abilities": [
+    "no_retaliation"
+  ]
+}

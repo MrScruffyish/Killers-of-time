@@ -35,7 +35,7 @@ private slots:
         ContentRegistry reg;
         QStringList errors;
         QVERIFY2(reg.loadFromDirectory(KOT_DATA_DIR, &errors), qPrintable(errors.join("\n")));
-        QCOMPARE(reg.playableRaceKeys(), QStringList({"ashborn", "dwarves", "humans", "necroman", "orcs", "sylvan", "tidefolk", "undead"}));
+        QCOMPARE(reg.playableRaceKeys(), QStringList({"ashborn", "dwarves", "giants", "humans", "necroman", "orcs", "sylvan", "tidefolk", "undead"}));
     }
 };
 

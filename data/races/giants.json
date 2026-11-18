@@ -1,0 +1,21 @@
+{
+  "id": "giants",
+  "name": "Giants",
+  "description": "Towering mountain clans, few but mighty. Strong walls and boulder throwers. Earth and air magic.",
+  "growthPercent": 12,
+  "incomePercent": 15,
+  "terrainCostPercent": {
+    "hills": 60,
+    "snow": 75,
+    "dirt": 90
+  },
+  "spellSchools": [
+    "earth",
+    "air"
+  ],
+  "spellSchoolPercent": {
+    "earth": 115
+  },
+  "wallDefenseBonus": 2,
+  "ability": "Mountain stronghold: +2 defense for walled towns and earth spells do 15% more damage."
+}

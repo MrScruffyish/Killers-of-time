@@ -1,0 +1,19 @@
+{
+  "id": "sky_keep",
+  "name": "Sky Keep",
+  "race": "giants",
+  "cost": {
+    "gold": 4200,
+    "stone": 15,
+    "gems": 2
+  },
+  "requires": [
+    "ice_cavern"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "sky_giant"
+    }
+  ]
+}

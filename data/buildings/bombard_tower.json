@@ -1,0 +1,16 @@
+{
+  "id": "bombard_tower",
+  "name": "Bombard Tower",
+  "race": "giants",
+  "cost": {
+    "gold": 1750,
+    "stone": 10
+  },
+  "upgradeOf": "boulder_quarry",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bombardier_giant"
+    }
+  ]
+}

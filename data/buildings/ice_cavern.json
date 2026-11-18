@@ -1,0 +1,19 @@
+{
+  "id": "ice_cavern",
+  "name": "Ice Cavern",
+  "race": "giants",
+  "cost": {
+    "gold": 2400,
+    "stone": 12,
+    "wood": 5
+  },
+  "requires": [
+    "boulder_quarry"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "ice_giant"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "glacier_palace",
+  "name": "Glacier Palace",
+  "race": "giants",
+  "cost": {
+    "gold": 3200,
+    "stone": 15,
+    "wood": 6
+  },
+  "upgradeOf": "ice_cavern",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "glacier_giant"
+    }
+  ]
+}

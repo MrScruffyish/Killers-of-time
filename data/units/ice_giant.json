@@ -1,0 +1,18 @@
+{
+  "id": "ice_giant",
+  "name": "Ice Giant",
+  "race": "giants",
+  "tier": 4,
+  "attack": 17,
+  "defense": 16,
+  "damageMin": 18,
+  "damageMax": 27,
+  "maxHp": 110,
+  "battleSpeed": 7,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 1700,
+    "stone": 2
+  },
+  "upgradesTo": "glacier_giant"
+}

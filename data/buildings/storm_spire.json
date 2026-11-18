@@ -1,0 +1,17 @@
+{
+  "id": "storm_spire",
+  "name": "Storm Spire",
+  "race": "giants",
+  "cost": {
+    "gold": 5800,
+    "stone": 18,
+    "gems": 3
+  },
+  "upgradeOf": "sky_keep",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "storm_giant"
+    }
+  ]
+}

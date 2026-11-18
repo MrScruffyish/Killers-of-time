@@ -1,0 +1,16 @@
+{
+  "id": "warrior_camp",
+  "name": "Warrior Camp",
+  "race": "giants",
+  "cost": {
+    "gold": 400,
+    "stone": 4
+  },
+  "upgradeOf": "giant_cradle",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "giant_warrior"
+    }
+  ]
+}

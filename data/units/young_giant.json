@@ -1,0 +1,17 @@
+{
+  "id": "young_giant",
+  "name": "Young Giant",
+  "race": "giants",
+  "tier": 1,
+  "attack": 5,
+  "defense": 5,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 12,
+  "battleSpeed": 4,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 45
+  },
+  "upgradesTo": "giant_warrior"
+}

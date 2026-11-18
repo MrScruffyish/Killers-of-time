@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
     QCommandLineOption mapOption(QStringLiteral("map"), QStringLiteral("continent or islands."), QStringLiteral("type"), "continent");
     QCommandLineOption profilesOption(QStringLiteral("profiles"), QStringLiteral("AI profile per seat (repeats)."), QStringLiteral("list"), "simple");
     QCommandLineOption racesOption(QStringLiteral("races"), QStringLiteral("Race per seat (repeats)."), QStringLiteral("list"),
-                                   "humans,undead,sylvan,dwarves,orcs,ashborn,tidefolk,necroman");
+                                   "humans,undead,sylvan,dwarves,orcs,ashborn,tidefolk,necroman,giants");
     QCommandLineOption seedOption(QStringLiteral("seed"), QStringLiteral("Seed of the first game."), QStringLiteral("n"), "1");
     for (auto* o : {&dataOption, &gamesOption, &daysOption, &playersOption, &sizeOption, &mapOption, &profilesOption, &racesOption, &seedOption})
         parser.addOption(*o);

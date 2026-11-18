@@ -1,0 +1,17 @@
+{
+  "id": "cave_troll",
+  "name": "Cave Troll",
+  "race": "giants",
+  "tier": 2,
+  "attack": 8,
+  "defense": 7,
+  "damageMin": 5,
+  "damageMax": 8,
+  "maxHp": 30,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 230
+  },
+  "upgradesTo": "cave_ogre"
+}
