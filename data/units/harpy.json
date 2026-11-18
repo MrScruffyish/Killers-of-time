@@ -1,0 +1,21 @@
+{
+  "id": "harpy",
+  "name": "Harpy",
+  "race": "neutral",
+  "tier": 2,
+  "attack": 7,
+  "defense": 5,
+  "damageMin": 2,
+  "damageMax": 5,
+  "maxHp": 14,
+  "battleSpeed": 8,
+  "weeklyGrowth": 7,
+  "cost": {
+    "gold": 120
+  },
+  "initiative": 11,
+  "abilities": [
+    "flying",
+    "no_retaliation"
+  ]
+}

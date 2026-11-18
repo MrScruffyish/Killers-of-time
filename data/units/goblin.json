@@ -1,0 +1,18 @@
+{
+  "id": "goblin",
+  "name": "Goblin",
+  "race": "orcs",
+  "tier": 1,
+  "attack": 4,
+  "defense": 2,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 6,
+  "battleSpeed": 6,
+  "weeklyGrowth": 16,
+  "cost": {
+    "gold": 25
+  },
+  "initiative": 9,
+  "upgradesTo": "hobgoblin"
+}

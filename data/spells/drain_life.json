@@ -1,0 +1,18 @@
+{
+  "id": "drain_life",
+  "name": "Drain Life",
+  "school": "dark",
+  "level": 3,
+  "cost": 13,
+  "requiredMagic": 3,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "Draws the life out of one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 32,
+      "perPower": 18
+    }
+  ]
+}

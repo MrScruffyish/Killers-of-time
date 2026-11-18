@@ -1,0 +1,23 @@
+{
+  "id": "bone_dragon",
+  "name": "Bone Dragon",
+  "race": "undead",
+  "tier": 4,
+  "attack": 15,
+  "defense": 12,
+  "damageMin": 12,
+  "damageMax": 20,
+  "maxHp": 110,
+  "battleSpeed": 9,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 1455,
+    "mercury": 1
+  },
+  "initiative": 10,
+  "abilities": [
+    "undead",
+    "flying"
+  ],
+  "upgradesTo": "ghost_dragon"
+}

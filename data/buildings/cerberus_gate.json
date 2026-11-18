@@ -1,0 +1,17 @@
+{
+  "id": "cerberus_gate",
+  "name": "Cerberus Gate",
+  "race": "ashborn",
+  "cost": {
+    "gold": 900,
+    "stone": 5,
+    "sulphur": 2
+  },
+  "upgradeOf": "hound_kennel",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "cerberus"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "archery_school",
+  "name": "Archery School",
+  "race": "humans",
+  "cost": {
+    "gold": 800,
+    "wood": 5
+  },
+  "upgradeOf": "archery_range",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "archer_advanced"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "treant_grove",
+  "name": "Treant Grove",
+  "race": "sylvan",
+  "cost": {
+    "gold": 1500,
+    "wood": 10
+  },
+  "requires": [
+    "archery_glade"
+  ],
+  "excludes": [
+    "unicorn_meadow"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "treant"
+    }
+  ]
+}

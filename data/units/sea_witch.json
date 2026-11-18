@@ -1,0 +1,19 @@
+{
+  "id": "sea_witch",
+  "name": "Sea Witch",
+  "race": "neutral",
+  "tier": 3,
+  "attack": 9,
+  "defense": 7,
+  "damageMin": 5,
+  "damageMax": 8,
+  "maxHp": 30,
+  "battleSpeed": 5,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 480
+  },
+  "initiative": 8,
+  "range": 6,
+  "shots": 8
+}

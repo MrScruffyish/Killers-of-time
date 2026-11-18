@@ -1,0 +1,20 @@
+{
+  "id": "mage_academy",
+  "name": "Mage Academy",
+  "cost": {
+    "gold": 6000,
+    "wood": 5,
+    "stone": 10,
+    "gems": 5,
+    "mercury": 3
+  },
+  "requires": [
+    "mage_tower"
+  ],
+  "effects": [
+    {
+      "type": "mageGuild",
+      "level": 4
+    }
+  ]
+}

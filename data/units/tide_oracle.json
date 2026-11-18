@@ -1,0 +1,24 @@
+{
+  "id": "tide_oracle",
+  "name": "Tide Oracle",
+  "race": "tidefolk",
+  "tier": 3,
+  "attack": 9,
+  "defense": 8,
+  "damageMin": 5,
+  "damageMax": 8,
+  "maxHp": 31,
+  "battleSpeed": 6,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 485,
+    "gems": 1
+  },
+  "initiative": 9,
+  "range": 7,
+  "shots": 10,
+  "spellPoints": 20,
+  "spells": [
+    "cure"
+  ]
+}

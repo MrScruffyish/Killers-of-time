@@ -1,0 +1,20 @@
+{
+  "id": "ash_cloud",
+  "name": "Ash Cloud",
+  "school": "fire",
+  "level": 2,
+  "cost": 8,
+  "requiredMagic": 2,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "Choking ash: one enemy stack defends worse for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "defense",
+      "amount": -3,
+      "perPower": -1,
+      "rounds": 3
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "tide_temple",
+  "name": "Tide Temple",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 1500,
+    "stone": 5,
+    "gems": 2
+  },
+  "requires": [
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "tide_priestess"
+    }
+  ]
+}

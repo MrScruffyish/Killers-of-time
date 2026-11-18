@@ -1,0 +1,17 @@
+{
+  "id": "militia",
+  "name": "Militia",
+  "race": "humans",
+  "tier": 1,
+  "attack": 4,
+  "defense": 3,
+  "damageMin": 1,
+  "damageMax": 2,
+  "maxHp": 6,
+  "battleSpeed": 4,
+  "weeklyGrowth": 12,
+  "cost": {
+    "gold": 20
+  },
+  "upgradesTo": "pikeman"
+}

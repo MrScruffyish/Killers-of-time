@@ -1,0 +1,19 @@
+{
+  "id": "serpent_bay",
+  "name": "Serpent Bay",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 2800,
+    "wood": 10,
+    "gems": 2
+  },
+  "requires": [
+    "triton_lagoon"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "sea_serpent"
+    }
+  ]
+}

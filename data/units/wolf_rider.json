@@ -1,0 +1,18 @@
+{
+  "id": "wolf_rider",
+  "name": "Wolf Rider",
+  "race": "orcs",
+  "tier": 2,
+  "attack": 8,
+  "defense": 4,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 18,
+  "battleSpeed": 8,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 155
+  },
+  "initiative": 11,
+  "upgradesTo": "warg_rider"
+}

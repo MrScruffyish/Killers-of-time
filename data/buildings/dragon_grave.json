@@ -1,0 +1,19 @@
+{
+  "id": "dragon_grave",
+  "name": "Dragon Grave",
+  "race": "undead",
+  "cost": {
+    "gold": 2400,
+    "stone": 8,
+    "mercury": 1
+  },
+  "requires": [
+    "haunted_tower"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bone_dragon"
+    }
+  ]
+}

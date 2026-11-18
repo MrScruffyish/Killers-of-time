@@ -1,0 +1,17 @@
+{
+  "id": "frost_giant",
+  "name": "Frost Giant",
+  "race": "neutral",
+  "tier": 4,
+  "attack": 18,
+  "defense": 15,
+  "damageMin": 18,
+  "damageMax": 28,
+  "maxHp": 120,
+  "battleSpeed": 5,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 1700
+  },
+  "initiative": 6
+}

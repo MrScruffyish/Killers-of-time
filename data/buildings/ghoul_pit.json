@@ -1,0 +1,16 @@
+{
+  "id": "ghoul_pit",
+  "name": "Ghoul Pit",
+  "race": "undead",
+  "cost": {
+    "gold": 700,
+    "stone": 4
+  },
+  "upgradeOf": "crypt",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "ghoul"
+    }
+  ]
+}

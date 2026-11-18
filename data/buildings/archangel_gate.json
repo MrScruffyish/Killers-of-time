@@ -1,0 +1,20 @@
+{
+  "id": "archangel_gate",
+  "name": "Archangel Gate",
+  "race": "humans",
+  "cost": {
+    "gold": 4200,
+    "stone": 6,
+    "gems": 3
+  },
+  "upgradeOf": "angel_portal",
+  "requires": [
+    "castle"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "archangel"
+    }
+  ]
+}

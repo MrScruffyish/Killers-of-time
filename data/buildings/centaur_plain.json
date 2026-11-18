@@ -1,0 +1,18 @@
+{
+  "id": "centaur_plain",
+  "name": "Centaur Plain",
+  "race": "sylvan",
+  "cost": {
+    "gold": 1400,
+    "wood": 10
+  },
+  "requires": [
+    "archery_glade"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "centaur"
+    }
+  ]
+}

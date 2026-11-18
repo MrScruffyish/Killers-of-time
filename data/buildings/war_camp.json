@@ -1,0 +1,18 @@
+{
+  "id": "war_camp",
+  "name": "War Camp",
+  "race": "orcs",
+  "cost": {
+    "gold": 1300,
+    "wood": 10
+  },
+  "requires": [
+    "wolf_pen"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "orc_warrior"
+    }
+  ]
+}

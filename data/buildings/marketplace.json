@@ -1,0 +1,7 @@
+{
+  "id": "marketplace",
+  "name": "Marketplace",
+  "cost": { "gold": 800, "wood": 5 },
+  "requires": ["village_hall"],
+  "effects": [ { "type": "market", "amount": 5 } ]
+}

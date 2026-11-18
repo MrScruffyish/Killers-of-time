@@ -1,0 +1,17 @@
+{
+  "id": "fiend",
+  "name": "Fiend",
+  "race": "ashborn",
+  "tier": 1,
+  "attack": 6,
+  "defense": 3,
+  "damageMin": 2,
+  "damageMax": 3,
+  "maxHp": 8,
+  "battleSpeed": 8,
+  "weeklyGrowth": 15,
+  "cost": {
+    "gold": 45
+  },
+  "initiative": 11
+}

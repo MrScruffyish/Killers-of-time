@@ -1,0 +1,50 @@
+{
+  "resources": [
+    {
+      "id": "gold",
+      "name": "Gold",
+      "currency": true,
+      "value": 1
+    },
+    {
+      "id": "wood",
+      "name": "Wood",
+      "value": 100
+    },
+    {
+      "id": "stone",
+      "name": "Stone",
+      "value": 100
+    },
+    {
+      "id": "grain",
+      "name": "Grain",
+      "value": 50
+    },
+    {
+      "id": "gems",
+      "name": "Gems",
+      "value": 300
+    },
+    {
+      "id": "sulphur",
+      "name": "Sulphur",
+      "value": 300
+    },
+    {
+      "id": "coal",
+      "name": "Coal",
+      "value": 120
+    },
+    {
+      "id": "mercury",
+      "name": "Mercury",
+      "value": 300
+    },
+    {
+      "id": "papyrus",
+      "name": "Papyrus",
+      "value": 200
+    }
+  ]
+}

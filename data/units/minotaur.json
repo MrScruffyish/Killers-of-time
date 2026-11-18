@@ -1,0 +1,20 @@
+{
+  "id": "minotaur",
+  "name": "Minotaur",
+  "race": "neutral",
+  "tier": 4,
+  "attack": 17,
+  "defense": 15,
+  "damageMin": 15,
+  "damageMax": 22,
+  "maxHp": 100,
+  "battleSpeed": 6,
+  "weeklyGrowth": 2,
+  "cost": {
+    "gold": 1700
+  },
+  "initiative": 9,
+  "abilities": [
+    "double_attack"
+  ]
+}

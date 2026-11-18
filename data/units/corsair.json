@@ -1,0 +1,17 @@
+{
+  "id": "corsair",
+  "name": "Corsair",
+  "race": "tidefolk",
+  "tier": 1,
+  "attack": 6,
+  "defense": 5,
+  "damageMin": 2,
+  "damageMax": 4,
+  "maxHp": 10,
+  "battleSpeed": 6,
+  "weeklyGrowth": 14,
+  "cost": {
+    "gold": 45
+  },
+  "initiative": 9
+}

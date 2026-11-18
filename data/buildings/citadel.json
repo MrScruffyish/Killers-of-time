@@ -1,0 +1,7 @@
+{
+  "id": "citadel",
+  "name": "Citadel",
+  "cost": { "gold": 3000, "stone": 15, "wood": 5 },
+  "requires": ["fort"],
+  "effects": [ { "type": "defense", "amount": 3 } ]
+}

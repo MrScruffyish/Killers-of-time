@@ -1,0 +1,17 @@
+{
+  "id": "cathedral",
+  "name": "Cathedral",
+  "race": "humans",
+  "cost": {
+    "gold": 2500,
+    "stone": 10,
+    "gems": 3
+  },
+  "upgradeOf": "monastery",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "priest"
+    }
+  ]
+}

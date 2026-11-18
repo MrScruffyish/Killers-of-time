@@ -1,0 +1,20 @@
+{
+  "id": "dread_keep",
+  "name": "Dread Keep",
+  "race": "undead",
+  "cost": {
+    "gold": 5200,
+    "stone": 11,
+    "mercury": 2
+  },
+  "requires": [
+    "vampire_manor",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "dread_knight"
+    }
+  ]
+}

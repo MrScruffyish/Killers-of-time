@@ -1,0 +1,16 @@
+{
+  "id": "bone_armory",
+  "name": "Bone Armory",
+  "race": "undead",
+  "cost": {
+    "gold": 300,
+    "stone": 4
+  },
+  "upgradeOf": "cursed_graveyard",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "skeleton_warrior"
+    }
+  ]
+}

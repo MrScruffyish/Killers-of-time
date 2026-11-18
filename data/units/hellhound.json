@@ -1,0 +1,18 @@
+{
+  "id": "hellhound",
+  "name": "Hellhound",
+  "race": "ashborn",
+  "tier": 2,
+  "attack": 8,
+  "defense": 4,
+  "damageMin": 2,
+  "damageMax": 5,
+  "maxHp": 18,
+  "battleSpeed": 8,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 150
+  },
+  "initiative": 10,
+  "upgradesTo": "cerberus"
+}

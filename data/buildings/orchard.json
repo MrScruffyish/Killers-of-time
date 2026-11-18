@@ -1,0 +1,19 @@
+{
+  "id": "orchard",
+  "name": "Orchard",
+  "race": "sylvan",
+  "cost": {
+    "gold": 900,
+    "wood": 5
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "grain",
+      "amount": 2
+    }
+  ]
+}

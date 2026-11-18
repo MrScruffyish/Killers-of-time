@@ -1,0 +1,19 @@
+{
+  "id": "haste_mass",
+  "name": "Wind Step",
+  "school": "air",
+  "level": 3,
+  "cost": 10,
+  "requiredMagic": 3,
+  "scope": "battle",
+  "target": "ally",
+  "description": "One of your stacks runs much farther for 2 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "battleSpeed",
+      "amount": 4,
+      "rounds": 2
+    }
+  ]
+}

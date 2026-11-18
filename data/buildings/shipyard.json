@@ -1,0 +1,7 @@
+{
+  "id": "shipyard",
+  "name": "Shipyard",
+  "cost": { "gold": 1000, "wood": 15 },
+  "requires": ["village_hall"],
+  "effects": [ { "type": "shipyard" } ]
+}

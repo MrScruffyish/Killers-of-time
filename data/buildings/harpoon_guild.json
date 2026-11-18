@@ -1,0 +1,16 @@
+{
+  "id": "harpoon_guild",
+  "name": "Harpoon Guild",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 800,
+    "wood": 5
+  },
+  "upgradeOf": "harpoon_wharf",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "harpoon_master"
+    }
+  ]
+}

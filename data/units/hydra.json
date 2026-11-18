@@ -1,0 +1,20 @@
+{
+  "id": "hydra",
+  "name": "Hydra",
+  "race": "neutral",
+  "tier": 5,
+  "attack": 22,
+  "defense": 20,
+  "damageMin": 30,
+  "damageMax": 45,
+  "maxHp": 250,
+  "battleSpeed": 5,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3600
+  },
+  "initiative": 6,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

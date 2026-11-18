@@ -1,0 +1,3 @@
+{ "id": "slow", "name": "Slow", "school": "earth", "level": 2, "cost": 8, "requiredMagic": 2,
+  "scope": "battle", "target": "enemy", "description": "An enemy stack moves less far for 3 rounds.",
+  "effects": [ { "type": "modifyStat", "stat": "battleSpeed", "amount": -2, "rounds": 3 } ] }

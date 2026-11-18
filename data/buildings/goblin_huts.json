@@ -1,0 +1,15 @@
+{
+  "id": "goblin_huts",
+  "name": "Goblin Huts",
+  "race": "orcs",
+  "cost": {
+    "gold": 250,
+    "wood": 5
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "goblin"
+    }
+  ]
+}

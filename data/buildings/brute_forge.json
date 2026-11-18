@@ -1,0 +1,18 @@
+{
+  "id": "brute_forge",
+  "name": "Brute Forge",
+  "race": "ashborn",
+  "cost": {
+    "gold": 1300,
+    "stone": 10
+  },
+  "requires": [
+    "hound_kennel"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "horned_brute"
+    }
+  ]
+}

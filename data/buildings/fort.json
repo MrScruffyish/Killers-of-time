@@ -1,0 +1,7 @@
+{
+  "id": "fort",
+  "name": "Fort",
+  "cost": { "gold": 1500, "stone": 10 },
+  "requires": ["village_hall"],
+  "effects": [ { "type": "defense", "amount": 3 } ]
+}

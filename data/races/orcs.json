@@ -1,0 +1,17 @@
+{
+  "id": "orcs",
+  "name": "Orcs",
+  "description": "Steppe warriors: fierce and many (+25% growth), but poorly armoured and poor (-10% gold). Air and dark magic.",
+  "incomePercent": -10,
+  "terrainCostPercent": {
+    "sand": 70,
+    "dirt": 80
+  },
+  "spellSchools": [
+    "air",
+    "dark"
+  ],
+  "battleLootPercent": 25,
+  "ability": "Plunder: gold after every won battle (25% of the enemy HP killed).",
+  "growthPercent": 25
+}

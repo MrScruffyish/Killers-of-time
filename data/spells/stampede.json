@@ -1,0 +1,19 @@
+{
+  "id": "stampede",
+  "name": "Stampede",
+  "school": "nature",
+  "level": 4,
+  "cost": 20,
+  "requiredMagic": 4,
+  "scope": "battle",
+  "target": "enemy",
+  "area": 1,
+  "description": "Wild beasts trample an enemy stack and the stacks around it.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 22,
+      "perPower": 16
+    }
+  ]
+}

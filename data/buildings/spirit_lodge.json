@@ -1,0 +1,19 @@
+{
+  "id": "spirit_lodge",
+  "name": "Spirit Lodge",
+  "race": "orcs",
+  "cost": {
+    "gold": 1500,
+    "wood": 5,
+    "mercury": 2
+  },
+  "requires": [
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "shaman"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "triton_barracks",
+  "name": "Triton Barracks",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 1600,
+    "stone": 5
+  },
+  "requires": [
+    "fort"
+  ],
+  "upgradeOf": "triton_lagoon",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "triton_guard"
+    }
+  ]
+}

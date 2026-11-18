@@ -1,0 +1,28 @@
+{
+  "id": "lich",
+  "name": "Lich",
+  "race": "undead",
+  "tier": 3,
+  "attack": 12,
+  "defense": 10,
+  "damageMin": 8,
+  "damageMax": 12,
+  "maxHp": 35,
+  "battleSpeed": 5,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 530,
+    "mercury": 1
+  },
+  "initiative": 8,
+  "range": 6,
+  "shots": 10,
+  "abilities": [
+    "undead"
+  ],
+  "spellPoints": 15,
+  "spells": [
+    "death_touch"
+  ],
+  "upgradesTo": "arch_lich"
+}

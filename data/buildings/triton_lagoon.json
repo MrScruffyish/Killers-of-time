@@ -1,0 +1,18 @@
+{
+  "id": "triton_lagoon",
+  "name": "Triton Lagoon",
+  "race": "tidefolk",
+  "cost": {
+    "gold": 1300,
+    "stone": 10
+  },
+  "requires": [
+    "harpoon_wharf"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "triton"
+    }
+  ]
+}

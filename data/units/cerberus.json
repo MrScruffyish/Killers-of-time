@@ -1,0 +1,20 @@
+{
+  "id": "cerberus",
+  "name": "Cerberus",
+  "race": "ashborn",
+  "tier": 2,
+  "attack": 9,
+  "defense": 5,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 20,
+  "battleSpeed": 8,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 220
+  },
+  "initiative": 11,
+  "abilities": [
+    "no_retaliation"
+  ]
+}

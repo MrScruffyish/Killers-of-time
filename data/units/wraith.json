@@ -1,0 +1,28 @@
+{
+  "id": "wraith",
+  "name": "Wraith",
+  "race": "undead",
+  "tier": 3,
+  "attack": 8,
+  "defense": 7,
+  "damageMin": 5,
+  "damageMax": 7,
+  "maxHp": 25,
+  "battleSpeed": 7,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 300,
+    "stone": 1
+  },
+  "initiative": 9,
+  "abilities": [
+    "undead",
+    "flying",
+    "no_retaliation"
+  ],
+  "spellPoints": 10,
+  "spells": [
+    "curse"
+  ],
+  "upgradesTo": "spectre"
+}

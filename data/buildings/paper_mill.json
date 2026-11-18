@@ -1,0 +1,19 @@
+{
+  "id": "paper_mill",
+  "name": "Paper Mill",
+  "race": "humans",
+  "cost": {
+    "gold": 1000,
+    "wood": 10
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "papyrus",
+      "amount": 1
+    }
+  ]
+}

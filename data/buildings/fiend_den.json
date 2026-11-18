@@ -1,0 +1,16 @@
+{
+  "id": "fiend_den",
+  "name": "Fiend Den",
+  "race": "ashborn",
+  "cost": {
+    "gold": 400,
+    "stone": 5
+  },
+  "upgradeOf": "imp_pit",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "fiend"
+    }
+  ]
+}

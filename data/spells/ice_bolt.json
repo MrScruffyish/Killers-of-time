@@ -1,0 +1,18 @@
+{
+  "id": "ice_bolt",
+  "name": "Ice Bolt",
+  "school": "water",
+  "level": 2,
+  "cost": 8,
+  "requiredMagic": 2,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "A shard of ice strikes one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 18,
+      "perPower": 14
+    }
+  ]
+}

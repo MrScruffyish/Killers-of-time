@@ -1,0 +1,16 @@
+{
+  "id": "silver_glade",
+  "name": "Silver Glade",
+  "race": "sylvan",
+  "cost": {
+    "gold": 3000,
+    "gems": 3
+  },
+  "upgradeOf": "unicorn_meadow",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "silver_unicorn"
+    }
+  ]
+}

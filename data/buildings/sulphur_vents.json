@@ -1,0 +1,19 @@
+{
+  "id": "sulphur_vents",
+  "name": "Sulphur Vents",
+  "race": "ashborn",
+  "cost": {
+    "gold": 1000,
+    "stone": 5
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "sulphur",
+      "amount": 1
+    }
+  ]
+}

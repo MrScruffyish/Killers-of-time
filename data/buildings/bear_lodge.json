@@ -1,0 +1,16 @@
+{
+  "id": "bear_lodge",
+  "name": "Bear Lodge",
+  "race": "dwarves",
+  "cost": {
+    "gold": 2900,
+    "wood": 10
+  },
+  "upgradeOf": "bear_den",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "bear_lord"
+    }
+  ]
+}

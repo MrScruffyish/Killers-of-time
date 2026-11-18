@@ -1,0 +1,16 @@
+{
+  "id": "hobgoblin_camp",
+  "name": "Hobgoblin Camp",
+  "race": "orcs",
+  "cost": {
+    "gold": 400,
+    "wood": 5
+  },
+  "upgradeOf": "goblin_huts",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "hobgoblin"
+    }
+  ]
+}

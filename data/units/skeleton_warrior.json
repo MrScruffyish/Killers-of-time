@@ -1,0 +1,19 @@
+{
+  "id": "skeleton_warrior",
+  "name": "Skeleton Warrior",
+  "race": "undead",
+  "tier": 1,
+  "attack": 6,
+  "defense": 6,
+  "damageMin": 2,
+  "damageMax": 3,
+  "maxHp": 7,
+  "battleSpeed": 5,
+  "weeklyGrowth": 14,
+  "cost": {
+    "gold": 35
+  },
+  "abilities": [
+    "undead"
+  ]
+}

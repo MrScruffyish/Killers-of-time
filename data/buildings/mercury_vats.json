@@ -1,0 +1,19 @@
+{
+  "id": "mercury_vats",
+  "name": "Mercury Vats",
+  "race": "undead",
+  "cost": {
+    "gold": 950,
+    "stone": 4
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "mercury",
+      "amount": 1
+    }
+  ]
+}

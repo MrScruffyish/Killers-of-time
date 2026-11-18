@@ -1,0 +1,18 @@
+{
+  "id": "archery_range",
+  "name": "Archery Range",
+  "race": "humans",
+  "cost": {
+    "gold": 500,
+    "wood": 5
+  },
+  "requires": [
+    "barracks"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "archer"
+    }
+  ]
+}

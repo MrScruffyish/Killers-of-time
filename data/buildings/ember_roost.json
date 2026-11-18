@@ -1,0 +1,16 @@
+{
+  "id": "ember_roost",
+  "name": "Ember Roost",
+  "race": "ashborn",
+  "cost": {
+    "gold": 3000,
+    "sulphur": 5
+  },
+  "upgradeOf": "drake_nest",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "ember_drake"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "treasury",
+  "name": "Treasury",
+  "cost": {
+    "gold": 6000,
+    "stone": 10,
+    "gems": 5
+  },
+  "requires": [
+    "city_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "gold",
+      "amount": 400
+    }
+  ]
+}

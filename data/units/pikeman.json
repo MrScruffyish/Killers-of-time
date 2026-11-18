@@ -1,0 +1,17 @@
+{
+  "id": "pikeman",
+  "name": "Pikeman",
+  "race": "humans",
+  "tier": 1,
+  "attack": 5,
+  "defense": 5,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 10,
+  "battleSpeed": 4,
+  "weeklyGrowth": 12,
+  "cost": {
+    "gold": 35
+  },
+  "upgradesTo": "halberdier"
+}

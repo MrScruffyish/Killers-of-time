@@ -1,0 +1,19 @@
+{
+  "id": "gust",
+  "name": "Gust",
+  "school": "air",
+  "level": 2,
+  "cost": 7,
+  "requiredMagic": 2,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "A gust of wind slows one enemy stack for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "battleSpeed",
+      "amount": -3,
+      "rounds": 3
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "meteor_shower",
+  "name": "Meteor Shower",
+  "school": "earth",
+  "level": 4,
+  "cost": 20,
+  "requiredMagic": 4,
+  "scope": "battle",
+  "target": "enemy",
+  "area": 1,
+  "description": "Burning stones fall on an enemy stack and the enemy stacks around it.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 25,
+      "perPower": 15
+    }
+  ]
+}

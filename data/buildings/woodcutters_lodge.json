@@ -1,0 +1,15 @@
+{
+  "id": "woodcutters_lodge",
+  "name": "Woodcutters' Lodge",
+  "race": "sylvan",
+  "cost": {
+    "gold": 300,
+    "wood": 5
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "woodsman"
+    }
+  ]
+}

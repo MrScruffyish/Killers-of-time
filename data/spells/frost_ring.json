@@ -1,0 +1,19 @@
+{
+  "id": "frost_ring",
+  "name": "Frost Ring",
+  "school": "water",
+  "level": 3,
+  "cost": 14,
+  "requiredMagic": 3,
+  "scope": "battle",
+  "target": "enemy",
+  "area": 1,
+  "description": "A ring of frost hurts an enemy stack and every enemy stack next to it.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 15,
+      "perPower": 10
+    }
+  ]
+}

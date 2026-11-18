@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Killers of Time map editor
+Comment=Make maps, scenarios and campaigns for Killers of Time
+Exec=kot_editor
+Icon=killers-of-time
+Terminal=false
+Categories=Game;StrategyGame;

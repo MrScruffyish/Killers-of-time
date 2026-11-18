@@ -1,0 +1,22 @@
+{
+  "id": "unicorn_meadow",
+  "name": "Unicorn Meadow",
+  "race": "sylvan",
+  "cost": {
+    "gold": 2500,
+    "wood": 5,
+    "gems": 2
+  },
+  "requires": [
+    "archery_glade"
+  ],
+  "excludes": [
+    "treant_grove"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "unicorn"
+    }
+  ]
+}

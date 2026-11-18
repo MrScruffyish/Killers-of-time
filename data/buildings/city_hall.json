@@ -1,0 +1,20 @@
+{
+  "id": "city_hall",
+  "name": "City Hall",
+  "cost": {
+    "gold": 5000,
+    "stone": 10,
+    "gems": 3
+  },
+  "requires": [
+    "town_hall",
+    "citadel"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "gold",
+      "amount": 500
+    }
+  ]
+}

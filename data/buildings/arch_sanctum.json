@@ -1,0 +1,17 @@
+{
+  "id": "arch_sanctum",
+  "name": "Dark Sanctum",
+  "race": "undead",
+  "cost": {
+    "gold": 2250,
+    "stone": 8,
+    "mercury": 1
+  },
+  "upgradeOf": "lich_sanctum",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "arch_lich"
+    }
+  ]
+}

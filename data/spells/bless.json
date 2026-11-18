@@ -1,0 +1,19 @@
+{
+  "id": "bless",
+  "name": "Bless",
+  "school": "water",
+  "level": 1,
+  "cost": 5,
+  "requiredMagic": 1,
+  "scope": "battle",
+  "target": "ally",
+  "description": "One of your stacks strikes harder for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "attack",
+      "amount": 3,
+      "rounds": 3
+    }
+  ]
+}

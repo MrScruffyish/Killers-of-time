@@ -1,0 +1,25 @@
+{
+  "id": "archangel",
+  "name": "Archangel",
+  "race": "humans",
+  "tier": 5,
+  "attack": 22,
+  "defense": 22,
+  "damageMin": 56,
+  "damageMax": 56,
+  "maxHp": 224,
+  "battleSpeed": 12,
+  "weeklyGrowth": 1,
+  "cost": {
+    "gold": 3570,
+    "gems": 1
+  },
+  "initiative": 15,
+  "abilities": [
+    "flying"
+  ],
+  "spellPoints": 26,
+  "spells": [
+    "cure"
+  ]
+}

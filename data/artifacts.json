@@ -1,0 +1,307 @@
+{
+  "_comment": "Artifacts lie on the map; the hero who picks one up wears it (its trait bonuses count) when its slot has room, else carries it in the backpack. slot: head, neck, body, weapon, shield, feet, ring (2), misc (3). value 1..3 sets the guard strength.",
+  "artifacts": [
+    {
+      "id": "iron_sword",
+      "name": "Iron Sword",
+      "description": "+2 Attack",
+      "traits": {
+        "attack": 2
+      },
+      "value": 1,
+      "slot": "weapon"
+    },
+    {
+      "id": "oak_shield",
+      "name": "Oak Shield",
+      "description": "+2 Defense",
+      "traits": {
+        "defense": 2
+      },
+      "value": 1,
+      "slot": "shield"
+    },
+    {
+      "id": "boots_of_travel",
+      "name": "Boots of Travel",
+      "description": "+2 Movement Points",
+      "traits": {
+        "movement_points": 2
+      },
+      "value": 1,
+      "slot": "feet"
+    },
+    {
+      "id": "spyglass",
+      "name": "Spyglass",
+      "description": "+2 Scouting Radius",
+      "traits": {
+        "scouting_radius": 2
+      },
+      "value": 1,
+      "slot": "misc"
+    },
+    {
+      "id": "lucky_clover",
+      "name": "Lucky Clover",
+      "description": "+2 Luck",
+      "traits": {
+        "luck": 2
+      },
+      "value": 1,
+      "slot": "misc"
+    },
+    {
+      "id": "war_banner",
+      "name": "War Banner",
+      "description": "+2 Morale",
+      "traits": {
+        "morale": 2
+      },
+      "value": 2,
+      "slot": "misc"
+    },
+    {
+      "id": "amulet_of_life",
+      "name": "Amulet of Life",
+      "description": "+3 Hit Points",
+      "traits": {
+        "hit_points": 3
+      },
+      "value": 2,
+      "slot": "neck"
+    },
+    {
+      "id": "mage_staff",
+      "name": "Mage Staff",
+      "description": "+2 Spell Power, +10 Spell Points",
+      "traits": {
+        "spell_power": 2,
+        "spell_points_max": 10
+      },
+      "value": 2,
+      "slot": "weapon"
+    },
+    {
+      "id": "dragon_blade",
+      "name": "Dragon Blade",
+      "description": "+4 Attack, +1 Morale",
+      "traits": {
+        "attack": 4,
+        "morale": 1
+      },
+      "value": 3,
+      "slot": "weapon"
+    },
+    {
+      "id": "crown_of_kings",
+      "name": "Crown of Kings",
+      "description": "+2 Attack, +2 Defense, +1 Magic",
+      "traits": {
+        "attack": 2,
+        "defense": 2,
+        "magic": 1
+      },
+      "value": 3,
+      "slot": "head"
+    },
+    {
+      "id": "dwarven_axe",
+      "name": "Dwarven Axe",
+      "description": "+4 Attack",
+      "traits": {
+        "attack": 4
+      },
+      "value": 2,
+      "slot": "weapon"
+    },
+    {
+      "id": "tower_shield",
+      "name": "Tower Shield",
+      "description": "+4 Defense",
+      "traits": {
+        "defense": 4
+      },
+      "value": 2,
+      "slot": "shield"
+    },
+    {
+      "id": "crown_of_command",
+      "name": "Crown of Command",
+      "description": "+2 Attack, +2 Defense, +1 Morale",
+      "traits": {
+        "attack": 2,
+        "defense": 2,
+        "morale": 1
+      },
+      "value": 3,
+      "slot": "head"
+    },
+    {
+      "id": "wizards_hat",
+      "name": "Wizard's Hat",
+      "description": "+3 Spell Power",
+      "traits": {
+        "spell_power": 3
+      },
+      "value": 2,
+      "slot": "head"
+    },
+    {
+      "id": "orb_of_insight",
+      "name": "Orb of Insight",
+      "description": "+2 Magic",
+      "traits": {
+        "magic": 2
+      },
+      "value": 2,
+      "slot": "misc"
+    },
+    {
+      "id": "mana_stone",
+      "name": "Mana Stone",
+      "description": "+15 Spell Points, +1 Spell Recovery",
+      "traits": {
+        "spell_points_max": 15,
+        "spell_recovery": 1
+      },
+      "value": 2,
+      "slot": "neck"
+    },
+    {
+      "id": "winged_boots",
+      "name": "Winged Boots",
+      "description": "+4 Movement Points",
+      "traits": {
+        "movement_points": 4
+      },
+      "value": 3,
+      "slot": "feet"
+    },
+    {
+      "id": "eagle_eye",
+      "name": "Eagle Eye Amulet",
+      "description": "+2 Scouting, +1 Scouting Radius",
+      "traits": {
+        "scouting": 2,
+        "scouting_radius": 1
+      },
+      "value": 2,
+      "slot": "head"
+    },
+    {
+      "id": "battle_standard",
+      "name": "Battle Standard",
+      "description": "+2 Morale",
+      "traits": {
+        "morale": 2
+      },
+      "value": 2,
+      "slot": "misc"
+    },
+    {
+      "id": "horseshoe",
+      "name": "Golden Horseshoe",
+      "description": "+1 Luck, +1 Movement Points",
+      "traits": {
+        "luck": 1,
+        "movement_points": 1
+      },
+      "value": 1,
+      "slot": "misc"
+    },
+    {
+      "id": "longbow_string",
+      "name": "Elven Bowstring",
+      "description": "+2 Attack Range",
+      "traits": {
+        "attack_range": 2
+      },
+      "value": 2,
+      "slot": "misc"
+    },
+    {
+      "id": "troll_heart",
+      "name": "Troll Heart",
+      "description": "+3 Hit Points",
+      "traits": {
+        "hit_points": 3
+      },
+      "value": 2,
+      "slot": "misc"
+    },
+    {
+      "id": "dragon_scale",
+      "name": "Dragon Scale Armour",
+      "description": "+6 Defense",
+      "traits": {
+        "defense": 6
+      },
+      "value": 3,
+      "slot": "body"
+    },
+    {
+      "id": "ring_of_the_sages",
+      "name": "Ring of the Sages",
+      "description": "+2 Spell Power, +1 Magic, +10 Spell Points",
+      "traits": {
+        "spell_power": 2,
+        "magic": 1,
+        "spell_points_max": 10
+      },
+      "value": 3,
+      "slot": "ring"
+    },
+    {
+      "id": "chain_mail",
+      "name": "Chain Mail",
+      "description": "+2 Defense",
+      "traits": {
+        "defense": 2
+      },
+      "value": 1,
+      "slot": "body"
+    },
+    {
+      "id": "iron_helm",
+      "name": "Iron Helm",
+      "description": "+1 Defense, +1 Attack",
+      "traits": {
+        "defense": 1,
+        "attack": 1
+      },
+      "value": 1,
+      "slot": "head"
+    },
+    {
+      "id": "pendant_of_courage",
+      "name": "Pendant of Courage",
+      "description": "+1 Morale",
+      "traits": {
+        "morale": 1
+      },
+      "value": 1,
+      "slot": "neck"
+    },
+    {
+      "id": "ring_of_vigor",
+      "name": "Ring of Vigor",
+      "description": "+2 Hit Points for every unit",
+      "traits": {
+        "hit_points": 2
+      },
+      "value": 1,
+      "slot": "ring"
+    },
+    {
+      "id": "travellers_ring",
+      "name": "Traveller's Ring",
+      "description": "+1 Movement Points",
+      "traits": {
+        "movement_points": 1
+      },
+      "value": 1,
+      "slot": "ring"
+    }
+  ]
+}

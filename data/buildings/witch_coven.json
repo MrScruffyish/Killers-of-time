@@ -1,0 +1,19 @@
+{
+  "id": "witch_coven",
+  "name": "Witch Coven",
+  "race": "ashborn",
+  "cost": {
+    "gold": 1500,
+    "wood": 5,
+    "sulphur": 2
+  },
+  "requires": [
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "flame_witch"
+    }
+  ]
+}

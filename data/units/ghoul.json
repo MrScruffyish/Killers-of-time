@@ -1,0 +1,20 @@
+{
+  "id": "ghoul",
+  "name": "Ghoul",
+  "race": "undead",
+  "tier": 2,
+  "attack": 7,
+  "defense": 6,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 22,
+  "battleSpeed": 5,
+  "weeklyGrowth": 8,
+  "cost": {
+    "gold": 180
+  },
+  "initiative": 7,
+  "abilities": [
+    "undead"
+  ]
+}

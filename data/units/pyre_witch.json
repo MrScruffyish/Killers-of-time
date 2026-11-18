@@ -1,0 +1,23 @@
+{
+  "id": "pyre_witch",
+  "name": "Pyre Witch",
+  "race": "ashborn",
+  "tier": 3,
+  "attack": 11,
+  "defense": 7,
+  "damageMin": 7,
+  "damageMax": 10,
+  "maxHp": 30,
+  "battleSpeed": 5,
+  "weeklyGrowth": 5,
+  "cost": {
+    "gold": 540
+  },
+  "initiative": 9,
+  "range": 7,
+  "shots": 12,
+  "spellPoints": 12,
+  "spells": [
+    "fire_bolt"
+  ]
+}

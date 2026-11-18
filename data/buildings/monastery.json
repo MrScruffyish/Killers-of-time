@@ -1,0 +1,20 @@
+{
+  "id": "monastery",
+  "name": "Monastery",
+  "race": "humans",
+  "cost": {
+    "gold": 1500,
+    "wood": 5,
+    "stone": 5,
+    "gems": 2
+  },
+  "requires": [
+    "mage_guild"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "monk"
+    }
+  ]
+}

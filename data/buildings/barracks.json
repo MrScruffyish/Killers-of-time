@@ -1,0 +1,15 @@
+{
+  "id": "barracks",
+  "name": "Barracks",
+  "race": "humans",
+  "cost": {
+    "gold": 300,
+    "wood": 5
+  },
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "militia"
+    }
+  ]
+}

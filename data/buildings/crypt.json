@@ -1,0 +1,18 @@
+{
+  "id": "crypt",
+  "name": "Crypt",
+  "race": "undead",
+  "cost": {
+    "gold": 500,
+    "stone": 4
+  },
+  "requires": [
+    "cursed_graveyard"
+  ],
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "zombie"
+    }
+  ]
+}

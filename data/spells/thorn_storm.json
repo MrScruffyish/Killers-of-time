@@ -1,0 +1,18 @@
+{
+  "id": "thorn_storm",
+  "name": "Thorn Storm",
+  "school": "nature",
+  "level": 3,
+  "cost": 12,
+  "requiredMagic": 3,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "A storm of thorns tears into one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 28,
+      "perPower": 17
+    }
+  ]
+}

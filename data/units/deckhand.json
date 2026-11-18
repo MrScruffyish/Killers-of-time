@@ -1,0 +1,18 @@
+{
+  "id": "deckhand",
+  "name": "Deckhand",
+  "race": "tidefolk",
+  "tier": 1,
+  "attack": 4,
+  "defense": 4,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 8,
+  "battleSpeed": 5,
+  "weeklyGrowth": 14,
+  "cost": {
+    "gold": 30
+  },
+  "initiative": 8,
+  "upgradesTo": "corsair"
+}

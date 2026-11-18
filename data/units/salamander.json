@@ -1,0 +1,17 @@
+{
+  "id": "salamander",
+  "name": "Salamander",
+  "race": "neutral",
+  "tier": 2,
+  "attack": 9,
+  "defense": 6,
+  "damageMin": 3,
+  "damageMax": 6,
+  "maxHp": 22,
+  "battleSpeed": 6,
+  "weeklyGrowth": 6,
+  "cost": {
+    "gold": 170
+  },
+  "initiative": 9
+}

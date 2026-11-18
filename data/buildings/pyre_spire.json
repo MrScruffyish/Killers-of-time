@@ -1,0 +1,16 @@
+{
+  "id": "pyre_spire",
+  "name": "Pyre Spire",
+  "race": "ashborn",
+  "cost": {
+    "gold": 1600,
+    "sulphur": 4
+  },
+  "upgradeOf": "witch_coven",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "pyre_witch"
+    }
+  ]
+}

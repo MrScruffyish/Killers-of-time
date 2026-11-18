@@ -1,0 +1,28 @@
+{
+  "id": "arch_lich",
+  "name": "Arch Lich",
+  "race": "undead",
+  "tier": 3,
+  "attack": 14,
+  "defense": 12,
+  "damageMin": 9,
+  "damageMax": 14,
+  "maxHp": 42,
+  "battleSpeed": 6,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 730,
+    "mercury": 2
+  },
+  "initiative": 9,
+  "range": 7,
+  "shots": 12,
+  "abilities": [
+    "undead"
+  ],
+  "spellPoints": 20,
+  "spells": [
+    "death_touch",
+    "drain_life"
+  ]
+}

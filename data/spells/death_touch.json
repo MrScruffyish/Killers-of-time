@@ -1,0 +1,18 @@
+{
+  "id": "death_touch",
+  "name": "Death Touch",
+  "school": "dark",
+  "level": 2,
+  "cost": 9,
+  "requiredMagic": 2,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "Dark energy withers one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 20,
+      "perPower": 15
+    }
+  ]
+}

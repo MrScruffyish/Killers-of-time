@@ -1,0 +1,18 @@
+{
+  "id": "imp",
+  "name": "Imp",
+  "race": "ashborn",
+  "tier": 1,
+  "attack": 5,
+  "defense": 2,
+  "damageMin": 1,
+  "damageMax": 3,
+  "maxHp": 6,
+  "battleSpeed": 7,
+  "weeklyGrowth": 15,
+  "cost": {
+    "gold": 25
+  },
+  "initiative": 10,
+  "upgradesTo": "fiend"
+}

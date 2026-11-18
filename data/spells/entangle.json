@@ -1,0 +1,19 @@
+{
+  "id": "entangle",
+  "name": "Entangle",
+  "school": "nature",
+  "level": 1,
+  "cost": 5,
+  "requiredMagic": 1,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "Roots hold an enemy stack: it moves much less for 2 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "battleSpeed",
+      "amount": -3,
+      "rounds": 2
+    }
+  ]
+}

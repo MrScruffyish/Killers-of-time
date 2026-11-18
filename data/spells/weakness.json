@@ -1,0 +1,19 @@
+{
+  "id": "weakness",
+  "name": "Weakness",
+  "school": "dark",
+  "level": 1,
+  "cost": 5,
+  "requiredMagic": 1,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "One enemy stack strikes weaker for 3 rounds.",
+  "effects": [
+    {
+      "type": "modifyStat",
+      "stat": "attack",
+      "amount": -3,
+      "rounds": 3
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "soul_reap",
+  "name": "Soul Reap",
+  "school": "dark",
+  "level": 4,
+  "cost": 18,
+  "requiredMagic": 4,
+  "scope": "battle",
+  "target": "enemy",
+  "description": "Tears the life from one enemy stack.",
+  "effects": [
+    {
+      "type": "damage",
+      "amount": 45,
+      "perPower": 30
+    }
+  ]
+}

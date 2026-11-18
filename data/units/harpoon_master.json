@@ -1,0 +1,19 @@
+{
+  "id": "harpoon_master",
+  "name": "Harpoon Master",
+  "race": "tidefolk",
+  "tier": 2,
+  "attack": 8,
+  "defense": 5,
+  "damageMin": 3,
+  "damageMax": 5,
+  "maxHp": 14,
+  "battleSpeed": 5,
+  "weeklyGrowth": 9,
+  "cost": {
+    "gold": 165
+  },
+  "initiative": 9,
+  "range": 6,
+  "shots": 12
+}

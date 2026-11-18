@@ -1,0 +1,17 @@
+{
+  "id": "basilisk",
+  "name": "Basilisk",
+  "race": "neutral",
+  "tier": 3,
+  "attack": 11,
+  "defense": 13,
+  "damageMin": 7,
+  "damageMax": 11,
+  "maxHp": 48,
+  "battleSpeed": 4,
+  "weeklyGrowth": 4,
+  "cost": {
+    "gold": 480
+  },
+  "initiative": 5
+}

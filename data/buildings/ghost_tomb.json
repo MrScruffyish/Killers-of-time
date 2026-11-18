@@ -1,0 +1,17 @@
+{
+  "id": "ghost_tomb",
+  "name": "Ghost Dragon Tomb",
+  "race": "undead",
+  "cost": {
+    "gold": 1700,
+    "stone": 4,
+    "mercury": 1
+  },
+  "upgradeOf": "dragon_grave",
+  "effects": [
+    {
+      "type": "dwelling",
+      "unit": "ghost_dragon"
+    }
+  ]
+}

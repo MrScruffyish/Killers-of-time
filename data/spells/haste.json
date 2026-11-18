@@ -1,0 +1,3 @@
+{ "id": "haste", "name": "Haste", "school": "air", "level": 2, "cost": 8, "requiredMagic": 2,
+  "scope": "battle", "target": "ally", "description": "One of your stacks moves further for 3 rounds.",
+  "effects": [ { "type": "modifyStat", "stat": "battleSpeed", "amount": 2, "rounds": 3 } ] }

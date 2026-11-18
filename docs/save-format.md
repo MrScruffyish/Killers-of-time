@@ -1,0 +1,72 @@
+# Save game format (version 4)
+
+`GameState::toJson()` / `GameState::fromJson()` (`src/core/model/GameStateJson.cpp`).
+Files are written compactly and atomically (`QSaveFile`). Loading checks the
+whole file against the game content and reports every problem; on failure the
+target `GameState` is left unchanged.
+
+Top level fields: `formatVersion`, `day`, `nextId`, `currentIndex`, `map`, `rng`,
+`explored`, `turnOrder`, `players`, `heroes`, `armies`, `towns`, `mapDwellings`, `mines`.
+
+- **Ids** are unique across all object kinds (players, heroes, armies, towns, mines).
+  Team ids come from the same counter but are shared by the players of a team.
+- **map**: `width`, `height` and `tiles` (row-major, `width * height` entries): the terrain
+  id of each tile; with text ids also `terrainPalette` (terrain keys), and `tiles` are
+  indices into it.
+- **explored**: per team id, base64 of one byte per tile (1 = explored), `width * height` bytes.
+- **rng**: `seed` as a string (64-bit numbers do not fit a JSON number) and the exact
+  generator `state`, so a loaded game continues with the same random numbers.
+- **players**: id, name, team, controller (`human`/`ai`), optional aiProfile, race, color, resources;
+  a human seat already played also has `gameTokenHash` (SHA-256 of the client's game token, so only that client gets the seat back).
+- **heroes**: id, name, class, owner, level, experience, traits, spellPoints,
+  pendingTraitPicks, movementPoints, army, optional template (tavern hero id). Position lives in the hero's army.
+- **armies**: id, optional owner/hero (absent = neutral / none), x, y, stacks.
+  A stack is `{unit, maxHp, totalHp}`; the unit count is derived from `totalHp`.
+- **towns**: id, name, race, optional owner, x, y (the gate; a town covers x..x+1, y-1..y, the other three tiles are walls), buildings, optional garrison army,
+  lastBuildDay, lastHireWeek (optional: the week a hero was last hired here), recruitPool (dwelling chain root building id -> units waiting),
+  importedUnits (unit id -> units sent here from map dwellings), tavernOffers (hero ids).
+- **mapDwellings**: id, unit, optional owner, x, y, available (units waiting).
+- **mines**: id, resource, dailyAmount, optional owner, x, y.
+
+Cross-checks on load: owners are players, positions are on the map, unit/trait/
+terrain/resource/class ids exist, a hero and his army point at each other, no
+duplicate ids, at most 10 stacks per army. Hero levels have no gameplay cap; saves accept
+levels up to 1,000,000 as a sanity bound.
+
+Content ids: `contentIds` is `numbers` (saves; the default) or `text` (scenarios, which
+are data themselves, and `kot_saveview`'s output). With numbers, an id is the position of
+the item in its content list (sorted by its key in the data files) and the save has
+`contentChecksum` (`ContentRegistry::checksum`, all keys in id order): a save made with
+other game data is refused. Resource amounts are then arrays, one number per resource id,
+trailing zeros left out (`[750, 0, 2]`); with text they are objects (`{"gold": 750}`). A
+mine's `resource` is a number or a key; so is a unit (`unit` of stacks and map dwellings), and
+`importedUnits` is keyed by unit id (as text) or key. A town's `buildings` are building ids or keys,
+`recruitPool` is keyed by building id (as text) or key. A hero's `spells` are spell ids or keys; a player's and a town's `race` a race id or key.
+
+Only saves of exactly `kSaveFormatVersion` load: there is no conversion of older saves
+(an old save needs the game version that made it). Bump the version when the format
+changes incompatibly. History: 1 first format; 2 towns cover 2x2 tiles; 3 content ids
+(units, buildings, resources, ...) are numbers (positions in the content lists), with a
+checksum of the content they belong to; 4 a seat's hash is `gameTokenHash` (game tokens,
+not seat keys).
+Save files (not scenarios) also have `gameVersion` (the game that saved it) and `savedAt`
+(ISO date and time); both are shown in the load list.
+
+Heroes may have `spells` (list of spell ids, the spellbook; optional, validated against the content).
+Heroes may have `artifacts` (worn artifact ids; their bonuses are already in `traits`) and
+`backpack` (carried, not worn, no bonus).
+`history` (optional): one entry per week, `week` and `players` (player id -> `armyValue`, `towns`, `mines`, `heroes`, `gold`), for the end screen.
+`mapObjects` (optional): `id`, `kind` (`treasure`/`artifact`/`site`/`chest`), `x`, `y`, `resources` or `artifact`, and for a chest `experience`;
+sites have `site` (shrine, magic_well, obelisk, arena, learning_stone, quest_hut) and `visited` (hero id, or
+1000000 + team id for the obelisk and the quest hut -> day of the visit; for a hut this remembers which teams learned the wish). A quest_hut has `quest`: what it asks, one of
+`needArtifact`, `needResources`, `needLevel`; what it gives, `rewardResources`, `rewardArtifact`,
+`rewardExperience`; and `done` once someone brought it.
+Story (scenarios, optional): `intro` (told at the start), `events` (each `day`, `text`, optional
+`gift` (resources for every player), optional `monster`, `count`, `x`, `y` (monsters that appear
+there if the tile is free)) and `news` (the texts of today's events).
+The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses) and `townlessSince` (the day the player lost his last town; 7 days later he is out).
+Army stacks may have `experience` (average per unit, veterancy).
+`victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie). Last team standing always wins too.
+`weekEvent` (optional): this week's event id.
+`fogOfWar: false` (optional): no fog of war, explored land stays in sight. `defeat` (optional, default `week`): when a player is out, `week` (7 days without a town), `town` (at once with his last town) or `all` (no towns and no heroes). `hiddenMap: false` (optional): the map was revealed at the start (places on explored land are always known).
+Heroes may have `inBoat: true` (sailing) and `destination: [x, y]` (the target of a move that ran out of movement; cleared on arrival).

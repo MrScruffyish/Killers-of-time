@@ -1,0 +1,20 @@
+{
+  "id": "town_hall",
+  "name": "Town Hall",
+  "cost": {
+    "gold": 2500,
+    "stone": 5,
+    "wood": 5
+  },
+  "requires": [
+    "village_hall",
+    "marketplace"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "gold",
+      "amount": 250
+    }
+  ]
+}

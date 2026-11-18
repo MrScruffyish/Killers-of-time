@@ -1,0 +1,19 @@
+{
+  "id": "coal_pits",
+  "name": "Coal Pits",
+  "race": "orcs",
+  "cost": {
+    "gold": 1000,
+    "wood": 5
+  },
+  "requires": [
+    "village_hall"
+  ],
+  "effects": [
+    {
+      "type": "income",
+      "resource": "coal",
+      "amount": 1
+    }
+  ]
+}
