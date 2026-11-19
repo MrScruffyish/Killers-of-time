@@ -24,6 +24,12 @@ class TstVictory : public QObject {
             }
     }
 
+    HeroId heroOf(PlayerId player) const {
+        for (const Hero& h : gs.heroes())
+            if (h.owner == player) return h.id;
+        return HeroId();
+    }
+
 private slots:
     void initTestCase() {
         QStringList errors;
@@ -174,7 +180,7 @@ private slots:
         QVERIFY(describeVictory(gs, reg).contains(QStringLiteral("Flying Purple People Eater")));
         // Other armies dying, or the target vanishing without a recorded kill (a join
         // or an edit), do not count as slaying it.
-        noteArmyDestroyed(gs, gs.hero(a)->army, b);
+        noteArmyDestroyed(gs, gs.hero(heroOf(a))->army, b);
         const ArmyId other = gs.addArmy(PlayerId(), {4, 4});
         gs.army(other)->addUnits(eater, 1, reg.unit(eater)->maxHp);
         noteArmyDestroyed(gs, other, b);
@@ -207,14 +213,14 @@ private slots:
         QVERIFY(!gameOutcome(gs, reg).over);
         QVERIFY(describeVictory(gs, reg).contains(QStringLiteral("Dragon Blade")));
         // A prize in the backpack counts: there is no room to wear everything.
-        gs.hero(a)->backpack << prize;
+        gs.hero(heroOf(a))->backpack << prize;
         GameOutcome o = gameOutcome(gs, reg);
         QVERIFY(o.over);
         QCOMPARE(o.winner, teamA);
         // Another hero carrying it, or wearing it instead, wins for his team too.
-        gs.hero(a)->backpack.clear();
+        gs.hero(heroOf(a))->backpack.clear();
         QVERIFY(!gameOutcome(gs, reg).over);
-        gs.hero(c)->artifacts << prize;
+        gs.hero(heroOf(c))->artifacts << prize;
         o = gameOutcome(gs, reg);
         QVERIFY(o.over);
         QCOMPARE(o.winner, teamB);
