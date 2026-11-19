@@ -44,6 +44,7 @@ make build      # Debug build in build/ only
 make art        # Debug build + refresh data/art if inputs changed
 make test       # Debug build + art refresh, then ctest (output also in last_test)
 make play       # RelWithDebInfo build in build-play/ only
+make play_to_get_debug  # build play, run the client with verbose logging, save play-<time>.log
 make release    # Release build in build-release/ only
 make package    # Release build, then make the .deb in build-release/
 make install    # install an existing Release build (sudo make install for /usr/local)
@@ -71,9 +72,11 @@ the same command again; it only recompiles what changed.
 
 Log filtering example: `QT_LOGGING_RULES="kot.*.debug=true" ./build/bin/kot_server`
 
-**Logs when something goes wrong.** Qt log messages go to the terminal (stderr); turn on the
-verbose ones with `QT_LOGGING_RULES="kot.*.debug=true"` and keep a copy with `... 2>&1 | tee
-play.log`. On a crash (SIGSEGV/SIGABRT/SIGFPE/SIGILL/SIGBUS) the client also appends a
+**Logs when something goes wrong.** `make play_to_get_debug` builds the play client, starts
+it with verbose Qt logging and saves everything it prints to a timestamped
+`play-<time>.log` in the project root (ignored by git). Otherwise Qt log messages go to the
+terminal (stderr); turn on the verbose ones with `QT_LOGGING_RULES="kot.*.debug=true"` and
+keep a copy with `... 2>&1 | tee play.log`. On a crash (SIGSEGV/SIGABRT/SIGFPE/SIGILL/SIGBUS) the client also appends a
 backtrace to `~/.local/share/KillersOfTime/crash.log`, shared by all builds. Keep the `play`
 build for playing: it runs at full speed but still has the debug symbols that make those
 backtraces name functions and lines.

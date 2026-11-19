@@ -6,6 +6,7 @@
 #   make art          Debug build + refresh data/art if inputs changed — no tests
 #   make test         Debug build + art refresh + ctest in build/
 #   make play         RelWithDebInfo build in build-play/ only
+#   make play_to_get_debug   Build play, run the client with verbose logging, save play-<time>.log
 #   make release      Release build in build-release/ only
 #   make install      Install the existing Release build
 #   make package      Release build, then a .deb in build-release/
@@ -26,7 +27,7 @@ ART_SOURCES := $(shell find data -type f -name '*.json' 2>/dev/null) \
                $(shell find src/artgen -type f \( -name '*.cpp' -o -name '*.h' \) 2>/dev/null) \
                src/client/ArtPaths.h src/tools/kot_artexport.cpp
 
-.PHONY: all configure build art test play release install package clean
+.PHONY: all configure build art test play play_to_get_debug release install package clean
 
 all: art play release
 
@@ -51,6 +52,12 @@ $(ART_STAMP): $(ART_SOURCES) $(BUILD_DIR)/bin/kot_artexport
 
 test: art
 	@bash -o pipefail -c 'ctest --test-dir $(BUILD_DIR) --output-on-failure --stop-on-failure 2>&1 | tee last_test'
+
+# Run the play client with verbose Qt logging and keep everything it prints in a
+# timestamped log in the project root (crash backtraces also go to crash.log).
+play_to_get_debug: play
+	@bash -o pipefail -c 'log="play-$$(date +%Y%m%d-%H%M%S).log"; echo "Logging to $$log (set QT_LOGGING_RULES to change the filter)"; \
+	  QT_LOGGING_RULES="$${QT_LOGGING_RULES:-kot.*.debug=true}" ./$(PLAY_BUILD_DIR)/bin/kot_client 2>&1 | tee "$$log"'
 
 play:
 	$(CMAKE) -S . -B $(PLAY_BUILD_DIR) -G $(GENERATOR) -DCMAKE_BUILD_TYPE=RelWithDebInfo
