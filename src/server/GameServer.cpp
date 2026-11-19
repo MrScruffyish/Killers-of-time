@@ -624,6 +624,8 @@ void GameServer::generateContent(Client& client, const Message& message) {
         p.monsterPercent = b.value("monsterPercent").toInt(100);
         p.victory = b.value("victory").toString("conquest");
         p.victoryAmount = b.value("victoryAmount").toInt(0);
+        p.monster = b.value("monster").toString(p.monster);
+        p.artifact = b.value("artifact").toString(p.artifact);
         core::GameState gs;
         if (!core::generateScenario(*m_content, p, &gs, &error) || !QDir().mkpath(scenarioDir) ||
             !core::saveScenario(QDir(scenarioDir).filePath(id + ".json"), id, b.value("name").toString(id),

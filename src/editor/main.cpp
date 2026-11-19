@@ -168,14 +168,20 @@ public:
         m_victoryType->addItem(tr("Collect gold"), 2);
         m_victoryType->addItem(tr("Most towns after N days"), 3);
         m_victoryType->addItem(tr("Slay a monster"), 4);
+        m_victoryType->addItem(tr("Find an artifact"), 5);
+        m_victoryType->addItem(tr("Explore the map"), 6);
         m_victoryAmount = new QSpinBox(dock);
         m_victoryAmount->setRange(0, 10000000);
         m_victoryTown = new QComboBox(dock);
         m_victoryMonster = new QComboBox(dock);
+        m_victoryArtifact = new QComboBox(dock);
+        m_victoryArtifact->addItem(tr("(choose an artifact)"), QString());
+        for (const ArtifactDef& art : m_content.artifacts()) m_victoryArtifact->addItem(art.name, art.key);
         winForm->addRow(tr("Victory"), m_victoryType);
-        winForm->addRow(tr("Gold / days"), m_victoryAmount);
+        winForm->addRow(tr("Gold / days / %"), m_victoryAmount);
         winForm->addRow(tr("Town to take"), m_victoryTown);
         winForm->addRow(tr("Monster to slay"), m_victoryMonster);
+        winForm->addRow(tr("Artifact to find"), m_victoryArtifact);
         side->addLayout(winForm);
 
         side->addWidget(new QLabel(tr("<b>Tool</b>"), dock));
@@ -258,6 +264,8 @@ public:
         m_path = path;
         m_victoryType->setCurrentIndex(static_cast<int>(m_state.victory().type));
         m_victoryAmount->setValue(m_state.victory().amount);
+        const ArtifactDef* prize = m_content.artifact(m_state.victory().targetArtifact);
+        m_victoryArtifact->setCurrentIndex(prize ? std::max(0, m_victoryArtifact->findData(prize->key)) : 0);
         m_id->setText(s.info.id);
         m_name->setText(s.info.name);
         m_description->setText(s.info.description);
@@ -573,8 +581,20 @@ private:
                 return;
             }
         }
+        if (v.type == VictoryCondition::Type::FindArtifact) {
+            const QString key = m_victoryArtifact->currentData().toString();
+            v.targetArtifact = m_content.artifactId(key);
+            if (!m_content.artifact(v.targetArtifact)) {
+                QMessageBox::warning(this, tr("Save"), tr("Choose the artifact to find."));
+                return;
+            }
+        }
         if ((v.type == VictoryCondition::Type::Gold || v.type == VictoryCondition::Type::Days) && v.amount <= 0) {
             QMessageBox::warning(this, tr("Save"), tr("Set the gold amount or the number of days."));
+            return;
+        }
+        if (v.type == VictoryCondition::Type::ExploreMap && (v.amount < 1 || v.amount > 100)) {
+            QMessageBox::warning(this, tr("Save"), tr("Set the percentage of land to explore (1 to 100)."));
             return;
         }
         m_state.setVictory(v);
@@ -601,7 +621,7 @@ private:
     QString m_path;
     EditorMap* m_map;
     QLineEdit *m_id, *m_name, *m_description;
-    QComboBox *m_victoryType, *m_victoryTown, *m_victoryMonster;
+    QComboBox *m_victoryType, *m_victoryTown, *m_victoryMonster, *m_victoryArtifact;
     QSpinBox* m_victoryAmount;
     QComboBox *m_tool, *m_terrain, *m_owner, *m_race, *m_resource, *m_unit, *m_artifact, *m_heroClass;
     QSpinBox *m_brush, *m_amount;

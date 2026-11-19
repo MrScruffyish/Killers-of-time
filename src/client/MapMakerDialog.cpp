@@ -16,6 +16,7 @@
 #include <QVBoxLayout>
 
 #include "client/Art.h"
+#include "core/rules/ScenarioGen.h"
 
 namespace kot::client {
 
@@ -37,6 +38,18 @@ QComboBox* combo(QWidget* parent, const QStringList& items, int current) {
     auto* c = new QComboBox(parent);
     c->addItems(items);
     c->setCurrentIndex(current);
+    return c;
+}
+// Content keys are lower-case with underscores; show them as readable names.
+QString labelFromKey(const QString& key) {
+    QString label = key;
+    label.replace('_', ' ');
+    if (!label.isEmpty()) label[0] = label[0].toUpper();
+    return label;
+}
+QComboBox* keyCombo(QWidget* parent, const QStringList& keys) {
+    auto* c = new QComboBox(parent);
+    for (const QString& key : keys) c->addItem(labelFromKey(key), key);
     return c;
 }
 }  // namespace
@@ -82,18 +95,27 @@ MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent) : QDia
     form->addRow(QString(), m_roads);
     m_monsters = combo(page, {tr("Weak"), tr("Normal"), tr("Strong"), tr("Very strong")}, 1);
     form->addRow(tr("Monsters"), m_monsters);
-    m_goal = combo(page, {tr("Defeat everyone"), tr("Take the enemy capital"), tr("Slay the monster"), tr("Collect gold"),
-                          tr("Most towns after a number of days")}, 0);
+    m_goal = combo(page, {tr("Defeat everyone"), tr("Take the enemy capital"), tr("Slay a boss"), tr("Collect gold"),
+                          tr("Most towns after a number of days"), tr("Find an artifact"), tr("Explore the map")}, 0);
+    m_boss = keyCombo(page, core::slayBossKeys());
+    m_artifact = keyCombo(page, core::findArtifactKeys());
     m_goalAmount = spin(page, 10, 1000000, 90);
     m_goalAmount->setVisible(false);
+    m_boss->setVisible(false);
+    m_artifact->setVisible(false);
     auto* goalRow = new QHBoxLayout();
     goalRow->addWidget(m_goal, 1);
+    goalRow->addWidget(m_boss);
+    goalRow->addWidget(m_artifact);
     goalRow->addWidget(m_goalAmount);
     form->addRow(tr("Goal"), goalRow);
     connect(m_goal, &QComboBox::currentIndexChanged, this, [this](int i) {
-        m_goalAmount->setVisible(i >= 3);
-        m_goalAmount->setValue(i == 3 ? 50000 : 90);
-        m_goalAmount->setSuffix(i == 3 ? tr(" gold") : tr(" days"));
+        m_boss->setVisible(i == 2);
+        m_artifact->setVisible(i == 5);
+        m_goalAmount->setVisible(i == 3 || i == 4 || i == 6);
+        m_goalAmount->setRange(1, i == 6 ? 100 : 1000000);
+        m_goalAmount->setValue(i == 3 ? 50000 : i == 6 ? 60 : 90);
+        m_goalAmount->setSuffix(i == 3 ? tr(" gold") : i == 6 ? tr("% of the land") : tr(" days"));
     });
     m_seed = spin(page, 1, 999999, seed);
     auto* seedRow = new QHBoxLayout();
@@ -112,7 +134,7 @@ MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent) : QDia
     m_campaignName = new QLineEdit(tr("My campaign"), cpage);
     m_campaignName->setObjectName("campaignName");
     cform->addRow(tr("Name"), m_campaignName);
-    m_chapters = spin(cpage, 2, 6, 3);
+    m_chapters = spin(cpage, 2, 20, 3);
     cform->addRow(tr("Chapters"), m_chapters);
     m_campaignRace = new QComboBox(cpage);
     m_campaignRace->addItem(tr("Random"), QStringLiteral("random"));
@@ -174,13 +196,15 @@ QJsonObject MapMakerDialog::params() const {
     static const double mountains[] = {0.02, 0.06, 0.12};
     static const int rivers[] = {0, 1, -1, 8};
     static const int monsters[] = {60, 100, 150, 220};
-    static const char* goals[] = {"conquest", "capital", "slay", "gold", "days"};
+    static const char* goals[] = {"conquest", "capital", "slay", "gold", "days", "artifact", "explore"};
+    const int goal = m_goal->currentIndex();
     return {{"kind", "scenario"}, {"id", idFrom(m_name->text())}, {"name", m_name->text().trimmed()},
             {"width", m_size->currentData().toInt()}, {"height", m_size->currentData().toInt()}, {"islands", m_type->currentIndex() == 1},
             {"races", races}, {"seaLevel", water[m_water->currentIndex()]}, {"mountains", mountains[m_mountains->currentIndex()]},
             {"rivers", rivers[m_rivers->currentIndex()]}, {"roads", m_roads->isChecked()},
-            {"monsterPercent", monsters[m_monsters->currentIndex()]}, {"victory", goals[m_goal->currentIndex()]},
-            {"victoryAmount", m_goal->currentIndex() >= 3 ? m_goalAmount->value() : 0}, {"seed", m_seed->value()}};
+            {"monsterPercent", monsters[m_monsters->currentIndex()]}, {"victory", goals[goal]},
+            {"monster", m_boss->currentData().toString()}, {"artifact", m_artifact->currentData().toString()},
+            {"victoryAmount", goal == 3 || goal == 4 || goal == 6 ? m_goalAmount->value() : 0}, {"seed", m_seed->value()}};
 }
 
 }  // namespace kot::client

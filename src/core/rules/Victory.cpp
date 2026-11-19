@@ -18,6 +18,19 @@ bool timeRanOut(const GameState& state, const Player& p) {
     if (state.defeatRule() == QLatin1String("all")) return false;
     return p.townlessSince > 0 && state.day() - p.townlessSince >= kTownlessGraceDays;
 }
+// How much of the walkable land a team has revealed, in percent (water and
+// impassable rock do not count towards exploration).
+int exploredLandPercent(const GameState& state, const ContentRegistry& content, TeamId team) {
+    const QByteArray& explored = state.exploredMap(team);
+    const QVector<TerrainId>& cells = state.map().cells();
+    int land = 0, seen = 0;
+    for (qsizetype i = 0; i < cells.size() && i < explored.size(); ++i) {
+        if (!content.terrain(cells[i]).walkable) continue;
+        ++land;
+        if (explored[i]) ++seen;
+    }
+    return land ? seen * 100 / land : 0;
+}
 }  // namespace
 
 bool isEliminated(const GameState& state, PlayerId player) {
@@ -111,6 +124,29 @@ GameOutcome gameOutcome(const GameState& state, const ContentRegistry& content) 
             o.winner = v.slayerTeam;
         }
         break;
+    case VictoryCondition::Type::FindArtifact:
+        for (const Hero& h : state.heroes()) {
+            if (!h.owner.isValid() || isEliminated(state, h.owner)) continue;
+            if (h.artifacts.contains(v.targetArtifact) || h.backpack.contains(v.targetArtifact)) {
+                o.over = true;
+                o.winner = state.teamOf(h.owner);
+                break;
+            }
+        }
+        break;
+    case VictoryCondition::Type::ExploreMap:
+        // With no hidden map every team already knows every tile at the start, so
+        // there would be nothing to explore: the goal is inactive in that case.
+        if (!state.hiddenMap()) break;
+        for (const Player& p : state.players()) {
+            if (isEliminated(state, p.id)) continue;
+            if (v.amount > 0 && exploredLandPercent(state, content, p.team) >= v.amount) {
+                o.over = true;
+                o.winner = p.team;
+                break;
+            }
+        }
+        break;
     case VictoryCondition::Type::Conquest:
         break;
     }
@@ -145,6 +181,12 @@ QString describeVictory(const GameState& state, const ContentRegistry& content) 
         }
         return QStringLiteral("Slay %1 (or defeat everyone)").arg(name);
     }
+    case VictoryCondition::Type::FindArtifact: {
+        const ArtifactDef* a = content.artifact(v.targetArtifact);
+        return QStringLiteral("Find the %1 (or defeat everyone)").arg(a ? a->name : QStringLiteral("artifact"));
+    }
+    case VictoryCondition::Type::ExploreMap:
+        return QStringLiteral("Explore %1% of the land (or defeat everyone)").arg(v.amount);
     case VictoryCondition::Type::Conquest:
         break;
     }

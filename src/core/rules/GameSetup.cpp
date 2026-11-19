@@ -565,6 +565,20 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
     }
     QList<ArtifactId> artifactIds;
     for (const ArtifactDef& a : content.artifacts()) artifactIds << a.id;
+    // A find-the-artifact goal needs its prize to be there, guarded like the other
+    // valuable treasures. It may still appear among the random ones as well.
+    if (params.goalArtifact.isValid()) {
+        const ArtifactDef* prize = content.artifact(params.goalArtifact);
+        if (!prize) return fail(error, QStringLiteral("unknown goal artifact"));
+        Pos where;
+        if (!place(&where)) return fail(error, QStringLiteral("no room for the goal artifact"));
+        MapObject o;
+        o.kind = MapObject::Kind::Artifact;
+        o.pos = where;
+        o.artifact = params.goalArtifact;
+        gs.addMapObject(o);
+        guard(where, std::clamp(prize->value + 1, 1, 3));
+    }
     for (int i = 0, n = std::max(2, area / 600); i < n && !artifactIds.isEmpty(); ++i) {
         Pos where;
         if (!place(&where)) break;

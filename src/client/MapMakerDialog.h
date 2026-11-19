@@ -41,6 +41,8 @@ private:
     QCheckBox* m_roads;
     QComboBox* m_monsters;
     QComboBox* m_goal;
+    QComboBox* m_boss;      // used by the "slay" goal
+    QComboBox* m_artifact;  // used by the "find" goal
     QSpinBox* m_goalAmount;
     QSpinBox* m_seed;
     // Campaign

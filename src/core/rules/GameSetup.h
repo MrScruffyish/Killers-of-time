@@ -40,6 +40,9 @@ struct GameSetupParams {
     // For a "slay" scenario goal: a hero-less army of this unit is placed and its
     // id is recorded in the game's SlayMonster victory condition (invalid = none).
     UnitTypeId slayMonster;
+    // For a "find artifact" goal: this artifact is guaranteed to be on the map
+    // (invalid = the usual random assortment only).
+    ArtifactId goalArtifact;
 };
 
 // Creates a new game: generates the map, gives every player a start town of his

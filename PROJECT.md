@@ -337,10 +337,13 @@ cast (limited: mana-less with charges per battle, or small spell list).
 
 - Last team standing (all towns and heroes lost) always wins.
 - A scenario may also name a town to capture, a gold amount, a number of days
-  after which the team with the most towns wins, or one particular neutral monster
-  army to slay (the killer's team wins). Generated "slay" scenarios place the
-  one-horned, flying purple people eater as that army; it is a data-only unit with no
-  weekly growth, so no town or dwelling can ever recruit it.
+  after which the team with the most towns wins, one particular neutral monster
+  army to slay (the killer's team wins), an artifact a hero must bring back, or a
+  share of the land to explore. Generated "slay" scenarios place a boss as that
+  army — by default the one-horned, flying purple people eater, a data-only unit with
+  no weekly growth, so no town or dwelling can ever recruit it. Campaigns of 2-20
+  chapters rotate bosses, artifacts and the other goals; their last chapter is
+  always conquest.
 
 ### 5.14 Design principle: avoid micromanagement
 

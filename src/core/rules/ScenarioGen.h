@@ -24,12 +24,20 @@ struct ScenarioGenParams {
     bool roads = true;
     int monsterPercent = 100;   // size of the monster groups
     // Goal: "conquest", "capital" (take the second player's capital), "gold"
-    // (victoryAmount gold first), "days" (most towns after victoryAmount days) or
-    // "slay" (destroy one special monster army; `monster` is its unit key).
+    // (victoryAmount gold first), "days" (most towns after victoryAmount days),
+    // "slay" (destroy one special monster army; `monster` is its unit key),
+    // "artifact" (a hero picks up `artifact`, an artifact key) or "explore"
+    // (reveal victoryAmount percent of the walkable land; 0 = 60).
     QString victory = QStringLiteral("conquest");
     int victoryAmount = 0;
     QString monster = QStringLiteral("flying_purple_people_eater");
+    QString artifact = QStringLiteral("dragon_blade");
 };
+
+// The monsters the generated "slay" goals rotate through, and the prizes of the
+// generated "artifact" goals, in campaign order (all keys exist in the content).
+QStringList slayBossKeys();
+QStringList findArtifactKeys();
 
 // Makes the scenario: a new game in `out` (players named Player 1..N, the
 // first one meant for the human) with its goal set. Fills `error` on failure.
@@ -40,7 +48,7 @@ bool generateScenario(const ContentRegistry& content, const ScenarioGenParams& p
 // `scenarioDir` and the campaign <id>.json into `campaignDir`.
 struct CampaignGenParams {
     QString id, name;
-    int chapters = 3;           // 2..6
+    int chapters = 3;           // 2..20
     QString playerRace = QStringLiteral("random");
     int startSize = 48;         // first map; each chapter is 16 tiles bigger (at most 128)
     quint64 seed = 1;

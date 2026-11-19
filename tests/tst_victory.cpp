@@ -197,6 +197,67 @@ private slots:
         QCOMPARE(loaded.victory().slayerTeam, teamB);
     }
 
+    void findingTheArtifactWins() {
+        const ArtifactId prize = reg.artifactId(QStringLiteral("dragon_blade"));
+        QVERIFY(prize.isValid());
+        VictoryCondition v;
+        v.type = VictoryCondition::Type::FindArtifact;
+        v.targetArtifact = prize;
+        gs.setVictory(v);
+        QVERIFY(!gameOutcome(gs, reg).over);
+        QVERIFY(describeVictory(gs, reg).contains(QStringLiteral("Dragon Blade")));
+        // A prize in the backpack counts: there is no room to wear everything.
+        gs.hero(a)->backpack << prize;
+        GameOutcome o = gameOutcome(gs, reg);
+        QVERIFY(o.over);
+        QCOMPARE(o.winner, teamA);
+        // Another hero carrying it, or wearing it instead, wins for his team too.
+        gs.hero(a)->backpack.clear();
+        QVERIFY(!gameOutcome(gs, reg).over);
+        gs.hero(c)->artifacts << prize;
+        o = gameOutcome(gs, reg);
+        QVERIFY(o.over);
+        QCOMPARE(o.winner, teamB);
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.victory().type, VictoryCondition::Type::FindArtifact);
+        QCOMPARE(loaded.victory().targetArtifact, prize);
+    }
+
+    void exploringTheLandWins() {
+        VictoryCondition v;
+        v.type = VictoryCondition::Type::ExploreMap;
+        v.amount = 10;
+        gs.setVictory(v);
+        gs.exploredMap(teamA).fill(0);
+        gs.exploredMap(teamB).fill(0);
+        QVERIFY(!gameOutcome(gs, reg).over);
+        QVERIFY(describeVictory(gs, reg).contains(QStringLiteral("10%")));
+        // The 10x10 all-grass map has 100 land tiles; team B reveals 10 of them.
+        QByteArray& seen = gs.exploredMap(teamB);
+        for (int i = 0; i < 10; ++i) seen[i] = 1;
+        GameOutcome o = gameOutcome(gs, reg);
+        QVERIFY(o.over);
+        QCOMPARE(o.winner, teamB);
+        // With the whole map known from the start there is nothing to explore.
+        gs.setHiddenMap(false);
+        gs.exploredMap(teamA).fill(1);
+        v = gs.victory();
+        v.amount = 90;
+        gs.setVictory(v);
+        QVERIFY(!gameOutcome(gs, reg).over);
+        gs.setHiddenMap(true);
+        v.amount = 10;
+        gs.setVictory(v);
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.victory().type, VictoryCondition::Type::ExploreMap);
+        QCOMPARE(loaded.victory().amount, 10);
+        QVERIFY(loaded.hiddenMap());
+    }
+
     void eliminatedPlayersAreSkipped() {
         removeHeroes(b);
         gs.towns().clear();

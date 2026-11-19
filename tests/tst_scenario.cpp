@@ -1,4 +1,5 @@
 #include <QDir>
+#include <QSet>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -100,6 +101,38 @@ private slots:
         QVERIFY2(GameState::fromJson(slay.game, reg, &fromScenario, &errors), qPrintable(errors.join("\n")));
         QCOMPARE(fromScenario.victory().type, VictoryCondition::Type::SlayMonster);
         QVERIFY(fromScenario.army(fromScenario.victory().targetArmy));
+        // A different boss can be named instead of the purple eater.
+        p.victory = "slay";
+        p.monster = "elder_kraken";
+        QVERIFY2(generateScenario(reg, p, &gs, &error), qPrintable(error));
+        monster = gs.army(gs.victory().targetArmy);
+        QVERIFY(monster);
+        QCOMPARE(monster->stacks.first().unitTypeId(), reg.unitId("elder_kraken"));
+        // The find goal guarantees that its artifact is on the map, and saves it.
+        p.victory = "artifact";
+        p.artifact = "crown_of_kings";
+        QVERIFY2(generateScenario(reg, p, &gs, &error), qPrintable(error));
+        const ArtifactId prize = reg.artifactId("crown_of_kings");
+        QVERIFY(prize.isValid());
+        QCOMPARE(gs.victory().type, VictoryCondition::Type::FindArtifact);
+        QCOMPARE(gs.victory().targetArtifact, prize);
+        bool placed = false;
+        for (const MapObject& o : gs.mapObjects())
+            if (o.kind == MapObject::Kind::Artifact && o.artifact == prize) placed = true;
+        QVERIFY(placed);
+        QVERIFY(saveScenario(tmp.filePath("find.json"), "find", "Find", "", gs, reg, &error));
+        Scenario find;
+        QVERIFY2(loadScenario(tmp.filePath("find.json"), reg, &find, &errors), qPrintable(errors.join("\n")));
+        GameState fromFind;
+        QVERIFY2(GameState::fromJson(find.game, reg, &fromFind, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(fromFind.victory().type, VictoryCondition::Type::FindArtifact);
+        QCOMPARE(fromFind.victory().targetArtifact, prize);
+        // Exploring uses victoryAmount as the percentage of land to reveal.
+        p.victory = "explore";
+        p.victoryAmount = 70;
+        QVERIFY2(generateScenario(reg, p, &gs, &error), qPrintable(error));
+        QCOMPARE(gs.victory().type, VictoryCondition::Type::ExploreMap);
+        QCOMPARE(gs.victory().amount, 70);
         // Bad settings are refused.
         p.races = {"humans"};
         QVERIFY(!generateScenario(reg, p, &gs, &error));
@@ -133,6 +166,55 @@ private slots:
             lastWidth = s.info.width;
             lastPlayers = int(s.info.races.size());
         }
+    }
+
+    void generatedCampaignCanHaveTwentyChapters() {
+        QTemporaryDir tmp;
+        CampaignGenParams p;
+        p.id = "long";
+        p.chapters = 20;
+        p.startSize = 32;
+        p.playerRace = "humans";
+        p.seed = 11;
+        QString error;
+        QVERIFY2(generateCampaign(reg, p, tmp.filePath("scenarios"), tmp.filePath("campaigns"), &error), qPrintable(error));
+        CampaignDef def;
+        QStringList errors;
+        QVERIFY2(loadCampaign(tmp.filePath("campaigns/long.json"), &def, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(def.scenarios.size(), 20);
+        QSet<QString> bosses, prizes;
+        for (int c = 0; c < def.scenarios.size(); ++c) {
+            const QString& id = def.scenarios[c];
+            Scenario s;
+            QVERIFY2(loadScenario(tmp.filePath("scenarios/" + id + ".json"), reg, &s, &errors), qPrintable(errors.join("\n")));
+            GameState gs;
+            QVERIFY2(GameState::fromJson(s.game, reg, &gs, &errors), qPrintable(errors.join("\n")));
+            QVERIFY(s.info.races.size() >= 2 && s.info.races.size() <= 8);
+            const VictoryCondition& v = gs.victory();
+            if (v.type == VictoryCondition::Type::SlayMonster) {
+                const Army* army = gs.army(v.targetArmy);
+                QVERIFY(army && !army->stacks.isEmpty());
+                const UnitDef* unit = reg.unit(army->stacks.first().unitTypeId());
+                QVERIFY(unit);
+                bosses.insert(unit->key);
+            } else if (v.type == VictoryCondition::Type::FindArtifact) {
+                const ArtifactDef* artifact = reg.artifact(v.targetArtifact);
+                QVERIFY(artifact);
+                prizes.insert(artifact->key);
+                bool placed = false;
+                for (const MapObject& o : gs.mapObjects())
+                    if (o.kind == MapObject::Kind::Artifact && o.artifact == v.targetArtifact) placed = true;
+                QVERIFY(placed);
+            } else if (v.type == VictoryCondition::Type::ExploreMap) {
+                QVERIFY(v.amount >= 60 && v.amount <= 100);
+            }
+            if (c == def.scenarios.size() - 1) QCOMPARE(v.type, VictoryCondition::Type::Conquest);
+        }
+        QVERIFY2(bosses.size() >= 2, "slay chapters should use different bosses");
+        QVERIFY2(prizes.size() >= 2, "find chapters should use different artifacts");
+        p.chapters = 21;
+        QVERIFY(!generateCampaign(reg, p, tmp.filePath("scenarios"), tmp.filePath("campaigns"), &error));
+        QVERIFY(error.contains(QStringLiteral("2 to 20")));
     }
 
     void mapsNeedNoBoats() {
