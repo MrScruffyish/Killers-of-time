@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-47. Make the graphics more advanced: richer generated art for the new content and improved detail/effects where practical.
-47.1 **MANUAL**: after the art export and `make test`, the new races, metals, elites, portraits and towns have distinct generated art.
 
 ## TBD
 
@@ -55,3 +53,4 @@ file or link later).
 44. Add a playable giants race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 46. Add more buildings and upgrade chains, including the metals idea from TBD 5.
+47. Make the graphics more advanced: richer generated art for the new content and improved detail/effects where practical.
