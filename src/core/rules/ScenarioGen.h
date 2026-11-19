@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QString>
 #include <QStringList>
 
@@ -32,6 +33,9 @@ struct ScenarioGenParams {
     int victoryAmount = 0;
     QString monster = QStringLiteral("flying_purple_people_eater");
     QString artifact = QStringLiteral("dragon_blade");
+    // Goal artifacts of the other chapters of a campaign: kept out of this map's
+    // random artifacts and quest rewards so they cannot be found early.
+    QList<ArtifactId> excludedArtifacts;
 };
 
 // The monsters the generated "slay" goals rotate through, and the prizes of the

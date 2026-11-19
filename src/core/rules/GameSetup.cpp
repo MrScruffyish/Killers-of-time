@@ -147,6 +147,9 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         if (!content.playableRaces().contains(race)) return fail(error, QStringLiteral("race '%1' has no hero class").arg(p.race));
         raceOf << race;
     }
+    // Reserved artifacts (a campaign's future prizes) never appear in the random
+    // pools: they are either the explicit goal prize or not on this map at all.
+    const auto mayPlace = [&](ArtifactId id) { return !params.excludedArtifacts.contains(id); };
 
     MapGenParams mapParams;
     mapParams.width = params.mapWidth;
@@ -417,7 +420,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         {
             QList<ArtifactId> minor;
             for (const ArtifactDef& a : content.artifacts())
-                if (a.value <= 1) minor << a.id;
+                if (a.value <= 1 && mayPlace(a.id)) minor << a.id;
             if (!minor.isEmpty()) kitArtifact = minor[gs.rng().nextInt(0, static_cast<int>(minor.size()) - 1)];
         }
         for (int i = 0; i < count; ++i) {
@@ -564,7 +567,8 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         gs.addMapObject(o);
     }
     QList<ArtifactId> artifactIds;
-    for (const ArtifactDef& a : content.artifacts()) artifactIds << a.id;
+    for (const ArtifactDef& a : content.artifacts())
+        if (mayPlace(a.id)) artifactIds << a.id;
     // A find-the-artifact goal needs its prize to be there, guarded like the other
     // valuable treasures. It may still appear among the random ones as well.
     if (params.goalArtifact.isValid()) {
@@ -613,7 +617,7 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
             if (o.kind == MapObject::Kind::Artifact) onMap << o.artifact;
         QList<ArtifactId> strong;
         for (const ArtifactDef& a : content.artifacts())
-            if (a.value >= 2) strong << a.id;
+            if (a.value >= 2 && mayPlace(a.id)) strong << a.id;
         QList<ResourceId> rare;
         for (const ResourceDef& r : content.resources())
             if (r.value >= 300) rare << r.id;

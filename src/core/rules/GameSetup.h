@@ -43,6 +43,10 @@ struct GameSetupParams {
     // For a "find artifact" goal: this artifact is guaranteed to be on the map
     // (invalid = the usual random assortment only).
     ArtifactId goalArtifact;
+    // Artifacts that must not turn up randomly (or as quest rewards) on this map:
+    // a campaign reserves its later chapters' prizes so nobody can find one early
+    // and carry it into the chapter that asks for it.
+    QList<ArtifactId> excludedArtifacts;
 };
 
 // Creates a new game: generates the map, gives every player a start town of his

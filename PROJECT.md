@@ -343,7 +343,9 @@ cast (limited: mana-less with charges per battle, or small spell list).
   army — by default the one-horned, flying purple people eater, a data-only unit with
   no weekly growth, so no town or dwelling can ever recruit it. Campaigns of 2-20
   chapters rotate bosses, artifacts and the other goals; their last chapter is
-  always conquest.
+  always conquest. All chapters are generated up front, and every chapter's prize
+  is reserved across the campaign, so a hero cannot bring a later chapter's artifact
+  back from an earlier one.
 
 ### 5.14 Design principle: avoid micromanagement
 

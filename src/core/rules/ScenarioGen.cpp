@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QVector>
 #include <algorithm>
 
 #include "core/content/ContentRegistry.h"
@@ -47,6 +48,7 @@ bool generateScenario(const ContentRegistry& content, const ScenarioGenParams& p
     setup.rivers = p.rivers;
     setup.roads = p.roads;
     setup.monsterPercent = std::clamp(p.monsterPercent, 10, 400);
+    setup.excludedArtifacts = p.excludedArtifacts;
     if (p.victory == QLatin1String("slay")) {
         setup.slayMonster = content.unitId(p.monster);
         if (!content.unit(setup.slayMonster)) return fail(QStringLiteral("unknown monster '%1'").arg(p.monster));
@@ -116,7 +118,18 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
     // goals. Slay goals get a different boss each time, find goals a different prize.
     static const QStringList goals = {"capital", "slay", "artifact", "days", "explore", "gold", "slay", "capital", "explore", "artifact", "gold"};
     const QStringList bosses = slayBossKeys(), prizes = findArtifactKeys();
+    // Decide the whole campaign's goals and prizes up front: every chapter then
+    // reserves all goal artifacts, so no earlier map (or quest) can give one away.
+    QVector<QString> chapterGoals(p.chapters), chapterPrizes(p.chapters);
+    QList<ArtifactId> reserved;
     int bossIndex = 0, prizeIndex = 0;
+    for (int c = 0; c < p.chapters; ++c) {
+        chapterGoals[c] = c == p.chapters - 1 ? QStringLiteral("conquest") : goals[c % goals.size()];
+        if (chapterGoals[c] == QLatin1String("artifact")) {
+            chapterPrizes[c] = prizes[prizeIndex++ % prizes.size()];
+            reserved << content.artifactId(chapterPrizes[c]);
+        }
+    }
     QStringList ids;
     for (int c = 0; c < p.chapters; ++c) {
         ScenarioGenParams s;
@@ -128,9 +141,10 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
         const int enemies = std::min(1 + c, 7);
         for (int e = 0; e < enemies; ++e) s.races << all[rng.nextInt(0, static_cast<int>(all.size()) - 1)];
         s.monsterPercent = 100 + 20 * c;
-        s.victory = c == p.chapters - 1 ? QStringLiteral("conquest") : goals[c % goals.size()];
+        s.victory = chapterGoals[c];
+        s.excludedArtifacts = reserved;
         if (s.victory == QLatin1String("slay")) s.monster = bosses[bossIndex++ % bosses.size()];
-        if (s.victory == QLatin1String("artifact")) s.artifact = prizes[prizeIndex++ % prizes.size()];
+        if (s.victory == QLatin1String("artifact")) s.artifact = chapterPrizes[c];
         s.victoryAmount = s.victory == QLatin1String("days")   ? 60 + 15 * c
                         : s.victory == QLatin1String("gold")   ? 40000 + 10000 * c
                         : s.victory == QLatin1String("explore") ? 60 + std::min(c, 8) * 4

@@ -182,6 +182,8 @@ private slots:
         QStringList errors;
         QVERIFY2(loadCampaign(tmp.filePath("campaigns/long.json"), &def, &errors), qPrintable(errors.join("\n")));
         QCOMPARE(def.scenarios.size(), 20);
+        QList<GameState> games;
+        QList<ArtifactId> targets;
         QSet<QString> bosses, prizes;
         for (int c = 0; c < def.scenarios.size(); ++c) {
             const QString& id = def.scenarios[c];
@@ -189,8 +191,10 @@ private slots:
             QVERIFY2(loadScenario(tmp.filePath("scenarios/" + id + ".json"), reg, &s, &errors), qPrintable(errors.join("\n")));
             GameState gs;
             QVERIFY2(GameState::fromJson(s.game, reg, &gs, &errors), qPrintable(errors.join("\n")));
-            QVERIFY(s.info.races.size() >= 2 && s.info.races.size() <= 8);
+            games << gs;
             const VictoryCondition& v = gs.victory();
+            targets << (v.type == VictoryCondition::Type::FindArtifact ? v.targetArtifact : ArtifactId());
+            QVERIFY(s.info.races.size() >= 2 && s.info.races.size() <= 8);
             if (v.type == VictoryCondition::Type::SlayMonster) {
                 const Army* army = gs.army(v.targetArmy);
                 QVERIFY(army && !army->stacks.isEmpty());
@@ -209,6 +213,19 @@ private slots:
                 QVERIFY(v.amount >= 60 && v.amount <= 100);
             }
             if (c == def.scenarios.size() - 1) QCOMPARE(v.type, VictoryCondition::Type::Conquest);
+        }
+        // A chapter's prize is reserved for that chapter: no map object or quest
+        // hut anywhere else in the campaign can hand it out early.
+        QList<ArtifactId> reserved;
+        for (ArtifactId a : targets)
+            if (a.isValid() && !reserved.contains(a)) reserved << a;
+        for (int c = 0; c < games.size(); ++c) {
+            for (const MapObject& o : games[c].mapObjects()) {
+                if (o.kind == MapObject::Kind::Artifact && reserved.contains(o.artifact))
+                    QVERIFY2(o.artifact == targets[c], "a map holds another chapter's prize");
+                if (o.site == QLatin1String("quest_hut") && reserved.contains(o.quest.rewardArtifact))
+                    QVERIFY2(o.quest.rewardArtifact == targets[c], "a quest gives another chapter's prize");
+            }
         }
         QVERIFY2(bosses.size() >= 2, "slay chapters should use different bosses");
         QVERIFY2(prizes.size() >= 2, "find chapters should use different artifacts");
