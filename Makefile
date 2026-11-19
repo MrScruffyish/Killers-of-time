@@ -1,4 +1,18 @@
 # Convenience wrapper around the CMake builds described in README.md.
+#
+# Targets at a glance (only `make` and `make test` refresh the generated art):
+#   make / make all   Debug build in build/, then refresh data/art if inputs changed
+#   make build        Debug build only — no art refresh, no tests
+#   make art          Debug build, then refresh data/art if inputs changed — no tests
+#   make test         The same build + art refresh, then ctest in build/
+#   make play         SEPARATE RelWithDebInfo build in build-play/, for playing
+#   make release      Release build in build-release/
+#   make install      Install the existing Release build
+#   make package      Release build, then a .deb in build-release/
+#   make clean        Delete all three build folders
+#
+# Dependency chain for the default target: all -> art -> build -> configure.
+# `play` and `release` do not depend on art: run `make` first after a content change.
 
 CMAKE             ?= cmake
 GENERATOR         ?= Ninja
