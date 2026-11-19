@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-46. Add more buildings and upgrade chains, including the metals idea from TBD 5.
-46.1 **MANUAL**: after the art export and `make test`, iron/bronze buildings work and every top-tier unit has a metal-traded elite upgrade.
 47. Make the graphics more advanced: richer generated art for the new content and improved detail/effects where practical.
 47.1 **MANUAL**: after the art export and `make test`, the new races, metals, elites, portraits and towns have distinct generated art.
 
@@ -42,7 +40,6 @@ background (needs playtesting).
 3. Exact balance numbers for Sylvan and Tidefolk (wait for `kot_balance weeks`).
 4. How players share a server address and token outside the game (copy/paste now; maybe a
 file or link later).
-5. Iron, bronze, and other metalls, that gives extra upgrades to units in town. So we can get many more things.
 6. In battles it is hard to se which side is which. Units should face towards the enemy side (so they attack backwards). i guess that needs a lot of redrawing units and then mirrror them?
 
 ## DONE
@@ -57,3 +54,4 @@ file or link later).
 43. Add a playable necromancer race (`necroman`): race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 44. Add a playable giants race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
+46. Add more buildings and upgrade chains, including the metals idea from TBD 5.
