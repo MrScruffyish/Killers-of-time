@@ -347,6 +347,14 @@ cast (limited: mana-less with charges per battle, or small spell list).
   is reserved across the campaign, so a hero cannot bring a later chapter's artifact
   back from an earlier one.
 
+`data/campaigns/test_campaign.json` ships with the game: five fixed chapters that
+cover slay, find, explore, days and conquest in turn, so the whole goal machinery
+can be smoke-tested quickly. The standalone scenarios in `data/scenarios/` cover
+the same goals individually. Both are made with `kot_mapgen`, which exposes the
+same generator as the lobby: `--victory/--amount/--monster/--artifact` pick a
+scenario goal, and `--campaign --chapters N --goals a,b,c...` writes a campaign
+with a fixed goal order.
+
 ### 5.14 Design principle: avoid micromanagement
 
 Repeating the same chore in every town every day is not fun, so the game offers

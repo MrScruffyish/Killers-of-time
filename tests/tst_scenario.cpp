@@ -234,6 +234,64 @@ private slots:
         QVERIFY(error.contains(QStringLiteral("2 to 20")));
     }
 
+    void fixedGoalCampaignCanBeShipped() {
+        QTemporaryDir tmp;
+        CampaignGenParams p;
+        p.id = "fixed";
+        p.name = "Fixed";
+        p.chapters = 5;
+        p.playerRace = "humans";
+        p.seed = 17;
+        p.goals = {"slay", "artifact", "explore", "days", "conquest"};
+        QString error;
+        QVERIFY2(generateCampaign(reg, p, tmp.filePath("scenarios"), tmp.filePath("campaigns"), &error), qPrintable(error));
+        CampaignDef def;
+        QStringList errors;
+        QVERIFY2(loadCampaign(tmp.filePath("campaigns/fixed.json"), &def, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(def.scenarios.size(), 5);
+        QCOMPARE(def.carryHeroes, 1);
+        QVERIFY(def.carryArmy);
+        const QList<VictoryCondition::Type> expected = {
+            VictoryCondition::Type::SlayMonster, VictoryCondition::Type::FindArtifact, VictoryCondition::Type::ExploreMap,
+            VictoryCondition::Type::Days,        VictoryCondition::Type::Conquest};
+        ArtifactId prize;
+        for (int c = 0; c < def.scenarios.size(); ++c) {
+            Scenario s;
+            QVERIFY2(loadScenario(tmp.filePath("scenarios/" + def.scenarios[c] + ".json"), reg, &s, &errors), qPrintable(errors.join("\n")));
+            GameState gs;
+            QVERIFY2(GameState::fromJson(s.game, reg, &gs, &errors), qPrintable(errors.join("\n")));
+            const VictoryCondition& v = gs.victory();
+            QCOMPARE(v.type, expected[c]);
+            if (v.type == VictoryCondition::Type::SlayMonster) QVERIFY(gs.army(v.targetArmy));
+            if (v.type == VictoryCondition::Type::FindArtifact) {
+                prize = v.targetArtifact;
+                QVERIFY(prize.isValid());
+                bool placed = false;
+                for (const MapObject& o : gs.mapObjects()) placed = placed || (o.kind == MapObject::Kind::Artifact && o.artifact == prize);
+                QVERIFY(placed);
+            }
+            if (v.type == VictoryCondition::Type::ExploreMap) QVERIFY(v.amount >= 1 && v.amount <= 100);
+            if (v.type == VictoryCondition::Type::Days) QVERIFY(v.amount > 0);
+        }
+        // The one artifact chapter's prize is kept out of all the others.
+        QVERIFY(prize.isValid());
+        for (const QString& id : def.scenarios) {
+            Scenario s;
+            QVERIFY2(loadScenario(tmp.filePath("scenarios/" + id + ".json"), reg, &s, &errors), qPrintable(errors.join("\n")));
+            GameState gs;
+            QVERIFY2(GameState::fromJson(s.game, reg, &gs, &errors), qPrintable(errors.join("\n")));
+            for (const MapObject& o : gs.mapObjects()) {
+                QVERIFY2(!(o.kind == MapObject::Kind::Artifact && o.artifact == prize)
+                             || gs.victory().targetArtifact == prize, "another map holds the campaign prize");
+                QVERIFY2(!(o.site == QLatin1String("quest_hut") && o.quest.rewardArtifact == prize)
+                             || gs.victory().targetArtifact == prize, "another quest gives the campaign prize");
+            }
+        }
+        p.goals = {"slay"};
+        QVERIFY(!generateCampaign(reg, p, tmp.filePath("scenarios"), tmp.filePath("campaigns"), &error));
+        QVERIFY(error.contains(QStringLiteral("one goal per chapter")));
+    }
+
     void mapsNeedNoBoats() {
         // Shipped scenarios and continent maps: everything can be walked to (only
         // maps made with islands need boats).

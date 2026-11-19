@@ -109,6 +109,8 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
     };
     if (!validGeneratedId(p.id)) return fail(QStringLiteral("a name has 1-40 letters, digits, '_' or '-'"));
     if (p.chapters < 2 || p.chapters > 20) return fail(QStringLiteral("a campaign has 2 to 20 chapters"));
+    if (!p.goals.isEmpty() && p.goals.size() != p.chapters)
+        return fail(QStringLiteral("give one goal per chapter (%1)").arg(p.chapters));
     if (!QDir().mkpath(scenarioDir) || !QDir().mkpath(campaignDir)) return fail(QStringLiteral("cannot write the files"));
     const QStringList all = content.playableRaceKeys();
     Rng rng(p.seed * 104729 + 7);
@@ -116,7 +118,7 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
                                    ? all[rng.nextInt(0, static_cast<int>(all.size()) - 1)] : p.playerRace;
     // Chapter by chapter: bigger, more enemies (up to the 8-player limit), other
     // goals. Slay goals get a different boss each time, find goals a different prize.
-    static const QStringList goals = {"capital", "slay", "artifact", "days", "explore", "gold", "slay", "capital", "explore", "artifact", "gold"};
+    static const QStringList rotatingGoals = {"capital", "slay", "artifact", "days", "explore", "gold", "slay", "capital", "explore", "artifact", "gold"};
     const QStringList bosses = slayBossKeys(), prizes = findArtifactKeys();
     // Decide the whole campaign's goals and prizes up front: every chapter then
     // reserves all goal artifacts, so no earlier map (or quest) can give one away.
@@ -124,7 +126,9 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
     QList<ArtifactId> reserved;
     int bossIndex = 0, prizeIndex = 0;
     for (int c = 0; c < p.chapters; ++c) {
-        chapterGoals[c] = c == p.chapters - 1 ? QStringLiteral("conquest") : goals[c % goals.size()];
+        chapterGoals[c] = !p.goals.isEmpty() ? p.goals[c]
+                        : c == p.chapters - 1 ? QStringLiteral("conquest")
+                                              : rotatingGoals[c % rotatingGoals.size()];
         if (chapterGoals[c] == QLatin1String("artifact")) {
             chapterPrizes[c] = prizes[prizeIndex++ % prizes.size()];
             reserved << content.artifactId(chapterPrizes[c]);

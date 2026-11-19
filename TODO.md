@@ -29,6 +29,11 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
+52. Ship a standard five-scenario test campaign and a set of good built-in scenarios that
+    exercise the victory goals. Expose the shared generators in `kot_mapgen` so more can be
+    made the same way.
+52.1 **MANUAL**: run `make test`; the shipped test campaign and built-in scenarios load, cover
+    the different goals and keep their prizes reserved across the campaign.
 
 ## TBD
 

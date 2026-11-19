@@ -59,6 +59,9 @@ struct CampaignGenParams {
     int carryHeroes = 1;
     bool carryArmy = true;
     bool islands = false;       // every map with islands
+    // Empty: the standard rotating goals (last chapter always conquest). Otherwise
+    // exactly one goal per chapter, in order, so a fixed test campaign can be shipped.
+    QStringList goals;
 };
 bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& params, const QString& scenarioDir,
                       const QString& campaignDir, QString* error);
