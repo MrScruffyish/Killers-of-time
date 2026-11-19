@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-48. Custom-art overlay: a `data/custom_art` folder with the same file names as `data/art`, checked first by the client, so `kot_artexport` can be rerun any time without destroying hand-made pictures.
-48.1 **MANUAL**: build and run `make test`; custom pictures win over generated ones, missing ones fall back, and the export never writes into `data/custom_art`.
 49. Have plain `make` regenerate `data/art` when content or the drawings change (safe now that custom art lives in its own folder), without redoing it on every build.
 49.1 **MANUAL**: run `make` twice — the first refreshes the art, the second is quick; then `make test` passes and `data/custom_art` is untouched.
 
@@ -58,3 +56,4 @@ file or link later).
 45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 46. Add more buildings and upgrade chains, including the metals idea from TBD 5.
 47. Make the graphics more advanced: richer generated art for the new content and improved detail/effects where practical.
+48. Custom-art overlay: a `data/custom_art` folder with the same file names as `data/art`, checked first by the client, so `kot_artexport` can be rerun any time without destroying hand-made pictures.
