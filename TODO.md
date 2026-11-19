@@ -29,6 +29,8 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
+48. Custom-art overlay: a `data/custom_art` folder with the same file names as `data/art`, checked first by the client, so `kot_artexport` can be rerun any time without destroying hand-made pictures.
+48.1 **MANUAL**: build and run `make test`; custom pictures win over generated ones, missing ones fall back, and the export never writes into `data/custom_art`.
 
 ## TBD
 
