@@ -112,9 +112,30 @@ plus a shared glow, terrain edges as white bands coloured with the neighbour's g
 town screen's dwelling sign, workshop heap icon and boat. Where the details go is in
 `ArtPaths.h` (dwellingSignRect, mineIconRect, ...), so a replacement picture keeps those spots.
 About 730 masters (3000 files with the copies, 60 MB).
-tst_art checks that `data/art` holds exactly the files the export writes.
-Run it again after changing the art code or the content (new units, spells, ...). `--timing`
-only measures drawing or loading.
+tst_art checks that `data/art` holds exactly the files the export writes. `--timing` only
+measures drawing or loading.
+
+**When to run it.** `data/art` is generated data, not a build product: a normal
+`cmake --build` never touches it. Run the export when the *set* of pictures can change:
+a new, renamed or removed unit/rank, hero class, race, building, resource, spell, artifact,
+site or terrain in `data/`; a change to `src/artgen` or `ArtPaths.h`; or a fresh checkout
+with a missing/incomplete `data/art`. Rules, balance numbers, UI, protocol and save-file
+changes need no export. If `tst_art::exportWritesEveryPicture` fails with two different
+file counts, the export has not been run for the current content.
+
+**Your own art and overwriting.** There is no overlay folder: the client loads the exact
+path from `data/art`, so replacing a PNG there is how you use a hand-made picture (keep the
+same master size, the `@2`/`@4` copies and the base + tint rule described above). The export
+writes every file unconditionally and **overwrites replacements in its output folder**. To
+add newly needed pictures without losing yours, export somewhere else and copy only the
+missing files:
+
+```
+kot_artexport --out /tmp/newart
+cp -rn /tmp/newart/. data/art/     # -n: never replace an existing file
+```
+
+A plain `kot_artexport` is how you discard custom pictures and go back to all-generated art.
 
 ## kot_saveview: a save in readable form
 

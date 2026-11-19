@@ -7,6 +7,8 @@
 //   kot_artexport [--data dir] [--out dir]      (default out: <data>/art)
 //   kot_artexport --timing draw|load             how long drawing every picture takes,
 //                                                or loading every file of <data>/art
+// Re-running overwrites every file it writes, so hand-made replacements in the output
+// folder are lost; see docs/tools.md for the "export elsewhere, copy only new files" way.
 
 #include <QCommandLineParser>
 #include <QDir>
