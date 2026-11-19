@@ -30,9 +30,6 @@ line waiting for it, and the agent then removes them.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
 
-51. Allow campaigns of up to 20 scenarios, and add more generated goals: rotating bosses for slay goals, finding a particular artifact, and exploring the map.
-51.1 **MANUAL**: run `make test`; generated campaigns of 20 chapters work, the new bosses/artifact/explore goals win correctly, and saves/scenarios round-trip them.
-
 ## TBD
 
 1. If the 512 px art masters stutter on first show: smaller copies or load them in the
@@ -60,3 +57,4 @@ file or link later).
 48. Custom-art overlay: a `data/custom_art` folder with the same file names as `data/art`, checked first by the client, so `kot_artexport` can be rerun any time without destroying hand-made pictures.
 49. Have plain `make` regenerate `data/art` when content or the drawings change (safe now that custom art lives in its own folder), without redoing it on every build.
 50. Add the one-eyed, one-horned, flying purple people eater: a non-recruitable neutral monster with its own art, plus a "slay the monster" victory goal that generated scenarios/campaigns can use.
+51. Allow campaigns of up to 20 scenarios, and add more generated goals: rotating bosses for slay goals, finding a particular artifact, and exploring the map.
