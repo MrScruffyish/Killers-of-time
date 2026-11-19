@@ -33,6 +33,9 @@ line waiting for it, and the agent then removes them.
 50. Add the one-eyed, one-horned, flying purple people eater: a non-recruitable neutral monster with its own art, plus a "slay the monster" victory goal that generated scenarios/campaigns can use.
 50.1 **MANUAL**: run `make test`; the new unit's art is exported, the slay goal ends the game when the monster army is destroyed, and saves/scenarios round-trip the new condition.
 
+51. Allow campaigns of up to 20 scenarios, and add more generated goals: rotating bosses for slay goals, finding a particular artifact, and exploring the map.
+51.1 **MANUAL**: run `make test`; generated campaigns of 20 chapters work, the new bosses/artifact/explore goals win correctly, and saves/scenarios round-trip them.
+
 ## TBD
 
 1. If the 512 px art masters stutter on first show: smaller copies or load them in the
