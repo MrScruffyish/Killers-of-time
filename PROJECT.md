@@ -76,7 +76,8 @@ Key principles:
 |   |-- buildings/<building>.json
 |   |-- spells/<spell>.json
 |   |-- scenarios/ campaigns/  # prepared maps and campaigns
-|   |-- art/                # PNG pictures made by kot_artexport
+|   |-- art/                # generated PNG pictures, written by kot_artexport
+|   |-- custom_art/         # optional hand-made replacements, same paths, client checks first
 |-- src/
 |   |-- core/               # library: libcore (no GUI)
 |   |   |-- model/          # GameState, Player, Map, Tile, Town, Mine, Hero, Army, Unit...

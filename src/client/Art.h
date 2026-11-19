@@ -19,14 +19,19 @@ class QPainter;
 namespace kot::client {
 
 // The game's pictures, loaded from PNG files (data/art, paths in ArtPaths.h, made by
-// kot_artexport from the drawings in src/artgen; better pictures can replace them one
-// by one). Each file is a big master, scaled smoothly to the size asked for and cached.
-// A missing file shows as a placeholder (a warning is printed once).
+// kot_artexport from the drawings in src/artgen). Hand-made replacements go in a
+// separate folder (data/custom_art) with the same relative paths; the client checks
+// it first, so the export can be rerun without touching them. Each file is a big
+// master, scaled smoothly to the size asked for and cached. A missing file shows as
+// a placeholder (a warning is printed once).
 namespace art {
 
-// Where the pictures are loaded from (data/art).
-void setArtDirectory(const QString& dir);
+// Where the pictures are loaded from: the generated folder and an optional overlay
+// of custom pictures (same relative paths; custom wins). An empty custom folder
+// means no overlay.
+void setArtDirectory(const QString& dir, const QString& customDir = QString());
 const QString& artDirectory();
+const QString& customArtDirectory();
 // The content, for the overloads that take content ids (pictures are named by key).
 void setContent(const core::ContentRegistry* content);
 const core::ContentRegistry* content();  // what setContent last installed

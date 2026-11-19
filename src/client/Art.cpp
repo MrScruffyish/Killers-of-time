@@ -20,9 +20,32 @@ namespace kot::client::art {
 namespace {
 
 QString g_artDir;
+QString g_customDir;
 const core::ContentRegistry* g_content = nullptr;
 
-QString fileOf(const QString& path) { return QDir(g_artDir).filePath(path + QStringLiteral(".png")); }
+// "@2"/"@4" copies and ".tint" files belong to one master. A replacement master
+// owns the whole family, so no generated small copy of a different picture can be
+// mixed in; a custom family without copies simply uses its master at every size.
+QString familyOf(const QString& path) {
+    QString base = path;
+    if (base.endsWith(QLatin1String(".tint"))) base.chop(5);
+    const qsizetype at = base.lastIndexOf(QLatin1Char('@'));
+    if (at > 0) {
+        bool isNumber = false;
+        base.mid(at + 1).toInt(&isNumber);
+        if (isNumber) base.truncate(at);
+    }
+    return base;
+}
+
+bool hasReplacement(const QString& path) {
+    return !g_customDir.isEmpty() && QFile::exists(QDir(g_customDir).filePath(familyOf(path) + ".png"));
+}
+
+QString fileOf(const QString& path) {
+    const QString dir = hasReplacement(path) ? g_customDir : g_artDir;
+    return QDir(dir).filePath(path + QStringLiteral(".png"));
+}
 
 // A missing picture: a dark square with a magenta frame and a question mark, so it
 // is plain to see which one is missing (and a warning names the file).
@@ -122,8 +145,12 @@ const QPixmap& composed(const QString& key, int w, int h, const std::function<vo
 }
 }  // namespace
 
-void setArtDirectory(const QString& dir) { g_artDir = dir; }
+void setArtDirectory(const QString& dir, const QString& customDir) {
+    g_artDir = dir;
+    g_customDir = customDir;
+}
 const QString& artDirectory() { return g_artDir; }
+const QString& customArtDirectory() { return g_customDir; }
 
 void setContent(const core::ContentRegistry* content) { g_content = content; }
 const core::ContentRegistry* content() { return g_content; }

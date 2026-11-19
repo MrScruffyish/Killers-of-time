@@ -123,19 +123,16 @@ with a missing/incomplete `data/art`. Rules, balance numbers, UI, protocol and s
 changes need no export. If `tst_art::exportWritesEveryPicture` fails with two different
 file counts, the export has not been run for the current content.
 
-**Your own art and overwriting.** There is no overlay folder: the client loads the exact
-path from `data/art`, so replacing a PNG there is how you use a hand-made picture (keep the
-same master size, the `@2`/`@4` copies and the base + tint rule described above). The export
-writes every file unconditionally and **overwrites replacements in its output folder**. To
-add newly needed pictures without losing yours, export somewhere else and copy only the
-missing files:
-
-```
-kot_artexport --out /tmp/newart
-cp -rn /tmp/newart/. data/art/     # -n: never replace an existing file
-```
-
-A plain `kot_artexport` is how you discard custom pictures and go back to all-generated art.
+**Your own art: `data/custom_art/`.** Put replacements there with the same relative paths
+and file names as in `data/art` (e.g. `unit/militia/0.png`). The client checks
+`data/custom_art` first and falls back to `data/art` for anything missing, so your pictures
+win and are never overwritten: the export writes only to its output folder (`data/art`) and
+can be rerun at any time, even from the build. Keep the same master size, the `@2`/`@4`
+copies (without them the master is scaled at runtime, which is slower) and the base + tint
+rule described above. Replacing a master replaces its whole family, so a generated small
+copy of a different picture is never mixed in. The folder is optional and may be empty;
+there is a README in it. Editing files in `data/art` directly still works, but the export
+overwrites them — that folder is generated data and belongs to `kot_artexport`.
 
 ## kot_saveview: a save in readable form
 

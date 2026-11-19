@@ -151,7 +151,7 @@ src/artgen  the placeholder art drawn in code (kot_artexport writes data/art fro
 tests/      Qt Test unit tests
 src/tools   content tools (kot_graph, kot_balance, kot_mapgen, kot_aiplay, ...)
 src/editor  the map / scenario editor
-data/       game content (JSON) and art (data/art, PNG)
+data/       game content (JSON) and art (data/art generated, data/custom_art hand-made, PNG)
 docs/       protocol, data, save format and tools docs
 ```
 

@@ -56,7 +56,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         m_contentLoaded = m_content.loadFromDirectory(dataDir, &errors);
         m_previousArtContent = art::content();
         art::setContent(&m_content);  // unit tiers, and the art overloads that take ids
-        art::setArtDirectory(QDir(dataDir).filePath(QStringLiteral("art")));  // PNG art (kot_artexport); else drawn in code
+        // Generated PNG art (kot_artexport) with a hand-made overlay that the export never touches.
+        art::setArtDirectory(QDir(dataDir).filePath(QStringLiteral("art")),
+                             QDir(dataDir).filePath(QStringLiteral("custom_art")));
         m_client.setContentChecksum(m_content.checksum());  // the server checks we have the same data
         if (!m_contentLoaded) contentMessage = tr("The game data is invalid:\n%1").arg(errors.join('\n'));
     }

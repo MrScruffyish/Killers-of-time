@@ -16,6 +16,13 @@ PNG pictures the client loads (it never draws them); made by `kot_artexport`
 (docs/tools.md), which explains the sizes, names and `.tint.png` files of pictures in the
 owner's colour. The content loader does not read this folder.
 
+## custom_art/ (optional)
+Hand-made replacements with the same relative paths and file names as in `art/`. The client
+checks this folder first and falls back to `art/` for anything missing; `kot_artexport`
+never writes here, so the generated art can be refreshed without losing replacements.
+Details (sizes, `@2`/`@4` copies, `.tint.png`) are in docs/tools.md. The content loader
+does not read this folder.
+
 ## resources.json
 ```json
 { "resources": [ { "id": "gold", "name": "Gold", "currency": true }, ... ] }

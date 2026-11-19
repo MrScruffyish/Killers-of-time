@@ -236,7 +236,8 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "kot_viewbench: cannot load the data: %s\n", qPrintable(errors.join("; ")));
         return 1;
     }
-    client::art::setArtDirectory(QDir(dataDir).filePath(QStringLiteral("art")));
+    client::art::setArtDirectory(QDir(dataDir).filePath(QStringLiteral("art")),
+                                 QDir(dataDir).filePath(QStringLiteral("custom_art")));
     client::art::setContent(&content);
 
     // A game with the whole map explored by the first player.

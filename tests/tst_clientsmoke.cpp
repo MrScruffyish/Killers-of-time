@@ -146,7 +146,7 @@ private slots:
         useContent(reg);
         QSettings().setValue("game/endTurnReminder", false);  // no question box in the scripted play-through
         art::setContent(&reg);
-        art::setArtDirectory(QDir(KOT_DATA_DIR).filePath("art"));
+        art::setArtDirectory(QDir(KOT_DATA_DIR).filePath("art"), QDir(KOT_DATA_DIR).filePath("custom_art"));
         qputenv("KOT_DATA_DIR", KOT_DATA_DIR);
         qApp->setStyleSheet(art::styleSheet());  // the real look
     }

@@ -101,6 +101,33 @@ private slots:
         art::setArtDirectory(QString());
     }
 
+    // A hand-made picture in the custom folder wins over the generated one, and a
+    // missing custom picture falls back to the generated art. A generated small copy
+    // of the old picture is never mixed in with a new custom master.
+    void customArtOverridesGenerated() {
+        QTemporaryDir generated, custom;
+        QDir().mkpath(generated.filePath("test"));
+        QDir().mkpath(custom.filePath("test"));
+        QImage green(art::kMasterSize, art::kMasterSize, QImage::Format_ARGB32_Premultiplied);
+        green.fill(Qt::darkGreen);
+        QVERIFY(green.save(generated.filePath("test/overlayMaster.png")));
+        QVERIFY(green.scaled(128, 128).save(generated.filePath("test/overlayMaster@4.png")));
+        QImage blue(art::kMasterSize, art::kMasterSize, QImage::Format_ARGB32_Premultiplied);
+        blue.fill(Qt::darkBlue);
+        QVERIFY(blue.save(generated.filePath("test/overlayFallback.png")));
+        QImage red(art::kMasterSize, art::kMasterSize, QImage::Format_ARGB32_Premultiplied);
+        red.fill(Qt::darkRed);
+        QVERIFY(red.save(custom.filePath("test/overlayMaster.png")));
+        art::setArtDirectory(generated.path(), custom.path());
+        const QColor replaced = art::sprite("test/overlayMaster", 48).toImage().pixelColor(24, 24);
+        QVERIFY2(replaced.red() > replaced.green(), "custom picture must win over generated master and its copy");
+        const QColor fallback = art::sprite("test/overlayFallback", 48).toImage().pixelColor(24, 24);
+        QVERIFY2(fallback.blue() > 60, "generated art is the fallback when there is no custom picture");
+        QVERIFY(art::hasPicture("test/overlayMaster"));
+        QCOMPARE(art::customArtDirectory(), custom.path());
+        art::setArtDirectory(QString());
+    }
+
     // The art folder has every picture the client asks for (run kot_artexport after
     // changing the content or the drawings), and the export writes the same files.
     void exportWritesEveryPicture() {
