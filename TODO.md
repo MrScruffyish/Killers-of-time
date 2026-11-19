@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
-45.1 **MANUAL**: after the art export and `make test`, the halflings race is playable with its full roster and dwellings.
 46. Add more buildings and upgrade chains, including the metals idea from TBD 5.
 46.1 **MANUAL**: after the art export and `make test`, iron/bronze buildings work and every top-tier unit has a metal-traded elite upgrade.
 47. Make the graphics more advanced: richer generated art for the new content and improved detail/effects where practical.
@@ -58,3 +56,4 @@ file or link later).
 42. On first opening the spell book in a fresh battle, only the top few percent of the first spell's illustration is visible (the book window itself is normal sized).
 43. Add a playable necromancer race (`necroman`): race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 44. Add a playable giants race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
+45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
