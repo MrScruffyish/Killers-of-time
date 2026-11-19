@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-43. Add a playable necromancer race (`necroman`): race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
-43.1 **MANUAL**: build, run `build/bin/kot_artexport` for the new content, then `make test`; necroman is playable with its roster and dwellings.
 44. Add a playable giants race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
 44.1 **MANUAL**: after the art export and `make test`, the giants race is playable with its full roster and dwellings.
 45. Add a playable halflings race: race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
@@ -60,3 +58,4 @@ file or link later).
 40. In battle map, the hero spells should be short-cut S, the unit spells: X
 41. The spells should be displayd on something that looks like a book, and there should be an illustration of the spell (saved as png in some art data directory so it can be replaced).
 42. On first opening the spell book in a fresh battle, only the top few percent of the first spell's illustration is visible (the book window itself is normal sized).
+43. Add a playable necromancer race (`necroman`): race data, hero class(es), hero templates, units with upgrades, dwellings and starting army.
