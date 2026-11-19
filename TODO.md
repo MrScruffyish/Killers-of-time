@@ -30,6 +30,9 @@ line waiting for it, and the agent then removes them.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
 
+50. Add the one-eyed, one-horned, flying purple people eater: a non-recruitable neutral monster with its own art, plus a "slay the monster" victory goal that generated scenarios/campaigns can use.
+50.1 **MANUAL**: run `make test`; the new unit's art is exported, the slay goal ends the game when the monster army is destroyed, and saves/scenarios round-trip the new condition.
+
 ## TBD
 
 1. If the 512 px art masters stutter on first show: smaller copies or load them in the
