@@ -1,18 +1,18 @@
 # Convenience wrapper around the CMake builds described in README.md.
 #
-# Targets at a glance (only `make` and `make test` refresh the generated art):
-#   make / make all   Debug build in build/, then refresh data/art if inputs changed
-#   make build        Debug build only — no art refresh, no tests
-#   make art          Debug build, then refresh data/art if inputs changed — no tests
-#   make test         The same build + art refresh, then ctest in build/
-#   make play         SEPARATE RelWithDebInfo build in build-play/, for playing
-#   make release      Release build in build-release/
+# Targets at a glance:
+#   make / make all   EVERYTHING: Debug build + art refresh + play and Release builds
+#   make build        Debug build in build/ only — no art refresh, no tests
+#   make art          Debug build + refresh data/art if inputs changed — no tests
+#   make test         Debug build + art refresh + ctest in build/
+#   make play         RelWithDebInfo build in build-play/ only
+#   make release      Release build in build-release/ only
 #   make install      Install the existing Release build
 #   make package      Release build, then a .deb in build-release/
 #   make clean        Delete all three build folders
 #
-# Dependency chain for the default target: all -> art -> build -> configure.
-# `play` and `release` do not depend on art: run `make` first after a content change.
+# Plain `make` builds all three variants; `make XXX` builds only XXX.
+# Art is refreshed by `make`, `make art` and `make test` (the Debug build owns the exporter).
 
 CMAKE             ?= cmake
 GENERATOR         ?= Ninja
@@ -28,7 +28,7 @@ ART_SOURCES := $(shell find data -type f -name '*.json' 2>/dev/null) \
 
 .PHONY: all configure build art test play release install package clean
 
-all: art
+all: art play release
 
 configure:
 	$(CMAKE) -S . -B $(BUILD_DIR) -G $(GENERATOR) -DCMAKE_BUILD_TYPE=Debug

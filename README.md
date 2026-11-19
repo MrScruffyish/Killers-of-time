@@ -39,27 +39,29 @@ ctest --test-dir build --output-on-failure
 The `Makefile` wraps the same builds. Instead of the commands above you can run:
 
 ```
-make            # Debug build in build/, then refresh data/art if the content or drawings changed
-make test       # the above, then run ctest in build/ (saves output to last_test, stops on first failure)
-make art        # just check whether generated art needs a refresh
-make play       # RelWithDebInfo build in build-play/
-make release    # Release build in build-release/
+make            # EVERYTHING: Debug build + art refresh + play and Release builds
+make build      # Debug build in build/ only
+make art        # Debug build + refresh data/art if inputs changed
+make test       # Debug build + art refresh, then ctest (output also in last_test)
+make play       # RelWithDebInfo build in build-play/ only
+make release    # Release build in build-release/ only
 make package    # Release build, then make the .deb in build-release/
 make install    # install an existing Release build (sudo make install for /usr/local)
 make clean      # remove build/, build-play/ and build-release/
 ```
 
-`make` (the default) makes a **Debug** build in `build/` and refreshes the generated art when
-a content JSON, drawing, `ArtPaths.h` or the exporter changed. `make build` does just the
-build. That is the build the tests use: `make test` builds, refreshes art if needed, then runs
-`ctest`. Debug is unoptimized, so the game runs slowly. `make test` stops at the first failing
-test (`ctest --stop-on-failure`) and copies everything it prints to both the console and a
-`last_test` file in the project root, so you can read the failure again afterwards. An art
-refresh rewrites `data/art` only; your pictures in `data/custom_art` are never touched.
+`make` (the default) builds **everything** and refreshes the generated art when a content
+JSON, drawing, `ArtPaths.h` or the exporter changed. Each `make XXX` builds only that one
+thing: `make build` is the Debug build in `build/` (the one the tests use), `make play` the
+optimized RelWithDebInfo build in `build-play/`, `make release` the Release build in
+`build-release/`. `make test` does the Debug build + art refresh, then runs `ctest`; it stops
+at the first failing test (`ctest --stop-on-failure`) and copies everything it prints to both
+the console and a `last_test` file in the project root. Debug is unoptimized and plays slowly,
+so use the play build for real games. An art refresh rewrites `data/art` only; your pictures in
+`data/custom_art` are never touched.
 
-`make play` makes a separate **RelWithDebInfo** build in `build-play/`: optimized for playing,
-with debug info kept so crash reports still show function names and lines. It does not build or
-run the tests.
+`make play` keeps debug info in the optimized build, so crash reports still show function names
+and lines. It does not build or run the tests.
 
 Neither one starts the game — they only build it. Run the client from the matching directory
 yourself: `./build/bin/kot_client` or `./build-play/bin/kot_client`. After a code change, run
@@ -68,6 +70,13 @@ the same command again; it only recompiles what changed.
 `JOBS=N` limits the number of parallel compiler jobs.
 
 Log filtering example: `QT_LOGGING_RULES="kot.*.debug=true" ./build/bin/kot_server`
+
+**Logs when something goes wrong.** Qt log messages go to the terminal (stderr); turn on the
+verbose ones with `QT_LOGGING_RULES="kot.*.debug=true"` and keep a copy with `... 2>&1 | tee
+play.log`. On a crash (SIGSEGV/SIGABRT/SIGFPE/SIGILL/SIGBUS) the client also appends a
+backtrace to `~/.local/share/KillersOfTime/crash.log`, shared by all builds. Keep the `play`
+build for playing: it runs at full speed but still has the debug symbols that make those
+backtraces name functions and lines.
 
 ### Server settings
 `kot_server` reads `~/.config/KillersOfTime/server.json` when it exists (or the file given
