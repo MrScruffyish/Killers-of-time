@@ -115,13 +115,14 @@ About 730 masters (3000 files with the copies, 60 MB).
 tst_art checks that `data/art` holds exactly the files the export writes. `--timing` only
 measures drawing or loading.
 
-**When to run it.** `data/art` is generated data, not a build product: a normal
-`cmake --build` never touches it. Run the export when the *set* of pictures can change:
-a new, renamed or removed unit/rank, hero class, race, building, resource, spell, artifact,
-site or terrain in `data/`; a change to `src/artgen` or `ArtPaths.h`; or a fresh checkout
-with a missing/incomplete `data/art`. Rules, balance numbers, UI, protocol and save-file
-changes need no export. If `tst_art::exportWritesEveryPicture` fails with two different
-file counts, the export has not been run for the current content.
+**When to run it.** Plain `make` (and `make test`) now refreshes `data/art` for you whenever
+a content JSON, an `src/artgen` source, `ArtPaths.h` or the exporter changes; a stamp in the
+build folder keeps later builds quick. A direct `cmake --build` does not do this. The refresh
+writes to a temporary folder first and then replaces `data/art`, so stale pictures from
+removed content disappear too. If `tst_art::exportWritesEveryPicture` fails with two different
+file counts, run `make art`; to force a refresh without changing any input, delete
+`build/.art-stamp` and run `make art`. Rules, balance numbers, UI, protocol and save-file
+changes need no export.
 
 **Your own art: `data/custom_art/`.** Put replacements there with the same relative paths
 and file names as in `data/art` (e.g. `unit/militia/0.png`). The client checks

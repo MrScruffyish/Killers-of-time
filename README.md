@@ -39,8 +39,9 @@ ctest --test-dir build --output-on-failure
 The `Makefile` wraps the same builds. Instead of the commands above you can run:
 
 ```
-make            # Debug build in build/ (the same as the two cmake commands above)
-make test       # build, then run ctest in build/ (saves output to last_test, stops on first failure)
+make            # Debug build in build/, then refresh data/art if the content or drawings changed
+make test       # the above, then run ctest in build/ (saves output to last_test, stops on first failure)
+make art        # just check whether generated art needs a refresh
 make play       # RelWithDebInfo build in build-play/
 make release    # Release build in build-release/
 make package    # Release build, then make the .deb in build-release/
@@ -48,11 +49,13 @@ make install    # install an existing Release build (sudo make install for /usr/
 make clean      # remove build/, build-play/ and build-release/
 ```
 
-`make` (the default, the same as `make build`) makes a **Debug** build in `build/`. That is the
-build the tests use: `make test` builds it and then runs `ctest`. Debug is unoptimized, so the
-game runs slowly. `make test` stops at the first failing test (`ctest --stop-on-failure`) and
-copies everything it prints to both the console and a `last_test` file in the project root, so
-you can read the failure again afterwards.
+`make` (the default) makes a **Debug** build in `build/` and refreshes the generated art when
+a content JSON, drawing, `ArtPaths.h` or the exporter changed. `make build` does just the
+build. That is the build the tests use: `make test` builds, refreshes art if needed, then runs
+`ctest`. Debug is unoptimized, so the game runs slowly. `make test` stops at the first failing
+test (`ctest --stop-on-failure`) and copies everything it prints to both the console and a
+`last_test` file in the project root, so you can read the failure again afterwards. An art
+refresh rewrites `data/art` only; your pictures in `data/custom_art` are never touched.
 
 `make play` makes a separate **RelWithDebInfo** build in `build-play/`: optimized for playing,
 with debug info kept so crash reports still show function names and lines. It does not build or
