@@ -1,0 +1,20 @@
+{
+  "id": "flying_purple_people_eater",
+  "name": "Flying Purple People Eater",
+  "race": "neutral",
+  "tier": 6,
+  "attack": 28,
+  "defense": 24,
+  "damageMin": 45,
+  "damageMax": 62,
+  "maxHp": 240,
+  "battleSpeed": 12,
+  "weeklyGrowth": 0,
+  "cost": {
+    "gold": 6800
+  },
+  "initiative": 14,
+  "abilities": [
+    "flying"
+  ]
+}

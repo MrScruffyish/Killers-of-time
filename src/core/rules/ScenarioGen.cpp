@@ -38,6 +38,10 @@ bool generateScenario(const ContentRegistry& content, const ScenarioGenParams& p
     setup.rivers = p.rivers;
     setup.roads = p.roads;
     setup.monsterPercent = std::clamp(p.monsterPercent, 10, 400);
+    if (p.victory == QLatin1String("slay")) {
+        setup.slayMonster = content.unitId(p.monster);
+        if (!content.unit(setup.slayMonster)) return fail(QStringLiteral("unknown monster '%1'").arg(p.monster));
+    }
     static const QStringList colours = {"#d62728", "#1f77b4", "#2ca02c", "#ff7f0e", "#9467bd", "#8c564b", "#e377c2", "#17becf"};
     const QStringList all = content.playableRaceKeys();
     Rng pick(p.seed * 7919 + 13);
@@ -52,21 +56,26 @@ bool generateScenario(const ContentRegistry& content, const ScenarioGenParams& p
     QList<PlayerId> ids;
     QString why;
     if (!createGame(content, setup, &gs, &ids, &why)) return fail(why);
-    VictoryCondition v;
-    if (p.victory == QLatin1String("capital")) {
-        v.type = VictoryCondition::Type::HoldTown;
-        for (const Town& t : gs.towns())
-            if (t.owner == ids.value(1)) v.town = t.id;
-    } else if (p.victory == QLatin1String("gold")) {
-        v.type = VictoryCondition::Type::Gold;
-        v.amount = p.victoryAmount > 0 ? p.victoryAmount : 50000;
-    } else if (p.victory == QLatin1String("days")) {
-        v.type = VictoryCondition::Type::Days;
-        v.amount = p.victoryAmount > 0 ? p.victoryAmount : 90;
-    } else if (p.victory != QLatin1String("conquest")) {
-        return fail(QStringLiteral("unknown goal '%1' (conquest, capital, gold, days)").arg(p.victory));
+    if (p.victory == QLatin1String("slay")) {
+        // createGame placed the monster and recorded its army in the victory condition.
+        if (gs.victory().type != VictoryCondition::Type::SlayMonster) return fail(QStringLiteral("no monster was placed"));
+    } else {
+        VictoryCondition v;
+        if (p.victory == QLatin1String("capital")) {
+            v.type = VictoryCondition::Type::HoldTown;
+            for (const Town& t : gs.towns())
+                if (t.owner == ids.value(1)) v.town = t.id;
+        } else if (p.victory == QLatin1String("gold")) {
+            v.type = VictoryCondition::Type::Gold;
+            v.amount = p.victoryAmount > 0 ? p.victoryAmount : 50000;
+        } else if (p.victory == QLatin1String("days")) {
+            v.type = VictoryCondition::Type::Days;
+            v.amount = p.victoryAmount > 0 ? p.victoryAmount : 90;
+        } else if (p.victory != QLatin1String("conquest")) {
+            return fail(QStringLiteral("unknown goal '%1' (conquest, capital, gold, days, slay)").arg(p.victory));
+        }
+        gs.setVictory(v);
     }
-    gs.setVictory(v);
     *out = std::move(gs);
     return true;
 }
@@ -85,7 +94,7 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
     const QString playerRace = p.playerRace == QLatin1String("random") || !all.contains(p.playerRace)
                                    ? all[rng.nextInt(0, static_cast<int>(all.size()) - 1)] : p.playerRace;
     // Chapter by chapter: bigger, more enemies, other goals.
-    static const QStringList goals = {"capital", "conquest", "days", "conquest", "gold", "conquest"};
+    static const QStringList goals = {"capital", "slay", "days", "conquest", "gold", "conquest"};
     QStringList ids;
     for (int c = 0; c < p.chapters; ++c) {
         ScenarioGenParams s;
@@ -102,6 +111,7 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
         QString why;
         if (!generateScenario(content, s, &gs, &why)) return fail(QStringLiteral("chapter %1: %2").arg(c + 1).arg(why));
         const QString goal = s.victory == QLatin1String("capital") ? QStringLiteral("Take the enemy capital.")
+                           : s.victory == QLatin1String("slay") ? QStringLiteral("Slay the %1.").arg(content.unit(content.unitId(s.monster))->name)
                            : s.victory == QLatin1String("days") ? QStringLiteral("Hold the most towns after %1 days.").arg(s.victoryAmount)
                            : s.victory == QLatin1String("gold") ? QStringLiteral("Be the first with %1 gold.").arg(s.victoryAmount)
                                                                 : QStringLiteral("Defeat everyone.");

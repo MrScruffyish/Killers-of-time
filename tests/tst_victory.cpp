@@ -131,7 +131,7 @@ private slots:
         QVERIFY(!gameOutcome(gs, reg).over);
         gs.town(target)->owner = a;
         QCOMPARE(gameOutcome(gs, reg).winner, teamA);
-        QVERIFY(describeVictory(gs).contains("Prize"));
+        QVERIFY(describeVictory(gs, reg).contains("Prize"));
         // Saved and loaded.
         GameState loaded;
         QStringList errors;
@@ -157,6 +157,44 @@ private slots:
         gs.setDay(4);
         QVERIFY(gameOutcome(gs, reg).over);
         QCOMPARE(gameOutcome(gs, reg).winner, teamB);  // B has a town, A none
+    }
+
+    void slayingTheMonsterWins() {
+        const UnitTypeId eater = reg.unitId(QStringLiteral("flying_purple_people_eater"));
+        QVERIFY(eater.isValid());
+        QVERIFY(reg.unit(eater)->has(Ability::Flying));
+        QCOMPARE(reg.unit(eater)->weeklyGrowth, 0);  // no town can ever recruit it
+        const ArmyId monster = gs.addArmy(PlayerId(), {3, 3});
+        gs.army(monster)->addUnits(eater, 5, reg.unit(eater)->maxHp);
+        VictoryCondition v;
+        v.type = VictoryCondition::Type::SlayMonster;
+        v.targetArmy = monster;
+        gs.setVictory(v);
+        QVERIFY(!gameOutcome(gs, reg).over);
+        QVERIFY(describeVictory(gs, reg).contains(QStringLiteral("Flying Purple People Eater")));
+        // Other armies dying, or the target vanishing without a recorded kill (a join
+        // or an edit), do not count as slaying it.
+        noteArmyDestroyed(gs, gs.hero(a)->army, b);
+        const ArmyId other = gs.addArmy(PlayerId(), {4, 4});
+        gs.army(other)->addUnits(eater, 1, reg.unit(eater)->maxHp);
+        noteArmyDestroyed(gs, other, b);
+        gs.armies().remove(other);
+        QVERIFY(!gameOutcome(gs, reg).over);
+        // The real kill remembers who did it and ends the game for his team.
+        noteArmyDestroyed(gs, monster, b);
+        noteArmyDestroyed(gs, monster, c);  // a second report changes nothing
+        gs.armies().remove(monster);
+        const GameOutcome o = gameOutcome(gs, reg);
+        QVERIFY(o.over);
+        QCOMPARE(o.winner, teamB);
+        QVERIFY(describeVictory(gs, reg).contains(QStringLiteral("slain")));
+        // A finished save keeps the goal and the killer, though the army is gone.
+        GameState loaded;
+        QStringList errors;
+        QVERIFY2(GameState::fromJson(gs.toJson(reg), reg, &loaded, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(loaded.victory().type, VictoryCondition::Type::SlayMonster);
+        QCOMPARE(loaded.victory().targetArmy, monster);
+        QCOMPARE(loaded.victory().slayerTeam, teamB);
     }
 
     void eliminatedPlayersAreSkipped() {

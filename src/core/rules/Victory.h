@@ -25,10 +25,14 @@ struct GameOutcome {
     TeamId winner;  // invalid when nobody is left (or the game is not over)
 };
 // Also the scenario's victory condition (GameState::victory): holding a town,
-// reaching a gold amount, or the most towns when the last day is over.
+// reaching a gold amount, most towns when the last day is over, or killing a
+// particular monster army.
 GameOutcome gameOutcome(const GameState& state, const ContentRegistry& content);
+// Call when an army is destroyed in battle: remembers the killer's team if this
+// army is a SlayMonster target. Joining monsters or retreating does not count.
+void noteArmyDestroyed(GameState& state, ArmyId army, PlayerId winner);
 // A short text for players: what wins this game.
-QString describeVictory(const GameState& state);
+QString describeVictory(const GameState& state, const ContentRegistry& content);
 // A short text for players: when a player is out.
 QString describeDefeat(const GameState& state);
 

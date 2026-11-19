@@ -103,13 +103,30 @@ GameOutcome gameOutcome(const GameState& state, const ContentRegistry& content) 
             o.over = true;
         }
         break;
+    case VictoryCondition::Type::SlayMonster:
+        // A missing target alone proves nothing (joins and editor edits remove armies
+        // too): the kill is recorded by noteArmyDestroyed, with its winner.
+        if (v.slayerTeam.isValid()) {
+            o.over = true;
+            o.winner = v.slayerTeam;
+        }
+        break;
     case VictoryCondition::Type::Conquest:
         break;
     }
     return o;
 }
 
-QString describeVictory(const GameState& state) {
+void noteArmyDestroyed(GameState& state, ArmyId army, PlayerId winner) {
+    VictoryCondition v = state.victory();
+    if (v.type != VictoryCondition::Type::SlayMonster || v.targetArmy != army || v.slayerTeam.isValid()) return;
+    const Player* p = state.player(winner);
+    if (!p) return;
+    v.slayerTeam = p->team;
+    state.setVictory(v);
+}
+
+QString describeVictory(const GameState& state, const ContentRegistry& content) {
     const VictoryCondition& v = state.victory();
     switch (v.type) {
     case VictoryCondition::Type::HoldTown: {
@@ -120,6 +137,14 @@ QString describeVictory(const GameState& state) {
         return QStringLiteral("Be the first with %1 gold (or defeat everyone)").arg(v.amount);
     case VictoryCondition::Type::Days:
         return QStringLiteral("Hold the most towns after day %1 (or defeat everyone)").arg(v.amount);
+    case VictoryCondition::Type::SlayMonster: {
+        if (v.slayerTeam.isValid()) return QStringLiteral("The monster has been slain");
+        QString name = QStringLiteral("the monster");
+        if (const Army* a = state.army(v.targetArmy); a && !a->stacks.isEmpty()) {
+            if (const UnitDef* u = content.unit(a->stacks.first().unitTypeId())) name = u->name;
+        }
+        return QStringLiteral("Slay %1 (or defeat everyone)").arg(name);
+    }
     case VictoryCondition::Type::Conquest:
         break;
     }

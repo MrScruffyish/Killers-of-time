@@ -8,6 +8,7 @@
 #include "core/battle/BattleAi.h"
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/Victory.h"
 
 namespace kot::core {
 
@@ -135,7 +136,11 @@ BattleReport applyBattleResult(GameState& state, const ContentRegistry& content,
         lost->hero = HeroId();
     }
     if (isGarrison) lost->stacks.clear();
-    else state.armies().remove(lost->id);
+    else {
+        const ArmyId lostId = lost->id;
+        state.armies().remove(lostId);
+        noteArmyDestroyed(state, lostId, battle.owner(winner));
+    }
     return report;
 }
 

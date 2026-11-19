@@ -82,7 +82,8 @@ MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent) : QDia
     form->addRow(QString(), m_roads);
     m_monsters = combo(page, {tr("Weak"), tr("Normal"), tr("Strong"), tr("Very strong")}, 1);
     form->addRow(tr("Monsters"), m_monsters);
-    m_goal = combo(page, {tr("Defeat everyone"), tr("Take the enemy capital"), tr("Collect gold"), tr("Most towns after a number of days")}, 0);
+    m_goal = combo(page, {tr("Defeat everyone"), tr("Take the enemy capital"), tr("Slay the monster"), tr("Collect gold"),
+                          tr("Most towns after a number of days")}, 0);
     m_goalAmount = spin(page, 10, 1000000, 90);
     m_goalAmount->setVisible(false);
     auto* goalRow = new QHBoxLayout();
@@ -90,9 +91,9 @@ MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent) : QDia
     goalRow->addWidget(m_goalAmount);
     form->addRow(tr("Goal"), goalRow);
     connect(m_goal, &QComboBox::currentIndexChanged, this, [this](int i) {
-        m_goalAmount->setVisible(i >= 2);
-        m_goalAmount->setValue(i == 2 ? 50000 : 90);
-        m_goalAmount->setSuffix(i == 2 ? tr(" gold") : tr(" days"));
+        m_goalAmount->setVisible(i >= 3);
+        m_goalAmount->setValue(i == 3 ? 50000 : 90);
+        m_goalAmount->setSuffix(i == 3 ? tr(" gold") : tr(" days"));
     });
     m_seed = spin(page, 1, 999999, seed);
     auto* seedRow = new QHBoxLayout();
@@ -173,13 +174,13 @@ QJsonObject MapMakerDialog::params() const {
     static const double mountains[] = {0.02, 0.06, 0.12};
     static const int rivers[] = {0, 1, -1, 8};
     static const int monsters[] = {60, 100, 150, 220};
-    static const char* goals[] = {"conquest", "capital", "gold", "days"};
+    static const char* goals[] = {"conquest", "capital", "slay", "gold", "days"};
     return {{"kind", "scenario"}, {"id", idFrom(m_name->text())}, {"name", m_name->text().trimmed()},
             {"width", m_size->currentData().toInt()}, {"height", m_size->currentData().toInt()}, {"islands", m_type->currentIndex() == 1},
             {"races", races}, {"seaLevel", water[m_water->currentIndex()]}, {"mountains", mountains[m_mountains->currentIndex()]},
             {"rivers", rivers[m_rivers->currentIndex()]}, {"roads", m_roads->isChecked()},
             {"monsterPercent", monsters[m_monsters->currentIndex()]}, {"victory", goals[m_goal->currentIndex()]},
-            {"victoryAmount", m_goal->currentIndex() >= 2 ? m_goalAmount->value() : 0}, {"seed", m_seed->value()}};
+            {"victoryAmount", m_goal->currentIndex() >= 3 ? m_goalAmount->value() : 0}, {"seed", m_seed->value()}};
 }
 
 }  // namespace kot::client

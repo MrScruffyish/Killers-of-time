@@ -255,10 +255,12 @@ QJsonObject GameState::toJson(const ContentRegistry& content, IdStyle style) con
     if (m_weekEvent.isValid()) root.insert("weekEvent", ids.text ? QJsonValue(content.weekEvent(m_weekEvent)->key) : QJsonValue(m_weekEvent.index()));
     if (!m_history.isEmpty()) root.insert("history", m_history);
     if (m_victory.type != VictoryCondition::Type::Conquest) {
-        static const char* names[] = {"conquest", "town", "gold", "days"};
+        static const char* names[] = {"conquest", "town", "gold", "days", "slayMonster"};
         QJsonObject v{{"type", names[static_cast<int>(m_victory.type)]}};
         if (m_victory.town.isValid()) v.insert("town", static_cast<int>(m_victory.town.value()));
         if (m_victory.amount) v.insert("amount", m_victory.amount);
+        if (m_victory.targetArmy.isValid()) v.insert("army", static_cast<int>(m_victory.targetArmy.value()));
+        if (m_victory.slayerTeam.isValid()) v.insert("slayerTeam", static_cast<int>(m_victory.slayerTeam.value()));
         root.insert("victory", v);
     }
     root.insert("nextId", static_cast<int>(m_nextId));
@@ -548,10 +550,13 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
         const QString type = vr.requireString("type");
         gs.m_victory.town = TownId(static_cast<quint32>(vr.optionalInt("town", 0, 0, kMaxId)));
         gs.m_victory.amount = vr.optionalInt("amount", 0, 0, 1000000000);
+        gs.m_victory.targetArmy = ArmyId(static_cast<quint32>(vr.optionalInt("army", 0, 0, kMaxId)));
+        gs.m_victory.slayerTeam = TeamId(static_cast<quint32>(vr.optionalInt("slayerTeam", 0, 0, kMaxId)));
         vr.finish();
         if (type == "town") gs.m_victory.type = VictoryCondition::Type::HoldTown;
         else if (type == "gold") gs.m_victory.type = VictoryCondition::Type::Gold;
         else if (type == "days") gs.m_victory.type = VictoryCondition::Type::Days;
+        else if (type == "slayMonster") gs.m_victory.type = VictoryCondition::Type::SlayMonster;
         else if (type != "conquest") errs << QStringLiteral("save.victory: unknown type '%1'").arg(type);
     }
     const int nextId = top.requireInt("nextId", 1, kMaxId);
@@ -886,6 +891,10 @@ bool GameState::fromJson(const QJsonObject& json, const ContentRegistry& content
     }
     if (gs.m_victory.type == VictoryCondition::Type::HoldTown && !gs.m_towns.contains(gs.m_victory.town))
         errs << QStringLiteral("save.victory: town %1 does not exist").arg(gs.m_victory.town.value());
+    // The target may legitimately be gone in a finished save (the monster was slain),
+    // but a slay goal without a target id can never be won.
+    if (gs.m_victory.type == VictoryCondition::Type::SlayMonster && !gs.m_victory.targetArmy.isValid())
+        errs << QStringLiteral("save.victory: no monster army to slay");
     for (const Town& t : gs.m_towns) {
         const QString what = QStringLiteral("town %1 (%2)").arg(t.id.value()).arg(t.name);
         needPlayer(what, t.owner.value(), true);

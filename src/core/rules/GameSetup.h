@@ -37,6 +37,9 @@ struct GameSetupParams {
     int mapDwellingPercent = 100;
     int minePercent = 100;
     int wanderingMonsterPercent = 100;
+    // For a "slay" scenario goal: a hero-less army of this unit is placed and its
+    // id is recorded in the game's SlayMonster victory condition (invalid = none).
+    UnitTypeId slayMonster;
 };
 
 // Creates a new game: generates the map, gives every player a start town of his

@@ -167,12 +167,15 @@ public:
         m_victoryType->addItem(tr("Take a town"), 1);
         m_victoryType->addItem(tr("Collect gold"), 2);
         m_victoryType->addItem(tr("Most towns after N days"), 3);
+        m_victoryType->addItem(tr("Slay a monster"), 4);
         m_victoryAmount = new QSpinBox(dock);
         m_victoryAmount->setRange(0, 10000000);
         m_victoryTown = new QComboBox(dock);
+        m_victoryMonster = new QComboBox(dock);
         winForm->addRow(tr("Victory"), m_victoryType);
         winForm->addRow(tr("Gold / days"), m_victoryAmount);
         winForm->addRow(tr("Town to take"), m_victoryTown);
+        winForm->addRow(tr("Monster to slay"), m_victoryMonster);
         side->addLayout(winForm);
 
         side->addWidget(new QLabel(tr("<b>Tool</b>"), dock));
@@ -293,6 +296,20 @@ private:
         for (const Town& t : m_state.towns())
             m_victoryTown->addItem(QStringLiteral("%1 (%2, %3)").arg(t.name).arg(t.pos.x).arg(t.pos.y), int(t.id.value()));
         m_victoryTown->setCurrentIndex(std::max(0, m_victoryTown->findData(keepTown ? keepTown : int(m_state.victory().town.value()))));
+        const int keepMonster = m_victoryMonster->currentData().toInt();
+        m_victoryMonster->clear();
+        m_victoryMonster->addItem(tr("(choose a monster)"), 0);
+        for (const Army& army : m_state.armies()) {
+            if (army.owner.isValid() || army.hasHero() || army.stacks.isEmpty()) continue;  // only neutral monster groups
+            bool garrison = false;
+            for (const Town& t : m_state.towns()) garrison = garrison || t.garrison == army.id;
+            if (garrison) continue;
+            const UnitDef* u = m_content.unit(army.stacks.first().unitTypeId());
+            m_victoryMonster->addItem(QStringLiteral("%1 (%2, %3)").arg(u ? u->name : tr("monster")).arg(army.pos.x).arg(army.pos.y),
+                                      int(army.id.value()));
+        }
+        m_victoryMonster->setCurrentIndex(
+            std::max(0, m_victoryMonster->findData(keepMonster ? keepMonster : int(m_state.victory().targetArmy.value()))));
         setWindowTitle(tr("Killers of Time - map editor - %1").arg(m_path.isEmpty() ? tr("(new)") : m_path));
     }
 
@@ -548,6 +565,14 @@ private:
             QMessageBox::warning(this, tr("Save"), tr("Choose the town to take."));
             return;
         }
+        if (v.type == VictoryCondition::Type::SlayMonster) {
+            v.targetArmy = ArmyId(quint32(m_victoryMonster->currentData().toInt()));
+            const Army* monster = m_state.army(v.targetArmy);
+            if (!monster || monster->owner.isValid() || monster->hasHero() || monster->stacks.isEmpty()) {
+                QMessageBox::warning(this, tr("Save"), tr("Choose a neutral monster army to slay."));
+                return;
+            }
+        }
         if ((v.type == VictoryCondition::Type::Gold || v.type == VictoryCondition::Type::Days) && v.amount <= 0) {
             QMessageBox::warning(this, tr("Save"), tr("Set the gold amount or the number of days."));
             return;
@@ -576,7 +601,7 @@ private:
     QString m_path;
     EditorMap* m_map;
     QLineEdit *m_id, *m_name, *m_description;
-    QComboBox *m_victoryType, *m_victoryTown;
+    QComboBox *m_victoryType, *m_victoryTown, *m_victoryMonster;
     QSpinBox* m_victoryAmount;
     QComboBox *m_tool, *m_terrain, *m_owner, *m_race, *m_resource, *m_unit, *m_artifact, *m_heroClass;
     QSpinBox *m_brush, *m_amount;

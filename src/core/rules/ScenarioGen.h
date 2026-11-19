@@ -24,9 +24,11 @@ struct ScenarioGenParams {
     bool roads = true;
     int monsterPercent = 100;   // size of the monster groups
     // Goal: "conquest", "capital" (take the second player's capital), "gold"
-    // (victoryAmount gold first) or "days" (most towns after victoryAmount days).
+    // (victoryAmount gold first), "days" (most towns after victoryAmount days) or
+    // "slay" (destroy one special monster army; `monster` is its unit key).
     QString victory = QStringLiteral("conquest");
     int victoryAmount = 0;
+    QString monster = QStringLiteral("flying_purple_people_eater");
 };
 
 // Makes the scenario: a new game in `out` (players named Player 1..N, the

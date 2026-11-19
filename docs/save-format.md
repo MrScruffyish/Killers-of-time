@@ -66,7 +66,7 @@ Story (scenarios, optional): `intro` (told at the start), `events` (each `day`, 
 there if the tile is free)) and `news` (the texts of today's events).
 The save has `difficulty` (the overall level); players may have `incomePercent` and `growthPercent` (difficulty bonuses) and `townlessSince` (the day the player lost his last town; 7 days later he is out).
 Army stacks may have `experience` (average per unit, veterancy).
-`victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie). Last team standing always wins too.
+`victory` (optional; default conquest): `type` `town` (with `town`: whoever owns it wins), `gold` (`amount`: first to that much gold), `days` (`amount`: after that day the team with the most towns wins, none on a tie), `slayMonster` (`army`: the id of the hero-less neutral army to destroy; `slayerTeam`, once it has been destroyed, is the winning team). The target army may be absent in a finished save (it was slain). Last team standing always wins too.
 `weekEvent` (optional): this week's event id.
 `fogOfWar: false` (optional): no fog of war, explored land stays in sight. `defeat` (optional, default `week`): when a player is out, `week` (7 days without a town), `town` (at once with his last town) or `all` (no towns and no heroes). `hiddenMap: false` (optional): the map was revealed at the start (places on explored land are always known).
 Heroes may have `inBoat: true` (sailing) and `destination: [x, y]` (the target of a move that ran out of movement; cleared on arrival).

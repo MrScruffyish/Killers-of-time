@@ -84,6 +84,22 @@ private slots:
         QVERIFY(generateScenario(reg, p, &gs, &error));
         QCOMPARE(gs.victory().type, VictoryCondition::Type::HoldTown);
         QVERIFY(gs.town(gs.victory().town));
+        // The slay goal places one hero-less horde of the purple eater and points at it.
+        p.victory = "slay";
+        QVERIFY2(generateScenario(reg, p, &gs, &error), qPrintable(error));
+        QCOMPARE(gs.victory().type, VictoryCondition::Type::SlayMonster);
+        const Army* monster = gs.army(gs.victory().targetArmy);
+        QVERIFY(monster);
+        QVERIFY(!monster->owner.isValid());
+        QVERIFY(!monster->hasHero());
+        QCOMPARE(monster->stacks.first().unitTypeId(), reg.unitId("flying_purple_people_eater"));
+        QVERIFY(saveScenario(tmp.filePath("slay.json"), "slay", "Slay", "", gs, reg, &error));
+        Scenario slay;
+        QVERIFY2(loadScenario(tmp.filePath("slay.json"), reg, &slay, &errors), qPrintable(errors.join("\n")));
+        GameState fromScenario;
+        QVERIFY2(GameState::fromJson(slay.game, reg, &fromScenario, &errors), qPrintable(errors.join("\n")));
+        QCOMPARE(fromScenario.victory().type, VictoryCondition::Type::SlayMonster);
+        QVERIFY(fromScenario.army(fromScenario.victory().targetArmy));
         // Bad settings are refused.
         p.races = {"humans"};
         QVERIFY(!generateScenario(reg, p, &gs, &error));

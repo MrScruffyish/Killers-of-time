@@ -1875,11 +1875,44 @@ void drawHeroRider(QPainter& p, const QRectF& r, const QColor& owner, const QStr
     p.restore();
 }
 
+// The one-eyed, one-horned, flying purple people eater: bat wings, a round purple
+// body, a single huge eye, a single horn and a toothy grin.
+void purplePeopleEater(Canvas& c) {
+    wings(c, QColor("#7d46a8"));
+    const QColor purple("#8c44c8");
+    c.pen(kInk, 0.022);
+    c.p.setBrush(lit(c, 0.22, 0.26, 0.56, 0.62, purple, 140, 130));
+    c.p.drawEllipse(c.box(0.22, 0.26, 0.56, 0.62));  // round body
+    c.p.setBrush(QColor("#ffd84a"));  // the one horn
+    c.poly({{0.47, 0.28}, {0.53, 0.01}, {0.58, 0.29}});
+    c.pen(kInk, 0.014);
+    c.p.setBrush(QColor("#fdfaf0"));  // the one eye
+    c.p.drawEllipse(c.box(0.35, 0.35, 0.3, 0.26));
+    c.p.setBrush(QColor("#1b1024"));
+    c.p.drawEllipse(c.box(0.47, 0.4, 0.11, 0.14));
+    c.p.setBrush(Qt::white);
+    c.p.drawEllipse(c.box(0.5, 0.43, 0.04, 0.04));
+    c.p.setBrush(QColor("#3a1030"));  // the mouth that eats people
+    c.p.drawEllipse(c.box(0.29, 0.6, 0.42, 0.16));
+    c.p.setBrush(QColor("#fff6e0"));
+    for (int i = 0; i < 5; ++i) {
+        const double x = 0.32 + i * 0.075;
+        c.poly({{x, 0.61}, {x + 0.05, 0.61}, {x + 0.025, 0.68}});
+    }
+    c.pen(kInk, 0.018);  // little claws
+    c.p.setBrush(purple.darker(130));
+    for (const double x : {0.35, 0.56}) {
+        c.p.drawEllipse(c.box(x, 0.85, 0.1, 0.1));
+        c.poly({{x + 0.01, 0.92}, {x + 0.08, 0.92}, {x + 0.09, 0.99}, {x, 0.99}});
+    }
+}
+
 void drawUnitIcon(QPainter& p, const QRectF& r, const QString& id, int rank) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing, true);
     Canvas c{p, r};
-    if (id == "militia") spearman(c, false);
+    if (id == "flying_purple_people_eater") purplePeopleEater(c);
+    else if (id == "militia") spearman(c, false);
     else if (id == "pikeman") spearman(c, true);
     else if (id.startsWith("archer")) archer(c, rank >= 2 ? QColor("#8a2a2a") : rank == 1 ? QColor("#3a64b0") : QColor("#7a6040"), rank, false);
     else if (id == "elf_archer") archer(c, QColor("#3e7a3a"), 0, true);

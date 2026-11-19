@@ -87,7 +87,7 @@ QJsonObject buildPlayerView(const GameState& state, const ContentRegistry& conte
     view.insert("players", players);
     const GameOutcome outcome = gameOutcome(state, content);
     view.insert("gameOver", outcome.over);
-    view.insert("victory", describeVictory(state));
+    view.insert("victory", describeVictory(state, content));
     view.insert("defeat", describeDefeat(state));
     if (outcome.over) {
         view.insert("winnerTeam", id(outcome.winner.value()));

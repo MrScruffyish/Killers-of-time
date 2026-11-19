@@ -348,10 +348,28 @@ bool createGame(const ContentRegistry& content, const GameSetupParams& params, G
         gs.addMapDwelling(unit->id, where, unit->weeklyGrowth);
     }
 
+    // The slay-goal monster: one named horde, hero-less and hostile to everyone, with
+    // its army id kept in the victory condition so killing that exact army wins.
+    if (params.slayMonster.isValid()) {
+        const UnitDef* monster = content.unit(params.slayMonster);
+        if (!monster) return fail(error, QStringLiteral("unknown slay monster"));
+        Pos where;
+        if (!place(&where)) return fail(error, QStringLiteral("no room for the monster"));
+        const ArmyId target = gs.addArmy(PlayerId(), where);
+        const int count = std::clamp(60 / monster->tier, 4, 20);
+        gs.army(target)->addUnits(monster->id, count, monster->maxHp);
+        VictoryCondition v;
+        v.type = VictoryCondition::Type::SlayMonster;
+        v.targetArmy = target;
+        gs.setVictory(v);
+    }
+
     // Neutral monsters. `strength` 1 (weak) .. 3 (strong) picks the tiers and the size.
     QList<UnitTypeId> monsterUnits;
+    // Only units that breed in the wild wander: the eater is placed on its own for
+    // slay goals, and there are no wandering catapults either.
     for (const UnitDef& u : content.units())
-        if (!u.has(Ability::SiegeEngine)) monsterUnits.append(u.id);  // no wandering catapults
+        if (u.weeklyGrowth > 0 && !u.has(Ability::SiegeEngine) && u.id != params.slayMonster) monsterUnits.append(u.id);
     const QSet<Pos> landSet(land.begin(), land.end());
     const auto addMonsters = [&](Pos where, int strength) {
         QList<UnitTypeId> fitting;

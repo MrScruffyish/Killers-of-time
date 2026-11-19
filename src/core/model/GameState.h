@@ -25,10 +25,12 @@ inline constexpr int kSaveFormatVersion = 4;
 
 // How a game is won besides being the last team standing (which always counts).
 struct VictoryCondition {
-    enum class Type { Conquest, HoldTown, Gold, Days };
+    enum class Type { Conquest, HoldTown, Gold, Days, SlayMonster };
     Type type = Type::Conquest;
     TownId town;      // HoldTown: whoever owns it wins
     int amount = 0;   // Gold: first to have this much gold; Days: the game ends after this day
+    ArmyId targetArmy;   // SlayMonster: the hero-less neutral army that must be destroyed
+    TeamId slayerTeam;   // SlayMonster: set when it is destroyed, so we know who won
 };
 
 // The complete state of one game. Plain data plus helpers; the rules live in

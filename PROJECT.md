@@ -336,8 +336,11 @@ cast (limited: mana-less with charges per battle, or small spell list).
 ### 5.13 Victory conditions
 
 - Last team standing (all towns and heroes lost) always wins.
-- A scenario may also name a town to capture, a gold amount or a number of days
-  after which the team with the most towns wins.
+- A scenario may also name a town to capture, a gold amount, a number of days
+  after which the team with the most towns wins, or one particular neutral monster
+  army to slay (the killer's team wins). Generated "slay" scenarios place the
+  one-horned, flying purple people eater as that army; it is a data-only unit with no
+  weekly growth, so no town or dwelling can ever recruit it.
 
 ### 5.14 Design principle: avoid micromanagement
 
