@@ -26,11 +26,12 @@ public:
     // `hotSeat`: the lobby starts with a second human at this computer (first connect only).
     // `loadSavedGame`: open the saved-game list once the lobby is up.
     void connectToServer(const QString& host, quint16 port, const QString& name, const QString& gameToken = QString(),
-                         bool tls = false, bool hotSeat = false, bool loadSavedGame = false);
+                         bool tls = false, bool hotSeat = false, bool loadSavedGame = false, bool allowCampaign = false);
     // Starts kot_server (next to this program) and joins it. `hotSeat`: several humans
     // take turns at this computer. `loadSavedGame`: open the saved-game list in the lobby.
+    // `allowCampaign`: a solo game, where one human plays against AI opponents.
     void hostLocalGame(quint16 port, const QString& name, bool tls = false, bool hotSeat = false,
-                       bool loadSavedGame = false);
+                       bool loadSavedGame = false, bool allowCampaign = false);
 
     QString currentPage() const;  // "connect", "lobby" or "game"
     net::LobbyClient& client() { return m_client; }

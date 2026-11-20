@@ -84,6 +84,7 @@ private:
     void removeClient(int clientId);
     void sendError(Client& client, const QString& code, const QString& text, int replyTo);
     void broadcastLobby();
+    void sendContentLists();  // refreshed scenario/campaign lists (with campaign progress)
     void startGame();
     void sendGameStates();
     // Saved games, joining a running game. Return true if the message was one of these.
@@ -114,6 +115,9 @@ private:
     // Runs a saved game; connected clients whose codes fit get their seats back, the
     // others are offered the free ones.
     bool loadSaveFile(const QString& path, QString* error);
+    // Player count of a scenario, and of a campaign's current chapter (0 = unknown).
+    int scenarioSeats(const QString& id) const;
+    int campaignSeats(const QString& id) const;
     int m_lastAutosaveDay = 0;
     QString m_gameStamp;  // when this game was started or loaded: part of its autosave names
     // A save at the start of every new day, the oldest beyond the lobby's

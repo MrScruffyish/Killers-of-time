@@ -28,6 +28,8 @@ public:
     // The next lobby this client hosts starts as a hot-seat game: a second human
     // (Player 2) sits at this computer instead of the default AI opponent.
     void setHotSeatSetup(bool on);
+    // Campaigns are a solo mode: offer the campaign/map choice only for a local solo host.
+    void setCampaignAllowed(bool on) { m_campaignAllowed = on; }
 
 signals:
     void leaveRequested();
@@ -36,10 +38,16 @@ private slots:
     void rebuild();
 
 private:
+    void makeMap(bool campaignTab);
 
     net::LobbyClient* m_client;
     const core::ContentRegistry* m_content;
     QWidget* m_slotHolder;
+    QWidget* m_modeHolder;      // campaign/map choice (solo games only)
+    QWidget* m_mapHolder;       // random / pre-built map picker
+    QWidget* m_campaignHolder;  // campaign picker (solo only)
+    QWidget* m_setupRows;       // map rules, hidden in campaign mode
+    QLabel* m_campaignNote;
     QGridLayout* m_grid = nullptr;
     QComboBox* m_mapSize;  // named sizes (data: the side length); "custom" for other sizes
     QLineEdit* m_seed;
@@ -59,8 +67,11 @@ private:
     bool m_defaultOpponentAdded = false;
     bool m_hotSeatSetup = false;
     QLabel* m_versions;
+    QComboBox* m_mode;  // "map" or "campaign"
     QComboBox* m_scenario;
+    QComboBox* m_campaignChoice;
     QLabel* m_scenarioInfo;
+    bool m_campaignAllowed = false;
     QPushButton* m_start;
     QPushButton* m_load;
     int m_listSavesSeq = 0;

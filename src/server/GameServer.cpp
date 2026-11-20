@@ -67,6 +67,28 @@ void GameServer::refreshContentLists() {
     m_lobby.setCampaignIds(campaigns);
 }
 
+int GameServer::scenarioSeats(const QString& id) const {
+    if (!m_content || id.isEmpty()) return 0;
+    for (const QString& dir : contentDirs("scenarios"))
+        for (const core::ScenarioInfo& s : core::listScenarios(dir, *m_content))
+            if (s.id == id) return s.races.size();
+    return 0;
+}
+
+int GameServer::campaignSeats(const QString& id) const {
+    if (id.isEmpty()) return 0;
+    for (const QString& dir : contentDirs("campaigns")) {
+        core::CampaignDef def;
+        if (!core::loadCampaign(QDir(dir).filePath(id + QStringLiteral(".json")), &def, nullptr)) continue;
+        core::CampaignProgress p;
+        if (!m_saveDir.isEmpty()) core::loadProgress(QDir(m_saveDir).filePath("campaign_" + id + ".json"), &p);
+        if (p.finished(def)) p = core::CampaignProgress();
+        if (p.next >= def.scenarios.size()) return 0;
+        return scenarioSeats(def.scenarios[p.next]);
+    }
+    return 0;
+}
+
 QJsonArray GameServer::campaignsJson() const {
     QJsonArray list;
     if (!m_content) return list;
@@ -81,16 +103,17 @@ QJsonArray GameServer::campaignsJson() const {
     for (const core::CampaignDef& c : all) {
         core::CampaignProgress p;
         if (!m_saveDir.isEmpty()) core::loadProgress(QDir(m_saveDir).filePath("campaign_" + c.id + ".json"), &p);
-        QJsonArray chapters;
+        QJsonArray chapters, seats;
         for (const QString& s : c.scenarios) {
             QString name = s;
             for (const QJsonValue& v : m_scenarios)
                 if (v.toObject()["id"].toString() == s) name = v.toObject()["name"].toString();
             chapters.append(name);
+            seats.append(scenarioSeats(s));
         }
         list.append(QJsonObject{{"id", c.id}, {"name", c.name}, {"description", c.description},
                                 {"chapters", chapters}, {"chapterIds", QJsonArray::fromStringList(c.scenarios)},
-                                {"next", p.next}});
+                                {"seats", seats}, {"next", p.next}});
     }
     return list;
 }
@@ -320,6 +343,13 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
         result = m_lobby.setReady(id, message.body.value("ready").toBool(false));
     } else if (message.type == net::msg::setSettings) {
         result = m_lobby.setSettings(id, message.body);
+        // A campaign is a one-human game: size the seats for its current chapter and
+        // let the AI fill the rest. Going back to a map restores ordinary open slots.
+        if (result.ok && message.body.contains("campaign")) {
+            const QString campaign = message.body.value("campaign").toString();
+            result = campaign.isEmpty() ? m_lobby.setMapSlots()
+                                        : m_lobby.setCampaignSeats(campaignSeats(campaign));
+        }
     } else if (handleSaveOrJoin(client, message)) {
         return;
     } else if (message.type == net::msg::startGame) {
@@ -362,7 +392,17 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
         startGame();
         return;
     }
+    if (message.type == net::msg::setSettings && message.body.contains("campaign")) sendContentLists();
     broadcastLobby();
+}
+
+void GameServer::sendContentLists() {
+    Message lists;
+    lists.type = net::msg::contentLists;
+    lists.body.insert("scenarios", m_scenarios);
+    lists.body.insert("campaigns", campaignsJson());
+    for (Client& c : m_clients)
+        if (c.greeted) c.connection->send(lists);
 }
 
 void GameServer::startGame() {
@@ -638,12 +678,7 @@ void GameServer::generateContent(Client& client, const Message& message) {
     }
     refreshContentLists();
     reply(client, message, {{"id", id}, {"kind", kind}});
-    Message lists;
-    lists.type = net::msg::contentLists;
-    lists.body.insert("scenarios", m_scenarios);
-    lists.body.insert("campaigns", campaignsJson());
-    for (Client& c : m_clients)
-        if (c.greeted) c.connection->send(lists);
+    sendContentLists();
 }
 
 bool GameServer::handleSaveOrJoin(Client& client, const Message& message) {

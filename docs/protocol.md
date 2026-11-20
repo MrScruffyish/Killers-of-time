@@ -34,10 +34,10 @@ A wrong `protocol` gives `error` with code `protocol_mismatch`, then the connect
 | client -> server | `release_slot` | |
 | client -> server | `set_slot` | `slot` plus any of `race`, `team` (1-8), `color` (#RRGGBB). Host only: `kind` (`open`/`ai`/`closed`/`hotseat`: another human at the host's computer, always ready; the host's connection plays all his hot-seat players, the server acts for and shows the one whose turn it is), `name` (AI and hot-seat slots), `aiProfile`, `difficulty` (`easy`/`normal`/`hard`) |
 | client -> server | `set_ready` | `ready` (bool) |
-| client -> server | `set_settings` | host only: `mapWidth`, `mapHeight` (16-256), `seed` (number or text), `neutralTownPercent`, `mapDwellingPercent`, `minePercent`, `wanderingMonsterPercent` (0-400, default 100; random maps only) |
+| client -> server | `set_settings` | host only: `mapWidth`, `mapHeight` (16-256), `seed` (number or text), `neutralTownPercent`, `mapDwellingPercent`, `minePercent`, `wanderingMonsterPercent` (0-400, default 100; random maps only), `scenario` (id, empty = random map), `campaign` (id, empty = map; solo campaigns resize the lobby to the current chapter's seat count and fill all but the host's slot with ready AI), `difficulty`, `defeat`, `fogOfWar`, `hiddenMap`, `autosaves`, `mapType` |
 | client -> server | `start_game` | host only |
 | client -> server | `generate_map` | host only, no game running. A random scenario: `kind`=`scenario`, `id` (1-40 of `A-Za-z0-9_-`, the file name), `name`, `description`, `width`, `height` (24-192), `seed`, `races` (one per player, 2-8; `random` picks one; the first is meant for the human), `islands`, `seaLevel` (0.1-0.6), `mountains` (share), `rivers` (-1 = by size), `roads`, `monsterPercent`, `victory` (`conquest`/`capital`/`gold`/`days`/`slay` — destroy the placed boss, with `monster` as its unit key, default the flying purple people eater/`artifact` — bring back the `artifact` named by its key/`explore` — reveal `victoryAmount` percent of the land), `victoryAmount` (gold, days or percent; 0 = 50000 / 90 / 60). A random campaign: `kind`=`campaign`, `id`, `name`, `chapters` (2-20), `race`, `size` (first map; +16 per chapter), `seed`, `carryHeroes`, `carryArmy`, `islands`. Written to the server's saves folder (`scenarios/`, `campaigns/`); reply `id`, `kind`; then everyone gets `content_lists` |
-| server -> client | `content_lists` | `scenarios`, `campaigns` (same as in `welcome`), after a map was made |
+| server -> client | `content_lists` | `scenarios`, `campaigns` (same as in `welcome`), after a map was made or a campaign was chosen (so its progress/chapter seats are fresh) |
 | client -> server | `ping` | answered with `pong` |
 | server -> client | `game_starting` | the final lobby (same fields as `lobby_state`) |
 | server -> client | `error` | `code`, `message`, `replyTo` |
@@ -194,7 +194,7 @@ Lobby settings also have `defeat` (host only): when a player is out: `week` (def
 Stacks in views and battle units may have `stars` (0..5, veterancy).
 
 `welcome` lists `scenarios` (`id`, `name`, `description`, `width`, `height`, `races`). Lobby settings have `scenario` (an id, empty = random map; host only).
-`welcome` also lists `campaigns` (`id`, `name`, `description`, `chapters`, `chapterIds`, `next`); lobby settings have `campaign`. The game view has `campaign` (`name`, `chapter`, `chapters`, `result` won/lost at the end).
+`welcome` also lists `campaigns` (`id`, `name`, `description`, `chapters`, `chapterIds`, `seats` (player count of each chapter), `next`); lobby settings have `campaign`. Choosing one makes the server fill every seat but the host's with AI for the current chapter. The game view has `campaign` (`name`, `chapter`, `chapters`, `result` won/lost at the end).
 The game view has `victory` (a short text: what wins this game).
 The game view has `weekEvent` (`id`, `name`, `description`) when an event is on.
 Random-map lobby settings also have `neutralTownPercent`, `mapDwellingPercent`, `minePercent` and `wanderingMonsterPercent` (0-400, default 100): how many free towns, map dwellings, neutral mines and roving enemy armies the generator places, as a percentage of the size-based default. A scenario ignores them; each player's capital and starting mines are unaffected.

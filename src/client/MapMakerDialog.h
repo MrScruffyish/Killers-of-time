@@ -20,7 +20,7 @@ namespace kot::client {
 class MapMakerDialog : public QDialog {
     Q_OBJECT
 public:
-    MapMakerDialog(const QStringList& races, QWidget* parent = nullptr);
+    MapMakerDialog(const QStringList& races, QWidget* parent = nullptr, bool campaignTab = false);
     QJsonObject params() const;
 
 private:

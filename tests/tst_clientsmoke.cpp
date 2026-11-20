@@ -16,6 +16,7 @@
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QPushButton>
+#include <QWidget>
 #include <QTableWidget>
 #include <QTabWidget>
 #include <QComboBox>
@@ -207,6 +208,72 @@ private slots:
             QCOMPARE(spin->maximum(), 400);
             QCOMPARE(spin->value(), 100);
         }
+    }
+
+    // Solo: the setup offers campaign or map. Picking a campaign hides every other
+    // setup control, and the server fills all but the host's seat with AI.
+    void soloLobbyChoosesCampaignOrMapAndHidesTheRest() {
+        server::GameServer server({"humans"}, {"passive"});
+        server.setContent(&reg);
+        QVERIFY(server.start(0));
+
+        MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        w.connectToServer(QStringLiteral("127.0.0.1"), server.port(), "Ann", {}, false, false, false, true);
+        QTRY_COMPARE_WITH_TIMEOUT(w.currentPage(), QStringLiteral("lobby"), 5000);
+        LobbyPage* lobby = w.lobbyPage();
+
+        auto* mode = lobby->findChild<QComboBox*>(QStringLiteral("gameMode"));
+        QVERIFY(mode);
+        QVERIFY(mode->isVisible());
+        QVERIFY(mode->isEnabled());
+        QCOMPARE(mode->count(), 2);
+        QCOMPARE(mode->itemData(0).toString(), QStringLiteral("map"));
+        QCOMPARE(mode->itemData(1).toString(), QStringLiteral("campaign"));
+        auto* choice = lobby->findChild<QComboBox*>(QStringLiteral("campaignChoice"));
+        QVERIFY(choice);
+        QVERIFY(choice->findData(QStringLiteral("first_war")) >= 0);
+        QVERIFY(choice->findData(QStringLiteral("intrinsic-1")) >= 0);
+        QCOMPARE(choice->itemData(choice->count() - 1).toString(), QStringLiteral("__random__"));
+        QVERIFY(lobby->findChild<QComboBox*>(QStringLiteral("mapSize"))->isVisible());
+
+        w.client().setSettings({{"campaign", "intrinsic-1"}});
+        QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().settings.campaign, QStringLiteral("intrinsic-1"), 5000);
+        QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList.size(), 2, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(!lobby->findChild<QComboBox*>(QStringLiteral("scenario"))->isVisible(), 5000);
+        QCOMPARE(mode->currentData().toString(), QStringLiteral("campaign"));
+        QVERIFY(!lobby->findChild<QComboBox*>(QStringLiteral("mapSize"))->isVisible());
+        QVERIFY(!lobby->findChild<QComboBox*>(QStringLiteral("difficulty"))->isVisible());
+        QVERIFY(!lobby->findChild<QSpinBox*>(QStringLiteral("neutralTownPercent"))->isVisible());
+        QVERIFY(!lobby->findChild<QPushButton*>(QStringLiteral("makeMapButton"))->isVisible());
+        QVERIFY(!lobby->findChild<QPushButton*>(QStringLiteral("loadButton"))->isVisible());
+        QVERIFY(!lobby->findChild<QComboBox*>(QStringLiteral("kind0"))->isVisible());  // slot table hidden too
+        QVERIFY(lobby->findChild<QPushButton*>(QStringLiteral("startButton"))->isVisible());
+        QCOMPARE(w.client().lobby().slotList[0].kind, net::SlotKind::Human);
+        QCOMPARE(w.client().lobby().slotList[1].kind, net::SlotKind::Ai);
+
+        // Back to a map: the ordinary setup is offered again.
+        w.client().setSettings({{"campaign", QString()}});
+        QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList.size(), 4, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(lobby->findChild<QComboBox*>(QStringLiteral("scenario"))->isVisible(), 5000);
+        QCOMPARE(mode->currentData().toString(), QStringLiteral("map"));
+    }
+
+    // Hot seat and network games keep the map-based lobby: no campaign choice there.
+    void onlySoloGamesOfferCampaigns() {
+        server::GameServer server({"humans"}, {"passive"});
+        QVERIFY(server.start(0));
+        MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        w.connectToServer(QStringLiteral("127.0.0.1"), server.port(), "Ann", {}, false, true);
+        QTRY_COMPARE_WITH_TIMEOUT(w.currentPage(), QStringLiteral("lobby"), 5000);
+        auto* mode = w.lobbyPage()->findChild<QComboBox*>(QStringLiteral("gameMode"));
+        QVERIFY(mode);
+        QVERIFY(!mode->isVisible());
+        QVERIFY(!mode->isEnabled());
+        QVERIFY(w.lobbyPage()->findChild<QComboBox*>(QStringLiteral("scenario"))->isVisible());
     }
 
     // Saving asks for a name in a roomy dialog, not the tiny stock one.

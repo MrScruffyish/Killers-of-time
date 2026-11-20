@@ -29,6 +29,13 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
+53. Make campaigns a solo mode for one human: the setup lobby offers campaign (random or
+    shipped) or map (random or pre-built), and the server fills every other seat with AI for
+    the current chapter. Choosing a campaign hides all other setup options.
+53.1 **MANUAL**: run `make test`; the lobby mode switch, campaign seat counts and hidden
+    settings are covered. Then start `intrinsic-1` from kot_client Solo and confirm you are
+    the only human, the AI opponents appear automatically, chapters with 5-6 seats start, and
+    no map/slot settings are offered.
 
 ## TBD
 

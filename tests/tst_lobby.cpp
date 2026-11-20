@@ -291,6 +291,51 @@ private slots:
         QCOMPARE(lobby.setSettings(1, {{"seed", 1}}).code, QString("already_started"));
         QCOMPARE(lobby.start(1).code, QString("already_started"));
     }
+
+    // ---- solo campaigns: one human, the rest AI, sized for the chapter
+    void campaignSeatsAreAllAiExceptTheHost() {
+        lobby.addMember(1, "Ann");
+        QVERIFY(lobby.editSlot(1, 0, {{"race", "undead"}}).ok);
+        QVERIFY(lobby.setCampaignSeats(6).ok);
+        QCOMPARE(lobby.state().slotList.size(), 6);
+        QCOMPARE(slot(0).kind, SlotKind::Human);
+        QCOMPARE(slot(0).name, QString("Ann"));
+        QCOMPARE(slot(0).race, QString("undead"));
+        for (int i = 1; i < 6; ++i) {
+            QCOMPARE(slot(i).kind, SlotKind::Ai);
+            QCOMPARE(slot(i).name, QString("AI %1").arg(i + 1));
+            QCOMPARE(slot(i).aiProfile, QString("passive"));
+            QCOMPARE(slot(i).difficulty, QString("normal"));
+            QVERIFY(slot(i).ready);
+        }
+        QVERIFY2(lobby.checkStart(1).ok, qPrintable(lobby.checkStart(1).message));
+    }
+
+    void campaignResizesBetweenChaptersAndMapRestoresOpenSlots() {
+        lobby.addMember(1, "Ann");
+        QVERIFY(lobby.setCampaignSeats(5).ok);
+        QCOMPARE(lobby.state().slotList.size(), 5);
+        QVERIFY(lobby.setCampaignSeats(3).ok);  // another chapter, fewer players
+        QCOMPARE(lobby.state().slotList.size(), 3);
+        QCOMPARE(slot(2).kind, SlotKind::Ai);
+        QCOMPARE(lobby.slotOf(1), 0);
+        QVERIFY(lobby.setMapSlots(4).ok);
+        QCOMPARE(lobby.state().slotList.size(), 4);
+        QCOMPARE(slot(0).kind, SlotKind::Human);
+        QCOMPARE(slot(0).name, QString("Ann"));
+        QCOMPARE(slot(1).kind, SlotKind::Open);
+        QVERIFY(slot(1).aiProfile.isEmpty());
+        QCOMPARE(lobby.slotOf(1), 0);
+        QVERIFY2(lobby.checkStart(1).message.contains("two players"), qPrintable(lobby.checkStart(1).message));
+    }
+
+    void seatChangesAreRejectedAfterTheStart() {
+        lobby.addMember(1, "Ann");
+        QVERIFY(lobby.setCampaignSeats(2).ok);
+        QVERIFY(lobby.start(1).ok);
+        QCOMPARE(lobby.setCampaignSeats(3).code, QString("already_started"));
+        QCOMPARE(lobby.setMapSlots().code, QString("already_started"));
+    }
 };
 
 QTEST_APPLESS_MAIN(TstLobby)

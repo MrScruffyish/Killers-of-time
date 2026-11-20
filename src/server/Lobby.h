@@ -49,6 +49,10 @@ public:
     LobbyResult setReady(int clientId, bool ready);
     // patch keys (host only): mapWidth, mapHeight (16..256), seed.
     LobbyResult setSettings(int actorId, const QJsonObject& patch);
+    // Campaigns have exactly one human (the host); the other `seats - 1` are AI, sized
+    // for the current chapter. Going back to a map restores ordinary open slots.
+    LobbyResult setCampaignSeats(int seats) { return configureSlots(seats, true); }
+    LobbyResult setMapSlots(int slotCount = 4) { return configureSlots(slotCount, false); }
 
     // The host may start when: at least one human, two occupied slots on two
     // different teams, and every human is ready.
@@ -63,6 +67,7 @@ public:
     void setCampaignIds(QStringList ids) { m_campaignIds = std::move(ids); }
 
 private:
+    LobbyResult configureSlots(int count, bool campaign);
     net::SlotInfo freshSlot(int index) const;
     QString unusedColor(int exceptSlot) const;
     bool colorTaken(const QString& color, int exceptSlot) const;

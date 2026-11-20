@@ -691,13 +691,15 @@ private slots:
         server->setContent(&content);
         server->setSaveDir(saves.path());
         auto a = connectClient("Ann");
-        auto b = connectClient("Bob");
         QObject::connect(a.get(), &LobbyClient::errorReceived,
                          [](const QString& code, const QString& text, int) { qWarning() << "ERROR" << code << text; });
-        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().members.size(), 2, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(a->isConnected() && !a->lobby().members.isEmpty(), 3000);
+        // Campaigns are solo: the server fills the other seat with AI.
         a->setSettings({{"campaign", "first_war"}});
-        QTRY_COMPARE_WITH_TIMEOUT(b->lobby().settings.campaign, QString("first_war"), 3000);
-        startTwoPlayerGame(*a, *b);
+        QTRY_COMPARE_WITH_TIMEOUT(a->lobby().settings.campaign, QString("first_war"), 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(a->lobby().slotList.size(), 2, 3000);
+        a->startGame();
+        QTRY_VERIFY_WITH_TIMEOUT(!a->view().isEmpty(), 3000);
         QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(saves.filePath("campaign_first_war_chapter1_start.json")), 3000);
         // It shows in the load list; the campaign's progress file does not.
         QJsonObject info;
@@ -705,6 +707,58 @@ private slots:
         a->listSaves();
         QTRY_VERIFY_WITH_TIMEOUT(info.contains("saves"), 3000);
         for (const QJsonValue& v : info["saves"].toArray()) QVERIFY(v.toString().contains("_chapter"));
+    }
+
+    void choosingACampaignFillsTheOtherSeatsWithAi() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        auto a = connectClient("Ann");
+        QTRY_VERIFY_WITH_TIMEOUT(a->isConnected() && !a->campaigns().isEmpty(), 3000);
+        QCOMPARE(a->lobby().slotList.size(), 4);
+        QCOMPARE(a->lobby().slotList[0].kind, SlotKind::Human);
+        QCOMPARE(a->lobby().slotList[1].kind, SlotKind::Open);
+
+        QJsonObject campaign;
+        for (const QJsonValue& v : a->campaigns())
+            if (v.toObject()["id"].toString() == QStringLiteral("intrinsic-1")) campaign = v.toObject();
+        QVERIFY(!campaign.isEmpty());
+        const QJsonArray seats = campaign["seats"].toArray();
+        QCOMPARE(seats.size(), 5);  // one entry per chapter
+        QCOMPARE(seats.at(0).toInt(), 2);
+        QCOMPARE(seats.at(3).toInt(), 5);
+        QCOMPARE(seats.at(4).toInt(), 6);
+
+        a->setSettings({{"campaign", "intrinsic-1"}});
+        QTRY_COMPARE_WITH_TIMEOUT(a->lobby().slotList.size(), 2, 3000);
+        QCOMPARE(a->lobby().slotList[0].kind, SlotKind::Human);
+        QCOMPARE(a->lobby().slotList[0].name, QString("Ann"));
+        QCOMPARE(a->lobby().slotList[1].kind, SlotKind::Ai);
+        QVERIFY(a->lobby().slotList[1].ready);
+
+        // Back to a map: the open slots return, and the host keeps his seat.
+        a->setSettings({{"campaign", QString()}});
+        QTRY_COMPARE_WITH_TIMEOUT(a->lobby().slotList.size(), 4, 3000);
+        QCOMPARE(a->lobby().slotList[0].kind, SlotKind::Human);
+        QCOMPARE(a->lobby().slotList[1].kind, SlotKind::Open);
+    }
+
+    void aCampaignStartsWithTheCurrentChaptersSeatCount() {
+        QTemporaryDir saves;
+        server->setContent(&content);
+        server->setSaveDir(saves.path());
+        // Chapter 4 of intrinsic-1 needs five players.
+        QFile progress(saves.filePath("campaign_intrinsic-1.json"));
+        QVERIFY(progress.open(QIODevice::WriteOnly));
+        progress.write(QJsonDocument(QJsonObject{{"campaign", "intrinsic-1"}, {"next", 3}}).toJson());
+        progress.close();
+        auto a = connectClient("Ann");
+        QTRY_VERIFY_WITH_TIMEOUT(a->isConnected() && !a->campaigns().isEmpty(), 3000);
+        a->setSettings({{"campaign", "intrinsic-1"}});
+        QTRY_COMPARE_WITH_TIMEOUT(a->lobby().slotList.size(), 5, 5000);
+        for (int i = 0; i < 5; ++i) QCOMPARE(a->lobby().slotList[i].kind, i ? SlotKind::Ai : SlotKind::Human);
+        a->startGame();
+        QTRY_VERIFY_WITH_TIMEOUT(!a->view().isEmpty(), 5000);
     }
 
     void theHostMakesARandomMap() {

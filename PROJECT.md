@@ -331,6 +331,11 @@ cast (limited: mana-less with charges per battle, or small spell list).
 - Host creates a game: chooses map, number of slots; for each slot picks
   controller (human / AI + profile + difficulty), race, team, color.
 - Clients connect, claim slots, game starts when ready.
+- A solo host can choose a campaign instead of a map. Campaigns are single-human: the host keeps
+  slot 0, the server sizes the lobby to the current chapter's player count and fills every other
+  seat with a ready AI (normal difficulty). The campaign picker (random or shipped) replaces all
+  map, slot and rule controls; switching back to a map restores ordinary open slots. Campaigns
+  are offered only for solo games, never hot seat or network.
 - Save/load the full game state; reconnect support for dropped human players.
 
 ### 5.13 Victory conditions

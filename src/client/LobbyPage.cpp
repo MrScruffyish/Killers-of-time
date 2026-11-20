@@ -62,10 +62,36 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     outer->setSpacing(10);
     outer->addWidget(new QLabel(tr("<h2>Game setup</h2>"), this));
 
+    m_modeHolder = new QWidget(this);
+    auto* modeRow = new QHBoxLayout(m_modeHolder);
+    modeRow->addWidget(new QLabel(tr("Play"), this));
+    m_mode = new QComboBox(this);
+    m_mode->setObjectName("gameMode");
+    m_mode->addItem(tr("A map: random or pre-built"), QStringLiteral("map"));
+    m_mode->addItem(tr("A campaign: one human, AI opponents"), QStringLiteral("campaign"));
+    modeRow->addWidget(m_mode);
+    modeRow->addStretch(1);
+    outer->addWidget(m_modeHolder);
+    connect(m_mode, &QComboBox::activated, this, [this](int) {
+        const bool campaign = m_mode->currentData().toString() == QLatin1String("campaign");
+        if (!campaign) {
+            m_client->setSettings({{"scenario", m_scenario->currentData().toString()}, {"campaign", QString()}});
+            return;
+        }
+        const QString id = m_campaignChoice->currentData().toString();
+        if (id == QLatin1String("__random__")) {  // generate one first, then play it
+            m_mode->setCurrentIndex(m_mode->findData(QStringLiteral("map")));
+            makeMap(true);
+            return;
+        }
+        if (!id.isEmpty()) m_client->setSettings({{"campaign", id}});
+    });
+
     m_slotHolder = new QWidget(this);
     outer->addWidget(m_slotHolder);
 
-    auto* mapRow = new QHBoxLayout();
+    m_mapHolder = new QWidget(this);
+    auto* mapRow = new QHBoxLayout(m_mapHolder);
     mapRow->addWidget(new QLabel(tr("Map"), this));
     m_scenario = new QComboBox(this);
     m_scenario->setObjectName("scenario");
@@ -73,12 +99,33 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     m_scenarioInfo = new QLabel(this);
     m_scenarioInfo->setWordWrap(true);
     mapRow->addWidget(m_scenarioInfo, 1);
-    outer->addLayout(mapRow);
+    outer->addWidget(m_mapHolder);
     connect(m_scenario, &QComboBox::activated, this, [this](int) {
-        const QString choice = m_scenario->currentData().toString();
-        if (choice.startsWith("campaign:")) m_client->setSettings({{"campaign", choice.mid(9)}});
-        else m_client->setSettings({{"scenario", choice}, {"campaign", QString()}});
+        m_client->setSettings({{"scenario", m_scenario->currentData().toString()}, {"campaign", QString()}});
     });
+
+    m_campaignHolder = new QWidget(this);
+    auto* campaignRow = new QHBoxLayout(m_campaignHolder);
+    campaignRow->addWidget(new QLabel(tr("Campaign"), this));
+    m_campaignChoice = new QComboBox(this);
+    m_campaignChoice->setObjectName("campaignChoice");
+    campaignRow->addWidget(m_campaignChoice);
+    m_campaignNote = new QLabel(this);
+    m_campaignNote->setWordWrap(true);
+    campaignRow->addWidget(m_campaignNote, 1);
+    outer->addWidget(m_campaignHolder);
+    connect(m_campaignChoice, &QComboBox::activated, this, [this](int) {
+        const QString id = m_campaignChoice->currentData().toString();
+        if (id == QLatin1String("__random__")) {
+            makeMap(true);
+            return;
+        }
+        if (!id.isEmpty()) m_client->setSettings({{"campaign", id}});
+    });
+
+    m_setupRows = new QWidget(this);
+    auto* setupRows = new QVBoxLayout(m_setupRows);
+    setupRows->setContentsMargins(0, 0, 0, 0);
 
     auto* settings = new QHBoxLayout();
     settings->setObjectName(QStringLiteral("setupSettingsRow1"));
@@ -158,8 +205,8 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     });
     settings->addStretch(1);
     settings2->addStretch(1);
-    outer->addLayout(settings);
-    outer->addLayout(settings2);
+    setupRows->addLayout(settings);
+    setupRows->addLayout(settings2);
 
     // How much of each kind of object a random map gets. Player capitals, their
     // starting mines and the guards stay as they are; only the shared map changes.
@@ -187,7 +234,8 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     m_mines = addPercent("minePercent", tr("Mines"), percentTip);
     m_wanderingMonsters = addPercent("wanderingMonsterPercent", tr("Roving enemies"), percentTip);
     settings3->addStretch(1);
-    outer->addLayout(settings3);
+    setupRows->addLayout(settings3);
+    outer->addWidget(m_setupRows);
 
     m_status = new QLabel(this);
     m_status->setWordWrap(true);
@@ -224,33 +272,32 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     loadKey->setContext(Qt::WidgetWithChildrenShortcut);
     connect(loadKey, &QShortcut::activated, this, &LobbyPage::requestLoad);
     connect(m_start, &QPushButton::clicked, this, [this]() {
-        // One human against the computer: the host needs no Ready, only an opponent.
+        // In a campaign the server has already filled the seats with AI. For a map,
+        // one human against the computer needs at least one opponent.
         const net::LobbyState& lobby = m_client->lobby();
-        bool opponent = false;
-        for (const net::SlotInfo& s : lobby.slotList)
-            opponent = opponent || (s.occupied() && (s.clientId != m_client->clientId() || s.kind == net::SlotKind::HotSeat));
-        if (!opponent)
+        if (lobby.settings.campaign.isEmpty()) {
+            bool opponent = false;
             for (const net::SlotInfo& s : lobby.slotList)
-                if (s.kind == net::SlotKind::Open) {
-                    m_client->setSlot(s.index, {{"kind", "ai"}});
-                    break;
-                }
+                opponent = opponent || (s.occupied() && (s.clientId != m_client->clientId() || s.kind == net::SlotKind::HotSeat));
+            if (!opponent)
+                for (const net::SlotInfo& s : lobby.slotList)
+                    if (s.kind == net::SlotKind::Open) {
+                        m_client->setSlot(s.index, {{"kind", "ai"}});
+                        break;
+                    }
+        }
         m_client->startGame();
     });
     connect(m_load, &QPushButton::clicked, this, &LobbyPage::requestLoad);
-    connect(m_makeMap, &QPushButton::clicked, this, [this]() {
-        MapMakerDialog dialog(m_client->races(), this);
-        if (dialog.exec() != QDialog::Accepted) return;
-        m_makeParams = dialog.params();
-        m_makeSeq = m_client->generateMap(m_makeParams);
-        m_status->setStyleSheet(QString());
-        m_status->setText(tr("Making the map..."));
-    });
+    connect(m_makeMap, &QPushButton::clicked, this, [this]() { makeMap(false); });
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
         if (replyTo == 0 || replyTo != m_makeSeq) return;
         m_makeSeq = 0;
-        // Play it: choose the new scenario or campaign.
-        m_client->setSettings({{info["kind"].toString() == "campaign" ? "campaign" : "scenario", info["id"].toString()}});
+        // Play it: choose the new scenario or campaign (and leave the other mode).
+        if (info["kind"].toString() == QLatin1String("campaign"))
+            m_client->setSettings({{"campaign", info["id"].toString()}});
+        else
+            m_client->setSettings({{"scenario", info["id"].toString()}, {"campaign", QString()}});
         m_status->setText(tr("Made \"%1\" and chose it.").arg(m_makeParams["name"].toString()));
     });
     connect(m_client, &net::LobbyClient::commandResult, this, [this](int replyTo, const QJsonObject& info) {
@@ -284,6 +331,15 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
 
 void LobbyPage::requestLoad() { m_listSavesSeq = m_client->listSaves(); }
 
+void LobbyPage::makeMap(bool campaignTab) {
+    MapMakerDialog dialog(m_client->races(), this, campaignTab);
+    if (dialog.exec() != QDialog::Accepted) return;
+    m_makeParams = dialog.params();
+    m_makeSeq = m_client->generateMap(m_makeParams);
+    m_status->setStyleSheet(QString());
+    m_status->setText(tr("Making the map..."));
+}
+
 void LobbyPage::showError(const QString& text) {
     m_status->setStyleSheet("color: #c00000;");
     m_status->setText(text);
@@ -303,7 +359,8 @@ void LobbyPage::rebuild() {
         const bool host = isHostClient(lobby, m_client->clientId());
         bool others = false;
         for (const net::SlotInfo& s : lobby.slotList) others = others || (s.occupied() && s.clientId != m_client->clientId());
-        if (host && !m_defaultOpponentAdded && !lobby.started && lobby.members.size() == 1 && !others) {
+        if (host && lobby.settings.campaign.isEmpty() && !m_defaultOpponentAdded && !lobby.started && lobby.members.size() == 1
+            && !others) {
             for (const net::SlotInfo& s : lobby.slotList)
                 if (s.kind == net::SlotKind::Open) {
                     if (m_hotSeatSetup)
@@ -355,21 +412,41 @@ void LobbyPage::rebuild() {
         spin->setValue(objectPercent(lobby.settings, spin->objectName()));
         spin->blockSignals(false);
     }
-    // The map: a random one or a scenario.
-    if (m_scenario->count() != m_client->scenarios().size() + m_client->campaigns().size() + 1) {
+    // Map mode: a random map or a pre-built scenario. Campaign mode replaces all of this
+    // with a single picker: the campaign decides the map, the seats and the rules.
+    if (m_scenario->count() != m_client->scenarios().size() + 1) {
         m_scenario->clear();
         m_scenario->addItem(tr("Random map"), QString());
         for (const QJsonValue& v : m_client->scenarios())
             m_scenario->addItem(v.toObject()["name"].toString(), v.toObject()["id"].toString());
-        for (const QJsonValue& v : m_client->campaigns())
-            m_scenario->addItem(tr("Campaign: %1").arg(v.toObject()["name"].toString()), "campaign:" + v.toObject()["id"].toString());
     }
-    const QString chosen = lobby.settings.campaign.isEmpty() ? lobby.settings.scenario : "campaign:" + lobby.settings.campaign;
-    m_scenario->setCurrentIndex(std::max(0, m_scenario->findData(chosen)));
+    m_scenario->setCurrentIndex(std::max(0, m_scenario->findData(lobby.settings.scenario)));
     m_scenario->setEnabled(host);
+
+    if (m_campaignChoice->count() != m_client->campaigns().size() + 1) {
+        m_campaignChoice->clear();
+        for (const QJsonValue& v : m_client->campaigns())
+            m_campaignChoice->addItem(v.toObject()["name"].toString(), v.toObject()["id"].toString());
+        m_campaignChoice->addItem(tr("Random campaign..."), QStringLiteral("__random__"));
+    }
+    {
+        const QSignalBlocker block(m_campaignChoice);
+        m_campaignChoice->setCurrentIndex(std::max(0, m_campaignChoice->findData(lobby.settings.campaign)));
+    }
+    m_campaignChoice->setEnabled(host);
+
+    const bool campaign = !lobby.settings.campaign.isEmpty() && m_campaignAllowed;
+    {
+        const QSignalBlocker block(m_mode);
+        m_mode->setCurrentIndex(std::max(0, m_mode->findData(campaign ? QStringLiteral("campaign") : QStringLiteral("map"))));
+    }
+    m_mode->setEnabled(host && m_campaignAllowed);
+    m_modeHolder->setVisible(m_campaignAllowed);
+
     QString info = tr("A new random map with the size and seed below.");
     QString scenarioId = lobby.settings.scenario;
     QString campaignText;
+    int chapterSeats = 0;
     for (const QJsonValue& v : m_client->campaigns()) {
         const QJsonObject c = v.toObject();
         if (c["id"].toString() != lobby.settings.campaign) continue;
@@ -378,6 +455,8 @@ void LobbyPage::rebuild() {
         scenarioId = ids.at(next).toString();
         campaignText = tr("%1 Chapter %2 of %3: %4. ").arg(c["description"].toString()).arg(next + 1).arg(ids.size())
                            .arg(c["chapters"].toArray().at(next).toString());
+        const QJsonArray seats = c["seats"].toArray();
+        if (next < seats.size()) chapterSeats = seats.at(next).toInt();
     }
     for (const QJsonValue& v : m_client->scenarios()) {
         const QJsonObject o = v.toObject();
@@ -388,23 +467,35 @@ void LobbyPage::rebuild() {
                    .arg(o["description"].toString()).arg(o["width"].toInt()).arg(o["height"].toInt())
                    .arg(races.size()).arg(races.join(", "));
     }
-    m_scenarioInfo->setText(campaignText + info);
+    m_scenarioInfo->setText(info);
+    m_campaignNote->setText(campaignText + tr("You are the only human; the AI opponents are added for you."));
+    // Progress is saved between chapters: re-ask the server to resize the seats if the
+    // next chapter has a different number of players.
+    if (campaign && host && !lobby.started && chapterSeats > 0 && lobby.slotList.size() != chapterSeats)
+        m_client->setSettings({{"campaign", lobby.settings.campaign}});
     const bool random = scenarioId.isEmpty();
     m_mapType->setCurrentIndex(std::max(0, m_mapType->findData(lobby.settings.mapType)));
     for (QWidget* w : {static_cast<QWidget*>(m_mapSize), static_cast<QWidget*>(m_seed),
                        static_cast<QWidget*>(m_mapType), static_cast<QWidget*>(m_neutralTowns),
                        static_cast<QWidget*>(m_mapDwellings), static_cast<QWidget*>(m_mines),
                        static_cast<QWidget*>(m_wanderingMonsters)})
-        w->setEnabled(host && random);
-    m_difficulty->setEnabled(host);
-    m_defeat->setEnabled(host);
-    m_autosaves->setEnabled(host);
-    m_fog->setEnabled(host);
-    m_hidden->setEnabled(host);
+        w->setEnabled(host && random && !campaign);
+    for (QWidget* w : {static_cast<QWidget*>(m_difficulty), static_cast<QWidget*>(m_defeat), static_cast<QWidget*>(m_autosaves),
+                       static_cast<QWidget*>(m_fog), static_cast<QWidget*>(m_hidden)})
+        w->setEnabled(host && !campaign);
     m_start->setEnabled(host);
-    m_load->setEnabled(host);
-    m_makeMap->setEnabled(host);
+    m_load->setEnabled(host && !campaign);
+    m_makeMap->setEnabled(host && !campaign);
     m_start->setToolTip(host ? QString() : tr("Only the host can start the game"));
+
+    // A campaign has no map or slot settings to show: the pickers, rules, slots and
+    // map-generation button are all hidden. Only the campaign and Start remain.
+    m_mapHolder->setVisible(!campaign);
+    m_slotHolder->setVisible(!campaign);
+    m_setupRows->setVisible(!campaign);
+    m_campaignHolder->setVisible(campaign);
+    m_makeMap->setVisible(!campaign);
+    m_load->setVisible(!campaign);
 
     // Slot table: rebuilt from scratch every time.
     delete m_slotHolder->layout();

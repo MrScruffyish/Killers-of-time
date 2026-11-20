@@ -54,9 +54,10 @@ QComboBox* keyCombo(QWidget* parent, const QStringList& keys) {
 }
 }  // namespace
 
-MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent) : QDialog(parent), m_races(races) {
+MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent, bool campaignTab)
+    : QDialog(parent), m_races(races) {
     setObjectName("mapMaker");
-    setWindowTitle(tr("Make a map"));
+    setWindowTitle(campaignTab ? tr("Make a campaign") : tr("Make a map"));
     resize(560, 620);
     auto* layout = new QVBoxLayout(this);
     m_tabs = new QTabWidget(this);
@@ -154,6 +155,7 @@ MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent) : QDia
     cform->addRow(tr("Seed"), m_campaignSeed);
     cform->addRow(new QLabel(tr("<i>Every chapter is bigger, with one more enemy, stronger monsters and another goal; the last one is conquest.</i>"), cpage));
     m_tabs->addTab(cpage, art::buttonIcon("army"), tr("A campaign"));
+    if (campaignTab) m_tabs->setCurrentIndex(1);
 
     auto* buttons = new QHBoxLayout();
     buttons->addStretch(1);

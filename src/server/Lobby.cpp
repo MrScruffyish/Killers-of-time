@@ -84,6 +84,36 @@ void Lobby::vacate(int slotIndex) {
         m_state.slotList[slotIndex].color = unusedColor(slotIndex);
 }
 
+LobbyResult Lobby::configureSlots(int count, bool campaign) {
+    if (m_state.started) return started();
+    count = std::clamp(count, 2, net::kMaxSlots);
+    const int host = hostId();
+    const int held = host ? slotOf(host) : -1;
+    SlotInfo player = held >= 0 ? m_state.slotList[held] : freshSlot(0);
+    player.index = 0;
+    player.kind = SlotKind::Human;
+    player.clientId = host;
+    player.team = 1;
+    player.color = kPalette.first();
+    player.ready = false;  // the host starts without ticking Ready
+    if (player.name.isEmpty()) player.name = QStringLiteral("Player 1");
+    QList<SlotInfo> newSlots;
+    newSlots << player;
+    for (int i = 1; i < count; ++i) {
+        SlotInfo s = freshSlot(i);
+        if (campaign) {
+            s.kind = SlotKind::Ai;
+            s.name = QStringLiteral("AI %1").arg(i + 1);
+            s.aiProfile = m_aiProfiles.first();
+            s.difficulty = QStringLiteral("normal");
+            s.ready = true;
+        }
+        newSlots << s;
+    }
+    m_state.slotList = newSlots;
+    return LobbyResult::success();
+}
+
 LobbyResult Lobby::addMember(int clientId, const QString& name) {
     if (hasMember(clientId)) return LobbyResult::failure("already_joined", "already in the lobby");
     LobbyMember m;

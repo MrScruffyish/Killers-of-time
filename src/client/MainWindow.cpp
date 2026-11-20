@@ -68,8 +68,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             [this](const QString& host, quint16 port, const QString& name, const QString& token, bool tls) {
                 connectToServer(host, port, name, token, tls);
             });
-    connect(m_connect, &ConnectPage::soloRequested, this,
-            [this](quint16 port, const QString& name, bool tls) { hostLocalGame(port, name, tls); });
+    connect(m_connect, &ConnectPage::soloRequested, this, [this](quint16 port, const QString& name, bool tls) {
+        hostLocalGame(port, name, tls, false, false, true);
+    });
     connect(m_connect, &ConnectPage::hotseatRequested, this,
             [this](quint16 port, const QString& name, bool tls) {
                 hostLocalGame(port, name, tls, true);
@@ -209,9 +210,10 @@ QString MainWindow::currentPage() const {
 }
 
 void MainWindow::connectToServer(const QString& host, quint16 port, const QString& name, const QString& gameToken,
-                                 bool tls, bool hotSeat, bool loadSavedGame) {
+                                 bool tls, bool hotSeat, bool loadSavedGame, bool allowCampaign) {
     m_loadAfterConnect = loadSavedGame;
     m_lobby->setHotSeatSetup(hotSeat);
+    m_lobby->setCampaignAllowed(allowCampaign);
     if (!m_contentLoaded) {
         showConnect(tr("The game data could not be loaded, so the game cannot start."), true);
         return;
@@ -239,7 +241,7 @@ void MainWindow::connectToServer(const QString& host, quint16 port, const QStrin
 }
 
 void MainWindow::hostLocalGame(quint16 port, const QString& name, bool tls, bool hotSeat,
-                               bool loadSavedGame) {
+                               bool loadSavedGame, bool allowCampaign) {
     const QString exe = QCoreApplication::applicationDirPath() + QStringLiteral("/kot_server");
     if (!QFileInfo::exists(exe)) {
         showConnect(tr("Cannot find kot_server next to this program (%1). Build it, or start a server yourself.").arg(exe), true);
@@ -256,8 +258,8 @@ void MainWindow::hostLocalGame(quint16 port, const QString& name, bool tls, bool
         }
     }
     m_connect->showMessage(tr("Starting a local server ..."), false);
-    QTimer::singleShot(900, this, [this, port, name, tls, hotSeat, loadSavedGame]() {
-        connectToServer(QStringLiteral("127.0.0.1"), port, name, {}, tls, hotSeat, loadSavedGame);
+    QTimer::singleShot(900, this, [this, port, name, tls, hotSeat, loadSavedGame, allowCampaign]() {
+        connectToServer(QStringLiteral("127.0.0.1"), port, name, {}, tls, hotSeat, loadSavedGame, allowCampaign);
     });
 }
 
