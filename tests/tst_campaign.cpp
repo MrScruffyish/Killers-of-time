@@ -1,6 +1,7 @@
 #include <QDir>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <cstdlib>
 
 #include "TestContent.h"
 
@@ -163,6 +164,21 @@ private slots:
         QVERIFY(games[0].army(games[0].victory().targetArmy));
         const ArtifactId prize = games[1].victory().targetArtifact;
         QVERIFY(prize.isValid());
+        // The chapter 2 prize must be a real expedition, not a pickup beside a starting
+        // town: it should take at least 20 tiles to reach from every player's capital.
+        bool placed = false;
+        for (const MapObject& o : games[1].mapObjects()) {
+            if (o.kind != MapObject::Kind::Artifact || o.artifact != prize) continue;
+            placed = true;
+            for (const Town& t : games[1].towns()) {
+                if (!t.owner.isValid()) continue;
+                const int dx = o.pos.x - t.pos.x, dy = o.pos.y - t.pos.y;
+                const int distance = std::abs(dx) + std::abs(dy);
+                QVERIFY2(distance >= 20,
+                         qPrintable(QStringLiteral("goal artifact is only %1 tiles from a capital").arg(distance)));
+            }
+        }
+        QVERIFY(placed);
         for (const GameState& gs : games)
             for (const MapObject& o : gs.mapObjects()) {
                 QVERIFY2(!(o.kind == MapObject::Kind::Artifact && o.artifact == prize)
