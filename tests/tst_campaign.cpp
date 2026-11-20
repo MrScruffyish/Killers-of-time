@@ -135,6 +135,33 @@ private slots:
         QVERIFY(champion);
         QCOMPARE(second.viewFor(second.playerOfClient(1))["campaign"].toObject()["chapter"].toInt(), 2);
     }
+    void allAiCampaignCarriesTheFirstSeat() {
+        QTemporaryDir saves;
+        net::LobbyState lobby;
+        lobby.settings.campaign = "first_war";
+        lobby.slotList = {slot(0, true, "Bot", 1), slot(1, true, "Bot2", 2)};
+        server::GameSession s(reg);
+        s.setCampaignDir(saves.path());
+        QString error;
+        QVERIFY2(s.start(lobby, &error), qPrintable(error));
+        QCOMPARE(s.campaignChapter(), 0);
+
+        // Win chapter one for the first AI seat and record it the way the playtest tool does.
+        GameState& gs = s.state();
+        const PlayerId first = gs.turnOrder().first();
+        for (const Hero& h : QList<Hero>(gs.heroes().values()))
+            if (h.owner != first) {
+                gs.armies().remove(h.army);
+                gs.heroes().remove(h.id);
+            }
+        for (Town& t : gs.towns())
+            if (t.owner != first) t.owner = PlayerId();
+        s.recordCampaignResult();
+        CampaignProgress p;
+        QVERIFY(loadProgress(QDir(saves.path()).filePath("campaign_first_war.json"), &p));
+        QCOMPARE(p.next, 1);
+        QVERIFY2(!p.heroes.isEmpty(), "the first AI seat should be the campaign player");
+    }
 };
 
 QTEST_GUILESS_MAIN(TstCampaign)

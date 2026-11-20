@@ -126,6 +126,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
     CampaignDef campaign;
     CampaignProgress progress;
     m_campaign.clear();
+    m_campaignPlayer = core::PlayerId();
     if (!lobby.settings.campaign.isEmpty()) {
         QStringList problems;
         if (!loadCampaign(contentFile("campaigns", lobby.settings.campaign), &campaign, &problems)) {
@@ -164,12 +165,14 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
             explored.fill(char(1));
         }
     if (!m_campaign.isEmpty()) {
-        // The first human player's heroes continue the campaign.
+        // The first human player's heroes continue the campaign. With AI seats only
+        // (the playtest tool), the first seat is the one that carries over.
         for (int i = 0; i < ids.size(); ++i)
             if (!params.players[i].isAi) {
                 m_campaignPlayer = ids[i];
                 break;
             }
+        if (!m_campaignPlayer.isValid() && !ids.isEmpty()) m_campaignPlayer = ids.first();
         if (!progress.heroes.isEmpty())
             applyCarriedHeroes(m_state, m_content, m_campaignPlayer, progress.heroes, campaign.carryArmy);
     }

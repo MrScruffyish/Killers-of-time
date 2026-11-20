@@ -39,6 +39,9 @@ public:
     bool start(const net::LobbyState& lobby, QString* error);
     // Where campaign progress is kept (the server's saves folder).
     void setCampaignDir(const QString& dir) { m_campaignDir = dir; }
+    // Records a finished chapter's result and carried heroes. Human commands do this
+    // themselves; tools that play every seat with an AI call it after a chapter ends.
+    void recordCampaignResult() { recordCampaign(); }
     // A scenario or campaign file ("scenarios"/"campaigns"): the game's data, else the generated ones.
     QString contentFile(const QString& kind, const QString& id) const;
     const QString& campaignId() const { return m_campaign; }  // empty: not a campaign

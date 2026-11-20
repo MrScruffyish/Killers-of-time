@@ -5,6 +5,11 @@
 //
 //   kot_aiplay [--games n] [--days n] [--players n] [--size n] [--map continent|islands]
 //              [--profiles simple,aggressive,...] [--races humans,undead,...] [--seed n] [--views]
+//   kot_aiplay --campaign intrinsic-1 [--times 20] [--days n] [--profiles simple,...] [--seed n]
+//
+// --campaign plays a shipped campaign with AI seats only and reports how far the runs
+// get, chapter by chapter: a fixed difficulty benchmark that can be compared over time.
+// Every run starts with fresh progress, so the chapters are independent.
 //
 // --views: also builds every player's view after each turn, as the server sends it to
 // the clients, and prints what that costs (time, bytes, compressed bytes); for
@@ -15,8 +20,11 @@
 #include <QElapsedTimer>
 #include <QJsonDocument>
 #include <QCoreApplication>
+#include <QDir>
 #include <QHash>
 #include <QSet>
+#include <QTemporaryDir>
+#include <QVector>
 #include <algorithm>
 #include <clocale>
 #include <cstdio>
@@ -24,6 +32,8 @@
 #include "core/content/ContentRegistry.h"
 #include "core/data/DataDir.h"
 #include "core/rules/ArmyRules.h"
+#include "core/rules/Campaign.h"
+#include "core/rules/Scenario.h"
 #include "core/rules/Victory.h"
 #include "server/GameSession.h"
 
@@ -68,6 +78,139 @@ struct Seat {
     double heroes = 0, towns = 0, strength = 0, gold = 0, lost = 0;
 };
 
+const char* goalName(core::VictoryCondition::Type type) {
+    switch (type) {
+        case core::VictoryCondition::Type::Conquest: return "conquest";
+        case core::VictoryCondition::Type::HoldTown: return "capital";
+        case core::VictoryCondition::Type::Gold: return "gold";
+        case core::VictoryCondition::Type::Days: return "days";
+        case core::VictoryCondition::Type::SlayMonster: return "slay";
+        case core::VictoryCondition::Type::FindArtifact: return "artifact";
+        case core::VictoryCondition::Type::ExploreMap: return "explore";
+    }
+    return "?";
+}
+
+struct ChapterStat {
+    int reached = 0, won = 0, lost = 0, timeout = 0;
+    QList<int> winDays;
+};
+
+// Plays a fixed campaign with every seat run by an AI. The first seat is the one whose
+// heroes carry over (it would be the human's), so a run is a difficulty measurement:
+// how many chapters can be cleared before the player loses or runs out of days.
+int playCampaigns(const QString& dir, const core::ContentRegistry& content, const QString& id, int times, int dayLimit,
+                  quint64 firstSeed, const QStringList& profiles) {
+    core::CampaignDef def;
+    QStringList problems;
+    if (!core::loadCampaign(QDir(dir).filePath(QStringLiteral("campaigns/%1.json").arg(id)), &def, &problems)) {
+        std::fprintf(stderr, "kot_aiplay: %s\n", qPrintable(problems.join("; ")));
+        return 1;
+    }
+    QStringList goals;
+    QList<int> seats;
+    for (const QString& scenarioId : def.scenarios) {
+        core::Scenario scenario;
+        const QString path = QDir(dir).filePath(QStringLiteral("scenarios/%1.json").arg(scenarioId));
+        if (!core::loadScenario(path, content, &scenario, &problems)) {
+            std::fprintf(stderr, "kot_aiplay: %s\n", qPrintable(problems.join("; ")));
+            return 1;
+        }
+        core::GameState initial;
+        if (!core::GameState::fromJson(scenario.game, content, &initial, &problems)) {
+            std::fprintf(stderr, "kot_aiplay: %s\n", qPrintable(problems.join("; ")));
+            return 1;
+        }
+        goals << QStringLiteral("%1 (%2)").arg(scenario.info.name, QString::fromLatin1(goalName(initial.victory().type)));
+        seats << scenario.info.races.size();
+    }
+    QVector<ChapterStat> stats(def.scenarios.size());
+    QList<int> furthest;
+    int completed = 0, stuck = 0;
+    static const char* colors[] = {"#d62728", "#1f77b4", "#2ca02c", "#ff7f0e", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f"};
+    for (int run = 0; run < times; ++run) {
+        QTemporaryDir saves;  // each run starts a fresh campaign
+        int reached = 0;
+        for (int ch = 0; ch < def.scenarios.size(); ++ch) {
+            net::LobbyState lobby;
+            lobby.settings.campaign = id;
+            lobby.settings.seed = firstSeed + run;
+            lobby.settings.autosaves = 0;
+            for (int i = 0; i < seats[ch]; ++i) {
+                net::SlotInfo s;
+                s.index = i;
+                s.kind = net::SlotKind::Ai;
+                s.name = QStringLiteral("AI %1").arg(i + 1);
+                s.race = QStringLiteral("humans");  // the scenario decides the races
+                s.aiProfile = profiles[i % profiles.size()];
+                s.team = i + 1;
+                s.color = QString::fromLatin1(colors[i % 8]);
+                s.ready = true;
+                lobby.slotList.append(s);
+            }
+            server::GameSession session(content);
+            session.setCampaignDir(saves.path());
+            QString error;
+            if (!session.start(lobby, &error)) {
+                std::fprintf(stderr, "kot_aiplay: run %d chapter %d: %s\n", run + 1, ch + 1, qPrintable(error));
+                return 1;
+            }
+            if (session.campaignChapter() != ch) {
+                std::fprintf(stderr, "kot_aiplay: run %d expected chapter %d, got %d\n", run + 1, ch + 1,
+                             session.campaignChapter() + 1);
+                return 1;
+            }
+            core::GameState& st = session.state();
+            const core::PlayerId player = st.turnOrder().first();
+            int lastDay = 0;
+            bool halted = false;
+            while (st.day() <= dayLimit && !core::gameOutcome(st, content).over) {
+                session.playAutoTurns();
+                if (st.day() == lastDay && !core::gameOutcome(st, content).over) {
+                    halted = true;
+                    break;
+                }
+                lastDay = st.day();
+            }
+            if (halted) ++stuck;
+            session.recordCampaignResult();
+            const core::GameOutcome outcome = core::gameOutcome(st, content);
+            const bool won = outcome.over && outcome.winner.isValid() && outcome.winner == st.teamOf(player);
+            ChapterStat& cs = stats[ch];
+            ++cs.reached;
+            if (won) {
+                ++cs.won;
+                cs.winDays << st.day();
+            } else if (outcome.over) {
+                ++cs.lost;
+            } else {
+                ++cs.timeout;
+            }
+            reached = ch + 1;
+            std::fprintf(stderr, "run %d/%d chapter %d/%d: %s on day %d\n", run + 1, times, ch + 1, def.scenarios.size(),
+                         won ? "won" : outcome.over ? "lost" : "no winner", st.day());
+            if (!won) break;
+            if (ch + 1 == def.scenarios.size()) ++completed;
+        }
+        furthest << reached;
+    }
+    std::printf("%s: %d runs, %d completed (%.0f%%), %d stalled games\n", qPrintable(id), times, completed,
+                100.0 * completed / times, stuck);
+    std::printf("chapter | goal                         | reached | won | lost | no winner | median win day\n");
+    for (int ch = 0; ch < stats.size(); ++ch) {
+        const ChapterStat& cs = stats[ch];
+        QList<int> days = cs.winDays;
+        std::sort(days.begin(), days.end());
+        std::printf("%7d | %-28s | %7d | %3d | %4d | %9d | %d\n", ch + 1, qPrintable(goals[ch]), cs.reached, cs.won,
+                    cs.lost, cs.timeout, days.isEmpty() ? 0 : days[days.size() / 2]);
+    }
+    std::printf("runs reaching each chapter:");
+    for (int ch = 0; ch < def.scenarios.size(); ++ch)
+        std::printf(" %d:%d", ch + 1, static_cast<int>(std::count(furthest.begin(), furthest.end(), ch + 1)));
+    std::printf("\n");
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -91,7 +234,11 @@ int main(int argc, char** argv) {
     QCommandLineOption racesOption(QStringLiteral("races"), QStringLiteral("Race per seat (repeats)."), QStringLiteral("list"),
                                    "humans,undead,sylvan,dwarves,orcs,ashborn,tidefolk,necroman,giants,halflings");
     QCommandLineOption seedOption(QStringLiteral("seed"), QStringLiteral("Seed of the first game."), QStringLiteral("n"), "1");
-    for (auto* o : {&dataOption, &gamesOption, &daysOption, &playersOption, &sizeOption, &mapOption, &profilesOption, &racesOption, &seedOption})
+    QCommandLineOption campaignOption(QStringLiteral("campaign"), QStringLiteral("Play a shipped campaign with AI seats (id)."),
+                                      QStringLiteral("id"));
+    QCommandLineOption timesOption(QStringLiteral("times"), QStringLiteral("Campaigns to play."), QStringLiteral("n"), "20");
+    for (auto* o : {&dataOption, &gamesOption, &daysOption, &playersOption, &sizeOption, &mapOption, &profilesOption, &racesOption,
+                    &seedOption, &campaignOption, &timesOption})
         parser.addOption(*o);
     parser.process(app);
 
@@ -109,6 +256,11 @@ int main(int argc, char** argv) {
     const QStringList profiles = parser.value(profilesOption).split(',', Qt::SkipEmptyParts);
     const QStringList races = parser.value(racesOption).split(',', Qt::SkipEmptyParts);
     const quint64 firstSeed = parser.value(seedOption).toULongLong();
+    if (parser.isSet(campaignOption)) {
+        const int times = std::clamp(parser.value(timesOption).toInt(), 1, 1000);
+        const int campaignDays = parser.isSet(daysOption) ? days : 150;  // chapters with a days goal need longer
+        return playCampaigns(dir, content, parser.value(campaignOption), times, campaignDays, firstSeed, profiles);
+    }
     const int weeks = (days + 6) / 7;
 
     QVector<QVector<Seat>> table(weeks, QVector<Seat>(players));  // sums over games

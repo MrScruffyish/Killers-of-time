@@ -33,7 +33,8 @@ line waiting for it, and the agent then removes them.
     exercise the victory goals. Expose the shared generators in `kot_mapgen` so more can be
     made the same way.
 52.1 **MANUAL**: run `make test`; the shipped test campaign and built-in scenarios load, cover
-    the different goals and keep their prizes reserved across the campaign.
+    the different goals and keep their prizes reserved across the campaign. Then run
+    `kot_aiplay --campaign intrinsic-1 --times 20` and save the difficulty report.
 
 ## TBD
 
