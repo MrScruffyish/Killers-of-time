@@ -7,6 +7,7 @@
 #include "core/content/ContentRegistry.h"
 #include "core/rules/Campaign.h"
 #include "core/rules/HeroRules.h"
+#include "core/rules/Scenario.h"
 #include "net/Protocol.h"
 #include "server/GameSession.h"
 
@@ -135,6 +136,42 @@ private slots:
         QVERIFY(champion);
         QCOMPARE(second.viewFor(second.playerOfClient(1))["campaign"].toObject()["chapter"].toInt(), 2);
     }
+    void intrinsicCampaignIsShipped() {
+        CampaignDef def;
+        QStringList errors;
+        QVERIFY2(loadCampaign(QDir(KOT_DATA_DIR).filePath(QStringLiteral("campaigns/intrinsic-1.json")), &def, &errors),
+                 qPrintable(errors.join("\n")));
+        QCOMPARE(def.id, QStringLiteral("intrinsic-1"));
+        QCOMPARE(def.name, QStringLiteral("The Purple Scourge"));
+        QCOMPARE(def.scenarios.size(), 5);
+        QCOMPARE(def.carryHeroes, 1);
+        QVERIFY(def.carryArmy);
+        const QList<VictoryCondition::Type> expected = {
+            VictoryCondition::Type::SlayMonster, VictoryCondition::Type::FindArtifact, VictoryCondition::Type::ExploreMap,
+            VictoryCondition::Type::Days, VictoryCondition::Type::Conquest};
+        QList<GameState> games;
+        for (int c = 0; c < def.scenarios.size(); ++c) {
+            Scenario s;
+            QVERIFY2(loadScenario(QDir(KOT_DATA_DIR).filePath(QStringLiteral("scenarios/%1.json").arg(def.scenarios[c])), reg, &s,
+                                  &errors),
+                     qPrintable(errors.join("\n")));
+            GameState gs;
+            QVERIFY2(GameState::fromJson(s.game, reg, &gs, &errors), qPrintable(errors.join("\n")));
+            QCOMPARE(gs.victory().type, expected[c]);
+            games << gs;
+        }
+        QVERIFY(games[0].army(games[0].victory().targetArmy));
+        const ArtifactId prize = games[1].victory().targetArtifact;
+        QVERIFY(prize.isValid());
+        for (const GameState& gs : games)
+            for (const MapObject& o : gs.mapObjects()) {
+                QVERIFY2(!(o.kind == MapObject::Kind::Artifact && o.artifact == prize)
+                             || gs.victory().targetArtifact == prize, "another chapter holds the campaign prize");
+                QVERIFY2(!(o.site == QLatin1String("quest_hut") && o.quest.rewardArtifact == prize)
+                             || gs.victory().targetArtifact == prize, "another quest gives the campaign prize");
+            }
+    }
+
     void allAiCampaignCarriesTheFirstSeat() {
         QTemporaryDir saves;
         net::LobbyState lobby;

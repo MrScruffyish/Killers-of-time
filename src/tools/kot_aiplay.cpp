@@ -187,8 +187,8 @@ int playCampaigns(const QString& dir, const core::ContentRegistry& content, cons
                 ++cs.timeout;
             }
             reached = ch + 1;
-            std::fprintf(stderr, "run %d/%d chapter %d/%d: %s on day %d\n", run + 1, times, ch + 1, def.scenarios.size(),
-                         won ? "won" : outcome.over ? "lost" : "no winner", st.day());
+            std::fprintf(stderr, "run %d/%d chapter %d/%d: %s on day %d\n", run + 1, times, ch + 1,
+                         static_cast<int>(def.scenarios.size()), won ? "won" : outcome.over ? "lost" : "no winner", st.day());
             if (!won) break;
             if (ch + 1 == def.scenarios.size()) ++completed;
         }

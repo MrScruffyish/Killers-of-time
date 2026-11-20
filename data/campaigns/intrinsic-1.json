@@ -1,0 +1,16 @@
+{
+    "carryOver": {
+        "army": true,
+        "heroes": 1
+    },
+    "description": "Five trials across the realm: slay the flying purple people eater, bring back the Dragon Blade, chart the unexplored west, hold your towns through a long siege, then unite the lands. Your best hero and army travel with you.",
+    "id": "intrinsic-1",
+    "name": "The Purple Scourge",
+    "scenarios": [
+        "intrinsic-1_1",
+        "intrinsic-1_2",
+        "intrinsic-1_3",
+        "intrinsic-1_4",
+        "intrinsic-1_5"
+    ]
+}

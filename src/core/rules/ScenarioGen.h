@@ -51,7 +51,7 @@ bool generateScenario(const ContentRegistry& content, const ScenarioGenParams& p
 // stronger enemies, the goals changing), written as <id>_1.json.. into
 // `scenarioDir` and the campaign <id>.json into `campaignDir`.
 struct CampaignGenParams {
-    QString id, name;
+    QString id, name, description;  // empty description: made up from the settings
     int chapters = 3;           // 2..20
     QString playerRace = QStringLiteral("random");
     int startSize = 48;         // first map; each chapter is 16 tiles bigger (at most 128)

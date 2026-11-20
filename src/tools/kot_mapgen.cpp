@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
         CampaignGenParams p;
         p.id = id;
         p.name = name;
+        p.description = parser.value(descOption);
         p.chapters = parser.value(chaptersOption).toInt();
         p.playerRace = parser.value(raceOption);
         p.startSize = width;
@@ -100,8 +101,9 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "kot_mapgen: %s\n", qPrintable(why));
             return 1;
         }
-        std::printf("wrote %s (%d chapters, %s, %dx%d first map)\n", qPrintable(QDir(base).filePath(id + QStringLiteral(".json"))),
-                    p.chapters, qPrintable(p.playerRace), width, width);
+        std::printf("wrote %s (%d chapters, %s, %dx%d first map)\n",
+                    qPrintable(QDir(base).filePath(QStringLiteral("campaigns/%1.json").arg(id))), p.chapters,
+                    qPrintable(p.playerRace), width, width);
         return 0;
     }
 

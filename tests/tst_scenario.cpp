@@ -352,6 +352,40 @@ private slots:
         QCOMPARE(listScenarios(dir.path(), reg).size(), files.size());
     }
 
+    void builtInGoalScenariosLoad() {
+        struct Case {
+            const char* id;
+            VictoryCondition::Type type;
+            int amount;
+        };
+        const QList<Case> cases = {
+            {"beast_hunt", VictoryCondition::Type::SlayMonster, 0},
+            {"lost_relic", VictoryCondition::Type::FindArtifact, 0},
+            {"unexplored_west", VictoryCondition::Type::ExploreMap, 75},
+            {"siege_of_the_capital", VictoryCondition::Type::HoldTown, 0},
+            {"gold_rush", VictoryCondition::Type::Gold, 40000},
+        };
+        const QDir dir(KOT_DATA_DIR);
+        for (const Case& c : cases) {
+            Scenario s;
+            QStringList errors;
+            QVERIFY2(loadScenario(dir.filePath(QStringLiteral("scenarios/%1.json").arg(QString::fromLatin1(c.id))), reg, &s,
+                                  &errors),
+                     qPrintable(errors.join("\n")));
+            GameState gs;
+            QVERIFY2(GameState::fromJson(s.game, reg, &gs, &errors), qPrintable(errors.join("\n")));
+            QCOMPARE(gs.victory().type, c.type);
+            if (c.amount) QCOMPARE(gs.victory().amount, c.amount);
+            if (c.type == VictoryCondition::Type::SlayMonster) QVERIFY(gs.army(gs.victory().targetArmy));
+            if (c.type == VictoryCondition::Type::FindArtifact) {
+                bool placed = false;
+                for (const MapObject& o : gs.mapObjects())
+                    placed = placed || (o.kind == MapObject::Kind::Artifact && o.artifact == gs.victory().targetArtifact);
+                QVERIFY(placed);
+            }
+        }
+    }
+
     void saveLoadAndStart() {
         QTemporaryDir tmp;
         const GameState map = makeMap({"undead", "sylvan"});

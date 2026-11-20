@@ -170,8 +170,10 @@ bool generateCampaign(const ContentRegistry& content, const CampaignGenParams& p
         ids << s.id;
     }
     QJsonObject campaign{{"id", p.id}, {"name", p.name.isEmpty() ? p.id : p.name},
-                         {"description", QStringLiteral("A random campaign of %1 chapters for the %2. Your best heroes go with you.")
-                                             .arg(p.chapters).arg(playerRace)},
+                         {"description", p.description.isEmpty()
+                                             ? QStringLiteral("A random campaign of %1 chapters for the %2. Your best heroes go with you.")
+                                                   .arg(p.chapters).arg(playerRace)
+                                             : p.description},
                          {"scenarios", QJsonArray::fromStringList(ids)},
                          {"carryOver", QJsonObject{{"heroes", std::clamp(p.carryHeroes, 0, 8)}, {"army", p.carryArmy}}}};
     QSaveFile f(QDir(campaignDir).filePath(p.id + QStringLiteral(".json")));
