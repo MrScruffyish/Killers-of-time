@@ -29,13 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-52. Ship a standard five-scenario test campaign and a set of good built-in scenarios that
-    exercise the victory goals. Expose the shared generators in `kot_mapgen` so more can be
-    made the same way.
-52.1 **MANUAL**: run `make test`; the shipped test campaign and built-in scenarios load, cover
-    the different goals, keep their prizes reserved across the campaign, and place the chapter 2
-    artifact far from every capital. Then rerun `kot_aiplay --campaign intrinsic-1 --times 200`
-    and compare chapter 2 with the previous baseline (won 89/92, median day 2).
 
 ## TBD
 
@@ -65,3 +58,4 @@ file or link later).
 49. Have plain `make` regenerate `data/art` when content or the drawings change (safe now that custom art lives in its own folder), without redoing it on every build.
 50. Add the one-eyed, one-horned, flying purple people eater: a non-recruitable neutral monster with its own art, plus a "slay the monster" victory goal that generated scenarios/campaigns can use.
 51. Allow campaigns of up to 20 scenarios, and add more generated goals: rotating bosses for slay goals, finding a particular artifact, and exploring the map.
+52. Ship the fixed `intrinsic-1` five-chapter benchmark campaign and five built-in goal scenarios, expose campaign/goal generation in `kot_mapgen`, and add an all-AI `kot_aiplay --campaign` difficulty report.
