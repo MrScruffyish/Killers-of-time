@@ -29,12 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-54. In-game menu: allow abandoning the current game with no save, resetting the lobby and
-    returning to setup; add an option to show the current scenario goal again; and do not
-    report taking an unowned/neutral mine ("You took a mine from somebody.").
-54.1 **MANUAL**: run `make test`; the Game menu actions, abandon/reset protocol and neutral
-    take-over messages are covered. Then start a solo game and check that **Show scenario
-    goal** (`G`) recalls the goal/story, and that leaving asks before resetting to setup.
 55. For slay-goal scenarios and campaigns, slaying the purple monster is the only win
     condition; remove the "defeat everyone" conquest fallback.
 56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
@@ -77,3 +71,6 @@ file or link later).
 53. Make campaigns a solo mode for one human: the setup lobby offers campaign (random or
     shipped) or map (random or pre-built), and the server fills every other seat with AI for
     the current chapter. Choosing a campaign hides all other setup options.
+54. In-game menu: allow abandoning the current game with no save, resetting the lobby and
+    returning to setup; add an option to show the current scenario goal again; and do not
+    report taking an unowned/neutral mine ("You took a mine from somebody.").
