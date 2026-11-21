@@ -82,6 +82,25 @@ refactoring did not change how the game plays). `--save <file>` saves the last g
 builds every player's view after each turn, as the server sends it after every command,
 and prints its cost: build and JSON time, size and compressed size (for profiling the server).
 
+### Campaign difficulty benchmark
+
+```
+kot_aiplay --campaign intrinsic-1 [--times 200] [--seed 1] [--profiles simple,...]
+```
+AI plays every seat of a campaign's chapters; seat 1 is the one whose wins count (the
+human's seat in a solo campaign). Each run starts with fresh progress, so chapters are
+independent. The report on stdout shows, per chapter, the goal, how often it was reached,
+won or lost, and the median winning day; progress and errors go to stderr. `--profiles`
+assigns an AI personality per seat, repeating the list if there are more seats than names:
+`simple` (the default), `aggressive` (values towns and armies, attacks more readily),
+`economic` (values mines and treasure, fights less), `explorer` (values exploring and
+extra heroes), `passive` (does almost nothing). With one name, every seat plays the same
+way. `--seed` fixes the runs so before/after reports are comparable.
+
+`./run-intrinsic-1-benchmark.sh` runs the shipped `intrinsic-1` campaign 200 times with
+seed 1 and the `simple` profile, building `kot_aiplay` first if needed. Extra arguments
+replace the defaults, e.g. `./run-intrinsic-1-benchmark.sh --times 3 --seed 7`.
+
 ## kot_artexport: the art as PNG files
 
 ```
