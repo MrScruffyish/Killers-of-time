@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-59. Fix the Solo Play chooser: it showed literal `<b>Play...` markup and the light-blue card
-    colours clashed with the game's dark brown/gold look.
 60. Campaign carry-over: keep only a hero's name, class and level between chapters - no army,
     spells, artefacts, traits or experience (an army can be grown without risk otherwise).
     Add a configurable maximum level for carried heroes; 0 means no limit.
@@ -89,3 +87,5 @@ file or link later).
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
 58. `make test` prints the current git commit and, when the working tree is dirty, a hash of
     its changes, so a test report says exactly what was rebuilt and run.
+59. Fix the Solo Play chooser: it showed literal `<b>Play...` markup and the light-blue card
+    colours clashed with the game's dark brown/gold look.
