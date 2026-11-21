@@ -29,13 +29,13 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-53. Make campaigns a solo mode for one human: the setup lobby offers campaign (random or
-    shipped) or map (random or pre-built), and the server fills every other seat with AI for
-    the current chapter. Choosing a campaign hides all other setup options.
-53.1 **MANUAL**: run `make test`; the lobby mode switch, campaign seat counts and hidden
-    settings are covered. Then start `intrinsic-1` from kot_client Solo and confirm you are
-    the only human, the AI opponents appear automatically, chapters with 5-6 seats start, and
-    no map/slot settings are offered.
+54. In-game menu: allow abandoning the current game with no save, resetting the lobby and
+    returning to setup; add an option to show the current scenario goal again; and do not
+    report taking an unowned/neutral mine ("You took a mine from somebody.").
+55. For slay-goal scenarios and campaigns, slaying the purple monster is the only win
+    condition; remove the "defeat everyone" conquest fallback.
+56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
+    (instant location change, no animation), so their direction is visible.
 
 ## TBD
 
@@ -66,3 +66,6 @@ file or link later).
 50. Add the one-eyed, one-horned, flying purple people eater: a non-recruitable neutral monster with its own art, plus a "slay the monster" victory goal that generated scenarios/campaigns can use.
 51. Allow campaigns of up to 20 scenarios, and add more generated goals: rotating bosses for slay goals, finding a particular artifact, and exploring the map.
 52. Ship the fixed `intrinsic-1` five-chapter benchmark campaign and five built-in goal scenarios, expose campaign/goal generation in `kot_mapgen`, and add an all-AI `kot_aiplay --campaign` difficulty report.
+53. Make campaigns a solo mode for one human: the setup lobby offers campaign (random or
+    shipped) or map (random or pre-built), and the server fills every other seat with AI for
+    the current chapter. Choosing a campaign hides all other setup options.
