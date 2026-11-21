@@ -51,7 +51,8 @@ $(ART_STAMP): $(ART_SOURCES) $(BUILD_DIR)/bin/kot_artexport
 	  touch $@
 
 test: art
-	@bash -o pipefail -c 'ctest --test-dir $(BUILD_DIR) --output-on-failure --stop-on-failure 2>&1 | tee last_test'
+	@echo "make test: commit $$(git rev-parse HEAD)" | tee last_test
+	@bash -o pipefail -c 'ctest --test-dir $(BUILD_DIR) --output-on-failure --stop-on-failure 2>&1 | tee -a last_test'
 
 # Run the play client with verbose Qt logging and keep everything it prints in a
 # timestamped log in the project root (crash backtraces also go to crash.log).
