@@ -197,7 +197,7 @@ int playCampaigns(const QString& dir, const core::ContentRegistry& content, cons
     std::printf("%s: %d runs, %d completed (%.0f%%), %d stalled games\n", qPrintable(id), times, completed,
                 100.0 * completed / times, stuck);
     int goalWidth = 4;  // the header "goal"
-    for (const QString& g : goals) goalWidth = std::max(goalWidth, g.size());
+    for (const QString& g : goals) goalWidth = std::max(goalWidth, int(g.size()));
     std::printf("%7s | %-*s | %7s | %3s | %4s | %9s | %14s\n", "chapter", goalWidth, "goal", "reached", "won", "lost",
                 "no winner", "median win day");
     for (int ch = 0; ch < stats.size(); ++ch) {
