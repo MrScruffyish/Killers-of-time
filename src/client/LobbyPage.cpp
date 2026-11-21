@@ -67,28 +67,51 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     auto* modeLayout = new QVBoxLayout(m_modeHolder);
     modeLayout->setContentsMargins(0, 0, 0, 0);
     modeLayout->addWidget(new QLabel(tr("<b>Play</b>"), this));
-    m_modeMap = new QPushButton(this);
-    m_modeMap->setObjectName(QStringLiteral("gameModeMap"));
-    m_modeMap->setCheckable(true);
-    m_modeMap->setAutoExclusive(true);
-    m_modeMap->setIcon(art::buttonIcon(QStringLiteral("town")));
-    m_modeMap->setIconSize(QSize(32, 32));
-    m_modeMap->setText(tr("<b>Play a map</b><br><small>Random or pre-built, with all the usual settings</small>"));
-    m_modeCampaign = new QPushButton(this);
-    m_modeCampaign->setObjectName(QStringLiteral("gameModeCampaign"));
-    m_modeCampaign->setCheckable(true);
-    m_modeCampaign->setAutoExclusive(true);
-    m_modeCampaign->setIcon(art::buttonIcon(QStringLiteral("army")));
-    m_modeCampaign->setIconSize(QSize(32, 32));
-    m_modeCampaign->setText(tr("<b>Play a campaign</b><br><small>One human, AI opponents, chapters that carry your heroes over</small>"));
-    for (QPushButton* card : {m_modeMap, m_modeCampaign}) {
-        card->setMinimumHeight(54);
+    // A checkable button with real child labels: QPushButton does not render HTML in
+    // its text on every style (some show the literal "<b>Play..."), and the light blue
+    // card clashed with the game's dark brown/gold look.
+    const auto modeCard = [this](const QString& name, const QString& title, const QString& hint,
+                                 const QString& iconKey, const QString& titleId, const QString& hintId) {
+        auto* card = new QPushButton(this);
+        card->setObjectName(name);
+        card->setCheckable(true);
+        card->setAutoExclusive(true);
+        card->setMinimumHeight(58);
+        auto* row = new QHBoxLayout(card);
+        row->setContentsMargins(12, 7, 12, 7);
+        row->setSpacing(12);
+        auto* icon = new QLabel(card);
+        icon->setPixmap(art::buttonIcon(iconKey).pixmap(32));
+        row->addWidget(icon);
+        auto* text = new QVBoxLayout();
+        auto* heading = new QLabel(title, card);
+        heading->setObjectName(titleId);
+        heading->setStyleSheet(QStringLiteral("color: #ffe9b0; font-size: 11pt; font-weight: bold;"));
+        auto* detail = new QLabel(hint, card);
+        detail->setObjectName(hintId);
+        detail->setWordWrap(true);
+        detail->setStyleSheet(QStringLiteral("color: #b9a887; font-size: 9pt;"));
+        text->addWidget(heading);
+        text->addWidget(detail);
+        row->addLayout(text, 1);
         card->setStyleSheet(QStringLiteral(
-            "QPushButton#gameModeMap, QPushButton#gameModeCampaign { text-align: left; padding: 6px 12px; }"
+            "QPushButton#gameModeMap, QPushButton#gameModeCampaign {"
+            " background-color: #35291c; border: 2px solid #5e4a2a; border-radius: 8px; }"
+            "QPushButton#gameModeMap:hover, QPushButton#gameModeCampaign:hover {"
+            " background-color: #43331f; border-color: #a8873e; }"
             "QPushButton#gameModeMap:checked, QPushButton#gameModeCampaign:checked {"
-            " background: #dce9fb; border: 2px solid #4a80d0; }"));
-        modeLayout->addWidget(card);
-    }
+            " background-color: #5a4020; border-color: #c9a24a; }"
+            "QPushButton#gameModeMap QLabel, QPushButton#gameModeCampaign QLabel { background: transparent; }"));
+        return card;
+    };
+    m_modeMap = modeCard(QStringLiteral("gameModeMap"), tr("Play a map"),
+                         tr("Random or pre-built, with all the usual settings"), QStringLiteral("town"),
+                         QStringLiteral("modeMapTitle"), QStringLiteral("modeMapHint"));
+    m_modeCampaign = modeCard(QStringLiteral("gameModeCampaign"), tr("Play a campaign"),
+                              tr("One human, AI opponents, chapters that carry your heroes over"), QStringLiteral("army"),
+                              QStringLiteral("modeCampaignTitle"), QStringLiteral("modeCampaignHint"));
+    modeLayout->addWidget(m_modeMap);
+    modeLayout->addWidget(m_modeCampaign);
     outer->addWidget(m_modeHolder);
     m_modeMap->setChecked(true);
     connect(m_modeMap, &QPushButton::clicked, this, [this](bool on) {

@@ -42,6 +42,8 @@ line waiting for it, and the agent then removes them.
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
 58. `make test` prints the current git commit and, when the working tree is dirty, a hash of
     its changes, so a test report says exactly what was rebuilt and run.
+59. Fix the Solo Play chooser: it showed literal `<b>Play...` markup and the light-blue card
+    colours clashed with the game's dark brown/gold look.
 
 ## TBD
 

@@ -236,8 +236,9 @@ private slots:
         QVERIFY(mapChoice->isCheckable() && campaignChoice->isCheckable());
         QVERIFY2(mapChoice->height() >= 50, "the map card is large enough to click");
         QVERIFY2(campaignChoice->height() >= 50, "the campaign card is large enough to click");
-        QVERIFY(mapChoice->text().contains(QStringLiteral("Play a map")));
-        QVERIFY(campaignChoice->text().contains(QStringLiteral("Play a campaign")));
+        QCOMPARE(lobby->findChild<QLabel*>(QStringLiteral("modeMapTitle"))->text(), QStringLiteral("Play a map"));
+        QCOMPARE(lobby->findChild<QLabel*>(QStringLiteral("modeCampaignTitle"))->text(), QStringLiteral("Play a campaign"));
+        QVERIFY(!lobby->findChild<QLabel*>(QStringLiteral("modeMapTitle"))->text().contains(QStringLiteral("<b>")));
         QVERIFY(mode->isVisible());
         QVERIFY(mapChoice->isVisible() && campaignChoice->isVisible());
         QVERIFY(mapChoice->isEnabled() && campaignChoice->isEnabled());
