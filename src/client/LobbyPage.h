@@ -67,7 +67,8 @@ private:
     bool m_defaultOpponentAdded = false;
     bool m_hotSeatSetup = false;
     QLabel* m_versions;
-    QComboBox* m_mode;  // "map" or "campaign"
+    QPushButton* m_modeMap;       // the two solo choices: large checkable cards
+    QPushButton* m_modeCampaign;
     QComboBox* m_scenario;
     QComboBox* m_campaignChoice;
     QLabel* m_scenarioInfo;

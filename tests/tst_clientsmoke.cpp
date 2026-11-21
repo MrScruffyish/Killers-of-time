@@ -16,6 +16,7 @@
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QPushButton>
+#include <QVBoxLayout>
 #include <QWidget>
 #include <QTableWidget>
 #include <QTabWidget>
@@ -224,13 +225,23 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(w.currentPage(), QStringLiteral("lobby"), 5000);
         LobbyPage* lobby = w.lobbyPage();
 
-        auto* mode = lobby->findChild<QComboBox*>(QStringLiteral("gameMode"));
+        auto* mode = lobby->findChild<QWidget*>(QStringLiteral("gameMode"));
         QVERIFY(mode);
+        QVERIFY(qobject_cast<QVBoxLayout*>(mode->layout()));  // the choices are stacked vertically
+        auto* mapChoice = lobby->findChild<QPushButton*>(QStringLiteral("gameModeMap"));
+        auto* campaignChoice = lobby->findChild<QPushButton*>(QStringLiteral("gameModeCampaign"));
+        QVERIFY(mapChoice);
+        QVERIFY(campaignChoice);
+        QVERIFY(mapChoice->isCheckable() && campaignChoice->isCheckable());
+        QVERIFY2(mapChoice->height() >= 50, "the map card is large enough to click");
+        QVERIFY2(campaignChoice->height() >= 50, "the campaign card is large enough to click");
+        QVERIFY(mapChoice->text().contains(QStringLiteral("Play a map")));
+        QVERIFY(campaignChoice->text().contains(QStringLiteral("Play a campaign")));
         QVERIFY(mode->isVisible());
-        QVERIFY(mode->isEnabled());
-        QCOMPARE(mode->count(), 2);
-        QCOMPARE(mode->itemData(0).toString(), QStringLiteral("map"));
-        QCOMPARE(mode->itemData(1).toString(), QStringLiteral("campaign"));
+        QVERIFY(mapChoice->isVisible() && campaignChoice->isVisible());
+        QVERIFY(mapChoice->isEnabled() && campaignChoice->isEnabled());
+        QVERIFY(mapChoice->isChecked());
+        QVERIFY(!campaignChoice->isChecked());
         auto* choice = lobby->findChild<QComboBox*>(QStringLiteral("campaignChoice"));
         QVERIFY(choice);
         QVERIFY(choice->findData(QStringLiteral("first_war")) >= 0);
@@ -238,11 +249,13 @@ private slots:
         QCOMPARE(choice->itemData(choice->count() - 1).toString(), QStringLiteral("__random__"));
         QVERIFY(lobby->findChild<QComboBox*>(QStringLiteral("mapSize"))->isVisible());
 
-        w.client().setSettings({{"campaign", "intrinsic-1"}});
+        choice->setCurrentIndex(choice->findData(QStringLiteral("intrinsic-1")));
+        QTest::mouseClick(campaignChoice, Qt::LeftButton);
         QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().settings.campaign, QStringLiteral("intrinsic-1"), 5000);
         QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList.size(), 2, 5000);
         QTRY_VERIFY_WITH_TIMEOUT(!lobby->findChild<QComboBox*>(QStringLiteral("scenario"))->isVisible(), 5000);
-        QCOMPARE(mode->currentData().toString(), QStringLiteral("campaign"));
+        QVERIFY(campaignChoice->isChecked());
+        QVERIFY(!mapChoice->isChecked());
         QVERIFY(!lobby->findChild<QComboBox*>(QStringLiteral("mapSize"))->isVisible());
         QVERIFY(!lobby->findChild<QComboBox*>(QStringLiteral("difficulty"))->isVisible());
         QVERIFY(!lobby->findChild<QSpinBox*>(QStringLiteral("neutralTownPercent"))->isVisible());
@@ -254,10 +267,11 @@ private slots:
         QCOMPARE(w.client().lobby().slotList[1].kind, net::SlotKind::Ai);
 
         // Back to a map: the ordinary setup is offered again.
-        w.client().setSettings({{"campaign", QString()}});
+        QTest::mouseClick(mapChoice, Qt::LeftButton);
         QTRY_COMPARE_WITH_TIMEOUT(w.client().lobby().slotList.size(), 4, 5000);
         QTRY_VERIFY_WITH_TIMEOUT(lobby->findChild<QComboBox*>(QStringLiteral("scenario"))->isVisible(), 5000);
-        QCOMPARE(mode->currentData().toString(), QStringLiteral("map"));
+        QVERIFY(mapChoice->isChecked());
+        QVERIFY(!campaignChoice->isChecked());
     }
 
     // Hot seat and network games keep the map-based lobby: no campaign choice there.
@@ -269,10 +283,11 @@ private slots:
         QVERIFY(QTest::qWaitForWindowExposed(&w));
         w.connectToServer(QStringLiteral("127.0.0.1"), server.port(), "Ann", {}, false, true);
         QTRY_COMPARE_WITH_TIMEOUT(w.currentPage(), QStringLiteral("lobby"), 5000);
-        auto* mode = w.lobbyPage()->findChild<QComboBox*>(QStringLiteral("gameMode"));
+        auto* mode = w.lobbyPage()->findChild<QWidget*>(QStringLiteral("gameMode"));
         QVERIFY(mode);
         QVERIFY(!mode->isVisible());
-        QVERIFY(!mode->isEnabled());
+        QVERIFY(!w.lobbyPage()->findChild<QPushButton*>(QStringLiteral("gameModeMap"))->isVisible());
+        QVERIFY(!w.lobbyPage()->findChild<QPushButton*>(QStringLiteral("gameModeCampaign"))->isVisible());
         QVERIFY(w.lobbyPage()->findChild<QComboBox*>(QStringLiteral("scenario"))->isVisible());
     }
 

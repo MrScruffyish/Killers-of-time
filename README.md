@@ -143,8 +143,8 @@ computer), **Network game** (join the server under the button: address, port and
 or **Load game** (start a local server and pick a saved game in the lobby).
 Both local games start `kot_server` on this computer. In the lobby you can change the slots,
 map and rules and then Start; the host needs no Ready, other humans do.
-**Solo game** also offers a *Play* choice: **A map** (random or pre-built, with all the usual
-settings) or **A campaign** (one human only). In campaign mode the lobby shows just the campaign
+**Solo game** also offers a *Play* choice as two large stacked buttons: **Play a map** (random or
+pre-built, with all the usual settings) or **Play a campaign** (one human only). In campaign mode the lobby shows just the campaign
 picker - *Random campaign...* opens the generator, or pick a shipped campaign such as
 *The Purple Scourge* - and Start. The server sizes the seats for the current chapter and fills
 every seat but yours with AI, so no map, slot or rule settings are offered.

@@ -63,24 +63,42 @@ LobbyPage::LobbyPage(net::LobbyClient* client, const core::ContentRegistry* cont
     outer->addWidget(new QLabel(tr("<h2>Game setup</h2>"), this));
 
     m_modeHolder = new QWidget(this);
-    auto* modeRow = new QHBoxLayout(m_modeHolder);
-    modeRow->addWidget(new QLabel(tr("Play"), this));
-    m_mode = new QComboBox(this);
-    m_mode->setObjectName("gameMode");
-    m_mode->addItem(tr("A map: random or pre-built"), QStringLiteral("map"));
-    m_mode->addItem(tr("A campaign: one human, AI opponents"), QStringLiteral("campaign"));
-    modeRow->addWidget(m_mode);
-    modeRow->addStretch(1);
+    m_modeHolder->setObjectName(QStringLiteral("gameMode"));
+    auto* modeLayout = new QVBoxLayout(m_modeHolder);
+    modeLayout->setContentsMargins(0, 0, 0, 0);
+    modeLayout->addWidget(new QLabel(tr("<b>Play</b>"), this));
+    m_modeMap = new QPushButton(this);
+    m_modeMap->setObjectName(QStringLiteral("gameModeMap"));
+    m_modeMap->setCheckable(true);
+    m_modeMap->setAutoExclusive(true);
+    m_modeMap->setIcon(art::buttonIcon(QStringLiteral("town")));
+    m_modeMap->setIconSize(QSize(32, 32));
+    m_modeMap->setText(tr("<b>Play a map</b><br><small>Random or pre-built, with all the usual settings</small>"));
+    m_modeCampaign = new QPushButton(this);
+    m_modeCampaign->setObjectName(QStringLiteral("gameModeCampaign"));
+    m_modeCampaign->setCheckable(true);
+    m_modeCampaign->setAutoExclusive(true);
+    m_modeCampaign->setIcon(art::buttonIcon(QStringLiteral("army")));
+    m_modeCampaign->setIconSize(QSize(32, 32));
+    m_modeCampaign->setText(tr("<b>Play a campaign</b><br><small>One human, AI opponents, chapters that carry your heroes over</small>"));
+    for (QPushButton* card : {m_modeMap, m_modeCampaign}) {
+        card->setMinimumHeight(54);
+        card->setStyleSheet(QStringLiteral(
+            "QPushButton#gameModeMap, QPushButton#gameModeCampaign { text-align: left; padding: 6px 12px; }"
+            "QPushButton#gameModeMap:checked, QPushButton#gameModeCampaign:checked {"
+            " background: #dce9fb; border: 2px solid #4a80d0; }"));
+        modeLayout->addWidget(card);
+    }
     outer->addWidget(m_modeHolder);
-    connect(m_mode, &QComboBox::activated, this, [this](int) {
-        const bool campaign = m_mode->currentData().toString() == QLatin1String("campaign");
-        if (!campaign) {
-            m_client->setSettings({{"scenario", m_scenario->currentData().toString()}, {"campaign", QString()}});
-            return;
-        }
+    m_modeMap->setChecked(true);
+    connect(m_modeMap, &QPushButton::clicked, this, [this](bool on) {
+        if (!on) return;
+        m_client->setSettings({{"scenario", m_scenario->currentData().toString()}, {"campaign", QString()}});
+    });
+    connect(m_modeCampaign, &QPushButton::clicked, this, [this](bool on) {
+        if (!on) return;
         const QString id = m_campaignChoice->currentData().toString();
         if (id == QLatin1String("__random__")) {  // generate one first, then play it
-            m_mode->setCurrentIndex(m_mode->findData(QStringLiteral("map")));
             makeMap(true);
             return;
         }
@@ -437,10 +455,12 @@ void LobbyPage::rebuild() {
 
     const bool campaign = !lobby.settings.campaign.isEmpty() && m_campaignAllowed;
     {
-        const QSignalBlocker block(m_mode);
-        m_mode->setCurrentIndex(std::max(0, m_mode->findData(campaign ? QStringLiteral("campaign") : QStringLiteral("map"))));
+        const QSignalBlocker mapBlock(m_modeMap), campaignBlock(m_modeCampaign);
+        m_modeMap->setChecked(!campaign);
+        m_modeCampaign->setChecked(campaign);
     }
-    m_mode->setEnabled(host && m_campaignAllowed);
+    m_modeMap->setEnabled(host && m_campaignAllowed);
+    m_modeCampaign->setEnabled(host && m_campaignAllowed);
     m_modeHolder->setVisible(m_campaignAllowed);
 
     QString info = tr("A new random map with the size and seed below.");
