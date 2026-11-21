@@ -63,6 +63,7 @@ bool loadProgress(const QString& path, CampaignProgress* out) {
     p.campaign = o.value("campaign").toString();
     p.next = std::max(0, o.value("next").toInt());
     for (const QJsonValue& v : o.value("heroes").toArray()) p.heroes << v.toObject();
+    for (const QJsonValue& v : o.value("artifacts").toArray()) p.artifacts << v.toString();
     *out = p;
     return true;
 }
@@ -74,6 +75,9 @@ bool saveProgress(const QString& path, const CampaignProgress& progress, QString
     QJsonArray heroes;
     for (const QJsonObject& h : progress.heroes) heroes.append(h);
     o.insert("heroes", heroes);
+    QJsonArray artifacts;
+    for (const QString& a : progress.artifacts) artifacts.append(a);
+    o.insert("artifacts", artifacts);
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly)) {
@@ -142,6 +146,25 @@ int applyCarriedHeroes(GameState& state, const ContentRegistry& content, PlayerI
     }
     refreshHeroMovement(state, content, player);
     return applied;
+}
+
+int giveGoalArtifacts(GameState& state, const ContentRegistry& content, PlayerId player, const QStringList& keys) {
+    QList<HeroId> mine;
+    for (const Hero& h : state.heroes())
+        if (h.owner == player) mine << h.id;
+    if (mine.isEmpty()) return 0;
+    std::sort(mine.begin(), mine.end());
+    Hero* hero = state.hero(mine.first());
+    if (!hero) return 0;
+    int given = 0;
+    for (const QString& key : keys) {
+        const ArtifactId id = content.artifactId(key);
+        if (!id.isValid()) continue;
+        if (hero->artifacts.contains(id) || hero->backpack.contains(id)) continue;
+        takeArtifact(*hero, content, id);  // worn in a free slot, or carried in the backpack
+        ++given;
+    }
+    return given;
 }
 
 }  // namespace kot::core

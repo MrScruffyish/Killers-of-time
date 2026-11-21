@@ -32,6 +32,7 @@ struct CampaignProgress {
     QString campaign;
     int next = 0;               // index of the chapter to play
     QList<QJsonObject> heroes;  // carried heroes (heroSnapshot)
+    QStringList artifacts;      // keys of artifacts won as chapter goals
     bool finished(const CampaignDef& def) const { return next >= def.scenarios.size(); }
 };
 
@@ -50,5 +51,7 @@ QList<HeroId> bestHeroes(const GameState& state, PlayerId player, int count);
 // the first one. Returns how many were applied.
 int applyCarriedHeroes(GameState& state, const ContentRegistry& content, PlayerId player,
                        const QList<QJsonObject>& heroes, int maxLevel = 0);
+// Gives the player's first hero the artifacts won as goals in earlier chapters.
+int giveGoalArtifacts(GameState& state, const ContentRegistry& content, PlayerId player, const QStringList& keys);
 
 }  // namespace kot::core

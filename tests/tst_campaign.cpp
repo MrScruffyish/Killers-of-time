@@ -28,7 +28,7 @@ class TstCampaign : public QObject {
         s.name = name;
         s.race = "humans";
         s.team = team;
-        s.color = QStringList{"#d62728", "#1f77b4", "#2ca02c"}[index];
+        s.color = QStringList{"#d62728", "#1f77b4", "#2ca02c", "#ff7f0e"}[index];
         s.ready = true;
         s.aiProfile = ai ? "passive" : "";
         return s;
@@ -124,6 +124,77 @@ private slots:
         QCOMPARE(b.hero(fresh)->experience, 0);
         QVERIFY(b.hero(fresh)->spells.isEmpty());
         QVERIFY(b.army(b.hero(fresh)->army)->stacks.isEmpty());
+    }
+
+    void goalArtifactsAreGivenOnce() {
+        GameState g(1);
+        g.setMap(GameMap(8, 8, T("grass")));
+        const PlayerId p = g.addPlayer("A", g.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        const HeroId h = createHero(g, reg, p, "Hero", C("wizard"), {1, 1});
+        QCOMPARE(giveGoalArtifacts(g, reg, p, {"dragon_blade", "iron_sword"}), 2);
+        const Hero* hero = g.hero(h);
+        QVERIFY(hero->artifacts.contains(A("dragon_blade")) || hero->backpack.contains(A("dragon_blade")));
+        QVERIFY(hero->artifacts.contains(A("iron_sword")) || hero->backpack.contains(A("iron_sword")));
+        QCOMPARE(giveGoalArtifacts(g, reg, p, {"dragon_blade"}), 0);  // no duplicates
+        if (hero->artifacts.contains(A("dragon_blade")))
+            QCOMPARE(hero->trait(TR("attack")), 1 + 4);  // wizard base 1 + blade 4
+    }
+
+    void goalArtifactCarriesToNextChapter() {
+        QTemporaryDir saves;
+        const QString progressPath = QDir(saves.path()).filePath("campaign_intrinsic-1.json");
+        QString error;
+        // Start straight at chapter 2 (index 1), the Dragon Blade chapter.
+        CampaignProgress seed;
+        seed.campaign = "intrinsic-1";
+        seed.next = 1;
+        QVERIFY(saveProgress(progressPath, seed, &error));
+
+        net::LobbyState lobby;
+        lobby.settings.campaign = "intrinsic-1";
+        lobby.slotList = {slot(0, false, "Ann", 1), slot(1, true, "Bot", 2), slot(2, true, "Bot2", 3)};
+        server::GameSession s(reg);
+        s.setCampaignDir(saves.path());
+        QVERIFY2(s.start(lobby, &error), qPrintable(error));
+        GameState& gs = s.state();
+        const PlayerId ann = s.playerOfClient(1);
+        HeroId annHero;
+        for (const Hero& h : gs.heroes())
+            if (h.owner == ann) annHero = h.id;
+        QVERIFY(annHero.isValid());
+        const ArtifactId prize = gs.victory().targetArtifact;
+        QVERIFY(prize.isValid());
+        takeArtifact(*gs.hero(annHero), reg, prize);
+        QVERIFY(gs.hero(annHero)->artifacts.contains(prize) || gs.hero(annHero)->backpack.contains(prize));
+        takeArtifact(*gs.hero(annHero), reg, A("iron_sword"));  // ordinary loot, must not carry
+        for (const Hero& h : QList<Hero>(gs.heroes().values()))
+            if (h.owner != ann) {
+                gs.armies().remove(h.army);
+                gs.heroes().remove(h.id);
+            }
+        for (Town& t : gs.towns())
+            if (t.owner != ann) t.owner = PlayerId();
+        s.recordCampaignResult();
+        CampaignProgress p;
+        QVERIFY(loadProgress(progressPath, &p));
+        QCOMPARE(p.next, 2);
+        QCOMPARE(p.artifacts, QStringList({QStringLiteral("dragon_blade")}));
+
+        // Chapter 3: the carried hero brings the Dragon Blade but not the ordinary sword.
+        lobby.slotList = {slot(0, false, "Ann", 1), slot(1, true, "Bot", 2), slot(2, true, "Bot2", 3),
+                          slot(3, true, "Bot3", 4)};
+        server::GameSession next(reg);
+        next.setCampaignDir(saves.path());
+        QVERIFY2(next.start(lobby, &error), qPrintable(error));
+        const PlayerId ann2 = next.playerOfClient(1);
+        bool hasPrize = false, hasLoot = false;
+        for (const Hero& h : next.state().heroes())
+            if (h.owner == ann2) {
+                hasPrize = hasPrize || h.artifacts.contains(prize) || h.backpack.contains(prize);
+                hasLoot = hasLoot || h.artifacts.contains(A("iron_sword")) || h.backpack.contains(A("iron_sword"));
+            }
+        QVERIFY(hasPrize);
+        QVERIFY(!hasLoot);
     }
 
     void chaptersFollowEachOther() {

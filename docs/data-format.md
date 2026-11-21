@@ -281,8 +281,11 @@ players as that scenario). When the human team wins, the server stores the progr
 saves folder (`campaign_<id>.json`) with the name, class and level of the best `heroes` heroes
 of the first human player. In the next chapter those heroes keep only that level (capped by
 `maxLevel`; 0 means no limit): the chapter's own army, spells, artifacts, traits and experience
-are used, so an army cannot be built up safely across chapters. A lost chapter can be played
-again; after the last chapter the campaign starts over.
+are used, so an army cannot be built up safely across chapters. The one exception is a `FindArtifact`
+chapter's prize: the artifact that was the goal is kept in `artifacts` (by key) and given to the
+carried hero in later chapters. Other loot does not carry over. The saved `artifacts` list is
+preserved when later chapters are won. A lost chapter can be played again; after the last chapter
+the campaign starts over.
 
 ## Unit spells (`spells` and `spellPoints` in units/<id>.json)
 A unit with `spells` (battle spells) and `spellPoints` may cast one instead of acting; its pool

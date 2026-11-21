@@ -175,6 +175,8 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
         if (!m_campaignPlayer.isValid() && !ids.isEmpty()) m_campaignPlayer = ids.first();
         if (!progress.heroes.isEmpty())
             applyCarriedHeroes(m_state, m_content, m_campaignPlayer, progress.heroes, campaign.maxLevel);
+        if (!progress.artifacts.isEmpty())
+            giveGoalArtifacts(m_state, m_content, m_campaignPlayer, progress.artifacts);
     }
 
     m_clientPlayers.clear();
@@ -376,11 +378,19 @@ void GameSession::recordCampaign() {
     CampaignDef def;
     if (!loadCampaign(contentFile("campaigns", m_campaign), &def, nullptr)) return;
     CampaignProgress p;
+    const QString path = QDir(m_campaignDir).filePath("campaign_" + m_campaign + ".json");
+    CampaignProgress old;
+    if (loadProgress(path, &old)) p.artifacts = old.artifacts;  // goal artifacts won in earlier chapters stay
     p.campaign = m_campaign;
     p.next = m_campaignChapter + 1;
     for (const HeroId h : bestHeroes(m_state, m_campaignPlayer, def.carryHeroes)) p.heroes << heroSnapshot(m_state, m_content, h);
+    // An artifact that was this chapter's goal travels with the hero; ordinary loot does not.
+    const VictoryCondition& v = m_state.victory();
+    if (v.type == VictoryCondition::Type::FindArtifact && v.targetArtifact.isValid())
+        if (const ArtifactDef* a = m_content.artifact(v.targetArtifact))
+            if (!p.artifacts.contains(a->key)) p.artifacts << a->key;
     QString error;
-    if (!saveProgress(QDir(m_campaignDir).filePath("campaign_" + m_campaign + ".json"), p, &error))
+    if (!saveProgress(path, p, &error))
         qCWarning(lcKotServer) << "Cannot save the campaign progress:" << error;
 }
 

@@ -41,6 +41,8 @@ line waiting for it, and the agent then removes them.
     Add a configurable maximum level for carried heroes; 0 means no limit.
 61. Re-run the intrinsic-1 all-AI benchmark after item 60: `./run-intrinsic-1-benchmark.sh`
     (200 runs, seed 1, simple profile). The report goes to stdout; nothing tracked needs updating.
+62. An artifact that was a chapter's goal (FindArtifact) stays with the carried hero in later
+    chapters. Other loot still does not carry over.
 
 ## TBD
 
