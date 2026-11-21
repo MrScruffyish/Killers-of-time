@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
-    (instant location change, no animation), so their direction is visible.
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
 57.1 **MANUAL**: run `make test`; the ordering is covered by a unit test. Then glance at the
     in-game resource bar: gold first, then the rest cheapest to rarest.
@@ -89,5 +87,7 @@ file or link later).
     report taking an unowned/neutral mine ("You took a mine from somebody.").
 55. For slay-goal scenarios and campaigns, slaying the purple monster is the only win
     condition; remove the "defeat everyone" conquest fallback.
+56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
+    (instant location change, no animation), so their direction is visible.
 58. `make test` prints the current git commit and, when the working tree is dirty, a hash of
     its changes, so a test report says exactly what was rebuilt and run.
