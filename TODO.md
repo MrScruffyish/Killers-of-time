@@ -29,8 +29,6 @@ line waiting for it, and the agent then removes them.
 6. Object memory after a reconnect.
 6.1 Keep remembered towns, mines, dwellings and treasures on the server.
 6.2 Send them back in the view after a reconnect.
-61. Re-run the intrinsic-1 all-AI benchmark after item 60: `./run-intrinsic-1-benchmark.sh`
-    (200 runs, seed 1, simple profile). The report goes to stdout; nothing tracked needs updating.
 
 ## TBD
 
@@ -79,6 +77,8 @@ file or link later).
 60. Campaign carry-over: keep only a hero's name, class and level between chapters - no army,
     spells, artefacts, traits or experience (an army can be grown without risk otherwise).
     Add a configurable maximum level for carried heroes; 0 means no limit.
+61. Re-run the intrinsic-1 all-AI benchmark after item 60: `./run-intrinsic-1-benchmark.sh`
+    (200 runs, seed 1, simple profile). The report goes to stdout; nothing tracked needs updating.
 62. An artifact that was a chapter's goal (FindArtifact) stays with the carried hero in later
     chapters. Other loot still does not carry over.
 63. Generic campaign Legacy plumbing: a per-campaign storyline (intro, per-chapter text,
