@@ -51,7 +51,13 @@ $(ART_STAMP): $(ART_SOURCES) $(BUILD_DIR)/bin/kot_artexport
 	  touch $@
 
 test: art
-	@echo "make test: commit $$(git rev-parse HEAD)" | tee last_test
+	@sha=$$(git rev-parse HEAD); dirty=$$(git status --porcelain --untracked-files=no); \
+	  if [ -n "$$dirty" ]; then \
+	    patch=$$(git diff HEAD | git hash-object --stdin); \
+	    echo "make test: commit $$sha + working-tree $$patch (dirty - $(MAKE) rebuilt from local changes)"; \
+	  else \
+	    echo "make test: commit $$sha (clean)"; \
+	  fi | tee last_test
 	@bash -o pipefail -c 'ctest --test-dir $(BUILD_DIR) --output-on-failure --stop-on-failure 2>&1 | tee -a last_test'
 
 # Run the play client with verbose Qt logging and keep everything it prints in a

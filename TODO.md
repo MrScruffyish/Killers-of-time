@@ -40,7 +40,8 @@ line waiting for it, and the agent then removes them.
 56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
     (instant location change, no animation), so their direction is visible.
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
-58. `make test` prints the current git commit, so a test report says what was run.
+58. `make test` prints the current git commit and, when the working tree is dirty, a hash of
+    its changes, so a test report says exactly what was rebuilt and run.
 
 ## TBD
 
