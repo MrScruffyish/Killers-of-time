@@ -196,15 +196,18 @@ int playCampaigns(const QString& dir, const core::ContentRegistry& content, cons
     }
     std::printf("%s: %d runs, %d completed (%.0f%%), %d stalled games\n", qPrintable(id), times, completed,
                 100.0 * completed / times, stuck);
-    std::printf("chapter | goal                         | reached | won | lost | no winner | median win day\n");
+    int goalWidth = 4;  // the header "goal"
+    for (const QString& g : goals) goalWidth = std::max(goalWidth, g.size());
+    std::printf("%7s | %-*s | %7s | %3s | %4s | %9s | %14s\n", "chapter", goalWidth, "goal", "reached", "won", "lost",
+                "no winner", "median win day");
     for (int ch = 0; ch < stats.size(); ++ch) {
         const ChapterStat& cs = stats[ch];
         QList<int> days = cs.winDays;
         std::sort(days.begin(), days.end());
-        std::printf("%7d | %-28s | %7d | %3d | %4d | %9d | %d\n", ch + 1, qPrintable(goals[ch]), cs.reached, cs.won,
-                    cs.lost, cs.timeout, days.isEmpty() ? 0 : days[days.size() / 2]);
+        std::printf("%7d | %-*s | %7d | %3d | %4d | %9d | %14d\n", ch + 1, goalWidth, qPrintable(goals[ch]), cs.reached,
+                    cs.won, cs.lost, cs.timeout, days.isEmpty() ? 0 : days[days.size() / 2]);
     }
-    std::printf("runs reaching each chapter:");
+    std::printf("furthest chapter reached:");
     for (int ch = 0; ch < def.scenarios.size(); ++ch)
         std::printf(" %d:%d", ch + 1, static_cast<int>(std::count(furthest.begin(), furthest.end(), ch + 1)));
     std::printf("\n");
