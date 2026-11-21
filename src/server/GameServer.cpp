@@ -358,6 +358,14 @@ void GameServer::handleLobbyMessage(Client& client, const Message& message) {
         else
             result = m_lobby.start(id);
         startRequested = result.ok;
+    } else if (message.type == net::msg::abandonGame) {
+        if (!m_session || !m_session->active())
+            sendError(client, "no_game", "there is no game to leave", message.seq);
+        else if (id != m_lobby.hostId())
+            sendError(client, "not_host", "only the host can leave the game and reset the lobby", message.seq);
+        else
+            abandonGame(message.seq);
+        return;  // abandonGame() tells every client to go back to setup
     } else if (m_session && m_session->active()) {
         const qint64 started = net::timing::now();
         const CommandResult command = m_session->handle(id, message);
@@ -437,6 +445,32 @@ void GameServer::startGame() {
         saveCampaignStart();
     }
     emit gameStartRequested(m_lobby.state());
+}
+
+void GameServer::abandonGame(int replyTo) {
+    // No save: the game is gone. Campaign progress saved at its start stays as it is.
+    m_session.reset();
+    m_lastAutosaveDay = 0;
+    m_gameStamp.clear();
+    m_lobby.reset();
+
+    const auto host = m_clients.find(m_lobby.hostId());
+    if (host != m_clients.end()) {
+        Message reply;
+        reply.type = net::msg::commandResult;
+        reply.body.insert("replyTo", replyTo);
+        QJsonObject info;
+        info.insert("abandoned", true);
+        reply.body.insert("info", info);
+        host->connection->send(reply);
+    }
+    broadcastLobby();
+    Message gone;
+    gone.type = net::msg::gameAbandoned;
+    for (Client& c : m_clients) {
+        if (c.greeted) c.connection->send(gone);
+    }
+    qCInfo(lcKotServer) << "The host abandoned the game; everyone is back in the lobby";
 }
 
 void GameServer::autosave() {

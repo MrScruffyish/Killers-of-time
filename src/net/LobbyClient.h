@@ -59,6 +59,8 @@ public:
     int generateMap(const QJsonObject& params) { return send(msg::generateMap, params); }
     int loadGame(const QString& name) { return send(msg::loadGame, {{"name", name}}); }
     int joinGame(int playerId) { return send(msg::joinGame, {{"player", playerId}}); }
+    // Host only: end the running game without saving and return everyone to setup.
+    int abandonGame() { return send(msg::abandonGame); }
     // Players of a running game nobody plays now: [{id, name}] (from welcome or game_loaded).
     const QJsonArray& freePlayers() const { return m_freePlayers; }
     // The latest view the server sent (empty before the game starts) and who we are.
@@ -72,6 +74,7 @@ signals:
     void gameStarting();
     void gameStarted();                                  // first view received
     void gameStateChanged();                             // a new view received
+    void gameAbandoned();                                // the host ended it: go back to setup
     void commandResult(int replyTo, const QJsonObject& info);
     // A game is running (we joined late) or was loaded: pick one of freePlayers() with joinGame().
     void playerChoiceOffered();

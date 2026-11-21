@@ -86,6 +86,8 @@ private:
     void broadcastLobby();
     void sendContentLists();  // refreshed scenario/campaign lists (with campaign progress)
     void startGame();
+    // The host left the running game: drop it and put everyone back in a fresh setup.
+    void abandonGame(int replyTo);
     void sendGameStates();
     // Saved games, joining a running game. Return true if the message was one of these.
     bool handleSaveOrJoin(Client& client, const net::Message& message);

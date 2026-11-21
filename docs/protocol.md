@@ -73,6 +73,8 @@ one hero per player, neutral mines and dwellings) and sends, besides `lobby_stat
 |---|---|---|
 | server -> client | `game_started` | `you` (`playerId`, `team`), `view` |
 | server -> client | `game_state` | the player's `view`, sent after every change anybody makes |
+| client -> server | `abandon_game` | host only, while a game runs: end it without saving, reset the lobby and send everyone back to setup (`command_result` with `info.abandoned` to the host, then `lobby_state` and `game_abandoned` to everyone) |
+| server -> client | `game_abandoned` | the host ended the game: leave the game screen; a fresh `lobby_state` follows before it |
 | server -> client | `command_result` | `replyTo`, `info` (what happened, see below), sent to the player who sent the command |
 
 Failed commands answer with `error` (`replyTo` names the request). Codes: `not_your_turn`,

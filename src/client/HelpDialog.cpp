@@ -30,8 +30,9 @@ QString HelpDialog::helpHtml() {
             "<p>Take turns with the other players. Each day you move your heroes, build in your towns and buy units. "
             "A player who loses his last town has 7 days to take one back, else he is out (the game setup can change this: "
             "out at once, or only with no towns and no heroes); the last team standing wins. K shows every player's towns, heroes and army strength.</p>"
-            "<p>Ctrl+S saves during a game. Ctrl+L opens the saved-game list from the start screen or the lobby; "
-            "close the current game first, since a game in progress cannot be replaced.</p>");
+            "<p>Ctrl+S saves during a game; G shows the scenario goal again. Ctrl+L opens the saved-game list from "
+            "the start screen or the lobby; close the current game first, since a game in progress cannot be replaced. "
+            "The Game menu's <i>Leave game and return to setup</i> (host only) abandons without saving and resets the lobby.</p>");
 
     h += tr("<h3>Keys on the map</h3><table>");
     h += row(tr("E"), tr("End the turn"));
@@ -44,6 +45,7 @@ QString HelpDialog::helpHtml() {
     h += row(tr("B"), tr("Next town that can build today: opens its build screen"));
     h += row(tr("M"), tr("Market: trade resources"));
     h += row(tr("K"), tr("Kingdoms: every player's towns, heroes, mines and army strength"));
+    h += row(tr("G"), tr("Show the scenario goal, defeat rule and story again"));
     h += row(tr("+ and -"), tr("Bigger or smaller map icons (also Ctrl + mouse wheel)"));
     h += row(tr("Ctrl+S"), tr("Save the game"));
     h += row(tr("F1"), tr("This help"));
@@ -87,8 +89,9 @@ QString HelpDialog::helpHtml() {
             "<li>Heroes walk across the map when they move. In the Game menu, <i>Other heroes move</i> sets how fast "
             "their walks are shown: Slow, Normal, Fast, or Instant (do not show). <i>Your heroes move</i> does the "
             "same for your own heroes.</li>"
-            "<li>When a mine, town or dwelling changes hands, the log says so and a note appears on screen. "
-            "A move you cannot see is not shown: with fog of war or unexplored land an enemy can move out of sight.</li>"
+            "<li>When a mine, town or dwelling is taken from another player, the log says so and a note appears on "
+            "screen; walking onto an unowned one is not announced. A move you cannot see is not shown: with fog of war "
+            "or unexplored land an enemy can move out of sight.</li>"
             "</ul>");
 
     h += tr("<h3>Days and weeks</h3><ul>"

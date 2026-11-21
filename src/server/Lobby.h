@@ -54,6 +54,10 @@ public:
     LobbyResult setCampaignSeats(int seats) { return configureSlots(seats, true); }
     LobbyResult setMapSlots(int slotCount = 4) { return configureSlots(slotCount, false); }
 
+    // Throw away the finished/current game setup: default settings and four fresh
+    // slots, with the same members placed as when they first joined.
+    void reset();
+
     // The host may start when: at least one human, two occupied slots on two
     // different teams, and every human is ready.
     LobbyResult checkStart(int actorId) const;

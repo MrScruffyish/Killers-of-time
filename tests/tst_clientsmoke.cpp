@@ -11,6 +11,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPainter>
 #include <QSettings>
 #include <QTemporaryDir>
@@ -1587,10 +1588,17 @@ private slots:
         mine.id = 5;
         mine.owner = 1;
         mine.pos = {3, 3};
-        before.mines = {mine};
         ViewMine taken = mine;
         taken.owner = 2;
-        after.mines = {taken};
+        // A neutral mine walked onto by Ann is not a take-over worth reporting.
+        ViewMine neutral;
+        neutral.id = 9;
+        neutral.owner = 0;
+        neutral.pos = {7, 7};
+        ViewMine claimed = neutral;
+        claimed.owner = 1;
+        before.mines = {mine, neutral};
+        after.mines = {taken, claimed};
         ViewTown town;
         town.id = 7;
         town.name = QStringLiteral("Home");
@@ -1604,6 +1612,8 @@ private slots:
         const QStringList changes = GamePage::ownershipChanges(before, after);
         QVERIFY2(changes.contains(QStringLiteral("Bob took your mine.")), qPrintable(changes.join(", ")));
         QVERIFY2(changes.contains(QStringLiteral("You took a town from Bob.")), qPrintable(changes.join(", ")));
+        QVERIFY2(!changes.contains(QStringLiteral("You took a mine from somebody.")), qPrintable(changes.join(", ")));
+        QVERIFY2(!changes.contains(QStringLiteral("You took a mine.")), qPrintable(changes.join(", ")));
         // The first view and an unchanged view say nothing.
         GameView empty;
         QVERIFY(GamePage::ownershipChanges(empty, after).isEmpty());
@@ -1800,6 +1810,25 @@ private slots:
         QVERIFY(help->findChild<QTextBrowser*>("helpText")->toPlainText().contains("Ctrl+S"));
         help->hide();
 
+        // The goal can be read again from the menu, not just on day 1.
+        auto* goalAction = game->findChild<QAction*>("showGoalAction");
+        QVERIFY(goalAction);
+        bool goalShown = false;
+        QTimer goalWatcher;
+        goalWatcher.setInterval(20);
+        connect(&goalWatcher, &QTimer::timeout, &w, [&]() {
+            auto* box = w.findChild<QMessageBox*>("goalDialog");
+            if (!box || !box->isVisible()) return;
+            goalShown = box->text().contains(QStringLiteral("Goal:")) && box->text().contains(game->view().victory);
+            goalWatcher.stop();
+            box->accept();
+        });
+        goalWatcher.start();
+        goalAction->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(goalShown, 5000);
+        auto* leaveAction = game->findChild<QAction*>("leaveGameAction");
+        QVERIFY(leaveAction && leaveAction->isEnabled());
+
         // Ctrl+S saves through the same dialog and path as the Game menu action.
         w.activateWindow();
         QTRY_VERIFY_WITH_TIMEOUT(w.isActiveWindow(), 5000);
@@ -1915,6 +1944,29 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(game->findChild<QWidget*>("levelUpDialog") != nullptr, 5000);
         shot(game->findChild<QWidget*>("levelUpDialog"), "8c_level_up");
         QTest::mouseClick(game->findChild<QPushButton*>("levelUpChooseNow"), Qt::LeftButton);
+
+        // Leaving asks first, then abandons without saving and puts us back in setup.
+        bool leaveAsked = false;
+        QTimer leaveWatcher;
+        leaveWatcher.setInterval(20);
+        connect(&leaveWatcher, &QTimer::timeout, &w, [&]() {
+            auto* box = w.findChild<QMessageBox*>("leaveGameDialog");
+            if (!box || !box->isVisible()) return;
+            leaveAsked = box->button(QMessageBox::Yes)->text() == QStringLiteral("Yes, abandon and reset");
+            leaveWatcher.stop();
+            box->button(QMessageBox::Yes)->click();
+        });
+        leaveWatcher.start();
+        leaveAction->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(leaveAsked, 5000);
+        QTRY_COMPARE_WITH_TIMEOUT(w.currentPage(), QString("lobby"), 5000);
+        QVERIFY(!server.session() || !server.session()->active());
+        QVERIFY(w.client().view().isEmpty());
+        QVERIFY(!server.lobby().state().started);
+        QCOMPARE(server.lobby().state().settings.campaign, QString());
+        QCOMPARE(server.lobby().state().slotList.size(), 4);
+        QCOMPARE(server.lobby().state().slotList[0].kind, net::SlotKind::Human);
+        QCOMPARE(server.lobby().state().slotList[0].clientId, w.client().clientId());
     }
 };
 

@@ -114,10 +114,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         if (m_game) {
             m_pages->removeWidget(m_game);
             delete m_game;
+            m_game = nullptr;
         }
         m_game = new GamePage(&m_client, &m_content, this);
         m_pages->addWidget(m_game);
         m_pages->setCurrentWidget(m_game);
+    });
+    connect(&m_client, &net::LobbyClient::gameAbandoned, this, [this]() {
+        if (m_game) {
+            m_pages->removeWidget(m_game);
+            delete m_game;
+            m_game = nullptr;
+        }
+        m_pages->setCurrentWidget(m_lobby);
     });
     connect(&m_client, &net::LobbyClient::playerChoiceOffered, this, [this]() {
         QStringList names;

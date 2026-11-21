@@ -32,10 +32,14 @@ line waiting for it, and the agent then removes them.
 54. In-game menu: allow abandoning the current game with no save, resetting the lobby and
     returning to setup; add an option to show the current scenario goal again; and do not
     report taking an unowned/neutral mine ("You took a mine from somebody.").
+54.1 **MANUAL**: run `make test`; the Game menu actions, abandon/reset protocol and neutral
+    take-over messages are covered. Then start a solo game and check that **Show scenario
+    goal** (`G`) recalls the goal/story, and that leaving asks before resetting to setup.
 55. For slay-goal scenarios and campaigns, slaying the purple monster is the only win
     condition; remove the "defeat everyone" conquest fallback.
 56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
     (instant location change, no animation), so their direction is visible.
+57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
 
 ## TBD
 

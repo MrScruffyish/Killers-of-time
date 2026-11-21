@@ -761,6 +761,36 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!a->view().isEmpty(), 5000);
     }
 
+    void hostCanAbandonAndResetTheLobby() {
+        server->setContent(&content);
+        auto a = connectClient("Ann");
+        auto b = connectClient("Bob");
+        startTwoPlayerGame(*a, *b);
+        QVERIFY(server->session() && server->session()->active());
+
+        // A guest cannot end the shared game.
+        QSignalSpy guestError(b.get(), &LobbyClient::errorReceived);
+        b->abandonGame();
+        QTRY_COMPARE_WITH_TIMEOUT(guestError.count(), 1, 3000);
+        QCOMPARE(guestError.at(0).at(0).toString(), QStringLiteral("not_host"));
+        QVERIFY(server->session() && server->session()->active());
+
+        QSignalSpy goneA(a.get(), &LobbyClient::gameAbandoned);
+        QSignalSpy goneB(b.get(), &LobbyClient::gameAbandoned);
+        QSignalSpy reply(a.get(), &LobbyClient::commandResult);
+        a->abandonGame();
+        QTRY_VERIFY_WITH_TIMEOUT(goneA.count() == 1 && goneB.count() == 1 && reply.count() >= 1, 3000);
+        QVERIFY(!server->session() || !server->session()->active());
+        QVERIFY(a->view().isEmpty());
+        QVERIFY(b->view().isEmpty());
+        QTRY_COMPARE_WITH_TIMEOUT(a->lobby().slotList.size(), 4, 3000);
+        QVERIFY(!a->lobby().started);
+        QCOMPARE(a->lobby().settings.campaign, QString());
+        QCOMPARE(a->lobby().slotList[0].clientId, a->clientId());
+        QCOMPARE(a->lobby().slotList[1].clientId, b->clientId());
+        QCOMPARE(b->lobby().slotList[1].clientId, b->clientId());
+    }
+
     void theHostMakesARandomMap() {
         QTemporaryDir saves;
         server->setContent(&content);

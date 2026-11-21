@@ -336,6 +336,28 @@ private slots:
         QCOMPARE(lobby.setCampaignSeats(3).code, QString("already_started"));
         QCOMPARE(lobby.setMapSlots().code, QString("already_started"));
     }
+
+    void resetReturnsToAFreshSetup() {
+        lobby.addMember(1, "Ann");
+        lobby.addMember(2, "Bob");
+        QVERIFY(lobby.setCampaignSeats(5).ok);
+        QVERIFY(lobby.setSettings(1, {{"seed", 42}}).ok);
+        QVERIFY(lobby.start(1).ok);
+        lobby.reset();
+        QVERIFY(!lobby.state().started);
+        QCOMPARE(lobby.state().settings.seed, quint64(1));
+        QCOMPARE(lobby.state().settings.campaign, QString());
+        QCOMPARE(lobby.state().slotList.size(), 4);
+        QCOMPARE(slot(0).kind, SlotKind::Human);
+        QCOMPARE(slot(0).name, QString("Ann"));
+        QCOMPARE(slot(0).clientId, 1);
+        QCOMPARE(slot(1).kind, SlotKind::Human);
+        QCOMPARE(slot(1).name, QString("Bob"));
+        QCOMPARE(slot(1).clientId, 2);
+        QCOMPARE(slot(2).kind, SlotKind::Open);
+        QVERIFY(!slot(0).ready);
+        QVERIFY(!slot(1).ready);
+    }
 };
 
 QTEST_APPLESS_MAIN(TstLobby)

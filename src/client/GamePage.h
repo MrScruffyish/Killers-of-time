@@ -67,6 +67,8 @@ private:
     void selectHero(int id);
     void openMarket();  // M
     void showHelp();    // F1
+    void showGoal();    // G: read the scenario goal / defeat rule / story again
+    void leaveGame();   // host: abandon without saving and go back to game setup
     void showKingdoms();  // K: every player's towns, heroes, mines and army strength
     void selectTown(int id);  // T cycles: the map looks there
     // Ctrl+S (and the Game menu): opens the save dialog.
@@ -131,6 +133,7 @@ private:
     void showHandover(const QString& name, const QColor& colour);
     QPushButton* m_castSpell;
     class QAction* m_save;
+    class QAction* m_leave = nullptr;
     BattleView* m_battleView;
     int m_seenBattleId = 0;
     int m_newsDay = 0;  // the day whose story news were shown

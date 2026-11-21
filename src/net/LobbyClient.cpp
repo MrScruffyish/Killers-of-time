@@ -129,6 +129,10 @@ void LobbyClient::onMessage(const Message& message) {
     } else if (message.type == msg::gameState) {
         m_view = message.body;
         emit gameStateChanged();
+    } else if (message.type == msg::gameAbandoned) {
+        m_view = QJsonObject();
+        m_you = QJsonObject();
+        emit gameAbandoned();
     } else if (message.type == msg::commandResult) {
         emit commandResult(message.body.value("replyTo").toInt(0), message.body.value("info").toObject());
     } else if (message.type == msg::gameLoaded) {

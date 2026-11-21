@@ -54,6 +54,7 @@ inline const QString loadGame = QStringLiteral("load_game");      // the host, i
 inline const QString generateMap = QStringLiteral("generate_map");  // the host makes a random scenario or campaign
 inline const QString contentLists = QStringLiteral("content_lists");  // server: the scenarios and campaigns changed
 inline const QString joinGame = QStringLiteral("join_game");      // take over a free human player
+inline const QString abandonGame = QStringLiteral("abandon_game");  // host: end the game without saving and reset the lobby
 // server -> client
 inline const QString welcome = QStringLiteral("welcome");
 inline const QString lobbyState = QStringLiteral("lobby_state");
@@ -62,6 +63,7 @@ inline const QString error = QStringLiteral("error");
 inline const QString pong = QStringLiteral("pong");
 inline const QString gameStarted = QStringLiteral("game_started");   // you + your view
 inline const QString gameLoaded = QStringLiteral("game_loaded");     // freePlayers to choose from
+inline const QString gameAbandoned = QStringLiteral("game_abandoned");  // the host ended it: go back to setup
 inline const QString gameState = QStringLiteral("game_state");       // your view, after every change
 inline const QString commandResult = QStringLiteral("command_result");  // replyTo + info
 }  // namespace msg

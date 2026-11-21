@@ -149,6 +149,9 @@ picker - *Random campaign...* opens the generator, or pick a shipped campaign su
 *The Purple Scourge* - and Start. The server sizes the seats for the current chapter and fills
 every seat but yours with AI, so no map, slot or rule settings are offered.
 Other players join with the server address. Right-click your town on the map to open it.
+The Game menu has **Show scenario goal** (`G`) to read the win/lose rule and story again, and
+**Leave game and return to setup** (host only): it abandons the current game without saving,
+resets the lobby and takes everyone back to the setup screen.
 `KOT_DATA_DIR=/path/to/data` tells the programs where the game data is if it is not found.
 
 - **Settings** (window and dialog sizes, last server and name, map zoom, sound, view choices) are

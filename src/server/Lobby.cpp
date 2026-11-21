@@ -142,6 +142,22 @@ void Lobby::removeMember(int clientId) {
     if (wasHost && !m_state.members.isEmpty()) m_state.members.first().isHost = true;
 }
 
+void Lobby::reset() {
+    // Members stay connected (and keep their host); only the game setup is thrown away.
+    const QList<LobbyMember> members = m_state.members;
+    m_state = net::LobbyState();
+    m_state.members = members;
+    for (int i = 0; i < 4; ++i) m_state.slotList.append(freshSlot(i));
+    for (const LobbyMember& m : members) {
+        for (const SlotInfo& s : m_state.slotList) {
+            if (s.kind == SlotKind::Open) {
+                claimSlot(m.clientId, s.index);
+                break;
+            }
+        }
+    }
+}
+
 LobbyResult Lobby::claimSlot(int clientId, int slot) {
     LobbyMember* m = member(clientId);
     if (!m) return LobbyResult::failure("unknown_client", "not in the lobby");

@@ -215,6 +215,12 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     QAction* tokenAction = menu->addAction(tr("Game token..."));
     tokenAction->setObjectName("gameTokenAction");
     connect(tokenAction, &QAction::triggered, this, [this]() { showGameToken(); });
+    QAction* goalAction = menu->addAction(tr("Show scenario goal...\tG"));
+    goalAction->setObjectName("showGoalAction");
+    connect(goalAction, &QAction::triggered, this, &GamePage::showGoal);
+    m_leave = menu->addAction(tr("Leave game and return to setup..."));
+    m_leave->setObjectName("leaveGameAction");
+    connect(m_leave, &QAction::triggered, this, &GamePage::leaveGame);
     menu->addSeparator();
     QAction* zoomIn = menu->addAction(tr("Bigger map icons\t+"));
     QAction* zoomOut = menu->addAction(tr("Smaller map icons\t-"));
@@ -333,6 +339,7 @@ GamePage::GamePage(net::LobbyClient* client, const core::ContentRegistry* conten
     shortcut("Enter", [this]() { goAlongRoute(); });
     shortcut("M", [this]() { openMarket(); });
     shortcut("K", [this]() { showKingdoms(); });
+    shortcut("G", [this]() { showGoal(); });
     shortcut("F1", [this]() { showHelp(); });
     shortcut("H", [this]() {
         if (m_selectedHero) m_heroDialog->showHero(m_view, m_selectedHero);
@@ -546,7 +553,8 @@ QStringList GamePage::ownershipChanges(const GameView& before, const GameView& a
         return p ? p->name : QObject::tr("somebody");
     };
     const auto add = [&](const QString& thing, int oldOwner, int newOwner) {
-        if (oldOwner == newOwner || newOwner == 0) return;  // neutral: nothing to report
+        // Taking an unowned thing is not a take-over; neither is losing one to neutral.
+        if (oldOwner == newOwner || oldOwner == 0 || newOwner == 0) return;
         const QString was = ownerName(oldOwner);
         const QString now = ownerName(newOwner);
         if (newOwner == after.you)
@@ -1179,6 +1187,34 @@ void GamePage::showHelp() {
     dialog->activateWindow();
 }
 
+void GamePage::showGoal() {
+    const QString goal = m_view.victory.isEmpty() ? tr("defeat everyone") : m_view.victory.toHtmlEscaped();
+    const QString lose = m_view.defeat.isEmpty() ? tr("lose all your towns and heroes") : m_view.defeat.toHtmlEscaped();
+    QString text = tr("<b>Goal:</b> %1<br><b>Defeat:</b> %2").arg(goal, lose);
+    if (!m_view.campaign.isEmpty())
+        text.prepend(tr("<b>%1</b> - chapter %2 of %3<br>")
+                         .arg(m_view.campaign.value(QStringLiteral("name")).toString().toHtmlEscaped())
+                         .arg(m_view.campaign.value(QStringLiteral("chapter")).toInt())
+                         .arg(m_view.campaign.value(QStringLiteral("chapters")).toInt()));
+    if (!m_view.intro.isEmpty()) text += QStringLiteral("<hr>") + m_view.intro;
+    QMessageBox box(QMessageBox::Information, tr("Scenario goal"), text, QMessageBox::Ok, this);
+    box.setTextFormat(Qt::RichText);
+    box.setObjectName(QStringLiteral("goalDialog"));
+    box.exec();
+}
+
+void GamePage::leaveGame() {
+    if (!m_client->isHost()) return;  // the shared game can only be ended by its host
+    QMessageBox box(QMessageBox::Question, tr("Leave game"),
+                    tr("Abandon the current game without saving? The lobby is reset and everyone returns to game setup."),
+                    QMessageBox::No | QMessageBox::Yes, this);
+    box.setDefaultButton(QMessageBox::No);
+    box.setButtonText(QMessageBox::Yes, tr("Yes, abandon and reset"));
+    box.setButtonText(QMessageBox::No, tr("No, keep playing"));
+    box.setObjectName(QStringLiteral("leaveGameDialog"));
+    if (box.exec() == QMessageBox::Yes) m_client->abandonGame();
+}
+
 void GamePage::openMarket() {
     if (!m_market) {
         m_market = new MarketDialog(m_content, this);
@@ -1287,6 +1323,7 @@ void GamePage::updateStatus() {
                     : tr("No units wait in your dwellings on the map. They arrive at the start of each week; "
                          "Bring them home moves them to your nearest town, where you can buy them for gold."));
     m_save->setEnabled(!m_view.battle.present && !m_view.battleInProgress && !m_view.gameOver);
+    if (m_leave) m_leave->setEnabled(m_client->isHost());
     updateEndTurnHighlight();
 
     m_townList->clear();
