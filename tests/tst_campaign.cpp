@@ -338,6 +338,76 @@ private slots:
         QCOMPARE(learned[0].toString(), QStringLiteral("Cure"));
     }
 
+    void codexCampaignIsShipped() {
+        CampaignDef def;
+        QStringList errors;
+        QVERIFY2(loadCampaign(QDir(KOT_DATA_DIR).filePath(QStringLiteral("campaigns/codex.json")), &def, &errors),
+                 qPrintable(errors.join("\n")));
+        QCOMPARE(def.id, QStringLiteral("codex"));
+        QCOMPARE(def.name, QStringLiteral("The Deathless Codex"));
+        QCOMPARE(def.scenarios.size(), 5);
+        QCOMPARE(def.carryHeroes, 1);
+        QCOMPARE(def.legacy.kind, QStringLiteral("codex"));
+        QVERIFY(!def.legacy.title.isEmpty());
+        QVERIFY(!def.legacy.intro.isEmpty());
+        QVERIFY(!def.legacy.epilogue.isEmpty());
+        QCOMPARE(def.legacy.chapters.size(), def.scenarios.size());
+        // Each chapter is one research step: a story page and one new, valid spell.
+        const QStringList expected = {QStringLiteral("cure"), QStringLiteral("bless"),
+                                      QStringLiteral("stone_skin"), QStringLiteral("haste"),
+                                      QStringLiteral("magic_arrow")};
+        QStringList learned;
+        for (int i = 0; i < def.legacy.chapters.size(); ++i) {
+            const LegacyChapter& chapter = def.legacy.chapters[i];
+            QVERIFY2(!chapter.story.isEmpty(), qPrintable(QStringLiteral("chapter %1 has no story").arg(i + 1)));
+            QCOMPARE(chapter.spells.size(), 1);
+            QCOMPARE(chapter.spells[0], expected[i]);
+            QVERIFY2(reg.spellByKey(chapter.spells[0]), qPrintable(chapter.spells[0]));
+            QVERIFY2(!learned.contains(chapter.spells[0]), "each page should teach a new spell");
+            learned << chapter.spells[0];
+        }
+        QCOMPARE(learned.size(), 5);
+    }
+
+    void codexSpellsCarryBetweenChapters() {
+        QTemporaryDir saves;
+        const QString progressPath = QDir(saves.path()).filePath("campaign_codex.json");
+        QString error;
+        net::LobbyState lobby;
+        lobby.settings.campaign = "codex";
+        lobby.slotList = {slot(0, false, "Scribe", 1), slot(1, true, "Bot", 2)};
+        server::GameSession first(reg);
+        first.setCampaignDir(saves.path());
+        QVERIFY2(first.start(lobby, &error), qPrintable(error));
+        QCOMPARE(first.campaignChapter(), 0);
+        const PlayerId scribe = first.playerOfClient(1);
+
+        // Win chapter one: only the scribe's team is left.
+        GameState& gs = first.state();
+        for (const Hero& h : QList<Hero>(gs.heroes().values()))
+            if (h.owner != scribe) {
+                gs.armies().remove(h.army);
+                gs.heroes().remove(h.id);
+            }
+        for (Town& t : gs.towns())
+            if (t.owner != scribe) t.owner = PlayerId();
+        first.handle(1, net::Message{net::msg::endTurn, {}, 1});
+        QCOMPARE(first.viewFor(scribe)["campaign"].toObject()["result"].toString(), QString("won"));
+        CampaignProgress p;
+        QVERIFY(loadProgress(progressPath, &p));
+        QCOMPARE(p.spells, QStringList({QStringLiteral("cure")}));
+
+        // Chapter two starts with the first page already learned.
+        server::GameSession second(reg);
+        second.setCampaignDir(saves.path());
+        QVERIFY2(second.start(lobby, &error), qPrintable(error));
+        const PlayerId scribe2 = second.playerOfClient(1);
+        bool knowsCure = false;
+        for (const Hero& h : second.state().heroes())
+            if (h.owner == scribe2) knowsCure = knowsCure || h.spells.contains(S("cure"));
+        QVERIFY(knowsCure);
+    }
+
     void chaptersFollowEachOther() {
         QTemporaryDir saves;
         net::LobbyState lobby;

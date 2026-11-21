@@ -1,0 +1,35 @@
+{
+  "id": "codex",
+  "name": "The Deathless Codex",
+  "description": "Five research missions across the realms. Each chapter you win copies a spell page into your carried hero's mind, and what you learn stays learned for the rest of the campaign.",
+  "scenarios": ["beast_hunt", "unexplored_west", "lost_relic", "siege_of_the_capital", "five_realms"],
+  "carryOver": { "heroes": 1, "maxLevel": 0 },
+  "legacy": {
+    "kind": "codex",
+    "title": "The Deathless Codex",
+    "intro": "The Codex of Ages was scattered across five realms: its pages guarded by beasts, lost in unmapped wilds, sealed in vaults, and locked behind capital archives. Gather the pages, copy each spell into your mind, and carry what you learn into the next chapter. Only a hero who survives all five will read the final line.",
+    "epilogue": "The Codex closes, and you are its keeper. Every spell you learned was earned in blood and carried forward - a research that no fresh army or new land could undo. You are the Deathless Scribe.",
+    "chapters": [
+      {
+        "story": "The behemoth falls, and from its hoard you lift the first page: Cure. The wound you close today will close again in every chapter to come.",
+        "spells": ["cure"]
+      },
+      {
+        "story": "The western ruins are charted. In a dust-choked scriptorium you copy the second page, Bless. Your library grows with every land you survey.",
+        "spells": ["bless"]
+      },
+      {
+        "story": "The Dragon Blade is yours, and beneath its vault a third page waits: Stone Skin. Relic and spell both travel with you now.",
+        "spells": ["stone_skin"]
+      },
+      {
+        "story": "The capital's archive is taken. Its sealed folio yields Haste, so even the final chapter begins with the speed you learned here.",
+        "spells": ["haste"]
+      },
+      {
+        "story": "Five realms, one surviving hero. The last page yields Magic Arrow, and the Codex is whole.",
+        "spells": ["magic_arrow"]
+      }
+    ]
+  }
+}
