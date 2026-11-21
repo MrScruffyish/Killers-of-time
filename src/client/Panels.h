@@ -15,6 +15,8 @@ public:
     explicit ResourceBar(const core::ContentRegistry* content, QWidget* parent = nullptr);
     void setView(const GameView& view);
     QSize sizeHint() const override;
+    // Resource ids in bar order: the currency (gold) first, then cheapest to rarest.
+    static QList<core::ResourceId> orderedResources(const core::ContentRegistry& content);
 
 protected:
     void paintEvent(QPaintEvent*) override;

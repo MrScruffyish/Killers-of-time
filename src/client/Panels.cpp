@@ -21,9 +21,23 @@ ResourceBar::ResourceBar(const core::ContentRegistry* content, QWidget* parent) 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 }
 
+QList<core::ResourceId> ResourceBar::orderedResources(const core::ContentRegistry& content) {
+    QList<const core::ResourceDef*> sorted;
+    for (const core::ResourceDef& r : content.resources()) sorted.append(&r);
+    std::stable_sort(sorted.begin(), sorted.end(), [](const core::ResourceDef* a, const core::ResourceDef* b) {
+        if (a->isCurrency != b->isCurrency) return a->isCurrency;  // gold leads
+        if (a->value != b->value) return a->value < b->value;      // cheap before rare
+        return a->key < b->key;                                    // steady tie-break
+    });
+    QList<core::ResourceId> ids;
+    for (const core::ResourceDef* r : sorted) ids.append(r->id);
+    return ids;
+}
+
 void ResourceBar::setView(const GameView& view) {
     QList<Item> items;
-    for (const core::ResourceDef& r : m_content->resources()) {
+    for (const core::ResourceId id : orderedResources(*m_content)) {
+        const core::ResourceDef& r = m_content->resource(id);
         const int amount = view.resources.value(r.id), income = view.income.value(r.id);
         if (amount == 0 && income == 0 && !r.isCurrency) continue;
         items.append({r.key, r.name, amount, income, {}});

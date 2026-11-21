@@ -37,6 +37,8 @@ line waiting for it, and the agent then removes them.
 56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
     (instant location change, no animation), so their direction is visible.
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
+57.1 **MANUAL**: run `make test`; the ordering is covered by a unit test. Then glance at the
+    in-game resource bar: gold first, then the rest cheapest to rarest.
 59. Fix the Solo Play chooser: it showed literal `<b>Play...` markup and the light-blue card
     colours clashed with the game's dark brown/gold look.
 60. Campaign carry-over: keep only a hero's name, class and level between chapters - no army,

@@ -4,6 +4,7 @@
 #include "TestContent.h"
 
 #include "client/MovePlanner.h"
+#include "client/Panels.h"
 #include "client/Sound.h"
 #include "client/ViewModel.h"
 #include "core/content/ContentRegistry.h"
@@ -45,6 +46,20 @@ private slots:
         QCOMPARE(v.players.size(), 2);
         QVERIFY(v.myTeam() > 0);
         QCOMPARE(v.resources.value(kot::core::R("gold")), 10000);
+    }
+
+    void resourceBarOrdersGoldFirstThenCheapest() {
+        const QList<core::ResourceId> order = ResourceBar::orderedResources(reg);
+        QVERIFY(order.size() >= 3);
+        QVERIFY(reg.resource(order.first()).isCurrency);  // gold leads
+        for (int i = 1; i < order.size(); ++i) {
+            const core::ResourceDef& prev = reg.resource(order[i - 1]);
+            const core::ResourceDef& cur = reg.resource(order[i]);
+            QVERIFY2(!cur.isCurrency, "only the currency leads");
+            QVERIFY2(prev.value <= cur.value,
+                     qPrintable(QStringLiteral("%1 (%2) before %3 (%4)")
+                                    .arg(prev.key).arg(prev.value).arg(cur.key).arg(cur.value)));
+        }
     }
 
     void myThingsAreComplete() {
