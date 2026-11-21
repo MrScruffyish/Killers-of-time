@@ -94,7 +94,9 @@ private slots:
         QCOMPARE(now->level, a.hero(h)->level);
         QCOMPARE(now->experience, 0);
         QCOMPARE(now->pendingTraitPicks, 0);
-        QVERIFY(now->spells.isEmpty());     // the chapter's spells, not the carried ones
+        // The chapter's own starting spell stays; the carried hero's learned spell does not.
+        QVERIFY(now->spells.contains(S("curse")));
+        QVERIFY(!now->spells.contains(S("far_sight")));
         QVERIFY(now->artifacts.isEmpty());  // likewise the carried loot
         QVERIFY(now->backpack.isEmpty());
         QCOMPARE(b.army(now->army)->stacks.size(), 1);
@@ -123,7 +125,9 @@ private slots:
         QCOMPARE(applyCarriedHeroes(b, reg, pb, {old}, 5), 1);
         QCOMPARE(b.hero(fresh)->level, 5);
         QCOMPARE(b.hero(fresh)->experience, 0);
-        QVERIFY(b.hero(fresh)->spells.isEmpty());
+        // The chapter's own starting spell stays; the stale progress field is ignored.
+        QVERIFY(b.hero(fresh)->spells.contains(S("curse")));
+        QVERIFY(!b.hero(fresh)->spells.contains(S("far_sight")));
         QVERIFY(b.army(b.hero(fresh)->army)->stacks.isEmpty());
     }
 
