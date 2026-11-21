@@ -57,7 +57,7 @@ struct CampaignGenParams {
     int startSize = 48;         // first map; each chapter is 16 tiles bigger (at most 128)
     quint64 seed = 1;
     int carryHeroes = 1;
-    bool carryArmy = true;
+    int maxLevel = 0;           // cap on a carried hero's level; 0 = no limit
     bool islands = false;       // every map with islands
     // Empty: the standard rotating goals (last chapter always conquest). Otherwise
     // exactly one goal per chapter, in order, so a fixed test campaign can be shipped.

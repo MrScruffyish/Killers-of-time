@@ -146,9 +146,10 @@ MapMakerDialog::MapMakerDialog(const QStringList& races, QWidget* parent, bool c
     cform->addRow(tr("First map"), m_firstSize);
     m_carryHeroes = spin(cpage, 0, 4, 1);
     cform->addRow(tr("Heroes carried over"), m_carryHeroes);
-    m_carryArmy = new QCheckBox(tr("Their armies go with them"), cpage);
-    m_carryArmy->setChecked(true);
-    cform->addRow(QString(), m_carryArmy);
+    m_carryMaxLevel = spin(cpage, 0, 100, 0);
+    m_carryMaxLevel->setSuffix(tr(" (0 = no limit)"));
+    m_carryMaxLevel->setToolTip(tr("A hero keeps at most this level in the next chapter. Only the level carries over - not the army, spells or artefacts."));
+    cform->addRow(tr("Maximum carried level"), m_carryMaxLevel);
     m_campaignIslands = new QCheckBox(tr("Island maps (boats needed)"), cpage);
     cform->addRow(QString(), m_campaignIslands);
     m_campaignSeed = spin(cpage, 1, 999999, seed);
@@ -189,7 +190,7 @@ QJsonObject MapMakerDialog::params() const {
     if (m_tabs->currentIndex() == 1) {
         return {{"kind", "campaign"}, {"id", idFrom(m_campaignName->text())}, {"name", m_campaignName->text().trimmed()},
                 {"chapters", m_chapters->value()}, {"race", m_campaignRace->currentData().toString()}, {"size", m_firstSize->value()},
-                {"carryHeroes", m_carryHeroes->value()}, {"carryArmy", m_carryArmy->isChecked()},
+                {"carryHeroes", m_carryHeroes->value()}, {"carryMaxLevel", m_carryMaxLevel->value()},
                 {"islands", m_campaignIslands->isChecked()}, {"seed", m_campaignSeed->value()}};
     }
     QJsonArray races;

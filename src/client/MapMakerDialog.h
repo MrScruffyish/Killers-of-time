@@ -51,7 +51,7 @@ private:
     QComboBox* m_campaignRace;
     QSpinBox* m_firstSize;
     QSpinBox* m_carryHeroes;
-    QCheckBox* m_carryArmy;
+    QSpinBox* m_carryMaxLevel;
     QCheckBox* m_campaignIslands;
     QSpinBox* m_campaignSeed;
 };

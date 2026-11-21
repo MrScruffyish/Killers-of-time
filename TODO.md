@@ -36,6 +36,11 @@ line waiting for it, and the agent then removes them.
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
 59. Fix the Solo Play chooser: it showed literal `<b>Play...` markup and the light-blue card
     colours clashed with the game's dark brown/gold look.
+60. Campaign carry-over: keep only a hero's name, class and level between chapters - no army,
+    spells, artefacts, traits or experience (an army can be grown without risk otherwise).
+    Add a configurable maximum level for carried heroes; 0 means no limit.
+61. Re-run the intrinsic-1 all-AI benchmark after item 60 (`kot_aiplay --campaign intrinsic-1
+    --times 20 --seed 1 --profiles simple`, report on stdout). Nothing tracked needs updating.
 
 ## TBD
 

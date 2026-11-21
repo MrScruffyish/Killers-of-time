@@ -174,7 +174,7 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
             }
         if (!m_campaignPlayer.isValid() && !ids.isEmpty()) m_campaignPlayer = ids.first();
         if (!progress.heroes.isEmpty())
-            applyCarriedHeroes(m_state, m_content, m_campaignPlayer, progress.heroes, campaign.carryArmy);
+            applyCarriedHeroes(m_state, m_content, m_campaignPlayer, progress.heroes, campaign.maxLevel);
     }
 
     m_clientPlayers.clear();

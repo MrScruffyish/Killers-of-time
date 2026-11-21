@@ -274,14 +274,15 @@ tests, so content changes that break one are noticed.
 ## campaigns/<id>.json
 ```json
 { "id": "first_war", "name": "The First War", "description": "...",
-  "scenarios": ["two_kingdoms", "three_realms"], "carryOver": { "heroes": 1, "army": true } }
+  "scenarios": ["two_kingdoms", "three_realms"], "carryOver": { "heroes": 1, "maxLevel": 0 } }
 ```
 The host picks a campaign as the map; its next chapter is played (the lobby needs as many
 players as that scenario). When the human team wins, the server stores the progress in its
-saves folder (`campaign_<id>.json`) with the best `heroes` heroes of the first human player
-(level, experience, traits, spells, artifacts, and the army if `army`); they lead that player's
-heroes in the next chapter. A lost chapter can be played again; after the last chapter the
-campaign starts over.
+saves folder (`campaign_<id>.json`) with the name, class and level of the best `heroes` heroes
+of the first human player. In the next chapter those heroes keep only that level (capped by
+`maxLevel`; 0 means no limit): the chapter's own army, spells, artifacts, traits and experience
+are used, so an army cannot be built up safely across chapters. A lost chapter can be played
+again; after the last chapter the campaign starts over.
 
 ## Unit spells (`spells` and `spellPoints` in units/<id>.json)
 A unit with `spells` (battle spells) and `spellPoints` may cast one instead of acting; its pool

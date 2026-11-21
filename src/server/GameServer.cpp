@@ -677,7 +677,7 @@ void GameServer::generateContent(Client& client, const Message& message) {
         p.startSize = b.value("size").toInt(48);
         p.seed = static_cast<quint64>(b.value("seed").toDouble(1));
         p.carryHeroes = b.value("carryHeroes").toInt(1);
-        p.carryArmy = b.value("carryArmy").toBool(true);
+        p.maxLevel = b.value("carryMaxLevel").toInt(0);
         p.islands = b.value("islands").toBool(false);
         if (!core::generateCampaign(*m_content, p, scenarioDir, campaignDir, &error)) {
             sendError(client, "failed", error, message.seq);

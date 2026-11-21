@@ -1,7 +1,7 @@
 {
   "id": "first_war",
   "name": "The First War",
-  "description": "Win the island, then take the war to the three realms. Your best hero and his army go with you.",
+  "description": "Win the island, then take the war to the three realms. Your best hero returns in the next chapter, keeping only his level - a fresh army waits there.",
   "scenarios": ["two_kingdoms", "three_realms"],
-  "carryOver": { "heroes": 1, "army": true }
+  "carryOver": { "heroes": 1, "maxLevel": 0 }
 }

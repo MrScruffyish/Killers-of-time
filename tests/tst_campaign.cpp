@@ -1,4 +1,5 @@
 #include <QDir>
+#include <QJsonArray>
 #include <QTemporaryDir>
 #include <QtTest>
 #include <cstdlib>
@@ -73,21 +74,56 @@ private slots:
         a.army(a.hero(h)->army)->addUnits(U("pikeman"), 25, 10);
         a.army(a.hero(h)->army)->stacks[0].setExperience(70);
         const QJsonObject snap = heroSnapshot(a, reg, h);
+        // Only identity and level are recorded: no army, spells or loot to grow safely.
+        QStringList keys = snap.keys();
+        keys.sort();
+        QCOMPARE(keys, QStringList({"class", "level", "name"}));
+        QCOMPARE(snap.value("name").toString(), QString("Veteran"));
+        QCOMPARE(snap.value("level").toInt(), a.hero(h)->level);
 
         GameState b(2);
         b.setMap(GameMap(8, 8, T("grass")));
         const PlayerId pb = b.addPlayer("B", b.newTeam(), Player::Controller::Human, RC("undead"), "#ff0000");
         const HeroId fresh = createHero(b, reg, pb, "Rookie", C("death_knight"), {2, 2});
-        QCOMPARE(applyCarriedHeroes(b, reg, pb, {snap}, true), 1);
+        b.army(b.hero(fresh)->army)->addUnits(U("pikeman"), 7, 10);  // the chapter's own army
+        QCOMPARE(applyCarriedHeroes(b, reg, pb, {snap}, 0), 1);
         const Hero* now = b.hero(fresh);
         QCOMPARE(now->name, QString("Veteran"));
         QCOMPARE(now->classId, C("wizard"));
         QCOMPARE(now->level, a.hero(h)->level);
-        QVERIFY(now->artifacts.contains(A("iron_sword")));
-        QVERIFY(now->spells.contains(S("far_sight")));
-        QCOMPARE(b.army(now->army)->stacks[0].count(), 25);
-        QCOMPARE(b.army(now->army)->stacks[0].experience(), 70);
+        QCOMPARE(now->experience, 0);
+        QCOMPARE(now->pendingTraitPicks, 0);
+        QVERIFY(now->spells.isEmpty());     // the chapter's spells, not the carried ones
+        QVERIFY(now->artifacts.isEmpty());  // likewise the carried loot
+        QVERIFY(now->backpack.isEmpty());
+        QCOMPARE(b.army(now->army)->stacks.size(), 1);
+        QCOMPARE(b.army(now->army)->stacks[0].count(), 7);
+        // Traits follow the carried class and level (wizard: +8 spell points per level).
+        QCOMPARE(now->trait(TR("spell_points_max")), 30 + 8 * (now->level - 1));
         QCOMPARE(bestHeroes(a, pa, 1), QList<HeroId>({h}));
+    }
+
+    void carriedLevelCanBeCapped() {
+        GameState a(1);
+        a.setMap(GameMap(8, 8, T("grass")));
+        const PlayerId pa = a.addPlayer("A", a.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        const HeroId h = createHero(a, reg, pa, "Veteran", C("wizard"), {1, 1});
+        a.hero(h)->level = 9;
+        QJsonObject old = heroSnapshot(a, reg, h);
+        // Old progress files may still hold these fields; they are ignored.
+        old.insert("experience", 12770);
+        old.insert("army", QJsonArray{QJsonObject{{"unit", "pikeman"}, {"count", 99}}});
+        old.insert("spells", QJsonArray{"far_sight"});
+
+        GameState b(2);
+        b.setMap(GameMap(8, 8, T("grass")));
+        const PlayerId pb = b.addPlayer("B", b.newTeam(), Player::Controller::Human, RC("undead"), "#ff0000");
+        const HeroId fresh = createHero(b, reg, pb, "Rookie", C("death_knight"), {2, 2});
+        QCOMPARE(applyCarriedHeroes(b, reg, pb, {old}, 5), 1);
+        QCOMPARE(b.hero(fresh)->level, 5);
+        QCOMPARE(b.hero(fresh)->experience, 0);
+        QVERIFY(b.hero(fresh)->spells.isEmpty());
+        QVERIFY(b.army(b.hero(fresh)->army)->stacks.isEmpty());
     }
 
     void chaptersFollowEachOther() {
@@ -146,7 +182,7 @@ private slots:
         QCOMPARE(def.name, QStringLiteral("The Purple Scourge"));
         QCOMPARE(def.scenarios.size(), 5);
         QCOMPARE(def.carryHeroes, 1);
-        QVERIFY(def.carryArmy);
+        QCOMPARE(def.maxLevel, 0);
         const QList<VictoryCondition::Type> expected = {
             VictoryCondition::Type::SlayMonster, VictoryCondition::Type::FindArtifact, VictoryCondition::Type::ExploreMap,
             VictoryCondition::Type::Days, VictoryCondition::Type::Conquest};

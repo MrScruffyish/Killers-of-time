@@ -56,10 +56,11 @@ int main(int argc, char** argv) {
                                   QStringLiteral("key"), QStringLiteral("random"));
     QCommandLineOption heroesOption(QStringLiteral("carry-heroes"), QStringLiteral("Heroes to carry between chapters."),
                                     QStringLiteral("n"), QStringLiteral("1"));
-    QCommandLineOption noArmyOption(QStringLiteral("no-carry-army"), QStringLiteral("Do not carry armies between chapters."));
+    QCommandLineOption maxLevelOption(QStringLiteral("carry-max-level"), QStringLiteral("Cap a carried hero's level (0 = no limit)."),
+                                      QStringLiteral("n"), QStringLiteral("0"));
     for (auto* o : {&dataOption, &idOption, &nameOption, &descOption, &racesOption, &sizeOption, &seedOption, &outOption,
                     &victoryOption, &amountOption, &monsterOption, &artifactOption, &islandsOption, &campaignOption,
-                    &chaptersOption, &goalsOption, &raceOption, &heroesOption, &noArmyOption})
+                    &chaptersOption, &goalsOption, &raceOption, &heroesOption, &maxLevelOption})
         parser.addOption(*o);
     parser.process(app);
 
@@ -92,7 +93,7 @@ int main(int argc, char** argv) {
         p.startSize = width;
         p.seed = seed;
         p.carryHeroes = parser.value(heroesOption).toInt();
-        p.carryArmy = !parser.isSet(noArmyOption);
+        p.maxLevel = parser.value(maxLevelOption).toInt();
         p.islands = parser.isSet(islandsOption);
         p.goals = parser.value(goalsOption).split(',', Qt::SkipEmptyParts);
         const QString base = parser.isSet(outOption) ? parser.value(outOption) : dir;

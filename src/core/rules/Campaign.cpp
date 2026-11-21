@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <algorithm>
+#include <limits>
 
 #include "core/content/ContentRegistry.h"
 #include "core/rules/HeroRules.h"
@@ -37,7 +38,7 @@ bool loadCampaign(const QString& path, CampaignDef* out, QStringList* errors) {
     for (const QJsonValue& v : o.value("scenarios").toArray()) d.scenarios << v.toString();
     const QJsonObject carry = o.value("carryOver").toObject();
     d.carryHeroes = std::clamp(carry.value("heroes").toInt(1), 0, 8);
-    d.carryArmy = carry.value("army").toBool(false);
+    d.maxLevel = std::clamp(carry.value("maxLevel").toInt(0), 0, 1000);  // 0 = no cap
     if (d.id.isEmpty() || d.scenarios.isEmpty()) {
         if (errors) *errors << QStringLiteral("%1: a campaign needs an id and scenarios%2").arg(path, why.isEmpty() ? "" : " (" + why + ")");
         return false;
@@ -86,31 +87,9 @@ bool saveProgress(const QString& path, const CampaignProgress& progress, QString
 QJsonObject heroSnapshot(const GameState& state, const ContentRegistry& content, HeroId id) {
     const Hero* h = state.hero(id);
     if (!h) return {};
-    QJsonObject o;
-    o.insert("name", h->name);
-    o.insert("class", content.heroClass(h->classId)->key);
-    o.insert("level", h->level);
-    o.insert("experience", h->experience);
-    QJsonObject traits;
-    for (const auto [t, v] : h->traits) traits.insert(content.trait(t)->key, v);  // keys
-    o.insert("traits", traits);
-    {
-        QJsonArray spells;  // keys (campaign progress outlives data changes better)
-        for (const SpellId s : h->spells) spells.append(content.spell(s)->key);
-        o.insert("spells", spells);
-    }
-    for (const char* field : {"artifacts", "backpack"}) {
-        QJsonArray list;  // keys
-        for (const ArtifactId a : (QLatin1String(field) == QLatin1String("artifacts") ? h->artifacts : h->backpack)) list.append(content.artifact(a)->key);
-        o.insert(QLatin1String(field), list);
-    }
-    o.insert("pendingTraitPicks", h->pendingTraitPicks);
-    QJsonArray stacks;
-    if (const Army* a = state.army(h->army))
-        for (const UnitStack& s : a->stacks)
-            stacks.append(QJsonObject{{"unit", content.unit(s.unitTypeId())->key}, {"count", s.count()}, {"experience", s.experience()}});
-    o.insert("army", stacks);
-    return o;
+    // Only the identity and the level outlive a chapter. Older progress files may carry
+    // more fields; applyCarriedHeroes() ignores them.
+    return {{"name", h->name}, {"class", content.heroClass(h->classId)->key}, {"level", h->level}};
 }
 
 QList<HeroId> bestHeroes(const GameState& state, PlayerId player, int count) {
@@ -126,13 +105,14 @@ QList<HeroId> bestHeroes(const GameState& state, PlayerId player, int count) {
 }
 
 int applyCarriedHeroes(GameState& state, const ContentRegistry& content, PlayerId player,
-                       const QList<QJsonObject>& carried, bool withArmy) {
+                       const QList<QJsonObject>& carried, int maxLevel) {
     QList<HeroId> mine;
     for (const Hero& h : state.heroes())
         if (h.owner == player) mine << h.id;
     std::sort(mine.begin(), mine.end());
     if (mine.isEmpty()) return 0;
     const Pos base = state.army(state.hero(mine.first())->army)->pos;
+    const int cap = maxLevel > 0 ? maxLevel : std::numeric_limits<int>::max();
     int applied = 0;
     for (int i = 0; i < carried.size(); ++i) {
         const QJsonObject& c = carried[i];
@@ -144,35 +124,20 @@ int applyCarriedHeroes(GameState& state, const ContentRegistry& content, PlayerI
             if (!id.isValid()) continue;
         }
         Hero* h = state.hero(id);
+        const int level = std::clamp(c.value("level").toInt(1), 1, cap);
         h->name = c.value("name").toString(h->name);
         h->classId = cls;
-        h->level = std::max(1, c.value("level").toInt(1));
-        h->experience = c.value("experience").toInt();
-        h->pendingTraitPicks = c.value("pendingTraitPicks").toInt();
-        h->traits = TraitValues();
-        const QJsonObject traits = c.value("traits").toObject();
-        for (auto it = traits.begin(); it != traits.end(); ++it)
-            if (const TraitId t = content.traitId(it.key()); t.isValid()) h->traits[t] = it.value().toInt();
-        h->spells.clear();
-        for (const QJsonValue& v : c.value("spells").toArray())
-            if (content.spellId(v.toString()).isValid()) h->spells << content.spellId(v.toString());
-        h->artifacts.clear();
-        for (const QJsonValue& v : c.value("artifacts").toArray())
-            if (content.artifactId(v.toString()).isValid()) h->artifacts << content.artifactId(v.toString());
-        h->backpack.clear();
-        for (const QJsonValue& v : c.value("backpack").toArray())
-            if (content.artifactId(v.toString()).isValid()) h->backpack << content.artifactId(v.toString());
+        h->level = level;
+        h->experience = 0;
+        h->pendingTraitPicks = 0;
+        // The new chapter keeps its own army, spells, artifacts and backpack. Traits
+        // follow the class and the level, as for a hero who grew to it normally.
+        const HeroClassDef* def = content.heroClass(cls);
+        h->traits = def ? def->baseTraits : TraitValues();
+        if (def)
+            for (int lv = 2; lv <= level; ++lv)
+                for (const auto [t, v] : def->autoGrowth) h->traits[t] += v;
         h->spellPoints = maxSpellPoints(*h, content);
-        if (withArmy) {
-            Army* a = state.army(h->army);
-            a->stacks.clear();
-            for (const QJsonValue& v : c.value("army").toArray()) {
-                const QJsonObject s = v.toObject();
-                const UnitDef* u = content.unitByKey(s.value("unit").toString());
-                if (!u || !a->addUnits(u->id, s.value("count").toInt(), u->maxHp)) continue;
-                a->stacks.last().setExperience(s.value("experience").toInt());
-            }
-        }
         ++applied;
     }
     refreshHeroMovement(state, content, player);

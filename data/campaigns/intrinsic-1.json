@@ -1,9 +1,9 @@
 {
     "carryOver": {
-        "army": true,
-        "heroes": 1
+        "heroes": 1,
+        "maxLevel": 0
     },
-    "description": "Five trials across the realm: slay the flying purple people eater, bring back the Dragon Blade, chart the unexplored west, hold your towns through a long siege, then unite the lands. Your best hero and army travel with you.",
+    "description": "Five trials across the realm: slay the flying purple people eater, bring back the Dragon Blade, chart the unexplored west, hold your towns through a long siege, then unite the lands. Your best hero returns in the next chapter, keeping only his level - a fresh army waits there.",
     "id": "intrinsic-1",
     "name": "The Purple Scourge",
     "scenarios": [

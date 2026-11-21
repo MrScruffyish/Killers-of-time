@@ -242,6 +242,7 @@ private slots:
         p.chapters = 5;
         p.playerRace = "humans";
         p.seed = 17;
+        p.maxLevel = 7;
         p.goals = {"slay", "artifact", "explore", "days", "conquest"};
         QString error;
         QVERIFY2(generateCampaign(reg, p, tmp.filePath("scenarios"), tmp.filePath("campaigns"), &error), qPrintable(error));
@@ -250,7 +251,7 @@ private slots:
         QVERIFY2(loadCampaign(tmp.filePath("campaigns/fixed.json"), &def, &errors), qPrintable(errors.join("\n")));
         QCOMPARE(def.scenarios.size(), 5);
         QCOMPARE(def.carryHeroes, 1);
-        QVERIFY(def.carryArmy);
+        QCOMPARE(def.maxLevel, 7);
         const QList<VictoryCondition::Type> expected = {
             VictoryCondition::Type::SlayMonster, VictoryCondition::Type::FindArtifact, VictoryCondition::Type::ExploreMap,
             VictoryCondition::Type::Days,        VictoryCondition::Type::Conquest};
