@@ -75,8 +75,12 @@ GameOutcome gameOutcome(const GameState& state, const ContentRegistry& content) 
     for (const Player& p : state.players())
         if (!isEliminated(state, p.id)) alive.insert(p.team);
     GameOutcome o;
-    o.over = alive.size() <= 1;
-    if (o.over && alive.size() == 1) o.winner = *alive.begin();
+    // A slay scenario has one goal: the monster. Wiping out the other players is not a
+    // win there - the hunt is only over when the kill is recorded. Everyone being out
+    // still ends the game (with no winner).
+    const bool slayOnly = state.victory().type == VictoryCondition::Type::SlayMonster;
+    o.over = alive.isEmpty() || (!slayOnly && alive.size() == 1);
+    if (o.over && alive.size() == 1 && !slayOnly) o.winner = *alive.begin();
     if (o.over) return o;
 
     const VictoryCondition& v = state.victory();
@@ -179,7 +183,7 @@ QString describeVictory(const GameState& state, const ContentRegistry& content) 
         if (const Army* a = state.army(v.targetArmy); a && !a->stacks.isEmpty()) {
             if (const UnitDef* u = content.unit(a->stacks.first().unitTypeId())) name = u->name;
         }
-        return QStringLiteral("Slay %1 (or defeat everyone)").arg(name);
+        return QStringLiteral("Slay %1").arg(name);
     }
     case VictoryCondition::Type::FindArtifact: {
         const ArtifactDef* a = content.artifact(v.targetArtifact);

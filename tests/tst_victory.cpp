@@ -203,6 +203,31 @@ private slots:
         QCOMPARE(loaded.victory().slayerTeam, teamB);
     }
 
+    void defeatingEveryoneDoesNotWinASlayScenario() {
+        const UnitTypeId eater = reg.unitId(QStringLiteral("flying_purple_people_eater"));
+        QVERIFY(eater.isValid());
+        const ArmyId monster = gs.addArmy(PlayerId(), {2, 2});
+        gs.army(monster)->addUnits(eater, 5, reg.unit(eater)->maxHp);
+        VictoryCondition v;
+        v.type = VictoryCondition::Type::SlayMonster;
+        v.targetArmy = monster;
+        gs.setVictory(v);
+
+        // Wipe out both other players: the monster is still the only way to win.
+        removeHeroes(b);
+        removeHeroes(c);
+        for (Town& t : gs.towns())
+            if (t.owner != a) t.owner = a;
+        QVERIFY(!gameOutcome(gs, reg).over);
+        QVERIFY(!describeVictory(gs, reg).contains(QStringLiteral("defeat everyone")));
+
+        // Only the recorded kill ends the hunt.
+        noteArmyDestroyed(gs, monster, a);
+        const GameOutcome after = gameOutcome(gs, reg);
+        QVERIFY(after.over);
+        QCOMPARE(after.winner, teamA);
+    }
+
     void findingTheArtifactWins() {
         const ArtifactId prize = reg.artifactId(QStringLiteral("dragon_blade"));
         QVERIFY(prize.isValid());

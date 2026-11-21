@@ -31,6 +31,9 @@ line waiting for it, and the agent then removes them.
 6.2 Send them back in the view after a reconnect.
 55. For slay-goal scenarios and campaigns, slaying the purple monster is the only win
     condition; remove the "defeat everyone" conquest fallback.
+55.1 **MANUAL**: run `make test`; slay-only victory and the goal wording are covered. Then
+    open a slay-goal scenario and confirm the goal says only "Slay ...", and that wiping out
+    the other players without killing the monster does not win.
 56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
     (instant location change, no animation), so their direction is visible.
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.

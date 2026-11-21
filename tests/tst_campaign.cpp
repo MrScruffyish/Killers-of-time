@@ -10,6 +10,7 @@
 #include "core/rules/Campaign.h"
 #include "core/rules/HeroRules.h"
 #include "core/rules/Scenario.h"
+#include "core/rules/Victory.h"
 #include "net/Protocol.h"
 #include "server/GameSession.h"
 
@@ -382,15 +383,12 @@ private slots:
         QCOMPARE(first.campaignChapter(), 0);
         const PlayerId scribe = first.playerOfClient(1);
 
-        // Win chapter one: only the scribe's team is left.
+        // Win chapter one by slaying the beast - the only victory in a slay goal.
         GameState& gs = first.state();
-        for (const Hero& h : QList<Hero>(gs.heroes().values()))
-            if (h.owner != scribe) {
-                gs.armies().remove(h.army);
-                gs.heroes().remove(h.id);
-            }
-        for (Town& t : gs.towns())
-            if (t.owner != scribe) t.owner = PlayerId();
+        const ArmyId monster = gs.victory().targetArmy;
+        QVERIFY(monster.isValid());
+        noteArmyDestroyed(gs, monster, scribe);
+        QVERIFY(gameOutcome(gs, reg).over);
         first.handle(1, net::Message{net::msg::endTurn, {}, 1});
         QCOMPARE(first.viewFor(scribe)["campaign"].toObject()["result"].toString(), QString("won"));
         CampaignProgress p;
