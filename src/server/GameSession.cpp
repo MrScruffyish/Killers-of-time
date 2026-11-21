@@ -177,6 +177,9 @@ bool GameSession::start(const net::LobbyState& lobby, QString* error) {
             applyCarriedHeroes(m_state, m_content, m_campaignPlayer, progress.heroes, campaign.maxLevel);
         if (!progress.artifacts.isEmpty())
             giveGoalArtifacts(m_state, m_content, m_campaignPlayer, progress.artifacts);
+        m_campaignLegacy = campaign.legacy;
+        m_campaignProgress = progress;
+        applyLegacy(m_state, m_content, m_campaignPlayer, progress);
     }
 
     m_clientPlayers.clear();
@@ -332,6 +335,21 @@ QJsonObject GameSession::viewFor(PlayerId player) const {
     if (!m_campaign.isEmpty()) {
         QJsonObject c{{"name", m_campaignName}, {"chapter", m_campaignChapter + 1}, {"chapters", m_campaignChapters}};
         if (!m_campaignResult.isEmpty()) c.insert("result", m_campaignResult);
+        if (!m_campaignLegacy.empty()) {
+            c.insert("title", m_campaignLegacy.title);
+            c.insert("kind", m_campaignLegacy.kind);
+            c.insert("intro", m_campaignLegacy.intro);
+            c.insert("epilogue", m_campaignLegacy.epilogue);
+            if (m_campaignChapter < m_campaignLegacy.chapters.size())
+                c.insert("story", m_campaignLegacy.chapters[m_campaignChapter].story);
+            QStringList spells;
+            for (const QString& key : m_campaignProgress.spells)
+                if (const SpellDef* def = m_content.spellByKey(key)) spells << def->name;
+            c.insert("spells", QJsonArray::fromStringList(spells));
+            QJsonArray records;
+            for (const int day : m_campaignProgress.records) records.append(day);
+            c.insert("records", records);
+        }
         view.insert("campaign", c);
     }
     return view;
@@ -380,7 +398,12 @@ void GameSession::recordCampaign() {
     CampaignProgress p;
     const QString path = QDir(m_campaignDir).filePath("campaign_" + m_campaign + ".json");
     CampaignProgress old;
-    if (loadProgress(path, &old)) p.artifacts = old.artifacts;  // goal artifacts won in earlier chapters stay
+    if (loadProgress(path, &old)) {  // the legacy won in earlier chapters stays
+        p.artifacts = old.artifacts;
+        p.spells = old.spells;
+        p.monuments = old.monuments;
+        p.records = old.records;
+    }
     p.campaign = m_campaign;
     p.next = m_campaignChapter + 1;
     for (const HeroId h : bestHeroes(m_state, m_campaignPlayer, def.carryHeroes)) p.heroes << heroSnapshot(m_state, m_content, h);
@@ -389,6 +412,19 @@ void GameSession::recordCampaign() {
     if (v.type == VictoryCondition::Type::FindArtifact && v.targetArtifact.isValid())
         if (const ArtifactDef* a = m_content.artifact(v.targetArtifact))
             if (!p.artifacts.contains(a->key)) p.artifacts << a->key;
+    // Legacy awards: spells, monuments and this chapter's best-day record.
+    if (m_campaignChapter < def.legacy.chapters.size()) {
+        const LegacyChapter& award = def.legacy.chapters[m_campaignChapter];
+        for (const QString& key : award.spells)
+            if (m_content.spellByKey(key) && !p.spells.contains(key)) p.spells << key;
+        for (const QString& key : award.monuments)
+            if (m_content.buildingByKey(key) && !p.monuments.contains(key)) p.monuments << key;
+    }
+    const int day = m_state.day();
+    if (p.records.size() <= m_campaignChapter) p.records.resize(m_campaignChapter + 1, 0);
+    int& best = p.records[m_campaignChapter];
+    if (best == 0 || day < best) best = day;
+    m_campaignProgress = p;
     QString error;
     if (!saveProgress(path, p, &error))
         qCWarning(lcKotServer) << "Cannot save the campaign progress:" << error;

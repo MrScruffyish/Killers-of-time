@@ -39,6 +39,19 @@ bool loadCampaign(const QString& path, CampaignDef* out, QStringList* errors) {
     const QJsonObject carry = o.value("carryOver").toObject();
     d.carryHeroes = std::clamp(carry.value("heroes").toInt(1), 0, 8);
     d.maxLevel = std::clamp(carry.value("maxLevel").toInt(0), 0, 1000);  // 0 = no cap
+    const QJsonObject legacy = o.value("legacy").toObject();
+    d.legacy.kind = legacy.value("kind").toString();
+    d.legacy.title = legacy.value("title").toString();
+    d.legacy.intro = legacy.value("intro").toString();
+    d.legacy.epilogue = legacy.value("epilogue").toString();
+    for (const QJsonValue& v : legacy.value("chapters").toArray()) {
+        const QJsonObject ch = v.toObject();
+        LegacyChapter award;
+        award.story = ch.value("story").toString();
+        for (const QJsonValue& s : ch.value("spells").toArray()) award.spells << s.toString();
+        for (const QJsonValue& b : ch.value("monuments").toArray()) award.monuments << b.toString();
+        d.legacy.chapters << award;
+    }
     if (d.id.isEmpty() || d.scenarios.isEmpty()) {
         if (errors) *errors << QStringLiteral("%1: a campaign needs an id and scenarios%2").arg(path, why.isEmpty() ? "" : " (" + why + ")");
         return false;
@@ -64,6 +77,9 @@ bool loadProgress(const QString& path, CampaignProgress* out) {
     p.next = std::max(0, o.value("next").toInt());
     for (const QJsonValue& v : o.value("heroes").toArray()) p.heroes << v.toObject();
     for (const QJsonValue& v : o.value("artifacts").toArray()) p.artifacts << v.toString();
+    for (const QJsonValue& v : o.value("spells").toArray()) p.spells << v.toString();
+    for (const QJsonValue& v : o.value("monuments").toArray()) p.monuments << v.toString();
+    for (const QJsonValue& v : o.value("records").toArray()) p.records << v.toInt();
     *out = p;
     return true;
 }
@@ -78,6 +94,15 @@ bool saveProgress(const QString& path, const CampaignProgress& progress, QString
     QJsonArray artifacts;
     for (const QString& a : progress.artifacts) artifacts.append(a);
     o.insert("artifacts", artifacts);
+    QJsonArray spells;
+    for (const QString& s : progress.spells) spells.append(s);
+    o.insert("spells", spells);
+    QJsonArray monuments;
+    for (const QString& b : progress.monuments) monuments.append(b);
+    o.insert("monuments", monuments);
+    QJsonArray records;
+    for (const int day : progress.records) records.append(day);
+    o.insert("records", records);
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly)) {
@@ -165,6 +190,40 @@ int giveGoalArtifacts(GameState& state, const ContentRegistry& content, PlayerId
         ++given;
     }
     return given;
+}
+
+int applyLegacy(GameState& state, const ContentRegistry& content, PlayerId player, const CampaignProgress& progress) {
+    int granted = 0;
+    QList<HeroId> mine;
+    for (const Hero& h : state.heroes())
+        if (h.owner == player) mine << h.id;
+    std::sort(mine.begin(), mine.end());
+    Hero* hero = mine.isEmpty() ? nullptr : state.hero(mine.first());
+
+    // Learned spells travel with the carried hero (first one), like goal artifacts.
+    for (const QString& key : progress.spells) {
+        const SpellId id = content.spellId(key);
+        if (!id.isValid() || !hero || hero->spells.contains(id)) continue;
+        hero->spells.append(id);
+        ++granted;
+    }
+
+    // Monuments are permanently built in the player's capital (his first town). They are
+    // free legacy gifts, not bought through the normal build rules.
+    Town* capital = nullptr;
+    for (Town& t : state.towns())
+        if (t.owner == player) {
+            capital = &t;
+            break;
+        }
+    if (capital)
+        for (const QString& key : progress.monuments) {
+            const BuildingTypeId id = content.buildingId(key);
+            if (!id.isValid() || capital->buildings.contains(id)) continue;
+            capital->buildings.append(id);
+            ++granted;
+        }
+    return granted;
 }
 
 }  // namespace kot::core

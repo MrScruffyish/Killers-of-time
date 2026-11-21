@@ -1090,6 +1090,15 @@ void GamePage::announceEnd() {
                                                     "choose the campaign in the lobby again.").arg(chapter).arg(chapters)
                                                : tr("The campaign is won!"))
                          : tr("Choose the campaign in the lobby to try this chapter again."));
+            // Each won chapter reveals its story beat; the last one reveals the epilogue.
+            if (won) {
+                const QString story = m_view.campaign.value(QStringLiteral("story")).toString();
+                if (!story.isEmpty()) text += QStringLiteral("\n\n") + story;
+                if (chapter >= chapters) {
+                    const QString epilogue = m_view.campaign.value(QStringLiteral("epilogue")).toString();
+                    if (!epilogue.isEmpty()) text += QStringLiteral("\n\n") + epilogue;
+                }
+            }
         }
     } else if (me && me->eliminated && !m_announcedDefeat) {
         m_announcedDefeat = true;
@@ -1191,11 +1200,29 @@ void GamePage::showGoal() {
     const QString goal = m_view.victory.isEmpty() ? tr("defeat everyone") : m_view.victory.toHtmlEscaped();
     const QString lose = m_view.defeat.isEmpty() ? tr("lose all your towns and heroes") : m_view.defeat.toHtmlEscaped();
     QString text = tr("<b>Goal:</b> %1<br><b>Defeat:</b> %2").arg(goal, lose);
-    if (!m_view.campaign.isEmpty())
-        text.prepend(tr("<b>%1</b> - chapter %2 of %3<br>")
-                         .arg(m_view.campaign.value(QStringLiteral("name")).toString().toHtmlEscaped())
-                         .arg(m_view.campaign.value(QStringLiteral("chapter")).toInt())
-                         .arg(m_view.campaign.value(QStringLiteral("chapters")).toInt()));
+    if (!m_view.campaign.isEmpty()) {
+        const QJsonObject campaign = m_view.campaign;
+        const int chapter = campaign.value(QStringLiteral("chapter")).toInt();
+        QString heading = tr("<b>%1</b> - chapter %2 of %3")
+                              .arg(campaign.value(QStringLiteral("name")).toString().toHtmlEscaped())
+                              .arg(chapter)
+                              .arg(campaign.value(QStringLiteral("chapters")).toInt());
+        const QString title = campaign.value(QStringLiteral("title")).toString();
+        if (!title.isEmpty()) heading += QStringLiteral(" &mdash; ") + title.toHtmlEscaped();
+        text.prepend(heading + QStringLiteral("<br>"));
+        // The legacy intro frames the story before the first chapter.
+        if (chapter == 1) {
+            const QString intro = campaign.value(QStringLiteral("intro")).toString();
+            if (!intro.isEmpty())
+                text.prepend(QStringLiteral("<i>") + intro.toHtmlEscaped() + QStringLiteral("</i><hr>"));
+        }
+        const QJsonArray spells = campaign.value(QStringLiteral("spells")).toArray();
+        if (!spells.isEmpty()) {
+            QStringList names;
+            for (const QJsonValue& s : spells) names << s.toString();
+            text += QStringLiteral("<br><b>Learned so far:</b> ") + names.join(QStringLiteral(", ")).toHtmlEscaped();
+        }
+    }
     if (!m_view.intro.isEmpty()) text += QStringLiteral("<hr>") + m_view.intro;
     QMessageBox box(QMessageBox::Information, tr("Scenario goal"), text, QMessageBox::Ok, this);
     box.setTextFormat(Qt::RichText);

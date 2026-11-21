@@ -43,6 +43,14 @@ line waiting for it, and the agent then removes them.
     (200 runs, seed 1, simple profile). The report goes to stdout; nothing tracked needs updating.
 62. An artifact that was a chapter's goal (FindArtifact) stays with the carried hero in later
     chapters. Other loot still does not carry over.
+63. Generic campaign Legacy plumbing: a per-campaign storyline (intro, per-chapter text,
+    epilogue) plus persistent threads — spells learned, monuments raised, best-day records.
+    Carry the state in progress, apply/award it at chapter boundaries, and show the story in-game.
+63.1 **MANUAL**: run `make test`; legacy parsing, progress round-trips, spell/monument awards
+    and the carry-through-chapters flow are covered. Then play a couple of chapters with a story
+    campaign and check the intro at the goal dialog and the story/epilogue at chapter end.
+64. Ship the Codex campaign: a spell-research storyline where each won chapter teaches the
+    carried hero a page/spell that lasts into later chapters.
 
 ## TBD
 

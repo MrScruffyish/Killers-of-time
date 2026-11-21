@@ -197,6 +197,147 @@ private slots:
         QVERIFY(!hasLoot);
     }
 
+    void legacyLoadsFromJson() {
+        QTemporaryDir dir;
+        const QString path = QDir(dir.path()).filePath("campaign.json");
+        QFile f(path);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(R"({
+          "id": "test", "name": "Test", "description": "desc", "scenarios": ["a", "b"],
+          "carryOver": {"heroes": 1, "maxLevel": 0},
+          "legacy": {"kind": "codex", "title": "Codex", "intro": "Once", "epilogue": "The end",
+            "chapters": [
+              {"story": "First", "spells": ["cure"], "monuments": ["city_hall"]},
+              {"story": "Second", "spells": ["cure", "bless"]}
+            ]}
+        })");
+        f.close();
+        CampaignDef def;
+        QStringList errors;
+        QVERIFY2(loadCampaign(path, &def, &errors), qPrintable(errors.join("\n")));
+        QVERIFY(!def.legacy.empty());
+        QCOMPARE(def.legacy.kind, QStringLiteral("codex"));
+        QCOMPARE(def.legacy.title, QStringLiteral("Codex"));
+        QCOMPARE(def.legacy.intro, QStringLiteral("Once"));
+        QCOMPARE(def.legacy.epilogue, QStringLiteral("The end"));
+        QCOMPARE(def.legacy.chapters.size(), 2);
+        QCOMPARE(def.legacy.chapters[0].story, QStringLiteral("First"));
+        QCOMPARE(def.legacy.chapters[0].spells, QStringList({QStringLiteral("cure")}));
+        QCOMPARE(def.legacy.chapters[0].monuments, QStringList({QStringLiteral("city_hall")}));
+        QCOMPARE(def.legacy.chapters[1].spells, QStringList({QStringLiteral("cure"), QStringLiteral("bless")}));
+    }
+
+    void legacyProgressRoundTrips() {
+        QTemporaryDir dir;
+        const QString path = QDir(dir.path()).filePath("progress.json");
+        CampaignProgress p;
+        p.campaign = "test";
+        p.next = 2;
+        p.spells = {QStringLiteral("cure"), QStringLiteral("bless")};
+        p.monuments = {QStringLiteral("city_hall")};
+        p.records = {12, 0, 9};
+        QString error;
+        QVERIFY(saveProgress(path, p, &error));
+        CampaignProgress loaded;
+        QVERIFY(loadProgress(path, &loaded));
+        QCOMPARE(loaded.spells, p.spells);
+        QCOMPARE(loaded.monuments, p.monuments);
+        QCOMPARE(loaded.records, p.records);
+        // Progress written before Legacies existed still loads with empty threads.
+        QFile f(path);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(R"({"campaign":"test","next":1,"heroes":[],"artifacts":[]})");
+        f.close();
+        CampaignProgress old;
+        QVERIFY(loadProgress(path, &old));
+        QVERIFY(old.spells.isEmpty());
+        QVERIFY(old.monuments.isEmpty());
+        QVERIFY(old.records.isEmpty());
+    }
+
+    void applyLegacyGrantsSpellsAndMonuments() {
+        GameState g(1);
+        g.setMap(GameMap(8, 8, T("grass")));
+        const PlayerId p = g.addPlayer("A", g.newTeam(), Player::Controller::Human, RC("humans"), "#ff0000");
+        const HeroId h = createHero(g, reg, p, "Hero", C("wizard"), {1, 1});
+        const TownId town = g.addTown("Capital", RC("humans"), {3, 3}, p);
+        CampaignProgress progress;
+        progress.spells = {QStringLiteral("cure"), QStringLiteral("bless"), QStringLiteral("no_such_spell")};
+        progress.monuments = {QStringLiteral("city_hall"), QStringLiteral("no_such_building"),
+                              QStringLiteral("city_hall")};
+        QCOMPARE(applyLegacy(g, reg, p, progress), 3);  // two spells + one monument
+        QVERIFY(g.hero(h)->spells.contains(S("cure")));
+        QVERIFY(g.hero(h)->spells.contains(S("bless")));
+        QVERIFY(!g.hero(h)->spells.contains(S("no_such_spell")));
+        QVERIFY(g.town(town)->buildings.contains(B("city_hall")));
+        QCOMPARE(applyLegacy(g, reg, p, progress), 0);  // idempotent
+    }
+
+    void legacyAwardsCarryThroughChapters() {
+        QTemporaryDir saves;
+        QDir().mkpath(QDir(saves.path()).filePath("campaigns"));
+        const QString campaignPath = QDir(saves.path()).filePath("campaigns/test_legacy.json");
+        QFile f(campaignPath);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(R"({
+          "id": "test_legacy", "name": "Test Legacy", "scenarios": ["two_kingdoms", "three_realms"],
+          "carryOver": {"heroes": 1, "maxLevel": 0},
+          "legacy": {"kind": "codex", "title": "The Test Codex", "intro": "Long ago.",
+            "epilogue": "The end.", "chapters": [
+              {"story": "First beat.", "spells": ["cure"]},
+              {"story": "Second beat.", "spells": ["bless"]}
+            ]}
+        })");
+        f.close();
+        const QString progressPath = QDir(saves.path()).filePath("campaign_test_legacy.json");
+        QString error;
+        net::LobbyState lobby;
+        lobby.settings.campaign = "test_legacy";
+        lobby.slotList = {slot(0, false, "Ann", 1), slot(1, true, "Bot", 2)};
+        server::GameSession first(reg);
+        first.setCampaignDir(saves.path());
+        QVERIFY2(first.start(lobby, &error), qPrintable(error));
+        const PlayerId ann = first.playerOfClient(1);
+        QJsonObject view = first.viewFor(ann)["campaign"].toObject();
+        QCOMPARE(view.value("title").toString(), QStringLiteral("The Test Codex"));
+        QCOMPARE(view.value("intro").toString(), QStringLiteral("Long ago."));
+        QCOMPARE(view.value("story").toString(), QStringLiteral("First beat."));
+        QVERIFY(view.value("spells").toArray().isEmpty());
+
+        // Win chapter one the way the playtest tool does: only Ann's team is left.
+        GameState& gs = first.state();
+        for (const Hero& h : QList<Hero>(gs.heroes().values()))
+            if (h.owner != ann) {
+                gs.armies().remove(h.army);
+                gs.heroes().remove(h.id);
+            }
+        for (Town& t : gs.towns())
+            if (t.owner != ann) t.owner = PlayerId();
+        first.handle(1, net::Message{net::msg::endTurn, {}, 1});
+        QCOMPARE(first.viewFor(ann)["campaign"].toObject()["result"].toString(), QString("won"));
+        CampaignProgress p;
+        QVERIFY(loadProgress(progressPath, &p));
+        QCOMPARE(p.spells, QStringList({QStringLiteral("cure")}));
+        QCOMPARE(p.records.size(), 1);
+        QVERIFY(p.records[0] > 0);
+
+        // Chapter two: the carried hero knows the spell learned in chapter one.
+        lobby.slotList = {slot(0, false, "Ann", 1), slot(1, true, "Bot", 2), slot(2, true, "Bot2", 3)};
+        server::GameSession second(reg);
+        second.setCampaignDir(saves.path());
+        QVERIFY2(second.start(lobby, &error), qPrintable(error));
+        const PlayerId ann2 = second.playerOfClient(1);
+        bool knowsCure = false;
+        for (const Hero& h : second.state().heroes())
+            if (h.owner == ann2) knowsCure = knowsCure || h.spells.contains(S("cure"));
+        QVERIFY(knowsCure);
+        view = second.viewFor(ann2)["campaign"].toObject();
+        QCOMPARE(view.value("story").toString(), QStringLiteral("Second beat."));
+        const QJsonArray learned = view.value("spells").toArray();
+        QCOMPARE(learned.size(), 1);
+        QCOMPARE(learned[0].toString(), QStringLiteral("Cure"));
+    }
+
     void chaptersFollowEachOther() {
         QTemporaryDir saves;
         net::LobbyState lobby;

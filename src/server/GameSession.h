@@ -10,6 +10,7 @@
 
 #include "ai/IAiPlayer.h"
 #include "core/battle/Battle.h"
+#include "core/rules/Campaign.h"
 #include "core/rules/Movement.h"
 
 #include "core/model/GameState.h"
@@ -145,6 +146,8 @@ private:
     int m_campaignChapter = 0;
     int m_campaignChapters = 0;
     QString m_campaignName;
+    core::CampaignLegacy m_campaignLegacy;      // storyline prose for this campaign
+    core::CampaignProgress m_campaignProgress;  // legacy built up so far (spells, monuments, records)
     bool m_campaignRecorded = false;
     QString m_campaignResult;    // "won" / "lost" when the game ended
     core::PlayerId m_campaignPlayer;  // the first human: his heroes carry over

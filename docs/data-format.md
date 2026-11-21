@@ -274,18 +274,39 @@ tests, so content changes that break one are noticed.
 ## campaigns/<id>.json
 ```json
 { "id": "first_war", "name": "The First War", "description": "...",
-  "scenarios": ["two_kingdoms", "three_realms"], "carryOver": { "heroes": 1, "maxLevel": 0 } }
+  "scenarios": ["two_kingdoms", "three_realms"], "carryOver": { "heroes": 1, "maxLevel": 0 },
+  "legacy": {
+    "kind": "codex", "title": "The Deathless Codex",
+    "intro": "A story shown before chapter one.", "epilogue": "A story shown after the last chapter.",
+    "chapters": [
+      { "story": "Shown when chapter one is won.", "spells": ["cure"], "monuments": [] },
+      { "story": "Shown when chapter two is won.", "spells": ["bless"] }
+    ]
+  }
+}
 ```
+`legacy` is optional. It gives a campaign a storyline and one or more persistent threads;
+leave it out for a plain campaign. `kind` is a free-form theme id (e.g. `codex`, `monument`,
+`chronicle`), `title` a headline, `intro` the prose shown before chapter one, and `epilogue`
+the prose shown after the final win. `chapters` runs parallel to `scenarios`; each entry may
+hold a `story` (narration revealed when that chapter is won) and any mix of awards:
+- `spells`: spell keys the carried hero learns from that chapter onward (kept for later chapters).
+- `monuments`: building keys raised for free in the player's capital from that chapter onward.
+
+Every thread is optional, so a campaign can be about spells, buildings, records, or only the
+story. Best win-day `records` are kept per chapter without any data declaration.
+
 The host picks a campaign as the map; its next chapter is played (the lobby needs as many
 players as that scenario). When the human team wins, the server stores the progress in its
 saves folder (`campaign_<id>.json`) with the name, class and level of the best `heroes` heroes
 of the first human player. In the next chapter those heroes keep only that level (capped by
 `maxLevel`; 0 means no limit): the chapter's own army, spells, artifacts, traits and experience
-are used, so an army cannot be built up safely across chapters. The one exception is a `FindArtifact`
-chapter's prize: the artifact that was the goal is kept in `artifacts` (by key) and given to the
-carried hero in later chapters. Other loot does not carry over. The saved `artifacts` list is
-preserved when later chapters are won. A lost chapter can be played again; after the last chapter
-the campaign starts over.
+are used, so an army cannot be built up safely across chapters. The exceptions are designated
+story rewards: a `FindArtifact` chapter's prize is kept in `artifacts` (by key), and a chapter's
+`legacy` `spells` and `monuments` are kept in the same progress file; all are applied at the
+start of later chapters (spells to the carried hero, monuments to his capital). Other loot does
+not carry over. These saved lists are preserved when later chapters are won. A lost chapter can
+be played again; after the last chapter the campaign starts over.
 
 ## Unit spells (`spells` and `spellPoints` in units/<id>.json)
 A unit with `spells` (battle spells) and `spellPoints` may cast one instead of acting; its pool
