@@ -34,8 +34,6 @@ line waiting for it, and the agent then removes them.
 56. Animate other players' (AI/enemy) moves with a configurable speed from slow to immediate
     (instant location change, no animation), so their direction is visible.
 57. Sort the resource bar so gold is first, then the cheaper resources up to the rarer ones.
-58. `make test` prints the current git commit and, when the working tree is dirty, a hash of
-    its changes, so a test report says exactly what was rebuilt and run.
 59. Fix the Solo Play chooser: it showed literal `<b>Play...` markup and the light-blue card
     colours clashed with the game's dark brown/gold look.
 
@@ -74,3 +72,5 @@ file or link later).
 54. In-game menu: allow abandoning the current game with no save, resetting the lobby and
     returning to setup; add an option to show the current scenario goal again; and do not
     report taking an unowned/neutral mine ("You took a mine from somebody.").
+58. `make test` prints the current git commit and, when the working tree is dirty, a hash of
+    its changes, so a test report says exactly what was rebuilt and run.
